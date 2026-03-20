@@ -1,0 +1,13 @@
+node_modules/
+*.log
+.DS_Store
+Thumbs.db
+dist/
+out/
+task.md
+plan.md
+Long_Verses_Check.txt
+long_verses_report.json
+index_test.html
+scan_bible.js
+image.png

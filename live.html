@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <link href="https://fonts.googleapis.com/css2?family=Open+Sans:ital,wght@0,300..800;1,300..800&family=Roboto:ital,wght@0,100..900;1,100..900&family=Lato:ital,wght@0,100;0,300;0,400;0,700;0,900;1,100;1,300;1,400;1,700;1,900&family=Montserrat:ital,wght@0,100..900;1,100..900&family=Oswald:wght@200..700&family=Raleway:ital,wght@0,100..900;1,100..900&family=Lobster&display=swap" rel="stylesheet" />
+    <style>
+        /* CMG Sans font family */
+        @font-face { font-family: 'CMG Sans'; src: url('./fonts/cmg-sans/CMGSans-Regular.ttf') format('truetype'); font-weight: normal; font-style: normal; }
+        @font-face { font-family: 'CMG Sans Thin'; src: url('./fonts/cmg-sans/CMGSans-Thin.ttf') format('truetype'); }
+        @font-face { font-family: 'CMG Sans ExtraLight'; src: url('./fonts/cmg-sans/CMGSans-ExtraLight.ttf') format('truetype'); }
+        @font-face { font-family: 'CMG Sans Light'; src: url('./fonts/cmg-sans/CMGSans-Light.ttf') format('truetype'); }
+        @font-face { font-family: 'CMG Sans Medium'; src: url('./fonts/cmg-sans/CMGSans-Medium.ttf') format('truetype'); }
+        @font-face { font-family: 'CMG Sans SemiBold'; src: url('./fonts/cmg-sans/CMGSans-SemiBold.ttf') format('truetype'); }
+        @font-face { font-family: 'CMG Sans Bold'; src: url('./fonts/cmg-sans/CMGSans-Bold.ttf') format('truetype'); }
+        @font-face { font-family: 'CMG Sans ExtraBold'; src: url('./fonts/cmg-sans/CMGSans-ExtraBold.ttf') format('truetype'); }
+        @font-face { font-family: 'CMG Sans Black'; src: url('./fonts/cmg-sans/CMGSans-Black.ttf') format('truetype'); }
+        @font-face { font-family: 'CMG Sans Condensed'; src: url('./fonts/cmg-sans/CMGSans-RegularCn.ttf') format('truetype'); }
+        @font-face { font-family: 'CMG Sans Condensed Medium'; src: url('./fonts/cmg-sans/CMGSans-MediumCn.ttf') format('truetype'); }
+        @font-face { font-family: 'CMG Sans Condensed SemiBold'; src: url('./fonts/cmg-sans/CMGSans-SemiBoldCn.ttf') format('truetype'); }
+        @font-face { font-family: 'CMG Sans Condensed Bold'; src: url('./fonts/cmg-sans/CMGSans-BoldCn.ttf') format('truetype'); }
+        @font-face { font-family: 'CMG Sans Bold CAPS'; src: url('./fonts/cmg-sans/CMGSans-BoldCAPS.ttf') format('truetype'); }
+        @font-face { font-family: 'CMG Sans Medium CAPS'; src: url('./fonts/cmg-sans/CMGSans-MediumCAPS.ttf') format('truetype'); }
+        @font-face { font-family: 'CMG Sans SemiBold CAPS'; src: url('./fonts/cmg-sans/CMGSans-SemiBoldCAPS.ttf') format('truetype'); }
+        @font-face { font-family: 'CMG Sans Bold Outline'; src: url('./fonts/cmg-sans/CMGSans-BoldOutline.ttf') format('truetype'); }
+        @font-face { font-family: 'CMG Sans Bold Rounded'; src: url('./fonts/cmg-sans/CMGSans-BoldRounded.ttf') format('truetype'); }
+        @font-face { font-family: 'CMG Sans Bold Slab'; src: url('./fonts/cmg-sans/CMGSans-BoldSlab.ttf') format('truetype'); }
+        @font-face { font-family: 'CMG Sans ExtraBold Wide'; src: url('./fonts/cmg-sans/CMGSans-ExtraBoldWide.ttf') format('truetype'); }
+        @font-face { font-family: 'CMG Sans ExtraBold Wide Outline'; src: url('./fonts/cmg-sans/CMGSans-ExtraBoldWideOutline.ttf') format('truetype'); }
+    </style>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: #000;
+            overflow: hidden;
+            width: 100vw;
+            height: 100vh;
+            cursor: none;
+        }
+
+        .layer {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            transition: opacity 0.3s ease;
+        }
+
+        .bg-layer img, .bg-layer video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        /* Virtual canvas text layer */
+        .text-layer {
+            z-index: 10;
+            position: absolute;
+            inset: 0;
+            overflow: hidden;
+        }
+
+        .virtual-canvas {
+            width: 1920px;
+            height: 1080px;
+            transform-origin: center;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+        }
+
+        .text-layer-box {
+            position: absolute;
+            box-sizing: border-box;
+        }
+
+        .lyrics-text {
+            color: #fff;
+            font-family: 'Times New Roman', serif;
+            font-size: 120pt;
+            font-weight: bold;
+            text-align: center;
+            line-height: 1.4;
+            -webkit-text-stroke: 16px black;
+            paint-order: stroke fill;
+            text-shadow: none;
+            white-space: pre-wrap;
+            width: 100%;
+            max-width: 100%;
+            will-change: opacity;
+        }
+
+        /* Double-buffer layers for crossfade */
+        .buffer-a, .buffer-b {
+            position: absolute;
+            inset: 0;
+            will-change: opacity;
+            transition: opacity 0.3s ease;
+        }
+        .buffer-a { z-index: 1; }
+        .buffer-b { z-index: 2; }
+
+        .bg-img, .bg-video {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .hidden { display: none !important; }
+    </style>
+    <title>Screen Live</title>
+</head>
+<body>
+    <!-- Background layers (double-buffer for crossfade) -->
+    <div class="buffer-a layer" id="buffer-a">
+        <img class="bg-img hidden" id="bg-img-a" />
+        <video class="bg-video hidden" id="bg-video-a" autoplay loop muted></video>
+    </div>
+    <div class="buffer-b layer" id="buffer-b" style="opacity: 0;">
+        <img class="bg-img hidden" id="bg-img-b" />
+        <video class="bg-video hidden" id="bg-video-b" autoplay loop muted></video>
+    </div>
+
+    <!-- Text overlay with virtual canvas -->
+    <div class="text-layer" id="text-layer">
+        <div class="virtual-canvas" id="virtual-canvas">
+            <div id="text-box" class="text-layer-box" style="left:96px;top:50%;transform:translateY(-50%);width:1728px;">
+                <div class="lyrics-text" id="lyrics-text"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const { ipcRenderer } = require('electron');
+
+        let activeBuffer = 'a'; // which buffer is currently visible
+        let currentBackgroundUrl = null; // track current background to avoid flicker
+
+        function scaleCanvas() {
+            const canvas = document.getElementById('virtual-canvas');
+            if (!canvas) return;
+            const w = window.innerWidth;
+            const h = window.innerHeight;
+            // Scale để vừa khít 1920x1080 vào cửa sổ hiện tại (giữ nguyên tỉ lệ)
+            const scale = Math.min(w / 1920, h / 1080);
+            canvas.style.transform = `translate(-50%, -50%) scale(${scale})`;
+            console.log(`[Live] Scaled to: ${scale} (Window: ${w}x${h})`);
+        }
+
+        window.addEventListener('resize', scaleCanvas);
+        scaleCanvas();
+
+        function setBackground(bg) {
+            if (!bg) return;
+
+            // Determine next buffer
+            const next = activeBuffer === 'a' ? 'b' : 'a';
+            const nextImg = document.getElementById(`bg-img-${next}`);
+            const nextVid = document.getElementById(`bg-video-${next}`);
+            const nextLayer = document.getElementById(`buffer-${next}`);
+            const currentLayer = document.getElementById(`buffer-${activeBuffer}`);
+
+            // Hide both in next buffer
+            nextImg.classList.add('hidden');
+            nextVid.classList.add('hidden');
+
+            const url = bg.url || `app-media://${encodeURIComponent(bg.mediaName)}`;
+            
+            // Nếu URL giống hệt cái cũ, không làm gì cả để tránh nháy hình
+            if (url === currentBackgroundUrl) {
+                console.log('[Live] Same background URL, skipping transition');
+                return;
+            }
+            currentBackgroundUrl = url;
+
+            if (bg.mediaType === 'video') {
+                nextVid.classList.remove('hidden');
+                nextVid.src = url;
+                nextVid.play().catch(() => {});
+            } else {
+                nextImg.classList.remove('hidden');
+                nextImg.src = url;
+            }
+
+            // Crossfade
+            nextLayer.style.opacity = '1';
+            currentLayer.style.opacity = '0';
+            activeBuffer = next;
+        }
+
+        function setText(text) {
+            const el = document.getElementById('lyrics-text');
+            el.textContent = text || '';
+        }
+
+        function clearAll() {
+            setText('');
+            currentBackgroundUrl = null;
+            const bufferA = document.getElementById('buffer-a');
+            const bufferB = document.getElementById('buffer-b');
+            bufferA.style.opacity = '0';
+            bufferB.style.opacity = '0';
+
+            document.querySelectorAll('.bg-img, .bg-video').forEach(el => {
+                el.classList.add('hidden');
+                if (el.tagName === 'VIDEO') { el.pause(); el.src = ''; }
+            });
+        }
+
+        // --- IPC Listeners ---
+        function applyStyle(style) {
+            if (!style) return;
+            const el = document.getElementById('lyrics-text');
+            const textBox = document.getElementById('text-box');
+
+            if (style.fontFamily) el.style.fontFamily = style.fontFamily;
+            if (style.fontSize) el.style.fontSize = style.fontSize;
+            if (style.color) el.style.color = style.color;
+            if (style.fontWeight) el.style.fontWeight = style.fontWeight;
+            if (style.fontStyle) el.style.fontStyle = style.fontStyle;
+            if (style.textDecoration) el.style.textDecoration = style.textDecoration;
+            if (style.textAlign) el.style.textAlign = style.textAlign;
+
+            el.style.textShadow = "none";
+            el.style.webkitTextStroke = "16px black";
+            el.style.paintOrder = "stroke fill";
+            el.style.width = "100%";
+            el.style.lineHeight = "1.4";
+
+            if (textBox) {
+                const tb = style.textBox;
+                const left = (tb && tb.left != null) ? tb.left : 96;
+                const width = (tb && tb.width != null) ? tb.width : 1728;
+                textBox.style.left = left + 'px';
+                textBox.style.width = width + 'px';
+
+                if (tb && tb.top != null) {
+                    textBox.style.top = tb.top + 'px';
+                    textBox.style.bottom = '';
+                    textBox.style.transform = '';
+                } else {
+                    const align = style.verticalAlign || 'middle';
+                    if (align === 'top') {
+                        textBox.style.top = '96px';
+                        textBox.style.bottom = '';
+                        textBox.style.transform = '';
+                    } else if (align === 'bottom') {
+                        textBox.style.top = 'auto';
+                        textBox.style.bottom = '96px';
+                        textBox.style.transform = '';
+                    } else {
+                        textBox.style.top = '50%';
+                        textBox.style.bottom = '';
+                        textBox.style.transform = 'translateY(-50%)';
+                    }
+                }
+            }
+        }
+
+        ipcRenderer.on('live-update-content', (event, data) => {
+            console.log('[Live] Received content:', data);
+            if (data.style) {
+                applyStyle(data.style);
+            }
+            if (data.text !== null && data.text !== undefined) {
+                setText(data.text);
+            }
+            if (data.background) {
+                setBackground(data.background);
+            }
+        });
+
+        ipcRenderer.on('live-update-background', (event, data) => {
+            console.log('[Live] Received background:', data);
+            setBackground(data);
+        });
+
+        ipcRenderer.on('live-clear', () => {
+            console.log('[Live] Clear');
+            clearAll();
+        });
+
+        console.log('[Live] Screen Live window ready');
+    </script>
+</body>
+</html>

@@ -1,0 +1,2338 @@
+<!DOCTYPE html>
+
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap"
+        rel="stylesheet" />
+    <link
+        href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap"
+        rel="stylesheet" />
+    <link
+        href="https://fonts.googleapis.com/css2?family=Open+Sans:ital,wght@0,300..800;1,300..800&family=Roboto:ital,wght@0,100..900;1,100..900&family=Lato:ital,wght@0,100;0,300;0,400;0,700;0,900;1,100;1,300;1,400;1,700;1,900&family=Montserrat:ital,wght@0,100..900;1,100..900&family=Oswald:wght@200..700&family=Raleway:ital,wght@0,100..900;1,100..900&family=Lobster&display=swap"
+        rel="stylesheet" />
+    <script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#5048e5",
+                        "background-light": "#f6f6f8",
+                        "background-dark": "#121121",
+                    },
+                    fontFamily: {
+                        "display": ["Inter"]
+                    },
+                    borderRadius: { "DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px" },
+                },
+            },
+        }
+    </script>
+    <style>
+        /* CMG Sans font family */
+        @font-face { font-family: 'CMG Sans'; src: url('./fonts/cmg-sans/CMGSans-Regular.ttf') format('truetype'); font-weight: normal; font-style: normal; }
+        @font-face { font-family: 'CMG Sans Thin'; src: url('./fonts/cmg-sans/CMGSans-Thin.ttf') format('truetype'); }
+        @font-face { font-family: 'CMG Sans ExtraLight'; src: url('./fonts/cmg-sans/CMGSans-ExtraLight.ttf') format('truetype'); }
+        @font-face { font-family: 'CMG Sans Light'; src: url('./fonts/cmg-sans/CMGSans-Light.ttf') format('truetype'); }
+        @font-face { font-family: 'CMG Sans Medium'; src: url('./fonts/cmg-sans/CMGSans-Medium.ttf') format('truetype'); }
+        @font-face { font-family: 'CMG Sans SemiBold'; src: url('./fonts/cmg-sans/CMGSans-SemiBold.ttf') format('truetype'); }
+        @font-face { font-family: 'CMG Sans Bold'; src: url('./fonts/cmg-sans/CMGSans-Bold.ttf') format('truetype'); }
+        @font-face { font-family: 'CMG Sans ExtraBold'; src: url('./fonts/cmg-sans/CMGSans-ExtraBold.ttf') format('truetype'); }
+        @font-face { font-family: 'CMG Sans Black'; src: url('./fonts/cmg-sans/CMGSans-Black.ttf') format('truetype'); }
+        @font-face { font-family: 'CMG Sans Condensed'; src: url('./fonts/cmg-sans/CMGSans-RegularCn.ttf') format('truetype'); }
+        @font-face { font-family: 'CMG Sans Condensed Medium'; src: url('./fonts/cmg-sans/CMGSans-MediumCn.ttf') format('truetype'); }
+        @font-face { font-family: 'CMG Sans Condensed SemiBold'; src: url('./fonts/cmg-sans/CMGSans-SemiBoldCn.ttf') format('truetype'); }
+        @font-face { font-family: 'CMG Sans Condensed Bold'; src: url('./fonts/cmg-sans/CMGSans-BoldCn.ttf') format('truetype'); }
+        @font-face { font-family: 'CMG Sans Bold CAPS'; src: url('./fonts/cmg-sans/CMGSans-BoldCAPS.ttf') format('truetype'); }
+        @font-face { font-family: 'CMG Sans Medium CAPS'; src: url('./fonts/cmg-sans/CMGSans-MediumCAPS.ttf') format('truetype'); }
+        @font-face { font-family: 'CMG Sans SemiBold CAPS'; src: url('./fonts/cmg-sans/CMGSans-SemiBoldCAPS.ttf') format('truetype'); }
+        @font-face { font-family: 'CMG Sans Bold Outline'; src: url('./fonts/cmg-sans/CMGSans-BoldOutline.ttf') format('truetype'); }
+        @font-face { font-family: 'CMG Sans Bold Rounded'; src: url('./fonts/cmg-sans/CMGSans-BoldRounded.ttf') format('truetype'); }
+        @font-face { font-family: 'CMG Sans Bold Slab'; src: url('./fonts/cmg-sans/CMGSans-BoldSlab.ttf') format('truetype'); }
+        @font-face { font-family: 'CMG Sans ExtraBold Wide'; src: url('./fonts/cmg-sans/CMGSans-ExtraBoldWide.ttf') format('truetype'); }
+        @font-face { font-family: 'CMG Sans ExtraBold Wide Outline'; src: url('./fonts/cmg-sans/CMGSans-ExtraBoldWideOutline.ttf') format('truetype'); }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            overflow: hidden;
+            font-size: 0.85rem;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 3px;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 10px;
+        }
+
+        .custom-scrollbar:hover::-webkit-scrollbar-thumb {
+            background: #94a3b8;
+        }
+
+        /* Resizer Styles */
+        .resizer-h {
+            width: 4px;
+            cursor: col-resize;
+            background: transparent;
+            transition: background 0.2s;
+            z-index: 10;
+        }
+
+        .resizer-h:hover,
+        .resizer-h.dragging {
+            background: #5048e5;
+        }
+
+        .resizer-v {
+            height: 4px;
+            cursor: row-resize;
+            background: transparent;
+            transition: background 0.2s;
+            z-index: 10;
+        }
+
+        .resizer-v:hover,
+        .resizer-v.dragging {
+            background: #5048e5;
+        }
+
+        .panel {
+            min-width: 100px;
+            min-height: 50px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Song Editor Modal Styles */
+        .win-button {
+            border: 1px solid #707070;
+            background: linear-gradient(to bottom, #f0f0f0, #e1e1e1);
+            padding: 2px 12px;
+            min-width: 75px;
+            height: 24px;
+            user-select: none;
+        }
+
+        .win-button:hover {
+            background: linear-gradient(to bottom, #e5f1fb, #cce4f7);
+            border-color: #0078d7;
+        }
+
+        .toolbar-btn {
+            height: 22px;
+            width: 22px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid transparent;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .toolbar-btn:hover {
+            background-color: #cce4f7;
+            border-color: #005a9e;
+        }
+
+        .toolbar-btn.active {
+            background-color: #a3cdf0;
+            border-color: #005a9e;
+        }
+
+        .divider-win {
+            width: 1px;
+            height: 18px;
+            background-color: #ccc;
+            margin: 0 4px;
+        }
+
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 50;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+        }
+
+        .dashboard-bg {
+            background-color: #2b2b2b;
+            background-image: linear-gradient(45deg, #333 25%, transparent 25%), linear-gradient(-45deg, #333 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #333 75%), linear-gradient(-45deg, transparent 75%, #333 75%);
+            background-size: 20px 20px;
+            background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
+        }
+
+        .win-gray {
+            background-color: #f0f0f0;
+        }
+
+        .win-border {
+            border-color: #a0a0a0;
+        }
+
+        .win-dark-gray {
+            color: #808080;
+        }
+
+        .win-blue {
+            color: #005a9e;
+        }
+
+        .win-light-blue-bg {
+            background-color: #cce4f7;
+        }
+
+        .win-modal-container {
+            width: 770px;
+            height: 60vh;
+            background-color: #f0f0f0;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            border: 1px solid #808080;
+            resize: both;
+            min-width: 500px;
+            min-height: 300px;
+            position: absolute;
+        }
+
+        /* Lyrics Editor Styles */
+        .lyrics-slide-block {
+            border: 1px dashed #fff;
+            background: #fff;
+            margin-bottom: 12px;
+            padding: 0;
+            border-radius: 2px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+
+        .lyrics-slide-header {
+            background: #f0f0f0;
+            border-bottom: 1px solid #ddd;
+            display: flex;
+            align-items: center;
+            padding: 2px 8px;
+            gap: 8px;
+            height: 24px;
+        }
+
+        .lyrics-slide-num {
+            font-size: 10px;
+            font-weight: bold;
+            color: #666;
+            width: 15px;
+        }
+
+        .lyrics-slide-label-input {
+            flex: 1;
+            border: none;
+            background: transparent;
+            font-size: 11px;
+            font-weight: bold;
+            color: #333;
+            outline: none;
+            padding: 0;
+            height: 100%;
+        }
+
+        .lyrics-slide-content {
+            padding: 8px 10px;
+            outline: none;
+            font-size: 12px;
+            line-height: 1.5;
+            color: #000;
+            min-height: 40px;
+            white-space: pre-wrap;
+        }
+
+        .lyrics-slide-content i {
+            font-style: italic;
+        }
+
+        .lyrics-slide-content u {
+            text-decoration: underline;
+        }
+
+        /* Font Size Control */
+        .hybrid-size-control {
+            display: flex;
+            align-items: center;
+            border: 1px solid #a0a0a0;
+            background: white;
+            height: 24px;
+            width: 60px;
+            /* fix width tổng */
+            position: relative;
+        }
+
+        .hybrid-size-control:focus-within {
+            border-color: #0078d7;
+            box-shadow: 0 0 0 1px #0078d7;
+        }
+
+        .hybrid-size-input {
+            flex: 1;
+            /* 🔥 QUAN TRỌNG: tự giãn */
+            min-width: 0;
+            /* tránh overflow */
+            border: none !important;
+            outline: none !important;
+            font-size: 12px !important;
+            padding: 0 2px !important;
+            /* giảm padding ngang */
+            margin: 0;
+            height: 100%;
+            line-height: 22px;
+            text-align: center;
+            background: transparent !important;
+            appearance: textfield;
+            box-shadow: none !important;
+            font-family: inherit;
+        }
+
+        /* Hide spin buttons */
+        .hybrid-size-input::-webkit-outer-spin-button,
+        .hybrid-size-input::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+
+        .hybrid-size-input {
+            -moz-appearance: textfield;
+            appearance: textfield;
+        }
+
+        .hybrid-size-btn {
+            width: 14px;
+            /* nhỏ lại để không chiếm chỗ */
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-left: 1px solid #ddd;
+            cursor: pointer;
+            color: #666;
+        }
+
+        .hybrid-size-btn:hover {
+            background: #e5f1fb;
+            color: #0078d7;
+        }
+
+        .size-dropdown {
+            position: absolute;
+            top: 100%;
+            left: -1px;
+            width: calc(100% + 2px);
+            background: white;
+            border: 1px solid #0078d7;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            z-index: 1000;
+            max-height: 200px;
+            overflow-y: auto;
+            display: none;
+        }
+
+        .size-dropdown-item {
+            padding: 2px 8px;
+            font-size: 11px;
+            cursor: pointer;
+        }
+
+        .size-dropdown-item:hover {
+            background: #0078d7;
+            color: white;
+        }
+
+        /* Text Layer Box */
+        .text-layer-box {
+            position: absolute;
+            box-sizing: border-box;
+        }
+        .text-layer-box.editor-active {
+            outline: 2px dashed rgba(255, 255, 255, 0.7);
+        }
+        .text-layer-box .drag-handle {
+            position: absolute;
+            top: -20px;
+            left: 0;
+            right: 0;
+            height: 20px;
+            cursor: move;
+            background: rgba(0, 120, 255, 0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 11px;
+            color: rgba(255,255,255,0.9);
+            user-select: none;
+            border-radius: 3px 3px 0 0;
+            letter-spacing: 2px;
+        }
+        .resize-handle {
+            position: absolute;
+            width: 14px;
+            height: 14px;
+            background: rgba(0, 120, 255, 0.9);
+            border: 2px solid white;
+            border-radius: 2px;
+            z-index: 30;
+        }
+        .resize-handle.e  { top: 50%; right: -7px; transform: translateY(-50%); cursor: e-resize; }
+        .resize-handle.w  { top: 50%; left: -7px;  transform: translateY(-50%); cursor: w-resize; }
+        .resize-handle.se { bottom: -7px; right: -7px; cursor: se-resize; }
+        .resize-handle.sw { bottom: -7px; left: -7px;  cursor: sw-resize; }
+    </style>
+</head>
+
+<body
+    class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 h-screen flex flex-col font-display">
+    <!-- Top Navigation Bar -->
+    <!-- <header ...> ... </div> -->
+    <!-- </header> -->
+    <!-- Main Content Area -->
+    <main class="flex-1 flex flex-col overflow-hidden p-1 pt-0 gap-0" id="main-container">
+
+        <!-- Top Row: Schedule, Preview, Live -->
+        <div class="flex gap-0 h-1/2 min-h-0" id="top-row">
+            <!-- Section 1: Schedule -->
+            <section
+                class="panel bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 overflow-hidden shadow-sm"
+                style="width: 25%;">
+                <div class="px-3 py-1 bg-slate-800 dark:bg-black flex justify-between items-center text-white shrink-0">
+                    <h3 class="text-[10px] font-bold uppercase tracking-wider opacity-80">Schedule</h3>
+                    <span class="material-symbols-outlined text-white/60 text-xs">reorder</span>
+                </div>
+                <div class="flex-1 overflow-y-auto custom-scrollbar p-1.5 space-y-1" id="schedule-container" style="min-height:80px;">
+                    <!-- Data will be injected here -->
+                </div>
+            </section>
+
+            <div class="resizer-h" id="resizer-1"></div>
+
+            <!-- Section 2: Preview Screen -->
+            <section
+                class="panel bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 overflow-hidden shadow-sm"
+                style="width: 35%;">
+                <div class="px-3 py-1 bg-slate-800 dark:bg-black flex justify-between items-center text-white shrink-0">
+                    <h3 class="text-[10px] font-bold uppercase tracking-wider opacity-80">Preview</h3>
+                    <div class="flex items-center gap-2">
+                        <!-- <span class="text-[9px] font-mono bg-white/20 px-1 rounded">NEXT: CHORUS</span> -->
+                        <button
+                            class="bg-primary hover:bg-primary-hover text-white text-[9px] font-bold py-0.5 px-2 rounded flex items-center gap-1 transition-colors"
+                            onclick="goLiveFromPreview()">
+                            <span class="material-symbols-outlined text-[10px]">play_arrow</span>
+                            Go Live
+                        </button>
+                    </div>
+                </div>
+                <div class="flex-1 overflow-y-auto custom-scrollbar p-2 space-y-2 bg-slate-50 dark:bg-slate-950/30"
+                    id="preview-slides-container">
+                    <!-- Data will be injected here -->
+                </div>
+                <div class="p-2 border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shrink-0">
+                    <div class="flex items-center gap-3">
+                        <div
+                            class="w-32 aspect-video bg-black rounded-md border border-slate-200 dark:border-slate-700 shrink-0 overflow-hidden relative" id="preview-output-box">
+                            <img class="absolute inset-0 w-full h-full object-cover hidden" id="preview-bg-img" />
+                            <video class="absolute inset-0 w-full h-full object-cover hidden"
+                                id="preview-bg-video" autoplay loop muted></video>
+                            <div class="absolute inset-0 overflow-hidden" id="preview-canvas-wrap">
+                                <div id="preview-virtual-canvas" style="width:1920px;height:1080px;transform-origin:center;position:absolute;top:50%;left:50%;">
+                                    <div id="preview-text-box" class="text-layer-box" style="left:96px;top:50%;transform:translateY(-50%);width:1728px;">
+                                        <p id="preview-lyrics-text" style="color:#fff;text-align:center;font-weight:bold;white-space:pre-wrap;line-height:1.4;-webkit-text-stroke:5px black;paint-order:stroke fill;width:100%;"></p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <p class="text-[10px] font-bold text-slate-900 dark:text-white uppercase truncate">Preview
+                                Output</p>
+                            <p class="text-[9px] text-slate-500 font-semibold flex items-center gap-1">
+                                <span class="size-1 rounded-full bg-slate-400"></span> STANDBY
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <div class="resizer-h" id="resizer-2"></div>
+
+            <!-- Section 3: Live Screen -->
+            <section
+                class="panel bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 overflow-hidden shadow-sm flex-1">
+                <div class="px-3 py-1 bg-red-900 flex justify-between items-center text-white shrink-0">
+                    <div class="flex items-center gap-1.5">
+                        <span class="size-1.5 rounded-full bg-red-500 animate-pulse"></span>
+                        <h3 class="text-[10px] font-bold uppercase tracking-wider">Live</h3>
+                    </div>
+                    <div class="flex items-center gap-1.5">
+                        <button
+                            class="bg-white/20 hover:bg-white/30 text-white text-[9px] font-bold py-0.5 px-2 rounded flex items-center gap-1 transition-colors"
+                            onclick="toggleLiveWindow()" id="btn-screen-live">
+                            <span class="material-symbols-outlined text-[10px]">cast</span>
+                            Screen Live
+                        </button>
+                        <button
+                            class="bg-white/20 hover:bg-white/30 text-white text-[9px] font-bold py-0.5 px-2 rounded transition-colors"
+                            onclick="clearLive()">Clear</button>
+                        <button
+                            class="bg-red-600 hover:bg-red-500 text-white text-[9px] font-bold py-0.5 px-2 rounded transition-colors"
+                            onclick="liveCurrent()">Live</button>
+                    </div>
+                </div>
+                <div class="flex-1 overflow-y-auto custom-scrollbar p-2 space-y-2 bg-slate-50 dark:bg-slate-950/30"
+                    id="live-slides-container"
+                    ondragover="event.preventDefault(); event.dataTransfer.dropEffect='copy'; this.classList.add('ring-2','ring-primary');"
+                    ondragleave="this.classList.remove('ring-2','ring-primary');"
+                    ondrop="event.preventDefault(); this.classList.remove('ring-2','ring-primary'); handleLiveDrop(event);">
+                    <!-- Data will be injected here -->
+                </div>
+                <div class="p-2 border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shrink-0">
+                    <div class="flex items-center gap-3">
+                        <div
+                            class="w-32 aspect-video bg-black rounded-md border border-slate-200 dark:border-slate-700 overflow-hidden relative shrink-0 shadow-md" id="live-output-box">
+                            <img class="absolute inset-0 w-full h-full object-cover hidden" id="live-bg-img" />
+                            <video class="absolute inset-0 w-full h-full object-cover hidden"
+                                id="live-bg-video" autoplay loop muted></video>
+                            <div class="absolute inset-0 overflow-hidden" id="live-canvas-wrap">
+                                <div id="live-virtual-canvas" style="width:1920px;height:1080px;transform-origin:center;position:absolute;top:50%;left:50%;">
+                                    <div id="live-text-box" class="text-layer-box" style="left:96px;top:50%;transform:translateY(-50%);width:1728px;">
+                                        <p id="live-lyrics-text" style="color:#fff;text-align:center;font-weight:bold;white-space:pre-wrap;line-height:1.4;-webkit-text-stroke:5px black;paint-order:stroke fill;width:100%;"></p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="min-w-0">
+                            <p class="text-[10px] font-bold text-slate-900 dark:text-white uppercase truncate">Live
+                                Output</p>
+                            <p class="text-[9px] text-red-500 font-semibold flex items-center gap-1">
+                                <span class="size-1 rounded-full bg-red-500"></span> ON AIR
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <div class="resizer-v" id="resizer-v-1"></div>
+
+        <!-- Bottom Row: Library & Media -->
+        <div class="flex gap-0 flex-1 min-h-0" id="bottom-row">
+            <!-- Section 4: Songs Library -->
+            <section
+                class="panel bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 overflow-hidden shadow-sm"
+                style="width: 25%;">
+                <div class="px-3 py-1 bg-slate-800 dark:bg-black flex items-center justify-between shrink-0">
+                    <div class="flex items-center gap-4">
+                        <div class="flex border-b border-white/20">
+                            <button id="tab-songs"
+                                class="px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-white border-b-2 border-primary"
+                                onclick="switchLibraryTab('songs')">Songs</button>
+                            <button id="tab-bible"
+                                class="px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-white/40 hover:text-white/70"
+                                onclick="switchLibraryTab('bible')">Bible</button>
+                        </div>
+                        <div class="relative">
+                            <span
+                                class="material-symbols-outlined absolute left-2 top-1/2 -translate-y-1/2 text-slate-400 text-[10px]">search</span>
+                            <input id="library-search"
+                                class="pl-5 pr-2 py-0 bg-white border-none rounded text-[9px] text-slate-900 placeholder-slate-400 focus:ring-1 focus:ring-primary/30 w-40 h-5"
+                                placeholder="Search..." type="text" oninput="filterLibrary()" />
+                        </div>
+                    </div>
+                </div>
+                <div class="flex-1 overflow-y-auto custom-scrollbar">
+                    <table class="w-full text-left">
+                        <thead
+                            class="bg-slate-50/50 dark:bg-slate-800/50 sticky top-0 z-10 border-b border-slate-100 dark:border-slate-800">
+                            <tr>
+                                <th class="px-4 py-2 text-[9px] font-bold text-slate-500 uppercase tracking-wider">Title
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
+                            <!-- Data will be injected here -->
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <div class="resizer-h" id="resizer-3"></div>
+
+            <!-- Section 5: Media Library -->
+            <section
+                class="panel bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 overflow-hidden shadow-sm flex-1">
+                <div class="px-3 py-1 bg-slate-800 dark:bg-black flex items-center justify-between text-white shrink-0">
+                    <h3 class="text-[10px] font-bold uppercase tracking-wider opacity-80">Media</h3>
+                    <div class="flex gap-1.5">
+                        <button class="size-5 flex items-center justify-center rounded bg-white/10">
+                            <span class="material-symbols-outlined text-xs">grid_view</span>
+                        </button>
+                    </div>
+                </div>
+                <div class="flex-1 overflow-y-auto custom-scrollbar p-2" id="media-library-container">
+                    <div class="grid gap-1" style="grid-template-columns: repeat(10, 1fr);">
+                        <!-- Data will be injected here -->
+                    </div>
+                </div>
+            </section>
+        </div>
+    </main>
+    <!-- Footer Status Bar -->
+    <footer
+        class="h-6 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 flex items-center px-4 justify-between shrink-0">
+        <div class="flex items-center gap-3 text-[9px] font-medium text-slate-500 dark:text-slate-400">
+            <span class="flex items-center gap-1"><span class="size-1 rounded-full bg-green-500"></span> System
+                Ready</span>
+            <span>1920x1080</span>
+            <span>CPU: 14%</span>
+        </div>
+        <div class="text-[9px] font-medium text-slate-500 dark:text-slate-400">
+            v7.4.1
+        </div>
+    </footer>
+
+    <!-- Right-click Context Menu -->
+    <div id="context-menu" class="fixed z-50 bg-white border border-slate-300 rounded shadow-lg py-1 hidden" style="min-width:140px;">
+        <button class="w-full text-left px-4 py-1.5 text-[11px] text-slate-700 hover:bg-blue-500 hover:text-white transition-colors"
+            onclick="contextMenuEditSong()">Edit</button>
+        <div class="border-t border-slate-200 my-1"></div>
+        <button class="w-full text-left px-4 py-1.5 text-[11px] text-red-600 hover:bg-red-500 hover:text-white transition-colors"
+            onclick="contextMenuDeleteSong()">Delete</button>
+    </div>
+
+    <!-- Song Editor Modal Pop-up -->
+    <div class="modal-overlay" id="song-editor-modal">
+        <div class="win-modal-container">
+            <!-- Modal Title Bar -->
+            <div class="bg-white px-2 py-1 flex items-center justify-between border-b border-win-border shrink-0">
+                <div class="flex items-center gap-2">
+                    <span class="material-symbols-outlined text-sm">music_note</span>
+                    <span class="text-[11px] font-semibold" id="modal-title">Edit Song</span>
+                </div>
+                <div class="flex items-center gap-1">
+                    <button
+                        class="w-6 h-5 hover:bg-red-500 hover:text-white flex items-center justify-center transition-colors"
+                        onclick="closeSongEditor()">
+                        <span class="material-symbols-outlined text-xs">close</span>
+                    </button>
+                </div>
+            </div>
+            <!-- Top Toolbar Header -->
+            <header class="win-gray border-b border-win-border flex flex-col shrink-0">
+                <!-- New Song Title Row -->
+                <div class="px-2 py-1.5 flex items-center gap-2 border-b border-win-border/50">
+                    <label class="text-[11px] font-semibold text-win-dark-gray" style="color: #808080;">Song
+                        Title:</label>
+                    <input class="flex-1 h-6 border border-win-border px-2 text-[12px] focus:outline-none"
+                        style="border: 1px solid #a0a0a0;" id="song-title" placeholder="Enter song name..."
+                        type="text" />
+                </div>
+                <!-- Formatting Toolbar Row -->
+                <div class="p-1 flex items-center gap-1 bg-white">
+                    <select class="h-6 border border-win-border bg-white text-[11px] px-1 w-44" id="font-family" onchange="applyFont(this.value)">
+                        <optgroup label="── Windows Fonts ──" disabled></optgroup>
+                        <option value="Times New Roman" selected>Times New Roman</option>
+                        <option value="Arial">Arial</option>
+                        <option value="Arial Black">Arial Black</option>
+                        <option value="Verdana">Verdana</option>
+                        <option value="Tahoma">Tahoma</option>
+                        <option value="Trebuchet MS">Trebuchet MS</option>
+                        <option value="Georgia">Georgia</option>
+                        <option value="Garamond">Garamond</option>
+                        <option value="Palatino Linotype">Palatino Linotype</option>
+                        <option value="Book Antiqua">Book Antiqua</option>
+                        <option value="Courier New">Courier New</option>
+                        <option value="Lucida Console">Lucida Console</option>
+                        <option value="Comic Sans MS">Comic Sans MS</option>
+                        <option value="Impact">Impact</option>
+                        <option value="Segoe UI">Segoe UI</option>
+                        <option value="Calibri">Calibri</option>
+                        <option value="Cambria">Cambria</option>
+                        <option value="Candara">Candara</option>
+                        <option value="Century Gothic">Century Gothic</option>
+                        <option value="Franklin Gothic Medium">Franklin Gothic Medium</option>
+                        <option value="Helvetica">Helvetica</option>
+                        <optgroup label="── Google Fonts ──" disabled></optgroup>
+                        <option value="Open Sans">Open Sans</option>
+                        <option value="Roboto">Roboto</option>
+                        <option value="Lato">Lato</option>
+                        <option value="Montserrat">Montserrat</option>
+                        <option value="Oswald">Oswald</option>
+                        <option value="Raleway">Raleway</option>
+                        <option value="Lobster">Lobster</option>
+                        <optgroup label="── CMG Sans ──" disabled></optgroup>
+                        <option value="CMG Sans">CMG Sans</option>
+                        <option value="CMG Sans Thin">CMG Sans Thin</option>
+                        <option value="CMG Sans ExtraLight">CMG Sans ExtraLight</option>
+                        <option value="CMG Sans Light">CMG Sans Light</option>
+                        <option value="CMG Sans Medium">CMG Sans Medium</option>
+                        <option value="CMG Sans SemiBold">CMG Sans SemiBold</option>
+                        <option value="CMG Sans Bold">CMG Sans Bold</option>
+                        <option value="CMG Sans ExtraBold">CMG Sans ExtraBold</option>
+                        <option value="CMG Sans Black">CMG Sans Black</option>
+                        <option value="CMG Sans Condensed">CMG Sans Condensed</option>
+                        <option value="CMG Sans Condensed Medium">CMG Sans Condensed Medium</option>
+                        <option value="CMG Sans Condensed SemiBold">CMG Sans Condensed SemiBold</option>
+                        <option value="CMG Sans Condensed Bold">CMG Sans Condensed Bold</option>
+                        <option value="CMG Sans Medium CAPS">CMG Sans Medium CAPS</option>
+                        <option value="CMG Sans SemiBold CAPS">CMG Sans SemiBold CAPS</option>
+                        <option value="CMG Sans Bold CAPS">CMG Sans Bold CAPS</option>
+                        <option value="CMG Sans Bold Outline">CMG Sans Bold Outline</option>
+                        <option value="CMG Sans Bold Rounded">CMG Sans Bold Rounded</option>
+                        <option value="CMG Sans Bold Slab">CMG Sans Bold Slab</option>
+                        <option value="CMG Sans ExtraBold Wide">CMG Sans ExtraBold Wide</option>
+                        <option value="CMG Sans ExtraBold Wide Outline">CMG Sans ExtraBold Wide Outline</option>
+                    </select>
+
+                    <div class="hybrid-size-control" id="size-control-container">
+                        <input type="number" id="font-size-input" class="hybrid-size-input" value="120" min="1"
+                            max="500">
+                        <div class="hybrid-size-btn" onclick="toggleSizeDropdown()">
+                            <span class="material-symbols-outlined text-[14px]">arrow_drop_down</span>
+                        </div>
+                        <div class="size-dropdown" id="size-dropdown-menu">
+                            <div class="size-dropdown-item" onclick="setSizeValue(8)">8</div>
+                            <div class="size-dropdown-item" onclick="setSizeValue(10)">10</div>
+                            <div class="size-dropdown-item" onclick="setSizeValue(12)">12</div>
+                            <div class="size-dropdown-item" onclick="setSizeValue(14)">14</div>
+                            <div class="size-dropdown-item" onclick="setSizeValue(18)">18</div>
+                            <div class="size-dropdown-item" onclick="setSizeValue(24)">24</div>
+                            <div class="size-dropdown-item" onclick="setSizeValue(36)">36</div>
+                            <div class="size-dropdown-item" onclick="setSizeValue(48)">48</div>
+                            <div class="size-dropdown-item" onclick="setSizeValue(60)">60</div>
+                            <div class="size-dropdown-item" onclick="setSizeValue(72)">72</div>
+                            <div class="size-dropdown-item" onclick="setSizeValue(96)">96</div>
+                            <div class="size-dropdown-item" onclick="setSizeValue(120)">120</div>
+                            <div class="size-dropdown-item" onclick="setSizeValue(150)">150</div>
+                            <div class="size-dropdown-item" onclick="setSizeValue(180)">180</div>
+                            <div class="size-dropdown-item" onclick="setSizeValue(200)">200</div>
+                            <div class="size-dropdown-item" onclick="setSizeValue(250)">250</div>
+                        </div>
+                    </div>
+
+                    <div class="divider-win"></div>
+                    <button class="toolbar-btn" onclick="formatDoc('bold')" title="Bold"><span
+                            class="font-bold">B</span></button>
+                    <button class="toolbar-btn" onclick="formatDoc('italic')" title="Italic"><span
+                            class="italic font-serif">I</span></button>
+                    <button class="toolbar-btn" onclick="formatDoc('underline')" title="Underline"><span
+                            class="underline">U</span></button>
+                    <div class="divider-win"></div>
+                    <label class="toolbar-btn relative" title="Text Color">
+                        <span class="font-bold text-[10px]">A</span>
+                        <div class="absolute bottom-0 left-1 right-1 h-[3px] bg-red-500" id="color-indicator"></div>
+                        <input type="color" id="text-color-picker" value="#ffffff" class="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+                            onchange="applyTextColor(this.value)">
+                    </label>
+                    <div class="divider-win"></div>
+                    <div class="flex gap-0.5" id="h-align-group">
+                        <button class="toolbar-btn" onclick="formatDoc('justifyLeft')" title="Align Left"><span
+                                class="material-symbols-outlined text-sm">format_align_left</span></button>
+                        <button class="toolbar-btn" onclick="formatDoc('justifyCenter')" title="Align Center"><span
+                                class="material-symbols-outlined text-sm">format_align_center</span></button>
+                        <button class="toolbar-btn" onclick="formatDoc('justifyRight')" title="Align Right"><span
+                                class="material-symbols-outlined text-sm">format_align_right</span></button>
+                    </div>
+                    <div class="divider-win"></div>
+                    <div class="flex gap-0.5" id="v-align-group">
+                        <button class="toolbar-btn" onclick="setVerticalAlign('top')" title="Align Top"><span
+                                class="material-symbols-outlined text-sm">vertical_align_top</span></button>
+                        <button class="toolbar-btn" onclick="setVerticalAlign('middle')" title="Align Middle"><span
+                                class="material-symbols-outlined text-sm">vertical_align_center</span></button>
+                        <button class="toolbar-btn" onclick="setVerticalAlign('bottom')" title="Align Bottom"><span
+                                class="material-symbols-outlined text-sm">vertical_align_bottom</span></button>
+                    </div>
+                </div>
+            </header>
+            <!-- Editor Content -->
+            <main class="flex flex-1 overflow-hidden bg-white text-slate-900">
+                <!-- Left Sidebar -->
+                <aside class="w-[380px] border-r border-win-border flex flex-col shrink-0 bg-[#f5f5f5]">
+                    <div class="flex px-1 pt-1 bg-[#f0f0f0] border-b border-win-border items-end h-7 shrink-0">
+                        <div
+                            class="px-4 py-1 border border-win-border border-b-white bg-white text-[11px] -mb-[1px] cursor-default">
+                            Words</div>
+                        <div
+                            class="px-4 py-1 border-t border-r border-win-border/50 text-slate-500 text-[11px] hover:bg-white/50 cursor-pointer">
+                            Slides</div>
+                    </div>
+                    <div class="flex-1 p-3 overflow-y-auto bg-white custom-scrollbar" id="lyrics-editor-container">
+                        <!-- Slides will be injected here -->
+                    </div>
+                    <div class="h-8 border-t border-win-border bg-[#f0f0f0] flex items-center px-1">
+                        <button class="w-6 h-6 flex items-center justify-center hover:bg-slate-200"
+                            onclick="addSlideToEditor('', document.getElementById('lyrics-editor-container').children.length, true)"><span
+                                class="material-symbols-outlined text-sm">add</span></button>
+                    </div>
+                </aside>
+                <!-- Right Preview -->
+                <section class="flex-1 bg-[#d0d0d0] flex flex-col p-4 overflow-hidden">
+                    <div class="flex-1 flex items-center justify-center">
+                        <div class="aspect-video w-full max-w-xl bg-black shadow-lg overflow-hidden relative" id="editor-preview-box">
+                            <div id="editor-virtual-canvas" style="width:1920px;height:1080px;transform-origin:center;position:absolute;top:50%;left:50%;">
+                                <div id="editor-text-box" class="text-layer-box editor-active" style="left:96px;top:50%;transform:translateY(-50%);width:1728px;">
+                                    <div class="drag-handle" id="editor-drag-handle">⠿⠿⠿</div>
+                                    <p id="editor-preview-text" contenteditable="true"
+                                        style="color:#fff;text-align:center;font-weight:bold;white-space:pre-wrap;line-height:1.4;-webkit-text-stroke:16px black;paint-order:stroke fill; outline:none; width: 100%;"
+                                        class="text-center outline-none">Song lyrics preview will appear here</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </main>
+            <!-- Bottom Action Bar -->
+            <footer class="bg-[#f0f0f0] border-t border-white h-12 shrink-0 flex items-center justify-end px-3 gap-2">
+                <button class="win-button text-[11px] text-slate-900" onclick="saveSong(false)">Apply</button>
+                <button class="win-button text-[11px] text-slate-900" onclick="saveSong(true)">OK</button>
+                <button class="win-button text-[11px] text-slate-900" onclick="closeSongEditor()">Cancel</button>
+            </footer>
+        </div>
+    </div>
+
+    <script>
+        // --- Configuration & Global State ---
+        const { ipcRenderer } = require('electron');
+
+        let songLibrary = [];
+        let bibleLibrary = [];    // Static Bible from XML
+        let savedBibleList = [];  // Dynamic Bible edits from bible.json
+        let schedule = [];
+        let mediaLibrary = [];
+        let currentLibraryTab = 'songs';
+
+        let currentEditingSong = null;
+        let currentScheduleIndex = -1;
+        let currentSlides = [];
+        let currentPreviewIndex = -1;
+        let currentLiveScheduleIndex = -1;
+        let currentLiveSlideIndex = -1;
+        let isLiveWindowOpen = false;
+
+        // State cho các màn hình khác nhau
+        let currentPreviewStyle = null; // Style của bài hiện đang ở preview
+        let currentLiveStyle = null;    // Style của bài hiện đang ở live
+        let currentPreviewBackground = null; // Background đang hiển thị ở preview
+
+        const bibleBookMap = {
+            "Genesis": "Sáng Thế Ký", "Exodus": "Xuất Ê-díp-tô Ký", "Leviticus": "Lê-vi Ký", "Numbers": "Dân Số Ký", "Deuteronomy": "Phục Truyền Luật Lệ Ký",
+            "Joshua": "Giô-suê", "Judges": "Các Quan Xét", "Ruth": "Ru-tơ", "1 Samuel": "1 Sa-mu-ên", "2 Samuel": "2 Sa-mu-ên",
+            "1 Kings": "1 Các Vua", "2 Kings": "2 Các Vua", "1 Chronicles": "1 Sử Ký", "2 Chronicles": "2 Sử Ký", "Ezra": "Ê-xu-ra",
+            "Nehemiah": "Nhi-hê-mi", "Esther": "Ê-xơ-tê", "Job": "Gióp", "Psalms": "Thi Thiên", "Proverbs": "Châm Ngôn",
+            "Ecclesiastes": "Truyền Ðạo", "Song of Solomon": "Nhã Ca", "Isaiah": "Ê-sai", "Jeremiah": "Giê-rê-mi", "Lamentations": "Ca Thương",
+            "Ezekiel": "Ê-xê-chi-ên", "Daniel": "Đa-ni-ên", "Hosea": "Ô-sê", "Joel": "Giô-ên", "Amos": "A-mốt",
+            "Obadiah": "Áp-đia", "Jonah": "Giô-na", "Micah": "Mi-chê", "Nahum": "Na-huum", "Habakkuk": "Ha-ba-cúc",
+            "Zephaniah": "Sô-phô-ni", "Haggai": "A-guê", "Zechariah": "Xa-cha-ri", "Malachi": "Ma-la-chi", "Matthew": "Ma-thi-ơ",
+            "Mark": "Mác", "Luke": "Lu-ca", "John": "Giăng", "Acts": "Công Vụ Các Sứ Đồ", "Romans": "Rô-ma",
+            "1 Corinthians": "1 Cô-rinh-tô", "2 Corinthians": "2 Cô-rinh-tô", "Galatians": "Ga-la-ti", "Ephesians": "Ê-phê-sô", "Philippians": "Phi-líp",
+            "Colossians": "Cô-lô-se", "1 Thessalonians": "1 Tê-sa-lô-ni-ca", "2 Thessalonians": "2 Tê-sa-lô-ni-ca", "1 Timothy": "1 Ti-mô-thê", "2 Timothy": "2 Ti-mô-thê",
+            "Titus": "Tít", "Philemon": "Phi-lê-môn", "Hebrews": "Hê-bơ-rơ", "James": "Gia-cơ", "1 Peter": "1 Phi-e-rơ",
+            "2 Peter": "2 Phi-e-rơ", "1 John": "1 Giăng", "2 John": "2 Giăng", "3 John": "3 Giăng", "Jude": "Giu-đe",
+            "Revelation": "Khải Huyền"
+        };
+
+        const fs = require('fs');
+        const path = require('path');
+
+        // --- Initialization ---
+        window.addEventListener('DOMContentLoaded', () => {
+            loadLibrary();
+            loadBible();
+            loadMedia();
+
+            // Schedule container: drop media to add as standalone item
+            const scheduleContainer = document.getElementById('schedule-container');
+            scheduleContainer.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                e.dataTransfer.dropEffect = 'copy';
+            });
+            scheduleContainer.addEventListener('drop', (e) => {
+                if (e.target.closest('[data-schedule-item]')) return;
+                e.preventDefault();
+                try {
+                    const mediaItem = JSON.parse(e.dataTransfer.getData('application/json'));
+                    addMediaToSchedule(mediaItem);
+                } catch (err) { console.error('Schedule drop error:', err); }
+            });
+        });
+
+        window.addEventListener('resize', () => {
+            scaleVirtualCanvas('preview-virtual-canvas', 'preview-output-box');
+            scaleVirtualCanvas('live-virtual-canvas', 'live-output-box');
+            if (document.getElementById('song-editor-modal').style.display === 'flex') {
+                scaleVirtualCanvas('editor-virtual-canvas', 'editor-preview-box');
+            }
+        });
+
+        async function loadBible() {
+            try {
+                const biblePath = path.join(__dirname, 'data', 'Bible_Vietnamese.xml');
+                if (!fs.existsSync(biblePath)) {
+                    console.error('Bible file not found at:', biblePath);
+                    return;
+                }
+                const xmlData = fs.readFileSync(biblePath, 'utf8');
+                const parser = new DOMParser();
+                const xmlDoc = parser.parseFromString(xmlData, "text/xml");
+                const books = xmlDoc.getElementsByTagName("BIBLEBOOK");
+
+                bibleLibrary = [];
+                for (let i = 0; i < books.length; i++) {
+                    const bname = books[i].getAttribute("bname");
+                    const vnName = bibleBookMap[bname] || bname;
+                    const chapters = books[i].getElementsByTagName("CHAPTER");
+
+                    for (let j = 0; j < chapters.length; j++) {
+                        const cnumber = chapters[j].getAttribute("cnumber");
+                        const verses = chapters[j].getElementsByTagName("VERS");
+                        let versesText = "";
+                        for (let k = 0; k < verses.length; k++) {
+                            const vnumber = verses[k].getAttribute("vnumber");
+                            const text = verses[k].textContent;
+                            versesText += `${vnumber} ${text}\n\n`;
+                        }
+
+                        bibleLibrary.push({
+                            title: `${vnName} ${cnumber}`,
+                            lyrics: versesText.trim(),
+                            type: 'bible'
+                        });
+                    }
+                }
+                console.log(`Loaded ${bibleLibrary.length} bible chapters`);
+            } catch (error) {
+                console.error('Error loading Bible:', error);
+            }
+        }
+
+        function switchLibraryTab(tab) {
+            currentLibraryTab = tab;
+            const songsBtn = document.getElementById('tab-songs');
+            const bibleBtn = document.getElementById('tab-bible');
+
+            if (tab === 'songs') {
+                songsBtn.classList.add('text-white', 'border-b-2', 'border-primary');
+                songsBtn.classList.remove('text-white/40');
+                bibleBtn.classList.add('text-white/40');
+                bibleBtn.classList.remove('text-white', 'border-b-2', 'border-primary');
+            } else {
+                bibleBtn.classList.add('text-white', 'border-b-2', 'border-primary');
+                bibleBtn.classList.remove('text-white/40');
+                songsBtn.classList.add('text-white/40');
+                songsBtn.classList.remove('text-white', 'border-b-2', 'border-primary');
+            }
+            filterLibrary();
+        }
+
+        // --- Resizer Logic ---
+        function setupResizer(resizerId, panelBefore, panelAfter, isVertical = false) {
+            const resizer = document.getElementById(resizerId);
+            if (!resizer) return;
+            let startX, startY, startWidth, startHeight;
+
+            resizer.addEventListener('mousedown', (e) => {
+                startX = e.clientX;
+                startY = e.clientY;
+                startWidth = panelBefore.offsetWidth;
+                startHeight = panelBefore.offsetHeight;
+                resizer.classList.add('dragging');
+                document.body.style.cursor = isVertical ? 'row-resize' : 'col-resize';
+                document.addEventListener('mousemove', onMouseMove);
+                document.addEventListener('mouseup', onMouseUp);
+            });
+
+            function onMouseMove(e) {
+                if (isVertical) {
+                    const dy = e.clientY - startY;
+                    panelBefore.style.height = `${startHeight + dy}px`;
+                    panelBefore.style.flex = 'none';
+                } else {
+                    const dx = e.clientX - startX;
+                    panelBefore.style.width = `${startWidth + dx}px`;
+                    panelBefore.style.flex = 'none';
+                }
+            }
+
+            function onMouseUp() {
+                resizer.classList.remove('dragging');
+                document.body.style.cursor = 'default';
+                document.removeEventListener('mousemove', onMouseMove);
+                document.removeEventListener('mouseup', onMouseUp);
+            }
+        }
+
+        // Initialize resizers (wrapped in setTimeout to ensure elements are ready if needed)
+        setTimeout(() => {
+            const topRow = document.getElementById('top-row');
+            const bottomRow = document.getElementById('bottom-row');
+            const panelsTop = topRow.querySelectorAll('.panel');
+            const panelsBottom = bottomRow.querySelectorAll('.panel');
+            setupResizer('resizer-1', panelsTop[0], panelsTop[1]);
+            setupResizer('resizer-2', panelsTop[1], panelsTop[2]);
+            setupResizer('resizer-v-1', topRow, bottomRow, true);
+            setupResizer('resizer-3', panelsBottom[0], panelsBottom[1]);
+        }, 100);
+
+        // --- Song Library & Editor ---
+        async function loadLibrary() {
+            try {
+                console.log('Fetching songs/bible from main process...');
+                songLibrary = await ipcRenderer.invoke('load-songs');
+                savedBibleList = await ipcRenderer.invoke('load-bible');
+                console.log('Songs loaded:', songLibrary.length);
+                console.log('Saved Bible loaded:', savedBibleList.length);
+                renderLibrary();
+            } catch (error) {
+                console.error('Failed to load library:', error);
+            }
+        }
+
+        function renderLibrary() {
+            const tbody = document.querySelector('tbody');
+            if (!tbody) return;
+            tbody.innerHTML = '';
+
+            let source = [];
+            if (currentLibraryTab === 'songs') {
+                source = songLibrary;
+            } else {
+                // Bible tab: hiển thị cả bible từ XML và bible đã lưu
+                // Ưu tiên hiển thị bible đã lưu (savedBibleList)
+                source = [...savedBibleList, ...bibleLibrary];
+                // Lọc bỏ trùng lặp nếu cần (dựa trên title)
+                const seen = new Set();
+                source = source.filter(item => {
+                    const duplicate = seen.has(item.title);
+                    seen.add(item.title);
+                    return !duplicate;
+                });
+            }
+            
+            const query = document.getElementById('library-search').value.toLowerCase();
+            const filtered = query ? source.filter(s => s.title.toLowerCase().includes(query)) : source;
+
+            if (filtered.length === 0) {
+                tbody.innerHTML = '<tr><td class="px-4 py-2 text-[10px] text-slate-400">Library is empty.</td></tr>';
+                return;
+            }
+            filtered.forEach(item => {
+                const tr = document.createElement('tr');
+                tr.className = 'cursor-pointer select-none';
+                tr.innerHTML = `<td class="px-4 py-2 text-[11px] font-medium text-slate-900 dark:text-slate-100">${item.title}</td>`;
+                tr.onclick = () => { selectItemInLibrary(item); };
+                tr.ondblclick = (e) => { e.stopPropagation(); addToSchedule(item); };
+                tr.oncontextmenu = (e) => { e.preventDefault(); showContextMenu(e, item); };
+                tbody.appendChild(tr);
+            });
+        }
+
+        function selectItemInLibrary(item) {
+            currentEditingSong = item;
+            const rows = document.querySelectorAll('tbody tr');
+            rows.forEach(row => {
+                row.style.backgroundColor = '';
+                row.style.fontWeight = '';
+            });
+            // Find and highlight the clicked row
+            rows.forEach(row => {
+                if (row.textContent.trim() === item.title) {
+                    row.style.backgroundColor = '#86cdff';
+                    row.style.fontWeight = 'bold';
+                }
+            });
+        }
+
+        // --- Context Menu ---
+        let contextMenuItem = null;
+
+        function showContextMenu(e, item) {
+            contextMenuItem = item;
+            selectItemInLibrary(item);
+            const menu = document.getElementById('context-menu');
+            menu.style.left = e.clientX + 'px';
+            menu.style.top = e.clientY + 'px';
+            menu.classList.remove('hidden');
+        }
+
+        function hideContextMenu() {
+            document.getElementById('context-menu').classList.add('hidden');
+            contextMenuItem = null;
+        }
+
+        function contextMenuEditSong() {
+            const item = contextMenuItem;
+            hideContextMenu();
+            if (item) {
+                const title = item.type === 'bible' ? 'Edit Bible' : 'Edit Song';
+                openSongEditor(title, item);
+            }
+        }
+
+        async function contextMenuDeleteSong() {
+            const item = contextMenuItem;
+            hideContextMenu();
+            if (!item) return;
+
+            // Kiểm tra xem có phải bible XML (static) không - không cho xóa cái này
+            if (item.type === 'bible' && !item.id) {
+                alert('Không thể xóa dữ liệu Kinh Thánh mặc định.');
+                return;
+            }
+
+            const confirmMsg = `Bạn có chắc chắn muốn xóa "${item.title}"?`;
+            if (confirm(confirmMsg)) {
+                try {
+                    const result = await ipcRenderer.invoke('delete-song', { 
+                        id: item.id, 
+                        type: item.type === 'bible' ? 'bible' : 'song' 
+                    });
+                    
+                    if (result) {
+                        if (item.type === 'bible') {
+                            await loadLibrary();
+                        } else {
+                            songLibrary = result;
+                        }
+                        renderLibrary();
+                        
+                        // Nếu đang edit bài này thì đóng luôn
+                        if (currentEditingSong && currentEditingSong.id === item.id) {
+                            closeSongEditor();
+                        }
+                    }
+                } catch (error) {
+                    console.error('Lỗi khi xóa:', error);
+                    alert('Lỗi: ' + error.message);
+                }
+            }
+        }
+
+        // Hide context menu on click anywhere
+        window.addEventListener('click', (e) => {
+            if (!e.target.closest('#context-menu')) hideContextMenu();
+        });
+
+        // Also apply right-click to schedule items
+        // (handled in renderSchedule)
+
+        // --- Song Editor Logic (Block Model) ---
+
+        function formatDoc(cmd, val = null) {
+            const previewEl = document.getElementById('editor-preview-text');
+            if (!previewEl) return;
+            switch(cmd) {
+                case 'bold':
+                    editorStyle.fontWeight = editorStyle.fontWeight === 'bold' ? 'normal' : 'bold';
+                    break;
+                case 'italic':
+                    editorStyle.fontStyle = editorStyle.fontStyle === 'italic' ? 'normal' : 'italic';
+                    break;
+                case 'underline':
+                    editorStyle.textDecoration = editorStyle.textDecoration === 'underline' ? 'none' : 'underline';
+                    break;
+                case 'justifyLeft': editorStyle.textAlign = 'left'; break;
+                case 'justifyCenter': editorStyle.textAlign = 'center'; break;
+                case 'justifyRight': editorStyle.textAlign = 'right'; break;
+                case 'fontName': editorStyle.fontFamily = val; break;
+            }
+            applyEditorStyle();
+        }
+
+        function applyFont(fontName) {
+            editorStyle.fontFamily = fontName;
+            applyEditorStyle();
+        }
+
+        function applyTextColor(color) {
+            editorStyle.color = color;
+            document.getElementById('color-indicator').style.backgroundColor = color;
+            applyEditorStyle();
+        }
+
+        function applyEditorStyle() {
+            const previewEl = document.getElementById('editor-preview-text');
+            if (previewEl) {
+                applyStyleToElement(previewEl, editorStyle);
+            }
+            scaleVirtualCanvas('editor-virtual-canvas', 'editor-preview-box');
+
+            // Sync style to preview-output, live-output, and screen live
+            currentPreviewStyle = { ...editorStyle };
+            const previewText = document.getElementById('preview-lyrics-text');
+            if (previewText && previewText.innerText) {
+                applyStyleToElement(previewText, currentPreviewStyle);
+                scaleVirtualCanvas('preview-virtual-canvas', 'preview-output-box');
+            }
+            if (currentLiveIndex >= 0) {
+                currentLiveStyle = { ...editorStyle };
+                const liveText = document.getElementById('live-lyrics-text');
+                if (liveText && liveText.innerText) {
+                    applyStyleToElement(liveText, currentLiveStyle);
+                    scaleVirtualCanvas('live-virtual-canvas', 'live-output-box');
+                }
+                sendToLiveWindow({ text: null, style: { ...currentLiveStyle } });
+            }
+        }
+
+        function setVerticalAlign(align) {
+            editorStyle.verticalAlign = align;
+            if (editorStyle.textBox) editorStyle.textBox.top = null;
+            applyEditorStyle();
+        }
+
+        function openSongEditor(title, song = null) {
+            console.log('Opening Block Editor:', title, song);
+            document.getElementById('modal-title').innerText = title;
+            document.getElementById('song-title').value = song ? song.title : '';
+            const modal = document.getElementById('song-editor-modal');
+            const container = modal.querySelector('.win-modal-container');
+            modal.style.display = 'flex';
+
+            // Center the modal
+            container.style.left = '';
+            container.style.top = '';
+            container.style.position = 'absolute';
+
+            const lyrics = song ? song.lyrics : '';
+            renderLyricsEditor(lyrics);
+
+            if (song && song.style) {
+                editorStyle = { ...song.style };
+                if (!editorStyle.textBox) editorStyle.textBox = { left: 96, top: null, width: 1728 };
+                // Đồng bộ UI
+                document.getElementById('font-family').value = editorStyle.fontFamily || 'Times New Roman';
+                document.getElementById('font-size-input').value = parseInt(editorStyle.fontSize) || 120;
+                document.getElementById('color-indicator').style.backgroundColor = editorStyle.color || '#ffffff';
+            } else {
+                // Reset về mặc định cho bài mới
+                const isBible = (song && song.type === 'bible') || title.includes('Bible');
+                const defaultFontSize = isBible ? '72pt' : '120pt';
+                
+                editorStyle = {
+                    fontFamily: 'Times New Roman',
+                    fontSize: defaultFontSize,
+                    color: '#ffffff',
+                    fontWeight: 'bold',
+                    fontStyle: 'normal',
+                    textDecoration: 'none',
+                    textAlign: 'center',
+                    verticalAlign: 'middle',
+                    textBox: { left: 96, top: null, width: 1728 }
+                };
+                document.getElementById('font-family').value = 'Times New Roman';
+                document.getElementById('font-size-input').value = parseInt(defaultFontSize);
+                document.getElementById('color-indicator').style.backgroundColor = '#ffffff';
+            }
+
+            applyEditorStyle();
+            currentEditingSong = song || null;
+
+            // Setup Toolbar Listeners
+            document.getElementById('font-size-input').onchange = (e) => setFontSize(e.target.value);
+
+            // Initial scale
+            setTimeout(() => {
+                scaleVirtualCanvas('editor-virtual-canvas', 'editor-preview-box');
+            }, 50);
+
+            // Setup drag on title bar
+            setupModalDrag();
+            setTimeout(setupEditorTextBoxInteraction, 100);
+        }
+
+        function setupModalDrag() {
+            const titleBar = document.querySelector('#song-editor-modal .win-modal-container > div:first-child');
+            const container = document.querySelector('#song-editor-modal .win-modal-container');
+            let isDragging = false, startX, startY, startLeft, startTop;
+
+            titleBar.style.cursor = 'move';
+            titleBar.onmousedown = (e) => {
+                if (e.target.closest('button')) return;
+                isDragging = true;
+                const rect = container.getBoundingClientRect();
+                startX = e.clientX;
+                startY = e.clientY;
+                startLeft = rect.left;
+                startTop = rect.top;
+                document.addEventListener('mousemove', onDrag);
+                document.addEventListener('mouseup', stopDrag);
+            };
+
+            function onDrag(e) {
+                if (!isDragging) return;
+                container.style.left = (startLeft + e.clientX - startX) + 'px';
+                container.style.top = (startTop + e.clientY - startY) + 'px';
+                container.style.margin = '0';
+            }
+
+            function stopDrag() {
+                isDragging = false;
+                document.removeEventListener('mousemove', onDrag);
+                document.removeEventListener('mouseup', stopDrag);
+            }
+        }
+
+        function toggleSizeDropdown() {
+            const menu = document.getElementById('size-dropdown-menu');
+            menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
+        }
+
+        function setSizeValue(val) {
+            const input = document.getElementById('font-size-input');
+            input.value = val;
+            setFontSize(val);
+            document.getElementById('size-dropdown-menu').style.display = 'none';
+            // Highlight active one logic could go here
+        }
+
+        // Close dropdown on outside click
+        window.addEventListener('mousedown', (e) => {
+            if (!document.getElementById('size-control-container').contains(e.target)) {
+                document.getElementById('size-dropdown-menu').style.display = 'none';
+            }
+        });
+
+        function setFontSize(size) {
+            editorStyle.fontSize = size + 'pt';
+            applyEditorStyle();
+        }
+
+        function renderLyricsEditor(text) {
+            const container = document.getElementById('lyrics-editor-container');
+            container.innerHTML = '';
+
+            const slides = text.split(/\n\s*\n/).filter(s => s.trim() !== "");
+            if (slides.length === 0) slides.push("");
+
+            slides.forEach((content, index) => {
+                addSlideToEditor(content, index);
+            });
+        }
+
+        function addSlideToEditor(content, index, focus = false) {
+            const container = document.getElementById('lyrics-editor-container');
+            const block = document.createElement('div');
+            block.className = 'lyrics-slide-block';
+
+            const lines = content.split('\n');
+            let label = '';
+            let body = content;
+
+            // Simple label detection or use first line as label if bolded later
+            const firstLine = lines[0].trim();
+            if (firstLine.match(/^(Verse|Chorus|Bridge|Pre-Chorus|Tag|End|Đoạn|Điệp khúc|Kết)/i)) {
+                label = firstLine;
+                body = lines.slice(1).join('\n');
+            }
+
+            block.innerHTML = `
+            <div class="lyrics-slide-header">
+                <div class="lyrics-slide-num">${index + 1}</div>
+                <input class="lyrics-slide-label-input" placeholder="Label (optional)..." value="${label}" spellcheck="false">
+            </div>
+            <div class="lyrics-slide-content" contenteditable="true" spellcheck="false">${body.replace(/\n/g, '<br>')}</div>
+        `;
+
+            const contentDiv = block.querySelector('.lyrics-slide-content');
+            const labelInput = block.querySelector('.lyrics-slide-label-input');
+
+            // Apply label color immediately
+            function updateLabelColor() {
+                const color = getLabelColor(labelInput.value);
+                labelInput.style.color = color || '#333';
+                const header = block.querySelector('.lyrics-slide-header');
+                if (color) header.style.borderLeftColor = color;
+            }
+            updateLabelColor();
+            labelInput.addEventListener('input', updateLabelColor);
+
+            let lastEnterTime = 0;
+
+            contentDiv.oninput = () => {
+                updateEditorPreview(contentDiv.innerText);
+            };
+
+            contentDiv.onfocus = () => {
+                updateEditorPreview(contentDiv.innerText);
+            };
+
+            contentDiv.onkeydown = (e) => {
+                if (e.key === 'Enter') {
+                    const now = Date.now();
+                    if (e.ctrlKey || (now - lastEnterTime < 400)) {
+                        e.preventDefault();
+                        splitSlide(contentDiv, index);
+                        lastEnterTime = 0;
+                        return;
+                    }
+                    lastEnterTime = now;
+                    // Default behavior (Enter) adds a line within block
+                }
+            };
+
+            if (index < container.children.length) {
+                container.insertBefore(block, container.children[index]);
+            } else {
+                container.appendChild(block);
+            }
+
+            if (focus) {
+                contentDiv.focus();
+            }
+
+            reindexSlides();
+        }
+
+        function splitSlide(contentDiv, index) {
+            // Simple split: add new block after
+            addSlideToEditor("", index + 1, true);
+
+            // Find the new block and focus its content
+            setTimeout(() => {
+                const container = document.getElementById('lyrics-editor-container');
+                const newBlock = container.children[index + 1];
+                if (newBlock) {
+                    const newContent = newBlock.querySelector('.lyrics-slide-content');
+                    newContent.focus();
+                }
+            }, 10);
+        }
+
+        function getLyricsFromEditor() {
+            const container = document.getElementById('lyrics-editor-container');
+            const blocks = Array.from(container.querySelectorAll('.lyrics-slide-block'));
+            return blocks.map(block => {
+                const label = block.querySelector('.lyrics-slide-label-input').value.trim();
+                const content = block.querySelector('.lyrics-slide-content').innerText.trim();
+                if (label) {
+                    return (label + '\n' + content).trim();
+                }
+                return content;
+            }).filter(s => s !== "").join('\n\n');
+        }
+
+        function reindexSlides() {
+            const container = document.getElementById('lyrics-editor-container');
+            Array.from(container.children).forEach((block, idx) => {
+                block.querySelector('.lyrics-slide-num').innerText = idx + 1;
+            });
+        }
+
+        async function saveSong(shouldClose = true) {
+            console.log('Attempting to save song...');
+            const title = document.getElementById('song-title').value;
+            const lyrics = getLyricsFromEditor();
+            if (!title) { alert('Vui lòng nhập tiêu đề bài hát!'); return; }
+
+            try {
+                const isBible = (currentEditingSong && currentEditingSong.type === 'bible');
+                const songData = { 
+                    id: currentEditingSong ? currentEditingSong.id : null, 
+                    title, 
+                    lyrics,
+                    type: isBible ? 'bible' : 'song',
+                    style: { ...editorStyle }
+                };
+                console.log('Sending save request:', songData);
+                const response = await ipcRenderer.invoke('save-song', songData);
+                console.log('Save response:', response.success ? 'Success' : 'Failed');
+                
+                if (response.success) {
+                    const updatedList = response.list;
+                    const savedItem = response.item;
+                    // Lấy bài vừa lưu (thường là bài có ID mới hoặc vừa update)
+                    // Lưu ý: ipcRenderer.invoke('save-song') trả về toàn bộ list, 
+                    // nhưng songData mang ID thật sau khi lưu.
+                    const isBible = (songData.type === 'bible');
+                    
+                    if (isBible) {
+                        await loadLibrary();
+                        if (currentLibraryTab === 'bible') renderLibrary();
+                    } else {
+                        songLibrary = updatedList;
+                        if (currentLibraryTab === 'songs') renderLibrary();
+                    }
+                    
+                    // 1. Tự động cập nhật tất cả các mục trong Schedule
+                    // Ưu tiên khớp theo scheduleId (nếu đang sửa trực tiếp mục trong schedule)
+                    // Sau đó khớp theo id (cập nhật mọi bản sao của bài hát này)
+                    let foundAny = false;
+                    schedule.forEach(item => {
+                        const matchScheduleId = currentEditingSong && currentEditingSong.scheduleId && item.scheduleId === currentEditingSong.scheduleId;
+                        const matchId = songData.id && item.id === songData.id;
+                        
+                        if (matchScheduleId || matchId) {
+                            item.title = title;
+                            item.lyrics = lyrics;
+                            item.style = { ...editorStyle };
+                            if (!item.id && songData.id) item.id = songData.id; // Gán ID mới nếu trước đó là XML Bible
+                            foundAny = true;
+                        }
+                    });
+                    
+                    if (foundAny) renderSchedule();
+
+                    const currentId = savedItem.id;
+
+                    // 2. Nếu bài hát này đang ở Preview, nạp lại Preview
+                    if (currentId && currentScheduleIndex >= 0 && schedule[currentScheduleIndex] && 
+                        (schedule[currentScheduleIndex].id === currentId || schedule[currentScheduleIndex].scheduleId === currentEditingSong.scheduleId)) {
+                        loadToPreview(schedule[currentScheduleIndex]);
+                    }
+
+                    // 3. Nếu bài hát này đang ở Live, nạp lại Live
+                    if (currentId && currentLiveScheduleIndex >= 0 && schedule[currentLiveScheduleIndex] && 
+                        (schedule[currentLiveScheduleIndex].id === currentId || schedule[currentLiveScheduleIndex].scheduleId === currentEditingSong.scheduleId)) {
+                        
+                        // Cập nhật slides hiện tại của Live
+                        const lyricsRaw = lyrics || "";
+                        liveSlides = lyricsRaw.split(/\n\s*\n/).filter(s => s.trim() !== "").map(s => {
+                            const parsed = stripLabel(s.trim());
+                            return { content: parsed.content, label: parsed.label };
+                        });
+                        
+                        // Đồng bộ style live
+                        currentLiveStyle = { ...editorStyle };
+                        
+                        // Cập nhật slide hiện tại đang hiển thị
+                        if (currentLiveIndex >= 0 && currentLiveIndex < liveSlides.length) {
+                            goLiveSlide(currentLiveIndex);
+                        } else {
+                            renderLiveSlides();
+                        }
+                    }
+
+                    if (currentLibraryTab === 'songs') renderLibrary();
+                    if (shouldClose) closeSongEditor();
+                }
+            } catch (error) {
+                console.error('Failed to save song:', error);
+                alert('Failed to save song: ' + error.message);
+            }
+        }
+
+        function closeSongEditor() {
+            document.getElementById('song-editor-modal').style.display = 'none';
+            document.getElementById('lyrics-editor-container').innerHTML = '';
+            currentEditingSong = null;
+        }
+
+        function filterLibrary() {
+            renderLibrary();
+        }
+
+        // --- Schedule Logic ---
+        function addToSchedule(song) {
+            let bg = null;
+            if (song.lastBackground && song.lastBackground.mediaName) {
+                bg = {
+                    mediaName: song.lastBackground.mediaName,
+                    mediaType: song.lastBackground.mediaType,
+                    url: `app-media://${encodeURIComponent(song.lastBackground.mediaName)}`
+                };
+            }
+            schedule.push({ ...song, scheduleId: Date.now(), background: bg });
+            renderSchedule();
+        }
+
+        function addMediaToSchedule(mediaItem) {
+            const url = `app-media://${encodeURIComponent(mediaItem.name)}`;
+            schedule.push({
+                id: null,
+                title: mediaItem.name,
+                lyrics: '',
+                scheduleId: Date.now(),
+                background: { mediaName: mediaItem.name, mediaType: mediaItem.type, url: url },
+                isMediaOnly: true
+            });
+            renderSchedule();
+        }
+
+        function renderSchedule() {
+            const container = document.getElementById('schedule-container');
+            if (!container) return;
+            container.innerHTML = '';
+            if (schedule.length === 0) {
+                container.innerHTML = '<p class="text-[10px] text-slate-400 p-2 text-center italic">No items in schedule.</p>';
+            }
+            schedule.forEach((item, index) => {
+                const div = document.createElement('div');
+                const isActive = index === currentScheduleIndex;
+                const isLive = index === currentLiveScheduleIndex;
+                div.setAttribute('data-schedule-item', index);
+                div.className = `flex items-center gap-2 p-1.5 rounded-md ${isActive ? 'bg-blue-500 text-white' : 'hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300'} cursor-pointer group transition-all`;
+
+                // Build thumbnail HTML
+                let thumbHtml = '';
+                if (item.background && item.background.url) {
+                    if (item.background.mediaType === 'video') {
+                        thumbHtml = `<video src="${item.background.url}" class="w-full h-full object-cover" muted preload="metadata"></video>`;
+                    } else {
+                        thumbHtml = `<img src="${item.background.url}" class="w-full h-full object-cover" />`;
+                    }
+                }
+
+                div.innerHTML = `
+                <div class="w-[60px] h-[40px] bg-black rounded flex-shrink-0 overflow-hidden">${thumbHtml}</div>
+                <div class="flex-1 min-w-0">
+                    <span class="text-[11px] font-semibold truncate block">${item.title}</span>
+                </div>
+                <div class="flex items-center gap-0.5">
+                    <span class="material-symbols-outlined text-xs opacity-0 group-hover:opacity-100 ${isActive ? 'text-red-200' : 'text-red-500'} hover:scale-110 transition-all" onclick="event.stopPropagation(); removeFromSchedule(${index})">delete</span>
+                    ${isLive ? '<span class="material-symbols-outlined text-xs text-red-400">cast</span>' : ''}
+                    ${isActive ? '<span class="material-symbols-outlined text-xs">play_circle</span>' : ''}
+                </div>
+            `;
+                div.onclick = () => { selectScheduleItem(index); };
+                div.oncontextmenu = (e) => { e.preventDefault(); showContextMenu(e, item); };
+
+                // Drop target for media drag & drop
+                div.addEventListener('dragover', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    e.dataTransfer.dropEffect = 'copy';
+                    div.classList.add('ring-2', 'ring-primary');
+                });
+                div.addEventListener('dragleave', () => {
+                    div.classList.remove('ring-2', 'ring-primary');
+                });
+                div.addEventListener('drop', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    div.classList.remove('ring-2', 'ring-primary');
+                    try {
+                        const mediaItem = JSON.parse(e.dataTransfer.getData('application/json'));
+                        assignBackgroundToScheduleItem(index, mediaItem);
+                    } catch (err) { console.error('Drop error:', err); }
+                });
+
+                container.appendChild(div);
+            });
+
+        }
+
+        function selectScheduleItem(index) {
+            currentScheduleIndex = index;
+            renderSchedule();
+            loadToPreview(schedule[index]);
+        }
+
+        function removeFromSchedule(index) {
+            schedule.splice(index, 1);
+            if (currentScheduleIndex === index) {
+                currentScheduleIndex = -1;
+                currentSlides = [];
+                renderPreview();
+            } else if (currentScheduleIndex > index) {
+                currentScheduleIndex--;
+            }
+            renderSchedule();
+        }
+
+        function goLiveFromPreview() {
+            if (currentSlides.length > 0 && currentPreviewIndex !== -1) {
+                currentLiveScheduleIndex = currentScheduleIndex;
+                currentLiveSlideIndex = currentPreviewIndex;
+                goLive(currentSlides[currentPreviewIndex]);
+            }
+        }
+
+        function clearLive() {
+            updateLiveOutput("");
+            // Send clear text only to Screen Live (keep background)
+            sendToLiveWindow({ text: '', background: null });
+        }
+
+        function liveCurrent() {
+            if (currentSlides.length > 0 && currentPreviewIndex !== -1) {
+                currentLiveScheduleIndex = currentScheduleIndex;
+                currentLiveSlideIndex = currentPreviewIndex;
+                goLive(currentSlides[currentPreviewIndex]);
+            }
+        }
+
+        function updateEditorPreview(text) {
+            const previewEl = document.getElementById('editor-preview-text');
+            if (previewEl) {
+                previewEl.innerText = text;
+                applyEditorStyle();
+            }
+        }
+
+        // --- Presentation Logic ---
+        const labelPattern = /^(Verse|Chorus|Bridge|Pre-Chorus|Tag|End|Đoạn|Điệp khúc|Kết)/i;
+
+        function stripLabel(text) {
+            const lines = text.split('\n');
+            if (lines.length > 0 && labelPattern.test(lines[0].trim())) {
+                return { label: lines[0].trim(), content: lines.slice(1).join('\n').trim() };
+            }
+            return { label: '', content: text.trim() };
+        }
+
+        function loadToPreview(song) {
+            console.log('Loading to preview:', song.title, song.style);
+
+            // Handle media-only items (no lyrics, just background)
+            if (song.isMediaOnly || (!song.lyrics && song.background)) {
+                currentSlides = [{ content: '', label: '', isBible: false }];
+                currentPreviewIndex = 0;
+                renderPreview();
+                updatePreviewOutput('');
+                if (song.background) previewBackground({ name: song.background.mediaName, type: song.background.mediaType });
+                return;
+            }
+
+            // Cập nhật style cho preview từ bài hát (hoặc dùng mặc định)
+            currentPreviewStyle = song.style ? { ...song.style } : {
+                fontFamily: 'Times New Roman',
+                fontSize: song.type === 'bible' ? '72pt' : '120pt',
+                color: '#ffffff',
+                fontWeight: 'bold',
+                fontStyle: 'normal',
+                textDecoration: 'none',
+                textAlign: 'center',
+                verticalAlign: 'middle'
+            };
+
+            const lyrics = song.lyrics || "";
+            const isBible = song.type === 'bible';
+
+            if (isBible) {
+                currentSlides = lyrics.split(/\n\n/).filter(s => s.trim() !== "").map(s => ({
+                    content: s.trim(),
+                    label: '',
+                    isBible: true
+                }));
+            } else {
+                currentSlides = lyrics.split(/\n\s*\n/).filter(s => s.trim() !== "").map(s => {
+                    const parsed = stripLabel(s.trim());
+                    return {
+                        content: parsed.content,
+                        label: parsed.label,
+                        isBible: false
+                    };
+                });
+            }
+
+            currentPreviewIndex = 0;
+            renderPreview();
+            if (currentSlides.length > 0) {
+                updatePreviewOutput(currentSlides[0].content);
+            }
+        }
+
+        function getLabelColor(label) {
+            const l = label.toLowerCase();
+            if (/verse|đoạn/i.test(l)) return '#3366ff';
+            if (/chorus|pre-chorus|điệp khúc/i.test(l)) return '#993366';
+            if (/end|kết/i.test(l)) return '#800000';
+            if (/bridge/i.test(l)) return '#800080';
+            return '';
+        }
+
+        function renderPreview() {
+            const container = document.getElementById('preview-slides-container');
+            if (!container) return;
+            container.innerHTML = '';
+            currentSlides.forEach((slide, index) => {
+                const div = document.createElement('div');
+                const isActive = index === currentPreviewIndex;
+                const labelColor = slide.label ? getLabelColor(slide.label) : '';
+                div.className = `rounded-md overflow-hidden bg-white dark:bg-slate-900 shadow-sm cursor-pointer`;
+                const slideLabel = slide.label || `Slide ${index + 1}`;
+                div.innerHTML = `
+                <div class="${isActive ? 'bg-indigo-600' : 'bg-slate-500'} text-white px-2 py-0.5 text-[9px] font-bold uppercase transition-colors" ${labelColor ? `style="background-color:${labelColor}"` : ''}>
+                    ${slideLabel}
+                </div>
+                <div class="p-2 text-xs ${isActive ? 'text-slate-900 dark:text-white font-bold' : 'text-slate-700 dark:text-slate-300 font-medium'} leading-tight" ${isActive ? 'style="background-color:#b3e4ff"' : ''}>
+                    ${slide.content.replace(/\n/g, '<br/>')}
+                </div>
+            `;
+                div.onclick = () => { selectSlide(index); };
+                div.ondblclick = (e) => { e.stopPropagation(); goLiveFromSlide(index); };
+                container.appendChild(div);
+                if (isActive) div.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            });
+        }
+
+        function selectSlide(index) {
+            currentPreviewIndex = index;
+            renderPreview();
+            updatePreviewOutput(currentSlides[index].content);
+        }
+
+        let liveSlides = [];       // all slides pushed to live
+        let currentLiveIndex = -1; // active slide index in live panel
+
+        function goLiveFromSlide(index) {
+            currentLiveScheduleIndex = currentScheduleIndex;
+            // Áp dụng style sang live
+            currentLiveStyle = { ...currentPreviewStyle };
+            
+            // Push ALL slides to live
+            liveSlides = [...currentSlides];
+            currentLiveIndex = index;
+            currentLiveSlideIndex = index;
+
+            renderLiveSlides();
+            goLiveSlide(index);
+
+            // Advance preview to next schedule item
+            if (currentScheduleIndex >= 0 && currentScheduleIndex < schedule.length - 1) {
+                currentScheduleIndex++;
+                renderSchedule();
+                loadToPreview(schedule[currentScheduleIndex]);
+            }
+        }
+
+        function goLiveSlide(index) {
+            currentLiveIndex = index;
+            currentLiveSlideIndex = index;
+            const slide = liveSlides[index];
+
+            // Update in-app live output
+            updateLiveOutput(slide.content);
+            renderLiveSlides();
+
+            // Get background from live schedule item
+            const scheduleItem = schedule[currentLiveScheduleIndex];
+            const background = scheduleItem ? scheduleItem.background : null;
+
+            // Update in-app live background
+            updateInAppLiveBackground(background);
+
+            // Send to Screen Live window
+            sendToLiveWindow({
+                text: slide.content,
+                background: background
+            });
+
+            renderSchedule();
+        }
+
+        function goLive(slide) {
+            // Called from goLiveFromPreview / liveCurrent (single slide)
+            currentLiveStyle = { ...currentPreviewStyle }; // Đồng bộ style sang live
+            liveSlides = [...currentSlides];
+            currentLiveIndex = currentPreviewIndex;
+
+            updateLiveOutput(slide.content);
+            renderLiveSlides();
+
+            const scheduleItem = schedule[currentLiveScheduleIndex];
+            const background = currentPreviewBackground || (scheduleItem ? scheduleItem.background : null);
+            updateInAppLiveBackground(background);
+
+            sendToLiveWindow({
+                text: slide.content,
+                background: background
+            });
+
+            renderSchedule();
+        }
+
+        function renderLiveSlides() {
+            const container = document.getElementById('live-slides-container');
+            if (!container) return;
+            container.innerHTML = '';
+            liveSlides.forEach((slide, index) => {
+                const div = document.createElement('div');
+                const isActive = index === currentLiveIndex;
+                const slideLabel = slide.label || `Slide ${index + 1}`;
+                const labelColor = slide.label ? getLabelColor(slide.label) : '';
+                div.className = `rounded-md overflow-hidden bg-white dark:bg-slate-900 shadow-sm cursor-pointer`;
+                div.innerHTML = `
+                <div class="${isActive ? 'bg-indigo-600' : 'bg-slate-500'} text-white px-2 py-0.5 text-[9px] font-bold uppercase flex justify-between transition-colors" ${labelColor ? `style="background-color:${labelColor}"` : ''}>
+                    <span>${slideLabel}</span>
+                    ${isActive ? '<span class="text-[7px] bg-white/20 px-1 rounded">ON AIR</span>' : ''}
+                </div>
+                <div class="p-2 text-xs ${isActive ? 'text-slate-900 dark:text-white font-bold' : 'text-slate-700 dark:text-slate-300 font-medium'} leading-tight" ${isActive ? 'style="background-color:#b3e4ff"' : ''}>
+                    ${slide.content.replace(/\n/g, '<br/>')}
+                </div>
+            `;
+                div.onclick = () => { goLiveSlide(index); };
+                container.appendChild(div);
+                if (isActive) div.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            });
+        }
+
+        function applyStyleToElement(el, styleOverride = null) {
+            if (!el) return;
+            const style = styleOverride || editorStyle;
+
+            el.style.fontFamily = style.fontFamily;
+            el.style.fontSize = style.fontSize;
+            el.style.color = style.color;
+            el.style.fontWeight = style.fontWeight;
+            el.style.fontStyle = style.fontStyle;
+            el.style.textDecoration = style.textDecoration;
+            el.style.textAlign = style.textAlign;
+
+            const textBox = el.parentElement;
+            const canvas = textBox && textBox.parentElement;
+
+            if (textBox && textBox.classList && textBox.classList.contains('text-layer-box')) {
+                el.style.width = "100%";
+                el.style.lineHeight = "1.4";
+
+                const isMainCanvas = canvas && (
+                    canvas.id === 'editor-virtual-canvas' ||
+                    canvas.id === 'live-virtual-canvas' ||
+                    canvas.id === 'preview-virtual-canvas'
+                );
+
+                if (isMainCanvas) {
+                    el.style.webkitTextStroke = "16px black";
+                } else {
+                    el.style.webkitTextStroke = "5px black";
+                }
+                el.style.paintOrder = "stroke fill";
+                el.style.textShadow = "none";
+
+                positionTextBox(textBox, style);
+            }
+        }
+
+        function positionTextBox(textBox, style) {
+            if (!textBox) return;
+            const tb = style.textBox;
+            const left = (tb && tb.left != null) ? tb.left : 96;
+            const width = (tb && tb.width != null) ? tb.width : 1728;
+
+            textBox.style.left = left + 'px';
+            textBox.style.width = width + 'px';
+
+            if (tb && tb.top != null) {
+                textBox.style.top = tb.top + 'px';
+                textBox.style.bottom = '';
+                textBox.style.transform = '';
+            } else {
+                const align = style.verticalAlign || 'middle';
+                if (align === 'top') {
+                    textBox.style.top = '96px';
+                    textBox.style.bottom = '';
+                    textBox.style.transform = '';
+                } else if (align === 'bottom') {
+                    textBox.style.top = 'auto';
+                    textBox.style.bottom = '96px';
+                    textBox.style.transform = '';
+                } else {
+                    textBox.style.top = '50%';
+                    textBox.style.bottom = '';
+                    textBox.style.transform = 'translateY(-50%)';
+                }
+            }
+        }
+
+        // Scale virtual canvas (1920x1080) to fit its container
+        function scaleVirtualCanvas(canvasId, containerId) {
+            const canvas = document.getElementById(canvasId);
+            const container = document.getElementById(containerId);
+            if (!canvas || !container) return;
+            const cw = container.clientWidth;
+            const ch = container.clientHeight;
+            if (cw <= 0 || ch <= 0) return;
+            const scale = Math.min(cw / 1920, ch / 1080);
+            canvas.style.transform = `translate(-50%, -50%) scale(${scale})`;
+        }
+
+        function updatePreviewOutput(content) {
+            const previewText = document.getElementById('preview-lyrics-text');
+            if (previewText) {
+                previewText.innerText = content;
+                applyStyleToElement(previewText, currentPreviewStyle);
+            }
+            scaleVirtualCanvas('preview-virtual-canvas', 'preview-output-box');
+        }
+
+        function updateLiveOutput(content) {
+            const liveOutputText = document.getElementById('live-lyrics-text');
+            if (liveOutputText) {
+                liveOutputText.innerText = content;
+                applyStyleToElement(liveOutputText, currentLiveStyle);
+            }
+            scaleVirtualCanvas('live-virtual-canvas', 'live-output-box');
+        }
+
+        // --- Media Library ---
+        async function loadMedia() {
+            try {
+                console.log('Loading media list...');
+                mediaLibrary = await ipcRenderer.invoke('load-media');
+                console.log('Media files:', mediaLibrary);
+                renderMedia();
+            } catch (error) {
+                console.error('Failed to load media:', error);
+            }
+        }
+
+        async function importMedia() {
+            try {
+                const newMedia = await ipcRenderer.invoke('import-media');
+                if (newMedia) {
+                    console.log('Media imported successfully');
+                    loadMedia();
+                }
+            } catch (error) {
+                console.error('Import media error:', error);
+                alert('Failed to import media: ' + error.message);
+            }
+        }
+
+        function renderMedia() {
+            const container = document.querySelector('#media-library-container .grid');
+            if (!container) return;
+            container.innerHTML = '';
+            if (mediaLibrary.length === 0) {
+                container.innerHTML = '<p class="text-[10px] text-win-dark-gray p-2 italic col-span-10">No media files found in /media directory.</p>';
+            }
+            mediaLibrary.forEach(item => {
+                const div = document.createElement('div');
+                const url = `app-media://${encodeURIComponent(item.name)}`;
+                div.className = 'aspect-video rounded-md overflow-hidden relative border border-slate-200 dark:border-slate-700 cursor-pointer hover:border-primary transition-all';
+                if (item.type === 'video') {
+                    div.innerHTML = `
+                    <video class="w-full h-full object-cover" src="${url}" muted preload="metadata"></video>
+                    <span class="material-symbols-outlined absolute inset-0 flex items-center justify-center text-white text-xs bg-black/20">play_circle</span>
+                `;
+                } else {
+                    div.innerHTML = `
+                    <img class="w-full h-full object-cover" src="${url}" onerror="this.src='https://placehold.co/96x56?text=Error'"/>
+                `;
+                }
+                div.draggable = true;
+                div.addEventListener('dragstart', (e) => {
+                    e.dataTransfer.setData('application/json', JSON.stringify(item));
+                    e.dataTransfer.effectAllowed = 'copy';
+                });
+                div.onclick = () => { previewBackground(item); };
+                container.appendChild(div);
+            });
+        }
+
+        function previewBackground(item) {
+            const previewImg = document.getElementById('preview-bg-img');
+            const previewVid = document.getElementById('preview-bg-video');
+            const url = `app-media://${encodeURIComponent(item.name)}`;
+
+            // Track current preview background
+            currentPreviewBackground = { mediaName: item.name, mediaType: item.type, url: url };
+
+            previewImg.classList.add('hidden');
+            previewVid.classList.add('hidden');
+
+            if (item.type === 'video') {
+                previewVid.classList.remove('hidden');
+                previewVid.src = url;
+            } else {
+                previewImg.classList.remove('hidden');
+                previewImg.src = url;
+            }
+        }
+
+        function assignBackgroundToScheduleItem(scheduleIndex, mediaItem) {
+            const url = `app-media://${encodeURIComponent(mediaItem.name)}`;
+            schedule[scheduleIndex].background = {
+                mediaName: mediaItem.name,
+                mediaType: mediaItem.type,
+                url: url
+            };
+            renderSchedule();
+
+            // Save lastBackground to song in DB for persistence
+            const scheduleItem = schedule[scheduleIndex];
+            if (scheduleItem.id) {
+                const songInLib = songLibrary.find(s => s.id === scheduleItem.id);
+                if (songInLib) {
+                    songInLib.lastBackground = { mediaName: mediaItem.name, mediaType: mediaItem.type };
+                    ipcRenderer.invoke('save-song', songInLib);
+                }
+            }
+
+            // Show preview of the background in preview output
+            previewBackground(mediaItem);
+
+            // If this item is currently live, update live screen immediately
+            if (scheduleIndex === currentLiveScheduleIndex) {
+                updateInAppLiveBackground(schedule[scheduleIndex].background);
+                sendToLiveWindow({
+                    text: null,
+                    background: schedule[scheduleIndex].background
+                });
+            }
+        }
+
+        function handleLiveDrop(e) {
+            try {
+                const mediaItem = JSON.parse(e.dataTransfer.getData('application/json'));
+                const url = `app-media://${encodeURIComponent(mediaItem.name)}`;
+                const background = { mediaName: mediaItem.name, mediaType: mediaItem.type, url: url };
+
+                // If there's a live schedule item, assign to it
+                if (currentLiveScheduleIndex >= 0) {
+                    schedule[currentLiveScheduleIndex].background = background;
+                    renderSchedule();
+                }
+
+                // Update live immediately
+                updateInAppLiveBackground(background);
+                sendToLiveWindow({ text: null, background: background });
+            } catch (err) { console.error('Live drop error:', err); }
+        }
+
+        function updateInAppLiveBackground(background) {
+            const liveImg = document.getElementById('live-bg-img');
+            const liveVid = document.getElementById('live-bg-video');
+
+            liveImg.classList.add('hidden');
+            liveVid.classList.add('hidden');
+
+            if (!background) return;
+
+            if (background.mediaType === 'video') {
+                liveVid.classList.remove('hidden');
+                liveVid.src = background.url;
+            } else {
+                liveImg.classList.remove('hidden');
+                liveImg.src = background.url;
+            }
+        }
+
+        function sendToLiveWindow(data) {
+            // Gửi kèm style hiện tại của live
+            data.style = { ...currentLiveStyle };
+            ipcRenderer.invoke('live-send-content', data);
+        }
+
+        // --- Native Menu Handlers ---
+        ipcRenderer.on('menu-action', (event, action) => {
+            console.log('Action triggered from menu:', action);
+            switch (action) {
+                case 'new-schedule': schedule = []; renderSchedule(); break;
+                case 'new-song':
+                    currentEditingSong = null;
+                    openSongEditor('Create New Song');
+                    break;
+                case 'import-media': importMedia(); break;
+                case 'save-schedule': saveSchedule(); break;
+                case 'open-schedule': openSchedule(); break;
+                case 'close-schedule': schedule = []; renderSchedule(); break;
+                case 'edit-song':
+                    if (currentEditingSong) openSongEditor('Edit Song', currentEditingSong);
+                    else alert('Please select a song in library first!');
+                    break;
+            }
+        });
+
+        async function saveSchedule() {
+            if (schedule.length === 0) { alert('Schedule is empty!'); return; }
+            try {
+                const result = await ipcRenderer.invoke('show-save-dialog', schedule);
+                if (result) alert('Schedule saved successfully!');
+            } catch (error) {
+                alert('Error saving schedule: ' + error.message);
+            }
+        }
+
+        async function openSchedule() {
+            try {
+                const result = await ipcRenderer.invoke('show-open-dialog');
+                if (result) {
+                    schedule = result.data;
+                    // Recompute background URLs
+                    schedule.forEach(item => {
+                        if (item.background && item.background.mediaName) {
+                            item.background.url = `app-media://${encodeURIComponent(item.background.mediaName)}`;
+                        }
+                    });
+                    renderSchedule();
+                    alert('Schedule loaded successfully!');
+                }
+            } catch (error) {
+                alert('Error loading schedule: ' + error.message);
+            }
+        }
+
+        // --- Live Window State ---
+        ipcRenderer.on('live-window-opened', () => { isLiveWindowOpen = true; });
+        ipcRenderer.on('live-window-closed', () => { isLiveWindowOpen = false; });
+
+        async function toggleLiveWindow() {
+            if (isLiveWindowOpen) {
+                await ipcRenderer.invoke('close-live-window');
+                isLiveWindowOpen = false;
+            } else {
+                await ipcRenderer.invoke('open-live-window');
+                isLiveWindowOpen = true;
+                // Send current live content immediately after opening
+                setTimeout(() => {
+                    if (liveSlides.length > 0 && currentLiveIndex >= 0) {
+                        const slide = liveSlides[currentLiveIndex];
+                        const scheduleItem = schedule[currentLiveScheduleIndex];
+                        const background = scheduleItem ? scheduleItem.background : null;
+                        sendToLiveWindow({
+                            text: slide.content,
+                            background: background
+                        });
+                    }
+                }, 500); // wait for live window to load
+            }
+        }
+
+        // --- Keyboard Support ---
+        window.addEventListener('keydown', (e) => {
+            if (['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName) || document.activeElement.isContentEditable) return;
+            // Arrow keys control live panel when it has slides
+            if (liveSlides.length > 0) {
+                if (['ArrowRight', 'ArrowDown', ' '].includes(e.key)) {
+                    if (currentLiveIndex < liveSlides.length - 1) goLiveSlide(currentLiveIndex + 1);
+                    e.preventDefault();
+                } else if (['ArrowLeft', 'ArrowUp'].includes(e.key)) {
+                    if (currentLiveIndex > 0) goLiveSlide(currentLiveIndex - 1);
+                    e.preventDefault();
+                }
+            }
+        });
+
+        // Update all scales on window resize
+        window.addEventListener('resize', () => {
+            scaleVirtualCanvas('editor-virtual-canvas', 'editor-preview-box');
+            scaleVirtualCanvas('preview-virtual-canvas', 'preview-output-box');
+            scaleVirtualCanvas('live-virtual-canvas', 'live-output-box');
+        });
+
+        function setupEditorTextBoxInteraction() {
+            const textBox = document.getElementById('editor-text-box');
+            const container = document.getElementById('editor-preview-box');
+            if (!textBox || !container) return;
+
+            // Remove old handles
+            textBox.querySelectorAll('.resize-handle').forEach(h => h.remove());
+
+            // Add resize handles
+            ['e', 'w', 'se', 'sw'].forEach(dir => {
+                const handle = document.createElement('div');
+                handle.className = `resize-handle ${dir}`;
+                textBox.appendChild(handle);
+                handle.addEventListener('mousedown', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    beginTextBoxResize(e, dir, textBox, container);
+                });
+            });
+
+            // Drag via drag-handle
+            const dragHandle = document.getElementById('editor-drag-handle');
+            if (dragHandle) {
+                dragHandle.addEventListener('mousedown', (e) => {
+                    e.preventDefault();
+                    beginTextBoxDrag(e, textBox, container);
+                });
+            }
+        }
+
+        function getEditorCanvasScale(container) {
+            const cw = container.clientWidth;
+            const ch = container.clientHeight;
+            return Math.min(cw / 1920, ch / 1080);
+        }
+
+        function getTextBoxPixelPos(textBox) {
+            const tb = editorStyle.textBox;
+            const left = (tb && tb.left != null) ? tb.left : 96;
+            const width = (tb && tb.width != null) ? tb.width : 1728;
+            let top;
+            if (tb && tb.top != null) {
+                top = tb.top;
+            } else {
+                const align = editorStyle.verticalAlign || 'middle';
+                if (align === 'top') top = 96;
+                else if (align === 'bottom') top = 1080 - textBox.offsetHeight - 96;
+                else top = (1080 - textBox.offsetHeight) / 2;
+            }
+            return { top, left, width };
+        }
+
+        function beginTextBoxDrag(e, textBox, container) {
+            const startMouseX = e.clientX;
+            const startMouseY = e.clientY;
+            const { top: startTop, left: startLeft, width: startWidth } = getTextBoxPixelPos(textBox);
+
+            const onMove = (ev) => {
+                const scale = getEditorCanvasScale(container);
+                const dx = (ev.clientX - startMouseX) / scale;
+                const dy = (ev.clientY - startMouseY) / scale;
+                const newTop = Math.max(0, Math.min(1080 - textBox.offsetHeight, startTop + dy));
+                const newLeft = Math.max(0, Math.min(1920 - startWidth, startLeft + dx));
+                if (!editorStyle.textBox) editorStyle.textBox = {};
+                editorStyle.textBox.top = newTop;
+                editorStyle.textBox.left = newLeft;
+                editorStyle.textBox.width = startWidth;
+                positionTextBox(textBox, editorStyle);
+            };
+
+            const onUp = () => {
+                document.removeEventListener('mousemove', onMove);
+                document.removeEventListener('mouseup', onUp);
+            };
+
+            document.addEventListener('mousemove', onMove);
+            document.addEventListener('mouseup', onUp);
+        }
+
+        function beginTextBoxResize(e, dir, textBox, container) {
+            const startMouseX = e.clientX;
+            const { top: startTop, left: startLeft, width: startWidth } = getTextBoxPixelPos(textBox);
+
+            const onMove = (ev) => {
+                const scale = getEditorCanvasScale(container);
+                const dx = (ev.clientX - startMouseX) / scale;
+                let newLeft = startLeft;
+                let newWidth = startWidth;
+
+                if (dir === 'e' || dir === 'se') {
+                    newWidth = Math.max(200, startWidth + dx);
+                } else if (dir === 'w' || dir === 'sw') {
+                    newWidth = Math.max(200, startWidth - dx);
+                    newLeft = startLeft + (startWidth - newWidth);
+                }
+
+                if (!editorStyle.textBox) editorStyle.textBox = {};
+                editorStyle.textBox.left = newLeft;
+                editorStyle.textBox.width = newWidth;
+                if (editorStyle.textBox.top == null) editorStyle.textBox.top = startTop;
+                positionTextBox(textBox, editorStyle);
+            };
+
+            const onUp = () => {
+                document.removeEventListener('mousemove', onMove);
+                document.removeEventListener('mouseup', onUp);
+            };
+
+            document.addEventListener('mousemove', onMove);
+            document.addEventListener('mouseup', onUp);
+        }
+    </script>
+</body>
+
+</html>
+```
