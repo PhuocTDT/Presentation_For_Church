@@ -1,12 +1,43 @@
 {
   "name": "easyworship-app",
   "version": "1.0.0",
-  "description": "EasyWorship Windows Application",
+  "description": "Presentation For Church - Worship Presentation App",
   "main": "main.js",
   "scripts": {
-    "start": "electron ."
+    "start": "electron .",
+    "build": "electron-builder --win"
+  },
+  "build": {
+    "appId": "com.church.presentation",
+    "productName": "Presentation For Church",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "index.html",
+      "live.html",
+      "edit-song.html",
+      "src/**/*",
+      "data/Bible_Vietnamese.xml",
+      "fonts/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": "nsis",
+      "icon": "icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Presentation For Church"
+    }
   },
   "devDependencies": {
-    "electron": "^41.0.2"
+    "electron": "^41.0.2",
+    "electron-builder": "^26.8.1"
   }
 }

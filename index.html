@@ -547,7 +547,7 @@
                                 onclick="switchLibraryTab('songs')">Songs</button>
                             <button id="tab-bible"
                                 class="px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-white/40 hover:text-white/70"
-                                onclick="switchLibraryTab('bible')">Bible</button>
+                                onclick="openBibleSelector()">Bible</button>
                         </div>
                         <div class="relative">
                             <span
@@ -808,9 +808,45 @@
         </div>
     </div>
 
+    <!-- Bible Selector Modal -->
+    <div class="modal-overlay" id="bible-selector-modal">
+        <div class="bg-white rounded-lg shadow-2xl border border-slate-300" style="width: 400px;">
+            <div class="bg-white px-3 py-2 flex items-center justify-between border-b border-slate-200 rounded-t-lg">
+                <div class="flex items-center gap-2">
+                    <span class="material-symbols-outlined text-sm text-blue-600">menu_book</span>
+                    <span class="text-[12px] font-semibold">Chọn Kinh Thánh</span>
+                </div>
+                <button class="w-6 h-5 hover:bg-red-500 hover:text-white flex items-center justify-center transition-colors rounded"
+                    onclick="closeBibleSelector()">
+                    <span class="material-symbols-outlined text-xs">close</span>
+                </button>
+            </div>
+            <div class="p-4 space-y-3">
+                <div class="flex gap-3">
+                    <div class="flex-1">
+                        <label class="block text-[10px] font-semibold text-slate-600 mb-1 uppercase tracking-wider">Sách</label>
+                        <select id="bible-book-select" class="w-full text-[11px] border border-slate-300 rounded px-2 py-1.5 bg-white focus:ring-2 focus:ring-blue-400 focus:border-blue-400" onchange="onBibleBookSelect()">
+                            <option value="">-- Chọn sách --</option>
+                        </select>
+                    </div>
+                    <div style="width: 100px;">
+                        <label class="block text-[10px] font-semibold text-slate-600 mb-1 uppercase tracking-wider">Chương</label>
+                        <select id="bible-chapter-select" class="w-full text-[11px] border border-slate-300 rounded px-2 py-1.5 bg-white focus:ring-2 focus:ring-blue-400 focus:border-blue-400">
+                            <option value="">--</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <div class="px-4 py-3 bg-slate-50 border-t border-slate-200 flex justify-end gap-2 rounded-b-lg">
+                <button class="px-4 py-1.5 text-[11px] bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors font-medium" onclick="onBibleOK()">OK</button>
+                <button class="px-4 py-1.5 text-[11px] bg-white text-slate-700 border border-slate-300 rounded hover:bg-slate-100 transition-colors" onclick="closeBibleSelector()">Cancel</button>
+            </div>
+        </div>
+    </div>
+
     <script>
         // --- Configuration & Global State ---
-        const { ipcRenderer } = require('electron');
+
 
         let songLibrary = [];
         let bibleLibrary = [];    // Static Bible from XML
@@ -835,12 +871,12 @@
         const bibleBookMap = {
             "Genesis": "Sáng Thế Ký", "Exodus": "Xuất Ê-díp-tô Ký", "Leviticus": "Lê-vi Ký", "Numbers": "Dân Số Ký", "Deuteronomy": "Phục Truyền Luật Lệ Ký",
             "Joshua": "Giô-suê", "Judges": "Các Quan Xét", "Ruth": "Ru-tơ", "1 Samuel": "1 Sa-mu-ên", "2 Samuel": "2 Sa-mu-ên",
-            "1 Kings": "1 Các Vua", "2 Kings": "2 Các Vua", "1 Chronicles": "1 Sử Ký", "2 Chronicles": "2 Sử Ký", "Ezra": "Ê-xu-ra",
-            "Nehemiah": "Nhi-hê-mi", "Esther": "Ê-xơ-tê", "Job": "Gióp", "Psalms": "Thi Thiên", "Proverbs": "Châm Ngôn",
-            "Ecclesiastes": "Truyền Ðạo", "Song of Solomon": "Nhã Ca", "Isaiah": "Ê-sai", "Jeremiah": "Giê-rê-mi", "Lamentations": "Ca Thương",
+            "1 Kings": "1 Các Vua", "2 Kings": "2 Các Vua", "1 Chronicles": "1 Sử Ký", "2 Chronicles": "2 Sử Ký", "Ezra": "Ê-xơ-ra",
+            "Nehemiah": "Nê-hê-mi", "Esther": "Ê-xơ-tê", "Job": "Gióp", "Psalm": "Thi Thiên", "Psalms": "Thi Thiên", "Proverbs": "Châm Ngôn",
+            "Ecclesiastes": "Truyền Đạo", "Song of Solomon": "Nhã Ca", "Isaiah": "Ê-sai", "Jeremiah": "Giê-rê-mi", "Lamentations": "Ca Thương",
             "Ezekiel": "Ê-xê-chi-ên", "Daniel": "Đa-ni-ên", "Hosea": "Ô-sê", "Joel": "Giô-ên", "Amos": "A-mốt",
-            "Obadiah": "Áp-đia", "Jonah": "Giô-na", "Micah": "Mi-chê", "Nahum": "Na-huum", "Habakkuk": "Ha-ba-cúc",
-            "Zephaniah": "Sô-phô-ni", "Haggai": "A-guê", "Zechariah": "Xa-cha-ri", "Malachi": "Ma-la-chi", "Matthew": "Ma-thi-ơ",
+            "Obadiah": "Áp-đia", "Jonah": "Giô-na", "Micah": "Mi-chê", "Nahum": "Na-hum", "Habakkuk": "Ha-ba-cúc",
+            "Zephaniah": "Sô-phô-ni", "Haggai": "A-ghê", "Zechariah": "Xa-cha-ri", "Malachi": "Ma-la-chi", "Matthew": "Ma-thi-ơ",
             "Mark": "Mác", "Luke": "Lu-ca", "John": "Giăng", "Acts": "Công Vụ Các Sứ Đồ", "Romans": "Rô-ma",
             "1 Corinthians": "1 Cô-rinh-tô", "2 Corinthians": "2 Cô-rinh-tô", "Galatians": "Ga-la-ti", "Ephesians": "Ê-phê-sô", "Philippians": "Phi-líp",
             "Colossians": "Cô-lô-se", "1 Thessalonians": "1 Tê-sa-lô-ni-ca", "2 Thessalonians": "2 Tê-sa-lô-ni-ca", "1 Timothy": "1 Ti-mô-thê", "2 Timothy": "2 Ti-mô-thê",
@@ -848,9 +884,6 @@
             "2 Peter": "2 Phi-e-rơ", "1 John": "1 Giăng", "2 John": "2 Giăng", "3 John": "3 Giăng", "Jude": "Giu-đe",
             "Revelation": "Khải Huyền"
         };
-
-        const fs = require('fs');
-        const path = require('path');
 
         // --- Initialization ---
         window.addEventListener('DOMContentLoaded', () => {
@@ -884,43 +917,88 @@
 
         async function loadBible() {
             try {
-                const biblePath = path.join(__dirname, 'data', 'Bible_Vietnamese.xml');
-                if (!fs.existsSync(biblePath)) {
-                    console.error('Bible file not found at:', biblePath);
-                    return;
-                }
-                const xmlData = fs.readFileSync(biblePath, 'utf8');
-                const parser = new DOMParser();
-                const xmlDoc = parser.parseFromString(xmlData, "text/xml");
-                const books = xmlDoc.getElementsByTagName("BIBLEBOOK");
-
-                bibleLibrary = [];
-                for (let i = 0; i < books.length; i++) {
-                    const bname = books[i].getAttribute("bname");
-                    const vnName = bibleBookMap[bname] || bname;
-                    const chapters = books[i].getElementsByTagName("CHAPTER");
-
-                    for (let j = 0; j < chapters.length; j++) {
-                        const cnumber = chapters[j].getAttribute("cnumber");
-                        const verses = chapters[j].getElementsByTagName("VERS");
-                        let versesText = "";
-                        for (let k = 0; k < verses.length; k++) {
-                            const vnumber = verses[k].getAttribute("vnumber");
-                            const text = verses[k].textContent;
-                            versesText += `${vnumber} ${text}\n\n`;
-                        }
-
-                        bibleLibrary.push({
-                            title: `${vnName} ${cnumber}`,
-                            lyrics: versesText.trim(),
-                            type: 'bible'
-                        });
-                    }
-                }
-                console.log(`Loaded ${bibleLibrary.length} bible chapters`);
+                bibleLibrary = await window.electronAPI.loadBibleParsed();
+                console.log(`Loaded ${bibleLibrary.length} bible chapters from cache`);
             } catch (error) {
                 console.error('Error loading Bible:', error);
+                bibleLibrary = [];
             }
+        }
+
+        // --- Bible Selector Popup ---
+        function openBibleSelector() {
+            const modal = document.getElementById('bible-selector-modal');
+            const bookSelect = document.getElementById('bible-book-select');
+            const chapterSelect = document.getElementById('bible-chapter-select');
+
+            // Populate book dropdown with unique book names
+            const books = [];
+            const seen = new Set();
+            bibleLibrary.forEach(item => {
+                const bookName = item.title.replace(/\s+\d+$/, '');
+                if (!seen.has(bookName)) {
+                    seen.add(bookName);
+                    books.push(bookName);
+                }
+            });
+
+            bookSelect.innerHTML = '<option value="">-- Chọn sách --</option>';
+            books.forEach(book => {
+                const opt = document.createElement('option');
+                opt.value = book;
+                opt.textContent = book;
+                bookSelect.appendChild(opt);
+            });
+
+            chapterSelect.innerHTML = '<option value="">--</option>';
+            modal.style.display = 'flex';
+            modal.style.alignItems = 'center';
+            modal.style.justifyContent = 'center';
+        }
+
+        function closeBibleSelector() {
+            document.getElementById('bible-selector-modal').style.display = 'none';
+        }
+
+        function onBibleBookSelect() {
+            const bookSelect = document.getElementById('bible-book-select');
+            const chapterSelect = document.getElementById('bible-chapter-select');
+            const selectedBook = bookSelect.value;
+
+            chapterSelect.innerHTML = '<option value="">--</option>';
+            if (!selectedBook) return;
+
+            const chapters = bibleLibrary.filter(item => item.title.replace(/\s+\d+$/, '') === selectedBook);
+            chapters.forEach(item => {
+                const chapterNum = item.title.match(/\d+$/)?.[0] || '';
+                const opt = document.createElement('option');
+                opt.value = item.title;
+                opt.textContent = chapterNum;
+                chapterSelect.appendChild(opt);
+            });
+
+            // Auto-select first chapter
+            if (chapters.length > 0) {
+                chapterSelect.value = chapters[0].title;
+            }
+        }
+
+        function onBibleOK() {
+            const chapterSelect = document.getElementById('bible-chapter-select');
+            const selectedTitle = chapterSelect.value;
+            if (!selectedTitle) return;
+
+            const bibleItem = bibleLibrary.find(item => item.title === selectedTitle);
+            if (!bibleItem) return;
+
+            // Add to schedule
+            addToSchedule({ ...bibleItem, id: Date.now() });
+
+            // Select the newly added item and load to preview
+            const newIndex = schedule.length - 1;
+            selectScheduleItem(newIndex);
+
+            closeBibleSelector();
         }
 
         function switchLibraryTab(tab) {
@@ -995,8 +1073,8 @@
         async function loadLibrary() {
             try {
                 console.log('Fetching songs/bible from main process...');
-                songLibrary = await ipcRenderer.invoke('load-songs');
-                savedBibleList = await ipcRenderer.invoke('load-bible');
+                songLibrary = await window.electronAPI.loadSongs();
+                savedBibleList = await window.electronAPI.loadBible();
                 console.log('Songs loaded:', songLibrary.length);
                 console.log('Saved Bible loaded:', savedBibleList.length);
                 renderLibrary();
@@ -1100,7 +1178,7 @@
             const confirmMsg = `Bạn có chắc chắn muốn xóa "${item.title}"?`;
             if (confirm(confirmMsg)) {
                 try {
-                    const result = await ipcRenderer.invoke('delete-song', { 
+                    const result = await window.electronAPI.deleteSong({ 
                         id: item.id, 
                         type: item.type === 'bible' ? 'bible' : 'song' 
                     });
@@ -1379,7 +1457,9 @@
                     const now = Date.now();
                     if (e.ctrlKey || (now - lastEnterTime < 400)) {
                         e.preventDefault();
-                        splitSlide(contentDiv, index);
+                        // Find current index dynamically
+                        const currentIndex = Array.from(container.children).indexOf(block);
+                        splitSlide(contentDiv, currentIndex);
                         lastEnterTime = 0;
                         return;
                     }
@@ -1388,7 +1468,11 @@
                 }
             };
 
-            if (index < container.children.length) {
+            // Insert block into container
+            if (focus && container.children[index]) {
+                // Splitting: insert AFTER the current block
+                container.children[index].after(block);
+            } else if (index < container.children.length) {
                 container.insertBefore(block, container.children[index]);
             } else {
                 container.appendChild(block);
@@ -1402,18 +1486,28 @@
         }
 
         function splitSlide(contentDiv, index) {
-            // Simple split: add new block after
-            addSlideToEditor("", index + 1, true);
+            const sel = window.getSelection();
+            if (!sel.rangeCount) {
+                addSlideToEditor("", index + 1, true);
+                return;
+            }
 
-            // Find the new block and focus its content
-            setTimeout(() => {
-                const container = document.getElementById('lyrics-editor-container');
-                const newBlock = container.children[index + 1];
-                if (newBlock) {
-                    const newContent = newBlock.querySelector('.lyrics-slide-content');
-                    newContent.focus();
-                }
-            }, 10);
+            const range = sel.getRangeAt(0);
+
+            // Get content after cursor
+            const afterRange = document.createRange();
+            afterRange.setStart(range.startContainer, range.startOffset);
+            afterRange.setEndAfter(contentDiv.lastChild || contentDiv);
+            const afterFragment = afterRange.extractContents();
+            const tempDiv = document.createElement('div');
+            tempDiv.appendChild(afterFragment);
+            const afterText = tempDiv.innerText.trim();
+
+            // Update current slide preview
+            updateEditorPreview(contentDiv.innerText);
+
+            // Add new slide with the extracted content
+            addSlideToEditor(afterText, index + 1, true);
         }
 
         function getLyricsFromEditor() {
@@ -1445,6 +1539,7 @@
             try {
                 const isBible = (currentEditingSong && currentEditingSong.type === 'bible');
                 const songData = { 
+                    ...(currentEditingSong || {}),
                     id: currentEditingSong ? currentEditingSong.id : null, 
                     title, 
                     lyrics,
@@ -1452,7 +1547,7 @@
                     style: { ...editorStyle }
                 };
                 console.log('Sending save request:', songData);
-                const response = await ipcRenderer.invoke('save-song', songData);
+                const response = await window.electronAPI.saveSong(songData);
                 console.log('Save response:', response.success ? 'Success' : 'Failed');
                 
                 if (response.success) {
@@ -1493,14 +1588,15 @@
                     const currentId = savedItem.id;
 
                     // 2. Nếu bài hát này đang ở Preview, nạp lại Preview
-                    if (currentId && currentScheduleIndex >= 0 && schedule[currentScheduleIndex] && 
-                        (schedule[currentScheduleIndex].id === currentId || schedule[currentScheduleIndex].scheduleId === currentEditingSong.scheduleId)) {
+                    const editingScheduleId = currentEditingSong && currentEditingSong.scheduleId;
+                    if (currentId && currentScheduleIndex >= 0 && schedule[currentScheduleIndex] &&
+                        (schedule[currentScheduleIndex].id === currentId || (editingScheduleId && schedule[currentScheduleIndex].scheduleId === editingScheduleId))) {
                         loadToPreview(schedule[currentScheduleIndex]);
                     }
 
                     // 3. Nếu bài hát này đang ở Live, nạp lại Live
-                    if (currentId && currentLiveScheduleIndex >= 0 && schedule[currentLiveScheduleIndex] && 
-                        (schedule[currentLiveScheduleIndex].id === currentId || schedule[currentLiveScheduleIndex].scheduleId === currentEditingSong.scheduleId)) {
+                    if (currentId && currentLiveScheduleIndex >= 0 && schedule[currentLiveScheduleIndex] &&
+                        (schedule[currentLiveScheduleIndex].id === currentId || (editingScheduleId && schedule[currentLiveScheduleIndex].scheduleId === editingScheduleId))) {
                         
                         // Cập nhật slides hiện tại của Live
                         const lyricsRaw = lyrics || "";
@@ -1604,29 +1700,85 @@
                 div.onclick = () => { selectScheduleItem(index); };
                 div.oncontextmenu = (e) => { e.preventDefault(); showContextMenu(e, item); };
 
-                // Drop target for media drag & drop
+                // Drag to reorder
+                div.draggable = true;
+                div.addEventListener('dragstart', (e) => {
+                    e.dataTransfer.setData('text/schedule-index', index.toString());
+                    e.dataTransfer.effectAllowed = 'move';
+                    div.style.opacity = '0.4';
+                });
+                div.addEventListener('dragend', () => {
+                    div.style.opacity = '1';
+                    container.querySelectorAll('[data-schedule-item]').forEach(el => {
+                        el.classList.remove('border-t-2', 'border-b-2', 'border-blue-500');
+                    });
+                });
+
+                // Drop target for reorder + media drag
                 div.addEventListener('dragover', (e) => {
                     e.preventDefault();
                     e.stopPropagation();
-                    e.dataTransfer.dropEffect = 'copy';
-                    div.classList.add('ring-2', 'ring-primary');
+                    if (e.dataTransfer.types.includes('text/schedule-index')) {
+                        e.dataTransfer.dropEffect = 'move';
+                        const rect = div.getBoundingClientRect();
+                        const midY = rect.top + rect.height / 2;
+                        div.classList.remove('border-t-2', 'border-b-2', 'border-blue-500', 'ring-2', 'ring-primary');
+                        if (e.clientY < midY) {
+                            div.classList.add('border-t-2', 'border-blue-500');
+                        } else {
+                            div.classList.add('border-b-2', 'border-blue-500');
+                        }
+                    } else {
+                        e.dataTransfer.dropEffect = 'copy';
+                        div.classList.add('ring-2', 'ring-primary');
+                    }
                 });
                 div.addEventListener('dragleave', () => {
-                    div.classList.remove('ring-2', 'ring-primary');
+                    div.classList.remove('ring-2', 'ring-primary', 'border-t-2', 'border-b-2', 'border-blue-500');
                 });
                 div.addEventListener('drop', (e) => {
                     e.preventDefault();
                     e.stopPropagation();
-                    div.classList.remove('ring-2', 'ring-primary');
-                    try {
-                        const mediaItem = JSON.parse(e.dataTransfer.getData('application/json'));
-                        assignBackgroundToScheduleItem(index, mediaItem);
-                    } catch (err) { console.error('Drop error:', err); }
+                    div.classList.remove('ring-2', 'ring-primary', 'border-t-2', 'border-b-2', 'border-blue-500');
+
+                    const fromIndexStr = e.dataTransfer.getData('text/schedule-index');
+                    if (fromIndexStr !== '') {
+                        // Reorder schedule
+                        const fromIndex = parseInt(fromIndexStr);
+                        const rect = div.getBoundingClientRect();
+                        const midY = rect.top + rect.height / 2;
+                        let toIndex = e.clientY < midY ? index : index + 1;
+                        if (fromIndex === toIndex || fromIndex + 1 === toIndex) return;
+                        reorderScheduleItem(fromIndex, toIndex);
+                    } else {
+                        // Media drop → assign background
+                        try {
+                            const mediaItem = JSON.parse(e.dataTransfer.getData('application/json'));
+                            assignBackgroundToScheduleItem(index, mediaItem);
+                        } catch (err) { console.error('Drop error:', err); }
+                    }
                 });
 
                 container.appendChild(div);
             });
 
+        }
+
+        function reorderScheduleItem(fromIndex, toIndex) {
+            const item = schedule.splice(fromIndex, 1)[0];
+            if (toIndex > fromIndex) toIndex--;
+            schedule.splice(toIndex, 0, item);
+
+            // Update tracked indices
+            if (currentScheduleIndex === fromIndex) currentScheduleIndex = toIndex;
+            else if (fromIndex < currentScheduleIndex && toIndex >= currentScheduleIndex) currentScheduleIndex--;
+            else if (fromIndex > currentScheduleIndex && toIndex <= currentScheduleIndex) currentScheduleIndex++;
+
+            if (currentLiveScheduleIndex === fromIndex) currentLiveScheduleIndex = toIndex;
+            else if (fromIndex < currentLiveScheduleIndex && toIndex >= currentLiveScheduleIndex) currentLiveScheduleIndex--;
+            else if (fromIndex > currentLiveScheduleIndex && toIndex <= currentLiveScheduleIndex) currentLiveScheduleIndex++;
+
+            renderSchedule();
         }
 
         function selectScheduleItem(index) {
@@ -1702,7 +1854,7 @@
             }
 
             // Cập nhật style cho preview từ bài hát (hoặc dùng mặc định)
-            currentPreviewStyle = song.style ? { ...song.style } : {
+            const defaultStyle = {
                 fontFamily: 'Times New Roman',
                 fontSize: song.type === 'bible' ? '72pt' : '120pt',
                 color: '#ffffff',
@@ -1712,6 +1864,7 @@
                 textAlign: 'center',
                 verticalAlign: 'middle'
             };
+            currentPreviewStyle = song.style ? { ...defaultStyle, ...song.style } : defaultStyle;
 
             const lyrics = song.lyrics || "";
             const isBible = song.type === 'bible';
@@ -1977,7 +2130,7 @@
         async function loadMedia() {
             try {
                 console.log('Loading media list...');
-                mediaLibrary = await ipcRenderer.invoke('load-media');
+                mediaLibrary = await window.electronAPI.loadMedia();
                 console.log('Media files:', mediaLibrary);
                 renderMedia();
             } catch (error) {
@@ -1987,7 +2140,7 @@
 
         async function importMedia() {
             try {
-                const newMedia = await ipcRenderer.invoke('import-media');
+                const newMedia = await window.electronAPI.importMedia();
                 if (newMedia) {
                     console.log('Media imported successfully');
                     loadMedia();
@@ -2003,7 +2156,13 @@
             if (!container) return;
             container.innerHTML = '';
             if (mediaLibrary.length === 0) {
-                container.innerHTML = '<p class="text-[10px] text-win-dark-gray p-2 italic col-span-10">No media files found in /media directory.</p>';
+                container.innerHTML = `
+                    <div class="col-span-10 flex flex-col items-center justify-center py-6 text-slate-400">
+                        <span class="material-symbols-outlined text-3xl mb-2">perm_media</span>
+                        <p class="text-[10px] italic">No media files</p>
+                        <p class="text-[9px] mt-1 opacity-60">File > Import Media to add</p>
+                    </div>`;
+                return;
             }
             mediaLibrary.forEach(item => {
                 const div = document.createElement('div');
@@ -2064,7 +2223,7 @@
                 const songInLib = songLibrary.find(s => s.id === scheduleItem.id);
                 if (songInLib) {
                     songInLib.lastBackground = { mediaName: mediaItem.name, mediaType: mediaItem.type };
-                    ipcRenderer.invoke('save-song', songInLib);
+                    window.electronAPI.saveSong(songInLib);
                 }
             }
 
@@ -2120,11 +2279,11 @@
         function sendToLiveWindow(data) {
             // Gửi kèm style hiện tại của live
             data.style = { ...currentLiveStyle };
-            ipcRenderer.invoke('live-send-content', data);
+            window.electronAPI.liveSendContent(data);
         }
 
         // --- Native Menu Handlers ---
-        ipcRenderer.on('menu-action', (event, action) => {
+        window.electronAPI.onMenuAction((event, action) => {
             console.log('Action triggered from menu:', action);
             switch (action) {
                 case 'new-schedule': schedule = []; renderSchedule(); break;
@@ -2146,7 +2305,7 @@
         async function saveSchedule() {
             if (schedule.length === 0) { alert('Schedule is empty!'); return; }
             try {
-                const result = await ipcRenderer.invoke('show-save-dialog', schedule);
+                const result = await window.electronAPI.showSaveDialog(schedule);
                 if (result) alert('Schedule saved successfully!');
             } catch (error) {
                 alert('Error saving schedule: ' + error.message);
@@ -2155,7 +2314,7 @@
 
         async function openSchedule() {
             try {
-                const result = await ipcRenderer.invoke('show-open-dialog');
+                const result = await window.electronAPI.showOpenDialog();
                 if (result) {
                     schedule = result.data;
                     // Recompute background URLs
@@ -2173,15 +2332,15 @@
         }
 
         // --- Live Window State ---
-        ipcRenderer.on('live-window-opened', () => { isLiveWindowOpen = true; });
-        ipcRenderer.on('live-window-closed', () => { isLiveWindowOpen = false; });
+        window.electronAPI.onLiveWindowOpened(() => { isLiveWindowOpen = true; });
+        window.electronAPI.onLiveWindowClosed(() => { isLiveWindowOpen = false; });
 
         async function toggleLiveWindow() {
             if (isLiveWindowOpen) {
-                await ipcRenderer.invoke('close-live-window');
+                await window.electronAPI.closeLiveWindow();
                 isLiveWindowOpen = false;
             } else {
-                await ipcRenderer.invoke('open-live-window');
+                await window.electronAPI.openLiveWindow();
                 isLiveWindowOpen = true;
                 // Send current live content immediately after opening
                 setTimeout(() => {
@@ -2333,6 +2492,4 @@
         }
     </script>
 </body>
-
 </html>
-```

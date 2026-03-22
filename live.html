@@ -132,7 +132,7 @@
     </div>
 
     <script>
-        const { ipcRenderer } = require('electron');
+
 
         let activeBuffer = 'a'; // which buffer is currently visible
         let currentBackgroundUrl = null; // track current background to avoid flicker
@@ -258,7 +258,7 @@
             }
         }
 
-        ipcRenderer.on('live-update-content', (event, data) => {
+        window.electronAPI.onLiveUpdateContent((event, data) => {
             console.log('[Live] Received content:', data);
             if (data.style) {
                 applyStyle(data.style);
@@ -271,12 +271,12 @@
             }
         });
 
-        ipcRenderer.on('live-update-background', (event, data) => {
+        window.electronAPI.onLiveUpdateBackground((event, data) => {
             console.log('[Live] Received background:', data);
             setBackground(data);
         });
 
-        ipcRenderer.on('live-clear', () => {
+        window.electronAPI.onLiveClear(() => {
             console.log('[Live] Clear');
             clearAll();
         });

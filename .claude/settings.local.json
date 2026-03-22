@@ -1,0 +1,22 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm ls:*)",
+      "Bash(npm install:*)",
+      "Bash(npm run:*)",
+      "Bash(ls -lh \"d:/Desktop/projectForChurch/presentationWorship/dist/\"*.exe)",
+      "Bash(xmllint --noout /d/Desktop/projectForChurch/presentationWorship/data/Bible_Vietnamese.xml)",
+      "Bash(cat:*)",
+      "Read(//d/Desktop/projectForChurch/presentationWorship/$APPDATA/easyworship-app/**)",
+      "Bash(grep -i '\\\\.wmv$')",
+      "Read(//d/Desktop/projectForChurch/presentationWorship/$APPDATA/easyworship-app/media/**)",
+      "Bash(ie4uinit.exe -show)",
+      "Bash(taskkill //F //IM explorer.exe)",
+      "Bash(start explorer.exe)"
+    ],
+    "additionalDirectories": [
+      "d:\\Desktop\\projectForChurch\\presentationWorship\\$APPDATA\\easyworship-app",
+      "D:\\Desktop\\projectForChurch\\presentationWorship\\$APPDATA\\easyworship-app\\media"
+    ]
+  }
+}

@@ -2,10 +2,11 @@ const { app, BrowserWindow, Menu, ipcMain, dialog, protocol, net, screen } = req
 const path = require('path');
 const fs = require('fs');
 const { pathToFileURL } = require('url');
+const { validateItem, migrateItem } = require('./src/schema.js');
 
 // 1. Register custom protocol
 protocol.registerSchemesAsPrivileged([
-  { scheme: 'app-media', privileges: { standard: true, secure: true, supportFetchAPI: true, stream: true } }
+  { scheme: 'app-media', privileges: { standard: true, secure: true, supportFetchAPI: true, stream: true, bypassCSP: true, corsEnabled: true } }
 ]);
 
 // 2. Global State
@@ -16,7 +17,45 @@ let mainWindow = null;
 // 3. Helper Functions
 function isVideo(fileName) {
   const ext = fileName.toLowerCase();
-  return ext.endsWith('.mp4') || ext.endsWith('.mov') || ext.endsWith('.wmv');
+  return ext.endsWith('.mp4') || ext.endsWith('.mov');
+}
+
+function isSupportedMedia(fileName) {
+  const ext = fileName.toLowerCase();
+  return ext.endsWith('.mp4') || ext.endsWith('.mov') || ext.endsWith('.jpg') || ext.endsWith('.jpeg') || ext.endsWith('.png') || ext.endsWith('.webp');
+}
+
+function safeWriteSync(filePath, data) {
+  const tmp = filePath + '.tmp';
+  try {
+    fs.writeFileSync(tmp, JSON.stringify(data, null, 2), 'utf8');
+    fs.renameSync(tmp, filePath);
+  } catch (err) {
+    console.error(`Failed to safeWriteSync ${filePath}:`, err);
+    throw err;
+  }
+}
+
+function backupBeforeWriteSync(filePath) {
+  if (!fs.existsSync(filePath)) return;
+  try {
+    const ext = path.extname(filePath);
+    const base = filePath.slice(0, -ext.length);
+    const backup3 = `${base}.backup.3${ext}`;
+    const backup2 = `${base}.backup.2${ext}`;
+    const backup1 = `${base}.backup.1${ext}`;
+    
+    if (fs.existsSync(backup2)) fs.renameSync(backup2, backup3);
+    if (fs.existsSync(backup1)) fs.renameSync(backup1, backup2);
+    fs.copyFileSync(filePath, backup1);
+  } catch (err) {
+    console.error(`Failed to backup ${filePath}:`, err);
+  }
+}
+
+function saveAndBackupSync(filePath, data) {
+  backupBeforeWriteSync(filePath);
+  safeWriteSync(filePath, data);
 }
 
 function initializeData() {
@@ -24,16 +63,16 @@ function initializeData() {
   songsFilePath = path.join(userDataPath, 'songs.json');
   bibleFilePath = path.join(userDataPath, 'bible.json');
   settingsFilePath = path.join(userDataPath, 'settings.json');
-  mediaFolderPath = path.join(__dirname, 'media');
+  mediaFolderPath = path.join(userDataPath, 'media');
 
   if (!fs.existsSync(mediaFolderPath)) fs.mkdirSync(mediaFolderPath, { recursive: true });
   if (!fs.existsSync(songsFilePath)) {
-    fs.writeFileSync(songsFilePath, JSON.stringify([
+    safeWriteSync(songsFilePath, [
       { id: 1, title: '10,000 Reasons', lyrics: 'Verse 1\nBless the Lord, O my soul\nO my soul, worship His holy name' },
       { id: 2, title: 'Amazing Grace', lyrics: 'Verse 1\nAmazing grace! How sweet the sound\nThat saved a wretch like me!' }
-    ], null, 2));
+    ]);
   }
-  if (!fs.existsSync(bibleFilePath)) fs.writeFileSync(bibleFilePath, JSON.stringify([], null, 2));
+  if (!fs.existsSync(bibleFilePath)) safeWriteSync(bibleFilePath, []);
 }
 
 function createLiveWindow() {
@@ -55,7 +94,12 @@ function createLiveWindow() {
     frame: !external,
     alwaysOnTop: true,
     title: 'Screen Live',
-    webPreferences: { nodeIntegration: true, contextIsolation: false, webSecurity: false }
+    webPreferences: { 
+      nodeIntegration: false, 
+      contextIsolation: true, 
+      webSecurity: false,
+      preload: path.join(__dirname, 'preload.js')
+    }
   });
 
   liveWindow.loadFile('live.html');
@@ -69,7 +113,12 @@ function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1280,
     height: 800,
-    webPreferences: { nodeIntegration: true, contextIsolation: false, webSecurity: false },
+    webPreferences: { 
+      nodeIntegration: false, 
+      contextIsolation: true, 
+      webSecurity: false,
+      preload: path.join(__dirname, 'preload.js')
+    },
     title: "BlessingChurch"
   });
   mainWindow.loadFile('index.html');
@@ -117,7 +166,7 @@ app.whenReady().then(() => {
       const match = request.url.match(/^app-media:\/\/+(.+)$/);
       if (!match) return new Response('Invalid URL', { status: 400 });
       const fileName = decodeURIComponent(match[1]).split(/[?#]/)[0].replace(/\/+$/, '');
-      const fullPath = path.join(path.resolve(__dirname, 'media'), fileName);
+      const fullPath = path.join(mediaFolderPath, fileName);
       if (!fs.existsSync(fullPath) || !fs.statSync(fullPath).isFile()) return new Response('Not Found', { status: 404 });
       return net.fetch(pathToFileURL(fullPath).toString());
     } catch (e) { return new Response('Error', { status: 500 }); }
@@ -125,25 +174,130 @@ app.whenReady().then(() => {
 
   // --- IPC Handlers ---
   ipcMain.handle('load-songs', () => {
-    try { return JSON.parse(fs.readFileSync(songsFilePath, 'utf8') || '[]'); } catch (e) { return []; }
+    try {
+      const items = JSON.parse(fs.readFileSync(songsFilePath, 'utf8') || '[]');
+      return items.map(migrateItem);
+    } catch (e) { return []; }
   });
 
   ipcMain.handle('load-bible', () => {
-    try { return JSON.parse(fs.readFileSync(bibleFilePath, 'utf8') || '[]'); } catch (e) { return []; }
+    try {
+      const items = JSON.parse(fs.readFileSync(bibleFilePath, 'utf8') || '[]');
+      return items.map(migrateItem);
+    } catch (e) { return []; }
   });
 
-  ipcMain.handle('save-song', (event, song) => {
+  ipcMain.handle('load-bible-xml', () => {
     try {
+      const p = path.join(__dirname, 'data', 'Bible_Vietnamese.xml');
+      if (fs.existsSync(p)) {
+        return fs.readFileSync(p, 'utf8');
+      }
+      return null;
+    } catch (e) {
+      return null;
+    }
+  });
+
+  // Bible book name mapping (English XML → Vietnamese)
+  const bibleBookMap = {
+    "Genesis": "Sáng Thế Ký", "Exodus": "Xuất Ê-díp-tô Ký", "Leviticus": "Lê-vi Ký", "Numbers": "Dân Số Ký", "Deuteronomy": "Phục Truyền Luật Lệ Ký",
+    "Joshua": "Giô-suê", "Judges": "Các Quan Xét", "Ruth": "Ru-tơ", "1 Samuel": "1 Sa-mu-ên", "2 Samuel": "2 Sa-mu-ên",
+    "1 Kings": "1 Các Vua", "2 Kings": "2 Các Vua", "1 Chronicles": "1 Sử Ký", "2 Chronicles": "2 Sử Ký", "Ezra": "Ê-xơ-ra",
+    "Nehemiah": "Nê-hê-mi", "Esther": "Ê-xơ-tê", "Job": "Gióp", "Psalm": "Thi Thiên", "Psalms": "Thi Thiên", "Proverbs": "Châm Ngôn",
+    "Ecclesiastes": "Truyền Đạo", "Song of Solomon": "Nhã Ca", "Isaiah": "Ê-sai", "Jeremiah": "Giê-rê-mi", "Lamentations": "Ca Thương",
+    "Ezekiel": "Ê-xê-chi-ên", "Daniel": "Đa-ni-ên", "Hosea": "Ô-sê", "Joel": "Giô-ên", "Amos": "A-mốt",
+    "Obadiah": "Áp-đia", "Jonah": "Giô-na", "Micah": "Mi-chê", "Nahum": "Na-hum", "Habakkuk": "Ha-ba-cúc",
+    "Zephaniah": "Sô-phô-ni", "Haggai": "A-ghê", "Zechariah": "Xa-cha-ri", "Malachi": "Ma-la-chi", "Matthew": "Ma-thi-ơ",
+    "Mark": "Mác", "Luke": "Lu-ca", "John": "Giăng", "Acts": "Công Vụ Các Sứ Đồ", "Romans": "Rô-ma",
+    "1 Corinthians": "1 Cô-rinh-tô", "2 Corinthians": "2 Cô-rinh-tô", "Galatians": "Ga-la-ti", "Ephesians": "Ê-phê-sô", "Philippians": "Phi-líp",
+    "Colossians": "Cô-lô-se", "1 Thessalonians": "1 Tê-sa-lô-ni-ca", "2 Thessalonians": "2 Tê-sa-lô-ni-ca", "1 Timothy": "1 Ti-mô-thê", "2 Timothy": "2 Ti-mô-thê",
+    "Titus": "Tít", "Philemon": "Phi-lê-môn", "Hebrews": "Hê-bơ-rơ", "James": "Gia-cơ", "1 Peter": "1 Phi-e-rơ",
+    "2 Peter": "2 Phi-e-rơ", "1 John": "1 Giăng", "2 John": "2 Giăng", "3 John": "3 Giăng", "Jude": "Giu-đe",
+    "Revelation": "Khải Huyền"
+  };
+
+  ipcMain.handle('load-bible-parsed', () => {
+    const cachePath = path.join(userDataPath, 'bible-cache.json');
+
+    // Try loading from cache first
+    try {
+      if (fs.existsSync(cachePath)) {
+        return JSON.parse(fs.readFileSync(cachePath, 'utf8'));
+      }
+    } catch (e) {
+      console.error('Bible cache corrupted, rebuilding...', e);
+    }
+
+    // Parse XML and build cache
+    try {
+      const xmlPath = path.join(__dirname, 'data', 'Bible_Vietnamese.xml');
+      if (!fs.existsSync(xmlPath)) return [];
+
+      let xmlData = fs.readFileSync(xmlPath, 'utf8');
+      // Fix legacy encoding: Ð (U+00D0) → Đ (U+0110)
+      xmlData = xmlData.replace(/\u00D0/g, '\u0110');
+
+      const bibleLibrary = [];
+      const bookRegex = /<BIBLEBOOK[^>]*bname="([^"]*)"[^>]*>([\s\S]*?)<\/BIBLEBOOK>/g;
+      const chapterRegex = /<CHAPTER[^>]*cnumber="([^"]*)"[^>]*>([\s\S]*?)<\/CHAPTER>/g;
+      const verseRegex = /<VERS[^>]*vnumber="([^"]*)"[^>]*>([\s\S]*?)<\/VERS>/g;
+
+      let bookMatch;
+      while ((bookMatch = bookRegex.exec(xmlData)) !== null) {
+        const bname = bookMatch[1];
+        const vnName = bibleBookMap[bname] || bname;
+        const bookContent = bookMatch[2];
+
+        chapterRegex.lastIndex = 0;
+        let chapterMatch;
+        while ((chapterMatch = chapterRegex.exec(bookContent)) !== null) {
+          const cnumber = chapterMatch[1];
+          const chapterContent = chapterMatch[2];
+          let versesText = '';
+
+          verseRegex.lastIndex = 0;
+          let verseMatch;
+          while ((verseMatch = verseRegex.exec(chapterContent)) !== null) {
+            const vnumber = verseMatch[1];
+            const text = verseMatch[2].replace(/<[^>]*>/g, '').trim();
+            versesText += `${vnumber} ${text}\n\n`;
+          }
+
+          bibleLibrary.push({
+            title: `${vnName} ${cnumber}`,
+            lyrics: versesText.trim(),
+            type: 'bible'
+          });
+        }
+      }
+
+      // Save cache
+      safeWriteSync(cachePath, bibleLibrary);
+      console.log(`Bible parsed and cached: ${bibleLibrary.length} chapters`);
+      return bibleLibrary;
+    } catch (e) {
+      console.error('Failed to parse Bible XML:', e);
+      return [];
+    }
+  });
+
+  ipcMain.handle('save-song', (event, rawSong) => {
+    try {
+      let song = { ...rawSong };
+      if (!song.id) song.id = Date.now();
+      song = migrateItem(song);
+
+      const validation = validateItem(song);
+      if (!validation.valid) throw new Error(`Invalid data: ${validation.errors.join(', ')}`);
+
       const filePath = song.type === 'bible' ? bibleFilePath : songsFilePath;
       let items = fs.existsSync(filePath) ? JSON.parse(fs.readFileSync(filePath, 'utf8') || '[]') : [];
-      if (song.id) {
-        const idx = items.findIndex(s => s.id === song.id);
-        if (idx !== -1) items[idx] = song; else items.push(song);
-      } else {
-        song.id = Date.now();
-        items.push(song);
-      }
-      fs.writeFileSync(filePath, JSON.stringify(items, null, 2), 'utf8');
+      
+      const idx = items.findIndex(s => s.id === song.id);
+      if (idx !== -1) items[idx] = song; else items.push(song);
+      
+      saveAndBackupSync(filePath, items);
       return { success: true, item: song, list: items };
     } catch (e) { throw e; }
   });
@@ -153,7 +307,7 @@ app.whenReady().then(() => {
       const filePath = data.type === 'bible' ? bibleFilePath : songsFilePath;
       let items = JSON.parse(fs.readFileSync(filePath, 'utf8') || '[]');
       items = items.filter(i => i.id !== data.id);
-      fs.writeFileSync(filePath, JSON.stringify(items, null, 2), 'utf8');
+      saveAndBackupSync(filePath, items);
       return items;
     } catch (e) { throw e; }
   });
@@ -166,7 +320,7 @@ app.whenReady().then(() => {
 
   ipcMain.handle('show-save-dialog', async (e, d) => {
     const r = await dialog.showSaveDialog({ filters: [{ name: 'Worship Schedule', extensions: ['bcsch'] }] });
-    if (!r.canceled && r.filePath) { fs.writeFileSync(r.filePath, JSON.stringify(d, null, 2)); return r.filePath; }
+    if (!r.canceled && r.filePath) { safeWriteSync(r.filePath, d); return r.filePath; }
     return null;
   });
 
@@ -186,7 +340,7 @@ app.whenReady().then(() => {
   ipcMain.handle('load-media', () => {
     try {
       return fs.readdirSync(mediaFolderPath)
-        .filter(f => fs.statSync(path.join(mediaFolderPath, f)).isFile())
+        .filter(f => fs.statSync(path.join(mediaFolderPath, f)).isFile() && isSupportedMedia(f))
         .map(f => ({ name: f, path: path.join(mediaFolderPath, f), type: isVideo(f) ? 'video' : 'image' }));
     } catch (e) { return []; }
   });
