@@ -34,7 +34,7 @@
             overflow: hidden;
             width: 100vw;
             height: 100vh;
-            cursor: none;
+            -webkit-app-region: drag;
         }
 
         .layer {
@@ -43,6 +43,7 @@
             width: 100%;
             height: 100%;
             transition: opacity 0.3s ease;
+            pointer-events: none;
         }
 
         .bg-layer img, .bg-layer video {
@@ -57,6 +58,7 @@
             position: absolute;
             inset: 0;
             overflow: hidden;
+            pointer-events: none;
         }
 
         .virtual-canvas {
@@ -66,6 +68,8 @@
             position: absolute;
             top: 50%;
             left: 50%;
+            -webkit-app-region: no-drag;
+            pointer-events: auto;
         }
 
         .text-layer-box {
@@ -108,6 +112,27 @@
         }
 
         .hidden { display: none !important; }
+        .next-verse-box {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 80%;
+            text-align: center;
+            pointer-events: none;
+            z-index: 5;
+        }
+        .next-verse-text {
+            color: #fff;
+            font-size: 18px;
+            font-weight: bold;
+            -webkit-text-stroke: 1px black;
+            paint-order: stroke fill;
+            opacity: 0.7;
+            background: rgba(0,0,0,0.2);
+            padding: 2px 10px;
+            border-radius: 4px;
+        }
     </style>
     <title>Screen Live</title>
 </head>
@@ -115,11 +140,11 @@
     <!-- Background layers (double-buffer for crossfade) -->
     <div class="buffer-a layer" id="buffer-a">
         <img class="bg-img hidden" id="bg-img-a" />
-        <video class="bg-video hidden" id="bg-video-a" autoplay loop muted></video>
+        <video class="bg-video hidden" id="bg-video-a" autoplay loop muted playsinline></video>
     </div>
     <div class="buffer-b layer" id="buffer-b" style="opacity: 0;">
         <img class="bg-img hidden" id="bg-img-b" />
-        <video class="bg-video hidden" id="bg-video-b" autoplay loop muted></video>
+        <video class="bg-video hidden" id="bg-video-b" autoplay loop muted playsinline></video>
     </div>
 
     <!-- Text overlay with virtual canvas -->
@@ -127,6 +152,9 @@
         <div class="virtual-canvas" id="virtual-canvas">
             <div id="text-box" class="text-layer-box" style="left:48px;top:50%;transform:translateY(-50%);width:864px;max-height:454px;overflow:hidden;">
                 <div class="lyrics-text" id="lyrics-text"></div>
+            </div>
+            <div class="next-verse-box" id="next-verse-box">
+                <span class="next-verse-text" id="next-verse-text"></span>
             </div>
         </div>
     </div>
@@ -141,6 +169,20 @@
             textDecoration: 'none',
             textAlign: 'center',
             verticalAlign: 'middle',
+            textStrokeWidth: 5,
+            textStrokeColor: '#000000',
+            textMargin: { top: 0, right: 0, bottom: 0, left: 0 },
+            textPadding: { top: 0, right: 0, bottom: 0, left: 0 },
+            boxStyle: {
+                enabled: false,
+                backgroundColor: '#000000',
+                backgroundOpacity: 0.35,
+                borderColor: '#ffffff',
+                borderWidth: 0,
+                borderStyle: 'solid',
+                borderRadius: 0
+            },
+            autoFitText: true,
             textBox: { left: 48, width: 864, top: null }
         };
         const VIRTUAL_WIDTH = 960;
@@ -148,6 +190,17 @@
 
         let activeBuffer = 'a'; // which buffer is currently visible
         let currentBackgroundUrl = null; // track current background to avoid flicker
+        let currentStyle = normalizeStyle(DEFAULT_STYLE);
+
+        function normalizeSpacingBox(source, fallback) {
+            const input = source && typeof source === 'object' ? source : {};
+            return {
+                top: Number.isFinite(Number(input.top)) ? Number(input.top) : fallback.top,
+                right: Number.isFinite(Number(input.right)) ? Number(input.right) : fallback.right,
+                bottom: Number.isFinite(Number(input.bottom)) ? Number(input.bottom) : fallback.bottom,
+                left: Number.isFinite(Number(input.left)) ? Number(input.left) : fallback.left
+            };
+        }
 
         function normalizeStyle(style = {}) {
             const normalized = {
@@ -164,14 +217,114 @@
                 ...DEFAULT_STYLE.textBox,
                 ...((style && style.textBox) || {})
             };
+            normalized.textMargin = normalizeSpacingBox(style && style.textMargin, DEFAULT_STYLE.textMargin);
+            normalized.textPadding = normalizeSpacingBox(style && style.textPadding, DEFAULT_STYLE.textPadding);
+            normalized.boxStyle = {
+                ...DEFAULT_STYLE.boxStyle,
+                ...((style && style.boxStyle) || {})
+            };
 
             if (!normalized.color) normalized.color = DEFAULT_STYLE.color;
             if (!normalized.fontFamily) normalized.fontFamily = DEFAULT_STYLE.fontFamily;
             if (!normalized.fontSize) normalized.fontSize = DEFAULT_STYLE.fontSize;
             if (!normalized.textAlign) normalized.textAlign = DEFAULT_STYLE.textAlign;
             if (!normalized.verticalAlign) normalized.verticalAlign = DEFAULT_STYLE.verticalAlign;
+            if (!Number.isFinite(Number(normalized.textStrokeWidth))) normalized.textStrokeWidth = DEFAULT_STYLE.textStrokeWidth;
+            if (!normalized.textStrokeColor) normalized.textStrokeColor = DEFAULT_STYLE.textStrokeColor;
+            normalized.boxStyle.enabled = normalized.boxStyle.enabled === true;
+            normalized.autoFitText = normalized.autoFitText !== false;
 
             return normalized;
+        }
+
+        function hexToRgba(hex, alpha = 1) {
+            const normalized = String(hex || '').replace('#', '');
+            if (!/^[0-9a-fA-F]{6}$/.test(normalized)) return `rgba(0,0,0,${alpha})`;
+            const r = parseInt(normalized.slice(0, 2), 16);
+            const g = parseInt(normalized.slice(2, 4), 16);
+            const b = parseInt(normalized.slice(4, 6), 16);
+            return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+        }
+
+        function ensureTextBoxStyleLayer(textBox) {
+            let layer = textBox.querySelector(':scope > .text-box-style-layer');
+            if (!layer) {
+                layer = document.createElement('div');
+                layer.className = 'text-box-style-layer';
+                layer.style.position = 'absolute';
+                layer.style.inset = '0';
+                layer.style.pointerEvents = 'none';
+                layer.style.zIndex = '0';
+                textBox.insertBefore(layer, textBox.firstChild || null);
+            }
+            return layer;
+        }
+
+        function applyTextBoxStyleLayer(layer, style = currentStyle) {
+            if (!layer) return;
+            const boxStyle = normalizeStyle(style).boxStyle || {};
+            if (!boxStyle.enabled) {
+                layer.style.display = 'none';
+                return;
+            }
+            layer.style.display = 'block';
+            layer.style.backgroundColor = hexToRgba(boxStyle.backgroundColor || '#000000', Number(boxStyle.backgroundOpacity ?? 0.35));
+            layer.style.borderColor = boxStyle.borderColor || '#ffffff';
+            layer.style.borderWidth = `${Math.max(0, Number(boxStyle.borderWidth || 0))}px`;
+            layer.style.borderStyle = boxStyle.borderStyle || 'solid';
+            layer.style.borderRadius = `${Math.max(0, Number(boxStyle.borderRadius || 0))}px`;
+            layer.style.boxSizing = 'border-box';
+        }
+
+        function parsePixelValue(value, fallback = 0) {
+            const numeric = Number.parseFloat(value);
+            return Number.isFinite(numeric) ? numeric : fallback;
+        }
+
+        function measureOverflow(el, textBox) {
+            if (!el || !textBox) return false;
+            if (textBox.clientWidth <= 0 || textBox.clientHeight <= 0) return false;
+            const widthOverflow = Math.ceil(el.scrollWidth) > Math.ceil(textBox.clientWidth);
+            const heightOverflow = Math.ceil(el.scrollHeight) > Math.ceil(textBox.clientHeight);
+            return widthOverflow || heightOverflow;
+        }
+
+        function applyStrokeForFontSize(el, style, fontSize, baseFontSize) {
+            const baseStrokeWidth = Math.max(0, Number(style.textStrokeWidth || 0));
+            const ratio = baseFontSize > 0 ? fontSize / baseFontSize : 1;
+            const strokeWidth = Math.max(0, Math.round(baseStrokeWidth * ratio));
+            el.style.webkitTextStroke = `${strokeWidth}px ${style.textStrokeColor}`;
+        }
+
+        function fitTextToBox(el, textBox, style = currentStyle) {
+            if (!el || !textBox) return;
+            const normalizedStyle = normalizeStyle(style || currentStyle);
+            const baseFontSize = Math.max(8, Math.round(parsePixelValue(normalizedStyle.fontSize, 80)));
+            const minFontSize = Math.max(8, Math.min(baseFontSize, 10));
+
+            el.style.fontSize = `${baseFontSize}px`;
+            applyStrokeForFontSize(el, normalizedStyle, baseFontSize, baseFontSize);
+
+            if (normalizedStyle.autoFitText === false || !el.textContent || !el.textContent.trim()) {
+                return;
+            }
+
+            if (!measureOverflow(el, textBox)) {
+                return;
+            }
+
+            let fittedSize = baseFontSize;
+            for (let nextSize = baseFontSize - 1; nextSize >= minFontSize; nextSize -= 1) {
+                el.style.fontSize = `${nextSize}px`;
+                applyStrokeForFontSize(el, normalizedStyle, nextSize, baseFontSize);
+                fittedSize = nextSize;
+                if (!measureOverflow(el, textBox)) {
+                    return;
+                }
+            }
+
+            el.style.fontSize = `${fittedSize}px`;
+            applyStrokeForFontSize(el, normalizedStyle, fittedSize, baseFontSize);
         }
 
         function normalizeBackground(bg) {
@@ -261,6 +414,7 @@
         function setText(text) {
             const el = document.getElementById('lyrics-text');
             el.textContent = text || '';
+            fitTextToBox(el, document.getElementById('text-box'), currentStyle);
         }
 
         function clearAll() {
@@ -277,8 +431,10 @@
         // --- IPC Listeners ---
         function applyStyle(style) {
             const normalizedStyle = normalizeStyle(style);
+            currentStyle = normalizedStyle;
             const el = document.getElementById('lyrics-text');
             const textBox = document.getElementById('text-box');
+            const boxLayer = ensureTextBoxStyleLayer(textBox);
 
             el.style.fontFamily = normalizedStyle.fontFamily;
             el.style.fontSize = normalizedStyle.fontSize;
@@ -289,10 +445,16 @@
             el.style.textAlign = normalizedStyle.textAlign;
 
             el.style.textShadow = "none";
-            el.style.webkitTextStroke = "12px black";
+            el.style.webkitTextStroke = `${normalizedStyle.textStrokeWidth}px ${normalizedStyle.textStrokeColor}`;
             el.style.paintOrder = "stroke fill";
             el.style.width = "100%";
             el.style.lineHeight = "1.4";
+            el.style.position = 'relative';
+            el.style.zIndex = '1';
+            el.style.margin = `${normalizedStyle.textMargin.top}px ${normalizedStyle.textMargin.right}px ${normalizedStyle.textMargin.bottom}px ${normalizedStyle.textMargin.left}px`;
+            el.style.padding = `${normalizedStyle.textPadding.top}px ${normalizedStyle.textPadding.right}px ${normalizedStyle.textPadding.bottom}px ${normalizedStyle.textPadding.left}px`;
+            el.style.boxSizing = 'border-box';
+            applyTextBoxStyleLayer(boxLayer, normalizedStyle);
 
             if (textBox) {
                 const tb = normalizedStyle.textBox;
@@ -322,6 +484,8 @@
                     }
                 }
             }
+
+            fitTextToBox(el, textBox, normalizedStyle);
         }
 
         window.electronAPI.onLiveUpdateContent((event, data) => {
@@ -331,6 +495,12 @@
             }
             if (data && data.text !== null && data.text !== undefined) {
                 setText(data.text);
+            }
+            if (data && data.nextVerse !== undefined) {
+                const nextVerseEl = document.getElementById('next-verse-text');
+                const nextVerseBox = document.getElementById('next-verse-box');
+                if (nextVerseEl) nextVerseEl.innerText = data.nextVerse || '';
+                if (nextVerseBox) nextVerseBox.style.display = data.nextVerse ? 'block' : 'none';
             }
             if (data && 'background' in data) {
                 if (data.background) {
@@ -351,6 +521,31 @@
             console.log('[Live] Clear');
             clearAll();
         });
+
+        async function injectCustomFonts() {
+            try {
+                const fonts = await window.electronAPI.loadCustomFonts();
+                let styleEl = document.getElementById('live-custom-font-face-style');
+                if (!styleEl) {
+                    styleEl = document.createElement('style');
+                    styleEl.id = 'live-custom-font-face-style';
+                    document.head.appendChild(styleEl);
+                }
+                const escapeCssString = (value = '') => String(value).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+                styleEl.textContent = (Array.isArray(fonts) ? fonts : []).map(font => {
+                    if (!font.displayName || !font.url) return '';
+                    return `@font-face { font-family: '${escapeCssString(font.displayName)}'; src: url('${font.url}') format('${font.format || 'truetype'}'); font-display: swap; }`;
+                }).join('\n');
+            } catch (e) {
+                console.error('[Live] Failed to inject custom fonts:', e);
+            }
+        }
+
+        window.electronAPI.onLiveRefreshCustomFonts(() => {
+            injectCustomFonts();
+        });
+
+        injectCustomFonts();
 
         console.log('[Live] Screen Live window ready');
     </script>

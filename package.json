@@ -1,15 +1,19 @@
 {
   "name": "easyworship-app",
-  "version": "1.0.2",
+  "version": "1.1.6",
   "description": "Presentation For Church - Worship Presentation App",
   "main": "main.js",
   "scripts": {
     "start": "electron .",
-    "build": "electron-builder --win"
+    "build": "npm run build:all",
+    "build:win": "electron-builder --win",
+    "build:mac": "electron-builder --mac",
+    "build:all": "electron-builder --win --mac"
   },
   "build": {
     "appId": "com.church.presentation",
     "productName": "Presentation For Church",
+    "artifactName": "Presentation.For.Church.Setup.${version}.${ext}",
     "directories": {
       "output": "dist"
     },
@@ -20,14 +24,21 @@
       "live.html",
       "edit-song.html",
       "src/**/*",
-      "data/Bible_Vietnamese.xml",
+      "data/**/*.xml",
       "data/songs.json",
       "fonts/**/*",
       "package.json"
     ],
     "win": {
-      "target": "nsis",
+      "target": [
+        "nsis",
+        "portable"
+      ],
       "icon": "icon.ico"
+    },
+    "mac": {
+      "target": "dmg",
+      "category": "public.app-category.utilities"
     },
     "nsis": {
       "oneClick": false,

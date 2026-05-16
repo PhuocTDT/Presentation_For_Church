@@ -10,6 +10,7 @@
 6. Nếu thay đổi IPC, phải sửa cả `main.js` và `preload.js`.
 7. Nếu thay đổi render/live UI, phải kiểm tra cả operator window và live window.
 8. Nếu thay đổi hành vi, phải cập nhật tài liệu tương ứng.
+9. Sau mỗi hành động chỉnh sửa, phải ghi changelog ngắn gọn nhưng đầy đủ vào `changelog.md`.
 
 ## Chuẩn an toàn
 

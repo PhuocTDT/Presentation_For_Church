@@ -36,6 +36,7 @@
 - `bible.json`
 - `settings.json`
 - `media/`
+- `bible-versions/` cho XML Kinh Thánh do người dùng import
 - `bible-cache-<xmlName>.json`
 - `.backup.1/.backup.2/.backup.3` cho dữ liệu đã backup
 
