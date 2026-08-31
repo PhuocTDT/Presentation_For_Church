@@ -2,6 +2,51 @@
 
 Tất cả các thay đổi và cập nhật quan trọng của dự án được ghi lại tại đây.
 
+## [Unreleased] - Kênh Band LAN (P1 + P2 + P2.5)
+
+### P2.5 UI refinements (2026-08-31)
+- **Firewall**: nút "Mở cổng Firewall" giờ tạo rule bằng `netsh` + đọc file kết quả để xác nhận thật (bản cũ báo thành công giả). QR mặc định dùng **địa chỉ IP** (Android Chrome không phân giải `.local`); `worship.local` chỉ là dòng "cố định" + nút đổi.
+- **Sidebar**: là dock trái thật (đẩy Schedule/Library sang phải, không đè); **kéo cạnh phải để đổi độ rộng** (nhớ `localStorage`); thu gọn = **tab xanh nhỏ nhô ra** (không còn dải phẳng). Bỏ transition (đơ trong môi trường GPU yếu). Sửa double-tin operator.
+- **Sidebar gọn**: phần kết nối (QR + PIN + IP + Firewall...) **thu vào sau nút "Kết nối"**, mặc định chỉ hiện 1 dòng `ip:port · PIN · N người`. Bỏ mọi icon/emoji (tab, pill, feed).
+- **Bỏ bảng cảnh báo riêng ở đầu**. Cảnh báo band giờ **là tin nhắn trong feed**: tin đó **nhấp nháy** cho tới khi operator **bấm vào tin = "đã tiếp nhận"** (tự báo người gửi). Không nút, không dedup/đếm, không bước "resolve".
+- **Mobile client**: **theme sáng**, **bỏ toàn bộ icon** (nút text-only, bỏ trình chọn emoji), thu gọn khoảng cách. **Bỏ khu "Trao đổi"** (feed) — chỉ còn **toast 2 giây** để không che màn hình. Nút **"Tạo nút" chuyển lên đầu** danh sách.
+- `operatorReplies` mặc định bỏ emoji; `store.js` tự lọc emoji khi load.
+
+### P2.5 fixes (2026-08-31)
+- **Sidebar là dock thật**: khi mở, body được chừa `padding-left` = bề rộng sidebar (336px) → **không còn đè lên cột Schedule / Library**. Đóng lại còn 22px gutter cho tab.
+- **QR mặc định dùng địa chỉ IP** (`http://<ip>:<port>`) — mọi điện thoại mở được ngay. `worship.local` chuyển thành dòng "🔖 lưu lại" + nút **QR: dùng worship.local** để đổi (cho iPhone / Android mới).
+- **Nút "🛡️ Mở cổng Firewall"** trong sidebar — thêm inbound-allow rule cho app qua UAC, để điện thoại LAN vào được (nguyên nhân hay gặp: Windows Firewall chặn cổng 7071 + mDNS 5353).
+- mDNS: join/gửi multicast trên đúng card LAN (`addMembership` + `setMulticastInterface` theo IP LAN).
+- Sửa **double tin**: tin operator gửi đi bị hiện 2 lần trong feed (bản lạc quan + bản echo qua SSE) → bỏ bản echo.
+
+### P2.5 — Auto-start + QR ổn định (2026-08-31)
+- **Comm server tự khởi chạy ngầm khi mở app** (không cần bấm "Bắt đầu"). Kết quả báo về sidebar: chạy OK → dòng `Kênh đã sẵn sàng · <URL>` + chấm xanh; lỗi → **hộp lỗi đỏ chi tiết** (`code` / `message` / `port` / gợi ý xử lý) tự bung sidebar + nút **Thử lại**. Cổng cố định (từ `band-comm.json`) — bận thì báo lỗi, không nhảy cổng khác.
+- **mDNS `worship.local`** — `src/band-comm/mdns.js` (tự viết, 0 dependency): trả lời truy vấn A cho `<hostname>.local` với IP LAN hiện tại. IP laptop đổi (DHCP) thì QR / bookmark vẫn dùng được.
+- **Mã QR trong sidebar** — encoder `qrcode-generator` (MIT) vendor vào `src/band-comm/vendor/`, **không** thêm vào `package.json`. QR mã hoá `http://worship.local:<port>`; dưới QR hiện thêm IP thật `192.168.x.x:<port>` để gõ tay khi máy không resolve `.local`.
+- `band-comm.json` thêm `room.hostname` (mặc định `worship`) và `room.uploaderPin` (cho P4).
+
+### P2 — Chuyển kênh operator thành sidebar
+- Kênh operator **không còn là cửa sổ Electron riêng** — giờ là **sidebar trắng trong `index.html`**, mở bằng **menu Channel** (kế bên View, `Ctrl+Shift+B`) hoặc tab "💬 Kênh Band" ở mép trái. `bandchat.html` đã xoá; `settings.json → bandChatWindowBounds` không còn dùng.
+
+### P1 (Added)
+- **Kênh liên lạc trong mạng cho band & người trình chiếu** (`band-comm-plan.md`):
+    - **Comm server** chạy trong main process (`src/band-comm/server.js`): HTTP + SSE, không thêm dependency. Bật/tắt bằng nút "Bắt đầu kênh".
+        - Điện thoại vào bằng trình duyệt: URL LAN + mã PIN 4 số → token phiên ký HMAC (name + role nằm trong token nên phone bị sập nền / reload vẫn tự vào lại).
+        - SSE có ring buffer + `Last-Event-ID` để nhận bù tin khi rớt mạng; heartbeat 15s; presence 25s.
+        - Ưu tiên IP Wi-Fi/LAN thật, đẩy các card ảo (WSL, Hyper-V, VM) xuống cuối; cho operator chọn IP nếu máy có nhiều card.
+    - **Mobile client** (`comm/mobile/`): mỗi người **tự tạo bộ nút cảnh báo của riêng mình** (nhãn + icon + nhóm), lưu `localStorage` + backup lên server theo hồ sơ. Không có nút cấu hình sẵn, **không phân loại mức độ** — mọi tin xử lý như nhau, chỉ phân biệt hướng (band / người vận hành). Toast trượt 1 tin/lần, rung + beep tùy chọn.
+    - **Bảng cảnh báo gộp** ở cửa sổ Kênh Band: cảnh báo trùng (chuẩn hoá bỏ dấu) gộp thành 1 pill có bộ đếm. Pill mới **nhấp nháy** tới khi operator bấm → **tiếp nhận** (tự gửi "Người vận hành đã tiếp nhận: …" riêng cho từng người đã gửi). Nút **Đã xử lý** phát `resolve` cho mọi máy. Nháy taskbar khi có tin mới lúc cửa sổ khuất.
+    - Operator gõ chữ tự do / bấm câu trả lời nhanh gửi cho cả band.
+- **IPC mới:** namespace `electronAPI.bandComm` (`start`, `stop`, `getStatus`, `getConfig`, `saveConfig`, `send`, `ackAlert`, `resolveAlert`) + sự kiện `onMessage` / `onPresence` / `onServerStatus` / `onTogglePanel`.
+
+### Thay đổi (Changed)
+- `main.js`: khởi tạo + auto-start comm server + mDNS; menu top-level **Channel**; dọn dẹp khi thoát app.
+- `preload.js`: expose namespace `bandComm`.
+- `package.json`: thêm `comm/**/*` vào `build.files` (đã bỏ `bandchat.html`).
+
+### Ghi chú
+- Chưa làm: thư viện ảnh hợp âm (P4 — 1 người upload, xem theo yêu cầu), P3 (nhắm 1 người), P5. Không đụng `src/schema.js`. `settings.json` không thêm khoá mới.
+
 ## [1.1.6] - 2026-05-15
 
 ### Đã thêm (Added)

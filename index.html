@@ -915,10 +915,187 @@
             border-radius: 6px;
         }
     </style>
+    <style id="band-panel-css">
+      /* Kênh Band — light-theme LEFT DOCK. Open = reserves real layout width via
+         body padding-left (so it never covers Schedule / Library). Collapsed = a
+         small tab that protrudes from the left edge. No CSS transitions: this app
+         runs with flaky GPU compositing where transitions freeze mid-way. */
+      :root { --bp-w: 340px; }
+      body.bp-open { padding-left: var(--bp-w) !important; }
+
+      #bandPanelTab {
+        position: fixed; left: 0; top: 50%; transform: translateY(-50%);
+        z-index: 9997; background: #2563a8; color: #fff;
+        border: none; border-radius: 0 12px 12px 0;
+        padding: 14px 6px; font: 700 11px/1 "Segoe UI", system-ui, sans-serif;
+        writing-mode: vertical-rl; text-orientation: mixed; cursor: pointer;
+        letter-spacing: .08em; box-shadow: 3px 3px 14px rgba(15,30,60,.28);
+        display: flex; align-items: center; gap: 8px;
+      }
+      #bandPanelTab:hover { background: #1f5697; }
+      #bandPanelTab .nb { display: none; background: #ffdf6b; color: #4a3600;
+        border-radius: 8px; padding: 1px 5px; font-size: 10px; writing-mode: horizontal-tb; }
+      #bandPanelTab.has-unread .nb { display: inline-block; }
+      body.bp-open #bandPanelTab { display: none !important; }
+
+      #bandPanel {
+        position: fixed; top: 0; left: 0; height: 100vh; width: var(--bp-w);
+        z-index: 9998; background: #ffffff; color: #1e2430;
+        border-right: 1px solid #d7dae1;
+        display: none; flex-direction: column; overflow: hidden;
+        font: 13px/1.5 "Segoe UI", system-ui, sans-serif;
+      }
+      #bandPanel.open { display: flex !important; }
+      #bandPanel * { box-sizing: border-box; min-width: 0; }
+      #bandPanel button { font: inherit; color: inherit; cursor: pointer; }
+      #bandPanel .bp-hidden { display: none !important; }
+
+      #bpResize {
+        position: absolute; top: 0; right: 0; bottom: 0; width: 7px;
+        cursor: ew-resize; z-index: 5; background: transparent;
+      }
+      #bpResize:hover, #bpResize.drag { background: #bcd6f0; }
+
+      #bandPanel .bp-head {
+        display: flex; align-items: center; gap: 8px; padding: 8px 12px;
+        border-bottom: 1px solid #e2e4e9; background: #f8f9fb; flex: none;
+      }
+      #bandPanel .bp-status {
+        display: flex; align-items: center; gap: 8px; padding: 6px 12px; flex: none;
+        background: #f8f9fb; border-bottom: 1px solid #e2e4e9;
+        font-size: .82rem; color: #5b6472;
+      }
+      #bandPanel .bp-status #bpStatusLine { flex: 1; overflow-wrap: anywhere; font-family: Consolas, ui-monospace, monospace; }
+      #bandPanel .bp-linkbtn { background: none; border: none; color: #2563a8; font-size: .8rem; padding: 2px 4px; white-space: nowrap; flex: none; }
+      #bandPanel .bp-linkbtn:hover { text-decoration: underline; }
+      #bandPanel .bp-dot { width: 8px; height: 8px; border-radius: 50%; background: #8a93a3; flex: none; }
+      #bandPanel .bp-dot.on { background: #2f8a55; }
+      #bandPanel .bp-dot.off { background: #c0392f; }
+      #bandPanel .bp-title { font-weight: 700; font-size: .9rem; flex: 1; }
+      #bandPanel .bp-btn {
+        background: #ffffff; border: 1px solid #d7dae1; border-radius: 8px;
+        padding: 5px 10px; font-size: .8rem; color: #5b6472;
+      }
+      #bandPanel .bp-btn:hover { border-color: #8a93a3; color: #1e2430; }
+      #bandPanel .bp-btn.go { background: #2f8a55; border-color: #2f8a55; color: #fff; font-weight: 700; }
+      #bandPanel .bp-btn.stop { background: #c0392f; border-color: #c0392f; color: #fff; font-weight: 700; }
+      #bandPanel .bp-x { background: none; border: none; font-size: 1.1rem; color: #8a93a3; padding: 0 4px; }
+
+      #bandPanel .bp-conn {
+        padding: 10px 12px; background: #f8f9fb; border-bottom: 1px solid #e2e4e9;
+        flex: none; overflow-y: auto; max-height: 46vh;
+      }
+      #bandPanel .bp-conn .bp-kv { display: flex; gap: 8px; align-items: baseline; margin-top: 6px; }
+      #bandPanel .bp-conn .k { flex: none; width: 62px; color: #8a93a3; font-size: .7rem; text-transform: uppercase; letter-spacing: .05em; }
+      #bandPanel .bp-conn .v { font-family: Consolas, ui-monospace, monospace; font-size: .92rem; user-select: text; overflow-wrap: anywhere; }
+      #bandPanel .bp-conn .v.pin { font-size: 1.15rem; font-weight: 700; letter-spacing: .16em; color: #b9740f; }
+      #bandPanel .bp-conn .row2 { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+      #bandPanel .bp-conn .row2 > .bp-btn { flex: 1 1 auto; white-space: normal; }
+      #bandPanel select.bp-btn { flex: 1 1 100%; }
+
+      /* Incoming band alert = a feed message that blinks until the operator
+         clicks it (= "đã tiếp nhận"). No separate board. */
+      #bandPanel .bp-msg.alert-pending {
+        cursor: pointer; border-left: 3px solid #b9740f;
+        animation: bandAlertPulse 1s ease-in-out infinite;
+      }
+      #bandPanel .bp-msg.alert-pending::after { content: ' · bấm để tiếp nhận'; color: #8a93a3; font-size: .72rem; }
+      #bandPanel .bp-msg.alert-acked { opacity: .72; border-left: 3px solid #2f8a55; cursor: default; }
+      #bandPanel .bp-msg.alert-acked::after { content: none; }
+      #bandPanel .bp-msg .ackmark { display: block; color: #2f8a55; font-size: .72rem; font-weight: 600; margin-top: 2px; }
+      @keyframes bandAlertPulse { 0%,100% { background: #fdf3e3; } 50% { background: #f6dcae; } }
+      @media (prefers-reduced-motion: reduce) {
+        #bandPanel .bp-msg.alert-pending { animation: none; border-left-width: 5px; box-shadow: 0 0 0 2px #f0c98a inset; }
+      }
+
+      #bandPanel .bp-feed { flex: 1; overflow-y: auto; padding: 8px 10px; display: flex; flex-direction: column; gap: 5px; }
+      #bandPanel .bp-msg { max-width: 90%; padding: 5px 9px; border-radius: 9px; font-size: .84rem; }
+      #bandPanel .bp-msg .who { display: block; font-size: .68rem; color: #8a93a3; }
+      #bandPanel .bp-msg.band { align-self: flex-start; background: #fdf3e3; border: 1px solid #eccf9f; }
+      #bandPanel .bp-msg.op { align-self: flex-end; background: #e8f1fb; border: 1px solid #bcd6f0; }
+      #bandPanel .bp-msg.sys { align-self: stretch; text-align: center; color: #8a93a3; font-size: .75rem; white-space: pre-wrap; overflow-wrap: anywhere; user-select: text; }
+      #bandPanel .bp-empty { color: #8a93a3; text-align: center; padding: 22px 12px; font-size: .82rem; }
+
+      #bandPanel .bp-composer { flex: none; border-top: 1px solid #e2e4e9; background: #f8f9fb; padding: 8px 10px; }
+      #bandPanel .bp-replies { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 7px; }
+      #bandPanel .bp-replies button { background: #fff; border: 1px solid #d7dae1; border-radius: 16px; padding: 4px 10px; font-size: .76rem; color: #5b6472; }
+      #bandPanel .bp-replies button:hover { color: #1e2430; }
+      #bandPanel .bp-row { display: flex; gap: 6px; }
+      #bandPanel .bp-row input {
+        flex: 1; background: #fff; border: 1px solid #d7dae1; border-radius: 8px;
+        padding: 8px 11px; color: #1e2430; outline: none; font: inherit;
+      }
+      #bandPanel .bp-row input:focus { border-color: #2563a8; }
+      #bandPanel .bp-row .send { background: #2563a8; border: none; border-radius: 8px; padding: 0 14px; font-weight: 700; color: #fff; }
+
+      #bandPanel .bp-conn .qrwrap { display: flex; gap: 10px; align-items: flex-start; }
+      #bandPanel .bp-conn .qrwrap img { width: 104px; height: 104px; image-rendering: pixelated; border: 1px solid #e2e4e9; border-radius: 6px; background: #fff; flex: none; }
+      #bandPanel .bp-conn .qrwrap .u { flex: 1; font-size: .8rem; overflow-wrap: anywhere; }
+      #bandPanel .bp-conn .qrwrap .u .host { font-family: Consolas, ui-monospace, monospace; font-weight: 700; font-size: .92rem; color: #1e2430; }
+      #bandPanel .bp-conn .qrwrap .u .alt { font-family: Consolas, ui-monospace, monospace; color: #5b6472; margin-top: 4px; }
+      #bandPanel .bp-conn .qrwrap .u .note { color: #8a93a3; font-size: .72rem; margin-top: 3px; }
+
+      #bandPanel .bp-error {
+        margin: 8px 12px 0; padding: 10px 12px; border-radius: 10px;
+        background: #fdecea; border: 1px solid #f0b3ab; color: #7a241c; font-size: .82rem;
+      }
+      #bandPanel .bp-error b { display: block; font-size: .86rem; margin-bottom: 3px; }
+      #bandPanel .bp-error code { background: #f7d9d4; padding: 0 4px; border-radius: 4px; font-size: .78rem; }
+      #bandPanel .bp-error pre { margin: 6px 0 0; white-space: pre-wrap; word-break: break-word; font-size: .74rem; color: #94564e; }
+      #bandPanel .bp-error .retry { margin-top: 8px; background: #c0392f; border: none; color: #fff; border-radius: 8px; padding: 6px 14px; font-weight: 700; }
+    </style>
 </head>
 
 <body
     class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 h-screen flex flex-col font-display">
+
+    <!-- Kênh Band sidebar (toggle: "Channel" menu / Ctrl+Shift+B / edge tab) -->
+    <button id="bandPanelTab" type="button" title="Kênh Band (Ctrl+Shift+B)">Kênh Band<span class="nb" id="bandPanelTabCount">0</span></button>
+    <aside id="bandPanel" aria-label="Kênh Band">
+      <div id="bpResize" title="Kéo để đổi độ rộng"></div>
+      <div class="bp-head">
+        <span class="bp-dot" id="bpDot"></span>
+        <span class="bp-title">Kênh Band</span>
+        <button class="bp-btn go" id="bpToggle">Bắt đầu</button>
+        <button class="bp-x" id="bpClose" title="Đóng">&times;</button>
+      </div>
+      <div class="bp-error bp-hidden" id="bpError"></div>
+      <div class="bp-status bp-hidden" id="bpStatus">
+        <span id="bpStatusLine">—</span>
+        <button class="bp-linkbtn" id="bpDetailsToggle">Kết nối</button>
+      </div>
+      <div class="bp-conn bp-hidden" id="bpConn">
+        <div class="qrwrap">
+          <img id="bpQr" alt="Mã QR kết nối">
+          <div class="u">
+            <div class="host" id="bpHost">—</div>
+            <div class="note" id="bpQrNote"></div>
+            <div class="alt">Cố định: <span id="bpAlt"></span></div>
+            <div class="note">Android: gõ địa chỉ trên vào Chrome. Dòng "cố định" (<code>worship.local</code>) chỉ iPhone / Android mới quét được.</div>
+          </div>
+        </div>
+        <div class="bp-kv"><span class="k">Mã PIN</span><span class="v pin" id="bpPin">—</span></div>
+        <div class="row2">
+          <select id="bpIpSel" class="bp-btn bp-hidden"></select>
+          <button class="bp-btn" id="bpQrMode">QR: dùng worship.local</button>
+          <button class="bp-btn" id="bpCopy">Sao chép</button>
+        </div>
+        <div class="row2">
+          <button class="bp-btn" id="bpFw">Mở cổng Firewall (nếu điện thoại không vào được)</button>
+        </div>
+      </div>
+      <div class="bp-feed" id="bpFeed">
+        <div class="bp-empty" id="bpEmpty">Bấm "Bắt đầu" rồi cho band mở địa chỉ + nhập PIN.</div>
+      </div>
+      <div class="bp-composer">
+        <div class="bp-replies" id="bpReplies"></div>
+        <div class="bp-row">
+          <input id="bpInput" placeholder="Nhắn cho cả band…" maxlength="500">
+          <button class="send" id="bpSend">Gửi</button>
+        </div>
+      </div>
+    </aside>
+
     <!-- Top Navigation Bar -->
     <!-- <header ...> ... </div> -->
     <!-- </header> -->
@@ -929,9 +1106,9 @@
         <div class="flex gap-0 h-1/2 min-h-0" id="top-row">
             <!-- Section 1: Schedule -->
             <section
-                class="panel bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 shadow-sm relative z-[20]"
+                class="panel bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden relative z-[20]"
                 style="width: 25%;">
-                <div class="px-3 py-1 bg-slate-800 dark:bg-black flex justify-between items-center text-white shrink-0">
+                <div class="px-3 py-1 bg-slate-800 dark:bg-black flex justify-between items-center text-white shrink-0 rounded-t-[7px]">
                     <h3 class="text-[10px] font-bold uppercase tracking-wider opacity-80">Schedule</h3>
                     <span class="text-white/60 text-xs font-bold">≡</span>
                 </div>
@@ -947,7 +1124,7 @@
             <section
                 class="panel bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden relative z-[20]"
                 style="width: 35%;">
-                <div class="px-3 py-1 bg-slate-800 dark:bg-black flex justify-between items-center text-white shrink-0">
+                <div class="px-3 py-1 bg-slate-800 dark:bg-black flex justify-between items-center text-white shrink-0 rounded-t-[7px]">
                     <h3 class="text-[10px] font-bold uppercase tracking-wider opacity-80">Preview</h3>
                     <div class="flex items-center gap-2">
                         <!-- <span class="text-[9px] font-mono bg-white/20 px-1 rounded">NEXT: CHORUS</span> -->
@@ -956,6 +1133,13 @@
                             onclick="toggleMonitor('preview')" id="btn-toggle-preview-monitor"
                             title="Bật/tắt Preview monitor">
                             ON
+                        </button>
+                        <button
+                            class="bg-white/10 hover:bg-white/25 text-white text-[9px] font-bold py-0.5 px-1.5 rounded transition-colors flex items-center gap-1"
+                            onclick="openStyleTemplateManager()" id="btn-open-style-editor"
+                            title="Chỉnh & áp dụng Style">
+                            <span class="material-symbols-outlined text-[12px]">style</span>
+                            Style
                         </button>
                         <button
                             class="bg-primary hover:bg-primary-hover text-white text-[9px] font-bold py-0.5 px-2 rounded flex items-center gap-1 transition-colors"
@@ -971,7 +1155,7 @@
                 <div
                     class="p-2.5 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 shrink-0 relative z-[30]">
                     <div class="flex flex-col gap-2.5">
-                        <!-- Top Part: Info -->
+                        <!-- Preview output info -->
                         <div class="flex items-center gap-3">
                             <div class="w-24 aspect-video bg-black rounded border border-slate-300 dark:border-slate-700 shrink-0 overflow-hidden relative"
                                 id="preview-output-box">
@@ -982,9 +1166,9 @@
                                     <div id="preview-virtual-canvas"
                                         style="width:960px;height:540px;transform-origin:center;position:absolute;top:50%;left:50%;">
                                         <div id="preview-text-box" class="text-layer-box"
-                                            style="left:48px;top:50%;transform:translateY(calc(-50% - 10px));width:864px;max-height:454px;overflow:hidden;">
+                                            style="left:48px;top:50%;transform:translateY(-50%);width:864px;max-height:454px;overflow:hidden;">
                                             <p id="preview-lyrics-text"
-                                                style="color:#fff;text-align:center;font-weight:bold;white-space:pre-wrap;line-height:1.2;-webkit-text-stroke:3px black;paint-order:stroke fill;width:100%;">
+                                                style="color:#fff;text-align:center;font-weight:bold;white-space:pre-wrap;line-height:1.4;-webkit-text-stroke:3px black;paint-order:stroke fill;width:100%;">
                                             </p>
                                         </div>
                                         <div class="next-verse-box" id="preview-next-verse-box">
@@ -1008,31 +1192,6 @@
                                     Chưa áp template.</p>
                             </div>
                         </div>
-
-                        <!-- Bottom Part: Style Templates Controls -->
-                        <div
-                            class="bg-white dark:bg-slate-800 p-1.5 rounded-md border border-slate-200 dark:border-slate-700 shadow-sm">
-                            <div class="flex items-center gap-1.5">
-                                <div
-                                    class="flex items-center gap-1 text-[9px] font-bold text-slate-500 uppercase shrink-0 mr-1">
-                                    <span class="material-symbols-outlined text-[14px]">style</span>
-                                    Style
-                                </div><select id="preview-style-template-select"
-                                    class="flex-1 text-[12px] border border-slate-300 rounded px-2 h-9 bg-white focus:outline-none focus:ring-1 focus:ring-primary/30 leading-none"
-                                    onchange="onPreviewTemplateChange(this.value)">
-                                    <option value="default">Style mặc định</option>
-                                </select>
-                                <button id="preview-style-apply-btn" class="template-action-btn h-9 px-3"
-                                    onclick="applyPreviewTemplateToCurrentSchedule()">Apply</button>
-                                <button id="preview-style-apply-all-btn" class="template-action-btn h-9 px-3"
-                                    onclick="applyPreviewTemplateToScheduleType()">All</button>
-                                <button id="preview-style-manage-btn"
-                                    class="size-9 rounded border border-slate-300 bg-white hover:bg-sky-50 hover:border-sky-400 text-slate-700 flex items-center justify-center transition-colors shadow-sm"
-                                    onclick="openStyleTemplateManager()" title="Quản lý Style Templates">
-                                    <span class="material-symbols-outlined text-[18px]">palette</span>
-                                </button>
-                            </div>
-                        </div>
                     </div>
                 </div>
             </section>
@@ -1041,18 +1200,13 @@
 
             <!-- Section 3: Live Screen -->
             <section
-                class="panel bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 shadow-sm flex-1 relative z-[20]">
-                <div class="px-3 py-1 bg-red-900 flex justify-between items-center text-white shrink-0">
+                class="panel bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 shadow-sm flex-1 overflow-hidden relative z-[20]">
+                <div class="px-3 py-1 bg-red-900 flex justify-between items-center text-white shrink-0 rounded-t-[7px]">
                     <div class="flex items-center gap-1.5">
                         <span class="size-1.5 rounded-full bg-red-500 animate-pulse"></span>
                         <h3 class="text-[10px] font-bold uppercase tracking-wider">Live</h3>
                     </div>
                     <div class="flex items-center gap-1.5">
-                        <button
-                            class="bg-white/20 hover:bg-white/30 text-white text-[9px] font-bold py-0.5 px-1.5 rounded transition-colors"
-                            onclick="toggleMonitor('live')" id="btn-toggle-live-monitor" title="Bật/tắt Live monitor">
-                            ON
-                        </button>
                         <button
                             class="bg-white/20 hover:bg-white/30 text-white text-[9px] font-bold py-0.5 px-2 rounded flex items-center gap-1 transition-colors"
                             onclick="toggleLiveWindow()" id="btn-screen-live">
@@ -1072,38 +1226,6 @@
                     ondragleave="this.classList.remove('ring-2','ring-primary');"
                     ondrop="event.preventDefault(); this.classList.remove('ring-2','ring-primary'); handleLiveDrop(event);">
                     <!-- Data will be injected here -->
-                </div>
-                <div class="p-2 border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shrink-0">
-                    <div class="flex items-center gap-3">
-                        <div class="w-32 aspect-video bg-black rounded-md border border-slate-200 dark:border-slate-700 overflow-hidden relative shrink-0 shadow-md"
-                            id="live-output-box">
-                            <img class="absolute inset-0 w-full h-full object-cover hidden" id="live-bg-img" />
-                            <video class="absolute inset-0 w-full h-full object-cover hidden" id="live-bg-video"
-                                autoplay loop muted playsinline preload="auto"></video>
-                            <div class="absolute inset-0 overflow-hidden" id="live-canvas-wrap">
-                                <div id="live-virtual-canvas"
-                                    style="width:960px;height:540px;transform-origin:center;position:absolute;top:50%;left:50%;">
-                                    <div id="live-text-box" class="text-layer-box"
-                                        style="left:48px;top:50%;transform:translateY(calc(-50% - 10px));width:864px;max-height:454px;overflow:hidden;">
-                                        <p id="live-lyrics-text"
-                                            style="color:#fff;text-align:center;font-weight:bold;white-space:pre-wrap;line-height:1.2;-webkit-text-stroke:3px black;paint-order:stroke fill;width:100%;">
-                                        </p>
-                                    </div>
-                                    <div class="next-verse-box" id="live-next-verse-box">
-                                        <span class="next-verse-text" id="live-next-verse-text"></span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="min-w-0">
-                            <p class="text-[10px] font-bold text-slate-900 dark:text-white uppercase truncate">Live
-                                Output</p>
-                            <p class="text-[9px] text-red-500 font-semibold flex items-center gap-1"
-                                id="live-monitor-status">
-                                <span class="size-1 rounded-full bg-red-500"></span> ON AIR
-                            </p>
-                        </div>
-                    </div>
                 </div>
             </section>
         </div>
@@ -1242,9 +1364,9 @@
                                     <div id="media-monitor-virtual-canvas"
                                         style="width:960px;height:540px;transform-origin:center;position:absolute;top:50%;left:50%;">
                                         <div id="media-text-box" class="text-layer-box"
-                                            style="left:48px;top:50%;transform:translateY(calc(-50% - 10px));width:864px;max-height:454px;overflow:hidden;">
+                                            style="left:48px;top:50%;transform:translateY(-50%);width:864px;max-height:454px;overflow:hidden;">
                                             <p id="media-monitor-lyrics-text"
-                                                style="color:#fff;text-align:center;font-weight:bold;white-space:pre-wrap;line-height:1.3;-webkit-text-stroke:3px black;paint-order:stroke fill;width:100%;">
+                                                style="color:#fff;text-align:center;font-weight:bold;white-space:pre-wrap;line-height:1.4;-webkit-text-stroke:3px black;paint-order:stroke fill;width:100%;">
                                             </p>
                                         </div>
                                         <div class="next-verse-box" id="media-next-verse-box">
@@ -1490,10 +1612,10 @@
                             <div id="editor-virtual-canvas"
                                 style="width:960px;height:540px;transform-origin:center;position:absolute;top:50%;left:50%;">
                                 <div id="editor-text-box" class="text-layer-box editor-active"
-                                    style="left:48px;top:50%;transform:translateY(calc(-50% - 10px));width:864px;max-height:454px;overflow:hidden;">
+                                    style="left:48px;top:50%;transform:translateY(-50%);width:864px;max-height:454px;overflow:hidden;">
                                     <div class="drag-handle" id="editor-drag-handle">⠿⠿⠿</div>
                                     <p id="editor-preview-text" contenteditable="true"
-                                        style="color:#fff;text-align:center;font-weight:bold;white-space:pre-wrap;line-height:1.2;-webkit-text-stroke:12px black;paint-order:stroke fill; outline:none; width: 100%;"
+                                        style="color:#fff;text-align:center;font-weight:bold;white-space:pre-wrap;line-height:1.4;-webkit-text-stroke:12px black;paint-order:stroke fill; outline:none; width: 100%;"
                                         class="text-center outline-none">Song lyrics preview will appear here</p>
                                 </div>
                             </div>
@@ -1802,9 +1924,9 @@
                                 <div id="style-template-preview-canvas"
                                     style="width:960px;height:540px;transform-origin:center;position:absolute;top:50%;left:50%;">
                                     <div id="style-template-preview-text-box" class="text-layer-box"
-                                        style="left:48px;top:50%;transform:translateY(calc(-50% - 10px));width:864px;max-height:454px;overflow:hidden;">
+                                        style="left:48px;top:50%;transform:translateY(-50%);width:864px;max-height:454px;overflow:hidden;">
                                         <p id="style-template-preview-text"
-                                            style="color:#fff;text-align:center;font-weight:bold;white-space:pre-wrap;line-height:1.2;-webkit-text-stroke:3px black;paint-order:stroke fill;width:100%;">
+                                            style="color:#fff;text-align:center;font-weight:bold;white-space:pre-wrap;line-height:1.4;-webkit-text-stroke:3px black;paint-order:stroke fill;width:100%;">
                                             Ta nhận thấy con là người tốt nhất trong thời đại này.</p>
                                     </div>
                                 </div>
@@ -1820,6 +1942,14 @@
                     <button class="template-action-btn" onclick="deleteCurrentStyleTemplate()">Delete</button>
                 </div>
                 <div class="flex gap-2">
+                    <button id="style-editor-apply-item-btn"
+                        class="template-action-btn !bg-indigo-600 !text-white !border-indigo-600 hover:!bg-indigo-500"
+                        onclick="applyStyleEditorToCurrentPreviewItem()"
+                        title="Áp dụng style hiện tại cho bài đang xem ở Preview">Apply this item</button>
+                    <button id="style-editor-apply-all-btn"
+                        class="template-action-btn !bg-indigo-600 !text-white !border-indigo-600 hover:!bg-indigo-500"
+                        onclick="applyStyleEditorToWholeSchedule()"
+                        title="Áp dụng style hiện tại cho toàn bộ Schedule">Apply all</button>
                     <button class="template-action-btn" onclick="saveCurrentStyleTemplate()">Save Template</button>
                     <button class="template-action-btn" onclick="closeStyleTemplateManager()">Close</button>
                 </div>
@@ -2115,6 +2245,10 @@
     <script>
         // --- Configuration & Global State ---
 
+        // Shared line-height for every text render (editor / preview / screen monitor /
+        // real Screen Live window). Keep in sync with live.html's .lyrics-text line-height
+        // so all screens stay identical in format.
+        const LIVE_LINE_HEIGHT = '1.4';
 
         let songLibrary = [];
         let bibleVersions = [];
@@ -2141,6 +2275,7 @@
         let pendingPreviewTemplateId = 'default';
         let currentPreviewBaseStyle = null;
         let currentStyleTemplateEditingId = null;
+        let styleEditorDirty = false; // true khi user đã sửa form Style nhưng chưa Apply/Save
 
         // State cho các màn hình khác nhau
         let currentPreviewStyle = null; // Style của bài hiện đang ở preview
@@ -2394,27 +2529,47 @@
             }
         }
 
-        function renderStyleTemplateManagerList() {
-            const wrap = document.getElementById('style-template-manager-list');
-            if (!wrap) return;
-            const filter = document.getElementById('style-template-scope-filter')?.value || 'all';
-            const visibleTemplates = (styleTemplates || []).filter(template => filter === 'all' || template.scope === filter);
-            if (!visibleTemplates.length) {
-                wrap.innerHTML = '<div class="text-[11px] text-slate-400 italic">Chưa có template nào.</div>';
-                return;
-            }
-            wrap.innerHTML = visibleTemplates.map(template => `
-                <button type="button" class="w-full text-left border rounded-md px-2 py-2 transition-colors ${currentStyleTemplateEditingId === template.id ? 'border-indigo-500 bg-indigo-50' : 'border-slate-200 hover:border-slate-300'}" onclick="selectStyleTemplateForEdit('${escapeHtml(template.id)}')">
+        const DEFAULT_STYLE_TEMPLATE_ID = 'default';
+
+        function getDefaultStyleTemplate() {
+            return {
+                id: DEFAULT_STYLE_TEMPLATE_ID,
+                name: 'Mặc định',
+                scope: 'both',
+                style: normalizeSlideStyle(createDefaultSlideStyle('song'))
+            };
+        }
+
+        function renderStyleTemplateManagerRow(template, isDefaultRow = false) {
+            const isActive = currentStyleTemplateEditingId === template.id;
+            const onClick = isDefaultRow
+                ? 'selectDefaultStyleForEdit()'
+                : `selectStyleTemplateForEdit('${escapeHtml(template.id)}')`;
+            const scopeLabel = isDefaultRow ? 'BASE' : (template.scope || 'both');
+            return `
+                <button type="button" class="w-full text-left border rounded-md px-2 py-2 transition-colors ${isActive ? 'border-indigo-500 bg-indigo-50' : 'border-slate-200 hover:border-slate-300'}" onclick="${onClick}">
                     <div class="flex items-center justify-between gap-2">
                         <span class="text-[11px] font-semibold text-slate-900 truncate">${escapeHtml(template.name)}</span>
-                        <span class="text-[9px] uppercase text-slate-400 shrink-0">${escapeHtml(template.scope || 'both')}</span>
+                        <span class="text-[9px] uppercase text-slate-400 shrink-0">${escapeHtml(scopeLabel)}</span>
                     </div>
                     <div class="mt-1 flex items-center gap-2 text-[9px] text-slate-500">
                         <span class="template-swatch" style="background:${escapeHtml((template.style && template.style.color) || '#ffffff')}"></span>
                         <span>${escapeHtml((template.style && template.style.fontFamily) || 'CMG Sans')}</span>
                     </div>
-                </button>
-            `).join('');
+                </button>`;
+        }
+
+        function renderStyleTemplateManagerList() {
+            const wrap = document.getElementById('style-template-manager-list');
+            if (!wrap) return;
+            const filter = document.getElementById('style-template-scope-filter')?.value || 'all';
+            const visibleTemplates = (styleTemplates || []).filter(template => filter === 'all' || template.scope === filter);
+            // "Mặc định" luôn đứng đầu danh sách, không phụ thuộc filter
+            const defaultRow = renderStyleTemplateManagerRow(getDefaultStyleTemplate(), true);
+            const templateRows = visibleTemplates.length
+                ? visibleTemplates.map(template => renderStyleTemplateManagerRow(template)).join('')
+                : '<div class="text-[11px] text-slate-400 italic px-1">Chưa có template tùy chỉnh nào.</div>';
+            wrap.innerHTML = defaultRow + templateRows;
         }
 
         function selectStyleTemplateForEdit(templateId) {
@@ -2425,6 +2580,13 @@
             loadStyleTemplateIntoForm(template);
         }
 
+        function selectDefaultStyleForEdit() {
+            loadStyleTemplateIntoForm(getDefaultStyleTemplate());
+            currentStyleTemplateEditingId = DEFAULT_STYLE_TEMPLATE_ID;
+            styleEditorDirty = false;
+            renderStyleTemplateManagerList();
+        }
+
         function createNewStyleTemplate() {
             currentStyleTemplateEditingId = null;
             renderStyleTemplateManagerList();
@@ -2432,22 +2594,104 @@
         }
 
         function openStyleTemplateManager() {
-            renderStyleTemplateManagerList();
             if (!currentStyleTemplateEditingId) {
                 const first = styleTemplates[0] || null;
-                if (first) loadStyleTemplateIntoForm(first);
-                else loadStyleTemplateIntoForm(null);
+                if (first) { currentStyleTemplateEditingId = first.id; loadStyleTemplateIntoForm(first); }
+                else { currentStyleTemplateEditingId = DEFAULT_STYLE_TEMPLATE_ID; loadStyleTemplateIntoForm(getDefaultStyleTemplate()); }
             }
+            renderStyleTemplateManagerList();
+            styleEditorDirty = false;
+            updateStyleEditorApplyButtons();
             document.getElementById('style-template-manager-modal').style.display = 'flex';
             setTimeout(() => scaleVirtualCanvas('style-template-preview-canvas', 'style-template-manager-modal'), 0);
         }
 
-        function closeStyleTemplateManager() {
+        function closeStyleTemplateManager(force = false) {
+            const item = schedule[currentScheduleIndex];
+            const hasPreviewItem = !!(item && !item.isMediaOnly);
+            if (!force && styleEditorDirty && hasPreviewItem) {
+                const applyIt = confirm(
+                    `Bạn đã chỉnh Style nhưng chưa áp dụng.\n\n` +
+                    `OK = Áp dụng cho bài đang xem ở Preview ("${item.title || 'bài này'}").\n` +
+                    `Cancel = Thoát, không áp dụng.`
+                );
+                if (applyIt) applyStyleEditorToCurrentPreviewItem();
+            }
+            styleEditorDirty = false;
             document.getElementById('style-template-manager-modal').style.display = 'none';
+        }
+
+        // Bật/tắt nút "Apply this item" theo việc có bài trong Preview hay không
+        function updateStyleEditorApplyButtons() {
+            const item = schedule[currentScheduleIndex];
+            const hasPreviewItem = !!(item && !item.isMediaOnly);
+            const applyItemBtn = document.getElementById('style-editor-apply-item-btn');
+            const applyAllBtn = document.getElementById('style-editor-apply-all-btn');
+            if (applyItemBtn) {
+                applyItemBtn.disabled = !hasPreviewItem;
+                applyItemBtn.title = hasPreviewItem
+                    ? `Áp dụng style hiện tại cho "${item.title || 'bài đang xem'}"`
+                    : 'Chưa có bài nào trong Schedule đang ở Preview';
+            }
+            if (applyAllBtn) {
+                const count = (schedule || []).filter(it => it && !it.isMediaOnly).length;
+                applyAllBtn.disabled = count === 0;
+                applyAllBtn.title = `Áp dụng style hiện tại cho ${count} item trong Schedule`;
+            }
+        }
+
+        // Ghi style form hiện tại (không cần lưu template) lên 1 schedule item
+        function applyStyleFormToScheduleItem(item, style) {
+            if (!item || item.isMediaOnly) return false;
+            const contentType = item.type === 'bible' ? 'bible' : 'song';
+            if (!item.sourceStyle) item.sourceStyle = getDefaultStyleForItem(item);
+            item.style = cloneStyle(style, contentType);
+            item.appliedTemplateId = null;
+            const isDefault = currentStyleTemplateEditingId === DEFAULT_STYLE_TEMPLATE_ID;
+            const name = document.getElementById('style-template-name').value.trim();
+            item.appliedTemplateName = isDefault
+                ? null
+                : (name ? `${name} (tùy chỉnh)` : 'Style tùy chỉnh');
+            return true;
+        }
+
+        function applyStyleEditorToCurrentPreviewItem() {
+            const item = schedule[currentScheduleIndex];
+            if (!item || item.isMediaOnly) {
+                alert('Chưa có bài nào trong Schedule đang ở Preview để áp dụng.');
+                return;
+            }
+            const style = collectStyleTemplateForm().style;
+            applyStyleFormToScheduleItem(item, style);
+            styleEditorDirty = false;
+            refreshPreviewAfterScheduleTemplateApply();
+            const status = document.getElementById('preview-style-template-status');
+            if (status) status.textContent = `Đã áp Style tùy chỉnh cho: ${item.title || 'bài đang xem'}`;
+        }
+
+        function applyStyleEditorToWholeSchedule() {
+            const style = collectStyleTemplateForm().style;
+            let count = 0;
+            (schedule || []).forEach(item => {
+                if (applyStyleFormToScheduleItem(item, style)) count++;
+            });
+            if (count === 0) {
+                alert('Schedule chưa có bài nào để áp dụng.');
+                return;
+            }
+            styleEditorDirty = false;
+            refreshPreviewAfterScheduleTemplateApply();
+            const status = document.getElementById('preview-style-template-status');
+            if (status) status.textContent = `Đã áp Style tùy chỉnh cho toàn bộ Schedule (${count} bài)`;
+            alert(`Đã áp dụng Style cho ${count} item trong Schedule.`);
         }
 
         async function saveCurrentStyleTemplate() {
             try {
+                if (currentStyleTemplateEditingId === DEFAULT_STYLE_TEMPLATE_ID) {
+                    alert('Không thể ghi đè "Mặc định". Bấm "Duplicate" để tạo một template mới từ giá trị hiện tại.');
+                    return;
+                }
                 const payload = collectStyleTemplateForm();
                 console.log('Saving style template payload:', payload);
                 const result = await window.electronAPI.saveStyleTemplate(payload);
@@ -2460,6 +2704,7 @@
                 renderStyleTemplateManagerList();
                 renderStyleTemplateQuickOptions();
                 loadStyleTemplateIntoForm(result.template);
+                styleEditorDirty = false;
             } catch (error) {
                 console.error('Save template failed:', error);
                 alert(error?.message || 'Không thể lưu template.');
@@ -2468,7 +2713,16 @@
 
         async function duplicateCurrentStyleTemplate() {
             if (!currentStyleTemplateEditingId) return;
-            const result = await window.electronAPI.duplicateStyleTemplate(currentStyleTemplateEditingId);
+            let result;
+            if (currentStyleTemplateEditingId === DEFAULT_STYLE_TEMPLATE_ID) {
+                // "Mặc định" không nằm trong store → tạo template mới từ giá trị form hiện tại
+                const payload = collectStyleTemplateForm();
+                payload.id = undefined;
+                payload.name = (payload.name && payload.name !== 'Mặc định') ? payload.name : 'Mặc định (bản sao)';
+                result = await window.electronAPI.saveStyleTemplate(payload);
+            } else {
+                result = await window.electronAPI.duplicateStyleTemplate(currentStyleTemplateEditingId);
+            }
             if (!result || result.success === false) {
                 alert(result?.error || 'Không thể duplicate template.');
                 return;
@@ -2482,6 +2736,10 @@
 
         async function deleteCurrentStyleTemplate() {
             if (!currentStyleTemplateEditingId) return;
+            if (currentStyleTemplateEditingId === DEFAULT_STYLE_TEMPLATE_ID) {
+                alert('Không thể xóa "Mặc định".');
+                return;
+            }
             const template = getStyleTemplateById(currentStyleTemplateEditingId);
             if (!template) return;
             if (!confirm(`Xóa template "${template.name}"?`)) return;
@@ -2491,10 +2749,12 @@
                 return;
             }
             styleTemplates = result.templates || [];
-            currentStyleTemplateEditingId = null;
-            renderStyleTemplateManagerList();
             renderStyleTemplateQuickOptions();
-            loadStyleTemplateIntoForm(styleTemplates[0] || null);
+            if (styleTemplates[0]) {
+                selectStyleTemplateForEdit(styleTemplates[0].id);
+            } else {
+                selectDefaultStyleForEdit();
+            }
         }
 
         async function importCustomFontFromTemplateManager() {
@@ -2976,6 +3236,7 @@
             document.getElementById('style-template-box-border-style').value = boxStyle.borderStyle || 'solid';
             document.getElementById('style-template-box-radius').value = Number(boxStyle.borderRadius || 0);
             currentStyleTemplateEditingId = template ? template.id : null;
+            styleEditorDirty = false;
             updateStyleTemplatePreview();
         }
 
@@ -3469,8 +3730,9 @@
             setTimeout(loadSystemFonts, 0);
             setTimeout(syncMonitorVisibility, 0);
             document.querySelectorAll('#style-template-manager-modal input, #style-template-manager-modal select').forEach(el => {
-                el.addEventListener('input', updateStyleTemplatePreview);
-                el.addEventListener('change', updateStyleTemplatePreview);
+                const markDirtyAndPreview = () => { styleEditorDirty = true; updateStyleTemplatePreview(); };
+                el.addEventListener('input', markDirtyAndPreview);
+                el.addEventListener('change', markDirtyAndPreview);
             });
             window.electronAPI.onLiveRefreshCustomFonts(async () => {
                 await loadCustomFonts();
@@ -3537,10 +3799,8 @@
                 }
             }
 
-            const liveText = document.getElementById('live-lyrics-text');
-            if (liveText && currentLiveStyle) {
+            if (currentLiveStyle) {
                 currentLiveStyle = normalizeSlideStyle(currentLiveStyle);
-                applyStyleToElement(liveText, currentLiveStyle);
             }
 
             const mediaText = document.getElementById('media-monitor-lyrics-text');
@@ -3569,7 +3829,6 @@
         function updateNextVerseVisibility() {
             const containers = [
                 document.getElementById('preview-next-verse-box'),
-                document.getElementById('live-next-verse-box'),
                 document.getElementById('media-next-verse-box')
             ];
             const btn = document.getElementById('btn-toggle-next-verse');
@@ -4755,7 +5014,7 @@
 
             scaleVirtualCanvas('editor-virtual-canvas', 'editor-preview-box');
 
-            // Sync style to preview-output, live-output, and screen live
+            // Sync style to preview output, screen monitor, and the real Screen Live window
             currentPreviewStyle = normalizeSlideStyle(editorStyle);
             const previewText = document.getElementById('preview-lyrics-text');
             if (previewText && previewText.innerText) {
@@ -4764,10 +5023,10 @@
             }
             if (currentLiveIndex >= 0) {
                 currentLiveStyle = normalizeSlideStyle(editorStyle);
-                const liveText = document.getElementById('live-lyrics-text');
-                if (liveText && liveText.innerText) {
-                    applyStyleToElement(liveText, currentLiveStyle);
-                    scaleVirtualCanvas('live-virtual-canvas', 'live-output-box');
+                const mediaText = document.getElementById('media-monitor-lyrics-text');
+                if (mediaText && mediaText.innerText) {
+                    applyStyleToElement(mediaText, currentLiveStyle);
+                    scaleVirtualCanvas('media-monitor-virtual-canvas', 'media-monitor-output-box');
                 }
                 sendToLiveWindow({ text: null, style: currentLiveStyle });
             }
@@ -5725,26 +5984,19 @@
             el.style.textAlign = style.textAlign;
 
             const textBox = el.parentElement;
-            const canvas = textBox && textBox.parentElement;
 
             if (textBox && textBox.classList && textBox.classList.contains('text-layer-box')) {
                 const boxLayer = ensureTextBoxStyleLayer(textBox);
                 el.style.width = "100%";
-                el.style.lineHeight = "1.2";
+                el.style.lineHeight = LIVE_LINE_HEIGHT;
                 el.style.position = 'relative';
                 el.style.zIndex = '1';
 
-                const isMainCanvas = canvas && (
-                    canvas.id === 'editor-virtual-canvas' ||
-                    canvas.id === 'live-virtual-canvas' ||
-                    canvas.id === 'preview-virtual-canvas'
-                );
-
-                if (isMainCanvas) {
-                    el.style.webkitTextStroke = `${style.textStrokeWidth}px ${style.textStrokeColor}`;
-                } else {
-                    el.style.webkitTextStroke = `${Math.max(1, Math.round(style.textStrokeWidth / 2))}px ${style.textStrokeColor}`;
-                }
+                // Every virtual canvas (editor / preview / screen monitor) renders in the
+                // same virtual 960x540 space and is CSS-scaled to its container, so the
+                // stroke must stay at full width here to stay proportional with the real
+                // Screen Live window — matching live.html exactly.
+                el.style.webkitTextStroke = `${style.textStrokeWidth}px ${style.textStrokeColor}`;
                 el.style.paintOrder = "stroke fill";
                 el.style.textShadow = "none";
                 el.style.margin = `${style.textMargin.top}px ${style.textMargin.right}px ${style.textMargin.bottom}px ${style.textMargin.left}px`;
@@ -5835,19 +6087,11 @@
                 return;
             }
 
-            const canvas = textBox.parentElement;
-            const isMainCanvas = canvas && (
-                canvas.id === 'editor-virtual-canvas' ||
-                canvas.id === 'live-virtual-canvas' ||
-                canvas.id === 'preview-virtual-canvas'
-            );
-
+            // Stroke scales with the fitted font size only — no per-canvas halving — so
+            // the screen monitor / preview stay proportional with the real Screen Live.
             const applyStrokeForFontSize = (fontSize) => {
                 const ratio = baseFontSize > 0 ? fontSize / baseFontSize : 1;
-                const scaledStroke = Math.max(0, Math.round(baseStrokeWidth * ratio));
-                const strokeWidth = isMainCanvas
-                    ? scaledStroke
-                    : Math.max(1, Math.round(scaledStroke / 2));
+                const strokeWidth = Math.max(0, Math.round(baseStrokeWidth * ratio));
                 el.style.webkitTextStroke = `${strokeWidth}px ${style.textStrokeColor}`;
             };
 
@@ -5856,9 +6100,8 @@
                 // 1. Box overflow
                 if (measureOverflow(el, textBox)) return true;
 
-                // 2. Line count limit
-                // line-height is 1.2, so height of maxLines is fontSize * 1.2 * maxLines
-                const maxAllowedHeight = fontSize * 1.2 * maxLines + 2; // +2px tolerance
+                // 2. Line count limit — height of maxLines is fontSize * LIVE_LINE_HEIGHT * maxLines
+                const maxAllowedHeight = fontSize * parseFloat(LIVE_LINE_HEIGHT) * maxLines + 2; // +2px tolerance
                 if (el.scrollHeight > maxAllowedHeight) return true;
 
                 return false;
@@ -5912,7 +6155,7 @@
                 } else {
                     textBox.style.top = '50%';
                     textBox.style.bottom = '';
-                    textBox.style.transform = 'translateY(calc(-50% - 10px))';
+                    textBox.style.transform = 'translateY(-50%)';
                 }
             }
         }
@@ -5936,12 +6179,6 @@
                     buttonId: 'btn-toggle-preview-monitor',
                     statusId: 'preview-monitor-status',
                     onStatus: '<span class="size-1 rounded-full bg-slate-400"></span> STANDBY'
-                },
-                live: {
-                    boxId: 'live-output-box',
-                    buttonId: 'btn-toggle-live-monitor',
-                    statusId: 'live-monitor-status',
-                    onStatus: '<span class="size-1 rounded-full bg-red-500"></span> ON AIR'
                 },
                 media: {
                     boxId: 'media-monitor-output-box',
@@ -5972,7 +6209,7 @@
         }
 
         function syncMonitorVisibility() {
-            ['preview', 'live', 'media'].forEach(applyMonitorVisibility);
+            ['preview', 'media'].forEach(applyMonitorVisibility);
             scaleAllCanvases();
         }
 
@@ -6049,20 +6286,7 @@
         }
 
         function updateLiveOutput(content) {
-            const liveOutputText = document.getElementById('live-lyrics-text');
-            if (liveOutputText) {
-                liveOutputText.innerHTML = renderChordsHTML(content);
-                applyStyleToElement(liveOutputText, normalizeSlideStyle(currentLiveStyle));
-            }
-
-            // Update Next Verse for Live
             const nextVerseText = getNextVerseContent();
-            const nextVerseEl = document.getElementById('live-next-verse-text');
-            const nextVerseBox = document.getElementById('live-next-verse-box');
-            if (nextVerseEl) nextVerseEl.innerHTML = renderChordsHTML(nextVerseText);
-            if (nextVerseBox) nextVerseBox.style.display = (globalSettings.showNextVerse && nextVerseText) ? 'block' : 'none';
-
-            scaleVirtualCanvas('live-virtual-canvas', 'live-output-box');
             updateMediaMonitorOutput(content, nextVerseText);
         }
 
@@ -6301,27 +6525,8 @@
         }
 
         function updateInAppLiveBackground(background) {
-            const liveImg = document.getElementById('live-bg-img');
-            const liveVid = document.getElementById('live-bg-video');
             const normalizedBackground = normalizeSlideBackground(background);
-
-            liveImg.classList.add('hidden');
-            liveVid.classList.add('hidden');
-
-            if (!normalizedBackground) return;
-
-            if (normalizedBackground.mediaType === 'video') {
-                liveVid.classList.remove('hidden');
-                liveVid.src = normalizedBackground.url;
-                liveVid.load();
-                liveVid.play().catch((error) => {
-                    console.warn('[Live] Failed to play live background video:', error);
-                });
-            } else {
-                liveImg.classList.remove('hidden');
-                liveImg.src = normalizedBackground.url;
-            }
-            currentLiveBackground = normalizedBackground;
+            currentLiveBackground = normalizedBackground || null;
             updateMediaMonitorBackground(normalizedBackground);
         }
 
@@ -6627,7 +6832,6 @@
             } else {
                 // On a single display, place the Screen Live window over the monitor surface.
                 const container = document.getElementById('media-monitor-output-box')
-                    || document.getElementById('live-output-box')
                     || document.getElementById('live-slides-container');
                 let bounds = globalSettings.liveWindowBounds || null;
                 if (!bounds && container) {
@@ -6715,7 +6919,6 @@
 
         function scaleAllCanvases() {
             scaleVirtualCanvas('preview-virtual-canvas', 'preview-output-box');
-            scaleVirtualCanvas('live-virtual-canvas', 'live-output-box');
             scaleVirtualCanvas('media-monitor-virtual-canvas', 'media-monitor-output-box');
             if (document.getElementById('song-editor-modal').style.display === 'flex') {
                 scaleVirtualCanvas('editor-virtual-canvas', 'editor-preview-box');
@@ -6839,6 +7042,305 @@
             document.addEventListener('mousemove', onMove);
             document.addEventListener('mouseup', onUp);
         }
+    </script>
+
+    <!-- Kênh Band: QR encoder (vendored, MIT — not an npm dependency) -->
+    <script src="src/band-comm/vendor/qrcode-generator.js"></script>
+    <!-- Kênh Band sidebar logic — self-contained, talks to main via electronAPI.bandComm -->
+    <script>
+    (function () {
+      'use strict';
+      var api = window.electronAPI && window.electronAPI.bandComm;
+      var $ = function (id) { return document.getElementById(id); };
+      var panel = $('bandPanel'), tab = $('bandPanelTab');
+      if (!api || !panel) { if (tab) tab.style.display = 'none'; return; }
+
+      var running = false, replies = [], unread = 0;
+      var readyShown = false, lastQrText = '';
+
+      function revealPanel() {
+        panel.classList.add('open');
+        document.body.classList.add('bp-open');
+      }
+      function openPanel() {
+        revealPanel();
+        tab.classList.remove('has-unread'); unread = 0;
+        api.getStatus().then(applyStatus).catch(function () {});
+      }
+      function closePanel() {
+        panel.classList.remove('open');
+        document.body.classList.remove('bp-open');
+      }
+      function togglePanel() { panel.classList.contains('open') ? closePanel() : openPanel(); }
+
+      // Resizable width — drag the right edge; persisted like the app's other columns.
+      (function () {
+        var KEY = 'bandcomm.width';
+        try {
+          var w0 = parseInt(localStorage.getItem(KEY), 10);
+          if (w0 >= 260 && w0 <= 720) document.documentElement.style.setProperty('--bp-w', w0 + 'px');
+        } catch (e) {}
+        var rz = $('bpResize'), active = false;
+        rz.addEventListener('mousedown', function (e) {
+          e.preventDefault(); active = true; rz.classList.add('drag');
+          document.body.style.cursor = 'ew-resize'; document.body.style.userSelect = 'none';
+        });
+        window.addEventListener('mousemove', function (e) {
+          if (!active) return;
+          var w = Math.min(720, Math.max(260, e.clientX));
+          document.documentElement.style.setProperty('--bp-w', w + 'px');
+        });
+        window.addEventListener('mouseup', function () {
+          if (!active) return;
+          active = false; rz.classList.remove('drag');
+          document.body.style.cursor = ''; document.body.style.userSelect = '';
+          try {
+            var w = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--bp-w'), 10);
+            if (w) localStorage.setItem(KEY, w);
+          } catch (e) {}
+        });
+      })();
+
+      tab.addEventListener('click', openPanel);
+      $('bpClose').addEventListener('click', closePanel);
+      api.onTogglePanel(function () { togglePanel(); });
+      document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape' && panel.classList.contains('open') && panel.contains(document.activeElement)) closePanel();
+      });
+
+      // QR defaults to the raw IP URL — that is what every phone can open today.
+      // worship.local is offered as a "bookmark this, survives IP changes"
+      // alternative for devices that resolve mDNS (iPhone / newer Android).
+      var qrMode = 'ip';        // 'ip' | 'host'
+      var ipUrl = '', hostUrl = '';
+
+      function doToggle() {
+        $('bpToggle').disabled = true;
+        (running ? api.stop() : api.start()).then(function (st) { $('bpToggle').disabled = false; applyStatus(st); })
+          .catch(function (err) { $('bpToggle').disabled = false; addFeed('sys', '', 'Không mở được kênh: ' + (err && err.message || err)); });
+      }
+      $('bpToggle').addEventListener('click', doToggle);
+      $('bpCopy').addEventListener('click', function () {
+        var u = $('bpQr').dataset.url || '';
+        if (u && navigator.clipboard) navigator.clipboard.writeText(u);
+      });
+      $('bpQrMode').addEventListener('click', function () {
+        qrMode = qrMode === 'ip' ? 'host' : 'ip';
+        refreshQr();
+      });
+      var FW_LABEL = 'Mở cổng Firewall (nếu điện thoại không vào được)';
+      $('bpFw').addEventListener('click', function () {
+        $('bpFw').disabled = true;
+        $('bpFw').textContent = 'Đang xin quyền…';
+        api.openFirewall().then(function (r) {
+          $('bpFw').disabled = false;
+          $('bpFw').textContent = FW_LABEL;
+          addFeed('sys', '', r && r.ok
+            ? 'Đã mở cổng Firewall cho app. Thử lại trên điện thoại.'
+            : 'Firewall: ' + ((r && r.error) || 'không thành công'));
+        }).catch(function () {
+          $('bpFw').disabled = false;
+          $('bpFw').textContent = FW_LABEL;
+        });
+      });
+      // Multi-NIC override: pick which IP the QR uses.
+      $('bpIpSel').addEventListener('change', function () { ipUrl = $('bpIpSel').value; if (qrMode === 'ip') refreshQr(); });
+
+      // Connection details are collapsed by default — one summary line + a toggle.
+      var detailsOpen = false, lastShort = '', lastPin = '—';
+      function setStatusLine(n) {
+        $('bpStatusLine').textContent = lastShort + '  ·  PIN ' + lastPin + '  ·  ' + n + ' người';
+      }
+      $('bpDetailsToggle').addEventListener('click', function () {
+        detailsOpen = !detailsOpen;
+        $('bpConn').classList.toggle('bp-hidden', !detailsOpen);
+        $('bpDetailsToggle').textContent = detailsOpen ? 'Ẩn' : 'Kết nối';
+      });
+
+      function refreshQr() {
+        var primary = qrMode === 'host' ? (hostUrl || ipUrl) : (ipUrl || hostUrl);
+        var alt = qrMode === 'host' ? ipUrl : hostUrl;
+        renderQr(primary);
+        $('bpHost').textContent = primary;
+        $('bpAlt').textContent = alt || '—';
+        $('bpQrNote').textContent = qrMode === 'host'
+          ? 'Quét mã (worship.local — máy cũ không mở được thì gõ dòng 🔖 IP bên dưới).'
+          : 'Quét mã, hoặc gõ địa chỉ này vào trình duyệt điện thoại.';
+        $('bpQrMode').textContent = qrMode === 'ip' ? 'QR: dùng worship.local' : 'QR: dùng địa chỉ IP';
+      }
+
+      function renderQr(url) {
+        if (!url) { $('bpQr').removeAttribute('src'); return; }
+        $('bpQr').dataset.url = url;
+        if (url === lastQrText) return;
+        lastQrText = url;
+        try {
+          var qr = qrcode(0, 'M');
+          qr.addData(url);
+          qr.make();
+          $('bpQr').src = qr.createDataURL(4, 8);
+        } catch (e) { $('bpQr').removeAttribute('src'); }
+      }
+
+      var errAutoOpened = false;
+      function showBandError(err) {
+        var box = $('bpError');
+        box.classList.remove('bp-hidden');
+        box.innerHTML =
+          '<b>Kênh KHÔNG khởi chạy được</b>' +
+          (err.code ? 'Mã lỗi: <code>' + err.code + '</code><br>' : '') +
+          (err.hint ? err.hint : '') +
+          '<pre>' + (err.message || '') + (err.port ? '  (cổng ' + err.port + ')' : '') + '</pre>' +
+          '<button class="retry" type="button">Thử lại</button>';
+        box.querySelector('.retry').addEventListener('click', function () {
+          box.querySelector('.retry').disabled = true;
+          api.start().then(applyStatus).catch(function () {});
+        });
+        // Auto-open once so the operator can't miss it — but never fight a manual close.
+        if (!errAutoOpened) { errAutoOpened = true; revealPanel(); }
+      }
+      function hideBandError() { $('bpError').classList.add('bp-hidden'); $('bpError').textContent = ''; errAutoOpened = false; }
+
+      function applyStatus(st) {
+        st = st || {};
+        running = !!st.running;
+        $('bpToggle').textContent = running ? 'Dừng' : 'Bắt đầu';
+        $('bpToggle').className = 'bp-btn ' + (running ? 'stop' : 'go');
+        $('bpDot').className = 'bp-dot' + (running ? ' on' : (st.error ? ' off' : ''));
+
+        if (st.error) { showBandError(st.error); } else { hideBandError(); }
+
+        var nClients = st.clients ? st.clients.length : 0;
+        $('bpStatus').classList.toggle('bp-hidden', !running);
+        $('bpConn').classList.toggle('bp-hidden', !running || !detailsOpen);
+        $('bpPin').textContent = st.pin || '—';
+
+        if (running) {
+          hostUrl = st.hostUrl || (st.host && st.port ? 'http://' + st.host + ':' + st.port : '');
+          var ipFromStatus = st.url || (st.ip && st.port ? 'http://' + st.ip + ':' + st.port : '');
+
+          var ips = Array.isArray(st.ips) ? st.ips : [], sel = $('bpIpSel');
+          if (ips.length > 1 && st.port) {
+            sel.classList.remove('bp-hidden'); sel.textContent = '';
+            var keep = ipUrl || ipFromStatus;
+            ips.forEach(function (x) {
+              var o = document.createElement('option');
+              o.value = 'http://' + x.address + ':' + st.port;
+              o.textContent = x.address + '  (' + x.iface + ')';
+              if (o.value === keep) o.selected = true;
+              sel.appendChild(o);
+            });
+            ipUrl = sel.value || keep || ipFromStatus;
+          } else {
+            sel.classList.add('bp-hidden');
+            ipUrl = ipFromStatus || ipUrl;
+          }
+
+          refreshQr();
+          lastShort = (ipUrl || hostUrl || '').replace(/^https?:\/\//, '');
+          lastPin = st.pin || '—';
+          setStatusLine(nClients);
+          $('bpEmpty').classList.add('bp-hidden');
+          if (!readyShown) { readyShown = true; addFeed('sys', '', 'Kênh đã sẵn sàng · ' + lastShort); }
+        } else {
+          if (!st.error) readyShown = false;
+        }
+
+        if (Array.isArray(st.operatorReplies)) { replies = st.operatorReplies; renderReplies(); }
+      }
+
+      function renderReplies() {
+        var box = $('bpReplies'); box.textContent = '';
+        replies.forEach(function (r) {
+          var b = document.createElement('button');
+          b.textContent = r;
+          b.addEventListener('click', function () { doSend(r); });
+          box.appendChild(b);
+        });
+      }
+
+      $('bpSend').addEventListener('click', function () { doSend($('bpInput').value); $('bpInput').value = ''; });
+      $('bpInput').addEventListener('keydown', function (e) { if (e.key === 'Enter') { doSend($('bpInput').value); $('bpInput').value = ''; } });
+      function doSend(text) {
+        text = String(text || '').trim();
+        if (!text || !running) return;
+        api.send({ to: 'all', text: text });
+        addFeed('op', 'Bạn', text);
+      }
+
+      api.onMessage(function (_e, env) { handle(env); });
+      api.onPresence(function (_e, list) { setStatusLine(list ? list.length : 0); });
+      api.onServerStatus(function (_e, st) { applyStatus(st); });
+
+      function bumpUnread() {
+        if (panel.classList.contains('open')) return;
+        unread++; tab.classList.add('has-unread');
+        $('bandPanelTabCount').textContent = unread;
+      }
+
+      function handle(env) {
+        if (!env || !env.type) return;
+        if (env.type === 'alert') {
+          // The alert message itself blinks in the feed; click it to acknowledge.
+          addFeed('band', env.from.name, env.text, {
+            alert: true,
+            sender: env.from && env.from.clientId,
+            label: env.text
+          });
+          bumpUnread();
+        }
+        else if (env.type === 'text') {
+          // operator text is echoed back over SSE — already added optimistically.
+          if (env.from && (env.from.clientId === 'operator' || env.from.role === 'operator')) return;
+          addFeed('op', env.from.name, env.text);
+        }
+        // ack / resolve: nothing to add — the source message shows "đã tiếp nhận".
+        else if (env.type === 'system') {
+          if (/^Kênh đã sẵn sàng/.test(env.text || '')) readyShown = true;
+          addFeed('sys', '', env.text);
+        }
+      }
+
+      // Click a blinking alert message = "đã tiếp nhận" (notifies the sender).
+      function ackFeedMsg(el) {
+        if (!el.classList.contains('alert-pending')) return;
+        el.classList.remove('alert-pending');
+        el.classList.add('alert-acked');
+        var mk = document.createElement('span');
+        mk.className = 'ackmark';
+        mk.textContent = 'đã tiếp nhận';
+        el.appendChild(mk);
+        if (el.dataset.sender) {
+          api.ackAlert({ clientIds: [el.dataset.sender], label: el.dataset.label || '' });
+        }
+      }
+
+      function addFeed(kind, who, text, meta) {
+        $('bpEmpty').classList.add('bp-hidden');
+        var feed = $('bpFeed');
+        var el = document.createElement('div');
+        el.className = 'bp-msg ' + kind;
+        if (kind !== 'sys' && who) { var w = document.createElement('span'); w.className = 'who'; w.textContent = who; el.appendChild(w); }
+        el.appendChild(document.createTextNode(text));
+        if (meta && meta.alert) {
+          el.classList.add('alert-pending');
+          if (meta.sender) el.dataset.sender = meta.sender;
+          el.dataset.label = meta.label || text;
+          el.addEventListener('click', function () { ackFeedMsg(el); });
+        }
+        feed.appendChild(el);
+        if (feed.scrollHeight - feed.scrollTop - feed.clientHeight < 200) feed.scrollTop = feed.scrollHeight;
+        while (feed.children.length > 300) feed.removeChild(feed.firstChild);
+      }
+      function rel(ts) {
+        var s = Math.round((Date.now() - ts) / 1000);
+        if (s < 60) return s + 's trước';
+        if (s < 3600) return Math.round(s / 60) + ' phút trước';
+        return Math.round(s / 3600) + ' giờ trước';
+      }
+
+      api.getStatus().then(applyStatus).catch(function () {});
+    })();
     </script>
 </body>
 

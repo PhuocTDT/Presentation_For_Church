@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'unsafe-inline'; connect-src 'self'; img-src 'self' data:; base-uri 'none'">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
+<meta name="theme-color" content="#ffffff">
+<title>Kênh Band</title>
+<style>
+  /* Self-contained: church phones may have no mobile data. No CDN, no fonts.
+     Light theme, no decorative icons, compact. */
+  :root {
+    --bg:#ffffff; --panel:#f4f5f7; --panel-2:#eceef1; --line:#dfe2e7;
+    --ink:#1e2430; --ink-soft:#5b6472; --ink-faint:#8a93a3;
+    --band:#b9740f; --band-bg:#fdf3e3;
+    --op:#2563a8; --op-bg:#e8f1fb;
+    --ok:#2f8a55; --danger:#c0392f;
+  }
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html,body { margin:0; height:100%; }
+  body {
+    background:var(--bg); color:var(--ink);
+    font:15px/1.45 -apple-system,"Segoe UI",Roboto,system-ui,sans-serif;
+    overscroll-behavior:none;
+  }
+  button { font:inherit; color:inherit; cursor:pointer; }
+  input, select { font:inherit; }
+  .hidden { display:none !important; }
+
+  /* ---------- Join ---------- */
+  #join {
+    min-height:100%; display:flex; flex-direction:column; justify-content:center;
+    gap:14px; padding:24px 20px; max-width:440px; margin:0 auto;
+  }
+  #join h1 { margin:0; font-size:1.35rem; }
+  #join p.sub { margin:0; color:var(--ink-soft); font-size:.9rem; }
+  .field { display:flex; flex-direction:column; gap:6px; }
+  .field label { font-size:.72rem; letter-spacing:.04em; text-transform:uppercase; color:var(--ink-faint); }
+  .field input {
+    background:#fff; border:1px solid var(--line); border-radius:10px;
+    padding:12px 14px; color:var(--ink); outline:none;
+  }
+  .field input:focus { border-color:var(--op); }
+  #pin { letter-spacing:.4em; text-align:center; font-size:1.25rem; }
+  .roles { display:flex; gap:8px; }
+  .roles button {
+    flex:1; background:#fff; border:1px solid var(--line); border-radius:10px;
+    padding:11px 8px; color:var(--ink-soft);
+  }
+  .roles button[aria-pressed="true"] { background:var(--op-bg); border-color:var(--op); color:var(--op); font-weight:600; }
+  .primary {
+    background:var(--op); border:none; border-radius:10px; padding:13px;
+    font-weight:700; color:#fff; font-size:1rem;
+  }
+  .primary:disabled { opacity:.5; }
+  .err { color:var(--danger); font-size:.85rem; min-height:1.1em; text-align:center; }
+
+  /* ---------- Main ---------- */
+  #main { min-height:100%; display:flex; flex-direction:column; }
+  .topbar {
+    display:flex; align-items:center; gap:8px; padding:8px 12px;
+    padding-top:calc(8px + env(safe-area-inset-top));
+    border-bottom:1px solid var(--line); background:var(--panel);
+    position:sticky; top:0; z-index:5;
+  }
+  .dot { width:8px; height:8px; border-radius:50%; background:var(--ink-faint); flex:none; }
+  .dot.on { background:var(--ok); }
+  .dot.off { background:var(--danger); }
+  .topbar .room { font-weight:600; flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .topbar .count { color:var(--ink-soft); font-size:.8rem; }
+  .topbar .txtbtn { background:none; border:1px solid var(--line); border-radius:8px; padding:5px 10px; font-size:.78rem; color:var(--ink-soft); }
+
+  .scroll { flex:1; overflow-y:auto; -webkit-overflow-scrolling:touch; }
+  section.block { padding:10px 12px; }
+  section.block > h2 {
+    margin:0 0 8px; font-size:.7rem; letter-spacing:.06em; text-transform:uppercase; color:var(--ink-faint);
+    display:flex; justify-content:space-between; align-items:center;
+  }
+  .link { background:none; border:none; color:var(--op); font-size:.8rem; padding:2px 4px; }
+
+  .grid { display:grid; grid-template-columns:repeat(2, 1fr); gap:8px; }
+  .qbtn {
+    background:#fff; border:1px solid var(--line); border-radius:10px;
+    min-height:52px; padding:10px 8px; display:flex; align-items:center;
+    justify-content:center; text-align:center; line-height:1.2; font-size:.92rem;
+  }
+  .qbtn:active { background:var(--panel-2); }
+  .qbtn.sent { border-color:var(--ok); background:#e9f5ee; }
+  .qbtn.failed { border-color:var(--danger); }
+  .qbtn.add { color:var(--ink-faint); border-style:dashed; }
+
+  .group-label { margin:12px 0 6px; font-size:.75rem; color:var(--ink-faint); }
+  .group-label:first-child { margin-top:0; }
+
+  /* composer */
+  .composer {
+    display:flex; gap:8px; padding:8px 12px;
+    padding-bottom:calc(8px + env(safe-area-inset-bottom));
+    border-top:1px solid var(--line); background:var(--panel);
+  }
+  .composer input {
+    flex:1; background:#fff; border:1px solid var(--line); border-radius:18px;
+    padding:9px 14px; color:var(--ink); outline:none;
+  }
+  .composer input:focus { border-color:var(--op); }
+  .composer .send { background:var(--op); border:none; border-radius:18px; padding:0 16px; font-weight:700; color:#fff; }
+
+  /* feed */
+  .feed { display:flex; flex-direction:column; gap:6px; padding:10px 12px; }
+  .msg { max-width:84%; padding:7px 11px; border-radius:12px; font-size:.9rem; }
+  .msg .who { display:block; font-size:.68rem; color:var(--ink-faint); margin-bottom:1px; }
+  .msg.band { align-self:flex-end; background:var(--band-bg); border:1px solid #eccf9f; }
+  .msg.op { align-self:flex-start; background:var(--op-bg); border:1px solid #bcd6f0; }
+  .msg.sys { align-self:center; background:transparent; color:var(--ink-faint); font-size:.78rem; border:none; }
+
+  /* toast */
+  #toasts {
+    position:fixed; left:0; right:0; top:0; z-index:50;
+    padding:calc(8px + env(safe-area-inset-top)) 12px 0;
+    display:flex; flex-direction:column; align-items:center; gap:6px; pointer-events:none;
+  }
+  .toast {
+    pointer-events:auto; max-width:520px; width:100%;
+    background:#fff; border:1px solid var(--line); border-left-width:4px;
+    border-radius:10px; padding:9px 13px; box-shadow:0 8px 24px -10px rgba(20,25,40,.25);
+    animation:drop .16s ease-out;
+  }
+  .toast.band { border-left-color:var(--band); }
+  .toast.op { border-left-color:var(--op); }
+  .toast .who { font-size:.7rem; color:var(--ink-faint); }
+  .toast .body { font-size:.92rem; }
+  .toast .body strong { font-weight:800; color:var(--ink); }
+  @keyframes drop { from { transform:translateY(-10px); opacity:0; } }
+  @media (prefers-reduced-motion: reduce) { .toast { animation:none; } }
+
+  /* editor sheet */
+  #editor {
+    position:fixed; inset:0; z-index:60; background:rgba(20,25,40,.4);
+    display:flex; align-items:flex-end;
+  }
+  #editor .sheet {
+    width:100%; background:#fff; border-top-left-radius:16px; border-top-right-radius:16px;
+    padding:16px 14px calc(16px + env(safe-area-inset-bottom)); display:flex; flex-direction:column; gap:12px;
+  }
+  #editor h3 { margin:0; font-size:1rem; }
+  .sheet .row { display:flex; gap:8px; }
+  .sheet .row button { flex:1; border-radius:10px; padding:12px; border:1px solid var(--line); background:var(--panel); }
+  .sheet .row .save { background:var(--op); border:none; color:#fff; font-weight:700; }
+  .sheet .row .del { border-color:var(--danger); color:var(--danger); }
+</style>
+</head>
+<body>
+
+<div id="join">
+  <div>
+    <h1>Kênh Band</h1>
+    <p class="sub">Nhập tên và mã PIN người trình chiếu đọc cho bạn.</p>
+  </div>
+  <div class="field">
+    <label for="name">Tên của bạn</label>
+    <input id="name" autocomplete="name" placeholder="VD: Minh" maxlength="40">
+  </div>
+  <div class="field">
+    <label>Bạn là</label>
+    <div class="roles">
+      <button type="button" data-role="band" aria-pressed="true">Thành viên band</button>
+      <button type="button" data-role="leader" aria-pressed="false">Người hướng dẫn</button>
+    </div>
+  </div>
+  <div class="field">
+    <label for="pin">Mã PIN</label>
+    <input id="pin" inputmode="numeric" pattern="[0-9]*" maxlength="8" placeholder="••••">
+  </div>
+  <button id="joinBtn" class="primary">Vào kênh</button>
+  <div class="err" id="joinErr"></div>
+</div>
+
+<div id="main" class="hidden">
+  <div class="topbar">
+    <span class="dot" id="dot"></span>
+    <span class="room" id="roomName">Kênh Band</span>
+    <span class="count" id="count">0</span>
+    <button class="txtbtn" id="gearBtn">Âm/rung</button>
+  </div>
+
+  <div class="scroll" id="scroll">
+    <section class="block">
+      <h2>Nút cảnh báo của bạn <button class="link" id="editModeBtn">Sửa</button></h2>
+      <div id="buttons"></div>
+    </section>
+  </div>
+
+  <div class="composer">
+    <input id="composeInput" placeholder="Nhắn cho người chiếu máy…" maxlength="500">
+    <button class="send" id="composeSend">Gửi</button>
+  </div>
+</div>
+
+<div id="toasts"></div>
+
+<div id="editor" class="hidden">
+  <div class="sheet">
+    <h3 id="editorTitle">Tạo nút</h3>
+    <div class="field">
+      <label for="edLabel">Nội dung cảnh báo</label>
+      <input id="edLabel" placeholder="VD: Guitar nhỏ" maxlength="60">
+    </div>
+    <div class="field">
+      <label for="edGroup">Nhóm (tùy chọn)</label>
+      <input id="edGroup" placeholder="VD: Âm thanh" maxlength="40">
+    </div>
+    <div class="row">
+      <button class="del hidden" id="edDelete">Xóa</button>
+      <button id="edCancel">Hủy</button>
+      <button class="save" id="edSave">Lưu</button>
+    </div>
+  </div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>

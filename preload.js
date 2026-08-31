@@ -66,5 +66,35 @@ contextBridge.exposeInMainWorld('electronAPI', {
   onLiveRefreshCustomFonts: (callback) => {
     ipcRenderer.removeAllListeners('live-refresh-custom-fonts');
     ipcRenderer.on('live-refresh-custom-fonts', callback);
+  },
+
+  // Band Comm — LAN chat channel for the worship band (sidebar in index.html).
+  // See band-comm-plan.md.
+  bandComm: {
+    start: () => ipcRenderer.invoke('band-comm-start'),
+    stop: () => ipcRenderer.invoke('band-comm-stop'),
+    getStatus: () => ipcRenderer.invoke('band-comm-status'),
+    openFirewall: () => ipcRenderer.invoke('band-comm-open-firewall'),
+    getConfig: () => ipcRenderer.invoke('band-comm-get-config'),
+    saveConfig: (cfg) => ipcRenderer.invoke('band-comm-save-config', cfg),
+    send: (payload) => ipcRenderer.invoke('band-comm-send', payload),
+    ackAlert: (payload) => ipcRenderer.invoke('band-comm-ack', payload),
+    resolveAlert: (payload) => ipcRenderer.invoke('band-comm-resolve', payload),
+    onMessage: (callback) => {
+      ipcRenderer.removeAllListeners('band-comm-event');
+      ipcRenderer.on('band-comm-event', callback);
+    },
+    onPresence: (callback) => {
+      ipcRenderer.removeAllListeners('band-comm-presence');
+      ipcRenderer.on('band-comm-presence', callback);
+    },
+    onServerStatus: (callback) => {
+      ipcRenderer.removeAllListeners('band-comm-status-changed');
+      ipcRenderer.on('band-comm-status-changed', callback);
+    },
+    onTogglePanel: (callback) => {
+      ipcRenderer.removeAllListeners('band-comm-toggle-panel');
+      ipcRenderer.on('band-comm-toggle-panel', callback);
+    }
   }
 });

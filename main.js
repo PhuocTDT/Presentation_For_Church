@@ -4,6 +4,9 @@ const fs = require('fs');
 const os = require('os');
 const { pathToFileURL } = require('url');
 const { validateItem, migrateItem } = require('./src/schema');
+const { createStore: createBandCommStore } = require('./src/band-comm/store');
+const { createCommServer, lanIPv4List } = require('./src/band-comm/server');
+const { createMdnsResponder } = require('./src/band-comm/mdns');
 
 // CPU Usage helper
 let lastCpuUsage = { idle: 0, total: 0 };
@@ -59,6 +62,10 @@ function saveAndBackupSync(filePath, data) {
 let userDataPath, songsFilePath, bibleFilePath, settingsFilePath, defaultMediaFolderPath, userBibleDataPath, bibleVersionRegistryPath, styleTemplatesPath, customFontsPath, customFontsDir;
 let liveWindow = null;
 let mainWindow = null;
+let bandCommStore = null;
+let commServer = null;
+let bandMdns = null;
+let lastBandStartError = null;
 let globalSettings = {};
 let liveWindowTargetDisplayId = null;
 const bundledBibleDataPath = path.join(__dirname, 'data');
@@ -893,6 +900,99 @@ function createLiveWindow(initialBounds = null) {
   });
 }
 
+// ---- Band Comm: the chat channel lives as a left sidebar INSIDE index.html
+// (toggled by the "Channel" menu). The main process only runs the LAN comm
+// server and relays messages to the operator renderer. See band-comm-plan.md §6. ----
+
+// Fan an inbound envelope / presence / status out to the operator renderer.
+function broadcastToRenderers(channel, payload) {
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    try { mainWindow.webContents.send(channel, payload); } catch (e) {}
+  }
+}
+
+function sendBandStatus(extra) {
+  if (!commServer) return;
+  const st = commServer.getStatus();
+  st.operatorReplies = bandCommStore ? bandCommStore.load().operatorReplies : [];
+  broadcastToRenderers('band-comm-status-changed', Object.assign(st, extra || {}));
+}
+
+// A system line for the operator sidebar feed only (not sent over SSE to phones).
+function bandSystemLine(text) {
+  broadcastToRenderers('band-comm-event', {
+    id: 'sys-' + Date.now(), ts: Date.now(), type: 'system',
+    from: { clientId: 'server', name: 'Hệ thống', role: 'system' },
+    to: 'all', text: String(text || ''), meta: {}
+  });
+}
+
+function bandStartupHint(err) {
+  const code = err && err.code;
+  if (code === 'EADDRINUSE') return `Cổng ${err.port || (bandCommStore && bandCommStore.load().port)} đang bận. Có thể app đang mở sẵn ở nơi khác, hoặc phần mềm khác giữ cổng. Đóng bớt rồi bấm Thử lại, hoặc đổi "port" trong band-comm.json.`;
+  if (code === 'EACCES') return 'Hệ điều hành từ chối mở cổng này (cần quyền hoặc bị firewall chặn). Thử đổi "port" trong band-comm.json sang số > 1024, hoặc cho phép app qua Windows Firewall.';
+  if (code === 'EADDRNOTAVAIL') return 'Không gán được địa chỉ mạng. Kiểm tra máy đã nối Wi-Fi/LAN chưa.';
+  return 'Bấm Thử lại. Nếu vẫn lỗi, chép nội dung lỗi bên dưới để kiểm tra.';
+}
+
+// Start (or restart) the comm server + mDNS, and report success/failure to the
+// operator sidebar. Used both by auto-start on launch and the "Thử lại" button.
+async function startBandComm() {
+  initBandComm();
+  try {
+    const st = await commServer.start();
+    if (bandMdns) {
+      bandMdns.stop();
+      const ips = lanIPv4List();
+      bandMdns.start(bandCommStore.load().room.hostname, () => {
+        const list = lanIPv4List();
+        return list[0] ? list[0].address : (ips[0] ? ips[0].address : null);
+      });
+    }
+    lastBandStartError = null;
+    sendBandStatus({ error: null });
+    bandSystemLine(`Kênh đã sẵn sàng · ${st.hostUrl || st.url || ''}`);
+    return commServer.getStatus();
+  } catch (err) {
+    const detail = {
+      code: err && err.code || null,
+      message: err && err.message || String(err),
+      syscall: err && err.syscall || null,
+      port: err && err.port || (bandCommStore && bandCommStore.load().port) || null,
+      hint: bandStartupHint(err)
+    };
+    lastBandStartError = detail;
+    console.error('[BandComm] server failed to start:', detail);
+    sendBandStatus({ error: detail });
+    bandSystemLine(`Kênh KHÔNG khởi chạy được: ${detail.code || ''} ${detail.message}`);
+    return { running: false, error: detail };
+  }
+}
+
+function stopBandComm() {
+  if (bandMdns) bandMdns.stop();
+  if (commServer) commServer.stop();
+}
+
+function initBandComm() {
+  if (commServer) return;
+  bandCommStore = createBandCommStore(userDataPath, safeWriteSync);
+  bandMdns = createMdnsResponder();
+  commServer = createCommServer({
+    store: bandCommStore,
+    onEvent: (env) => {
+      broadcastToRenderers('band-comm-event', env);
+      // Nudge the taskbar when a fresh band alert lands and the app is unfocused.
+      if (env.type === 'alert' && env.from && env.from.role !== 'operator') {
+        if (mainWindow && !mainWindow.isDestroyed() && !mainWindow.isFocused()) {
+          try { mainWindow.flashFrame(true); } catch (e) {}
+        }
+      }
+    },
+    onPresence: (list) => broadcastToRenderers('band-comm-presence', list)
+  });
+}
+
 function createWindow() {
   const win = new BrowserWindow({
     width: 1400,
@@ -908,6 +1008,18 @@ function createWindow() {
   mainWindow = win;
   win.loadFile('index.html');
   setupMenu(win);
+
+  // The operator window is the app itself. Closing it must shut everything
+  // down — including the Screen Live window on the projector — so the user
+  // never has to kill a stray process from Task Manager.
+  win.on('closed', () => {
+    mainWindow = null;
+    if (liveWindow && !liveWindow.isDestroyed()) {
+      liveWindow.destroy();
+    }
+    stopBandComm();
+    app.quit();
+  });
 }
 
 function setupMenu(win) {
@@ -938,6 +1050,12 @@ function setupMenu(win) {
     {
       label: 'View',
       submenu: [{ role: 'reload' }, { role: 'forceReload' }, { role: 'toggleDevTools' }, { type: 'separator' }, { role: 'resetZoom' }, { role: 'zoomIn' }, { role: 'zoomOut' }]
+    },
+    {
+      label: 'Channel',
+      submenu: [
+        { label: 'Kênh Band (sidebar)', accelerator: 'CmdOrCtrl+Shift+B', click: () => win.webContents.send('band-comm-toggle-panel') }
+      ]
     }
   ];
   const menu = Menu.buildFromTemplate(template);
@@ -948,6 +1066,10 @@ function setupMenu(win) {
 bootstrapGpuAccelerationPreference();
 app.whenReady().then(() => {
   initializeData();
+  // Band Comm: server auto-starts in the background (see band-comm-plan.md B1).
+  // Result is reported to the operator sidebar via band-comm-status-changed +
+  // a system feed line; the sidebar also re-reads state via band-comm-status.
+  startBandComm();
   screen.on('display-added', () => scheduleLiveWindowSync('display-added', true, 250));
   screen.on('display-removed', () => scheduleLiveWindowSync('display-removed', true, 250));
   screen.on('display-metrics-changed', () => scheduleLiveWindowSync('display-metrics-changed', true, 250));
@@ -1650,6 +1772,105 @@ app.whenReady().then(() => {
     }
   });
 
+  // ---- Band Comm (sidebar in index.html) ----
+  // Retry after a failed auto-start ("Thử lại" button). Never throws — the
+  // result (running, or a detailed error object) is what the sidebar renders.
+  ipcMain.handle('band-comm-start', async () => {
+    const st = await startBandComm();
+    return { ...st, operatorReplies: bandCommStore.load().operatorReplies, error: lastBandStartError };
+  });
+
+  ipcMain.handle('band-comm-stop', () => {
+    stopBandComm();
+    sendBandStatus();
+    return commServer ? commServer.getStatus() : { running: false };
+  });
+
+  // One-click: add a Windows Firewall inbound-allow rule for this app so phones
+  // on the LAN can reach the comm server + mDNS. Triggers a UAC prompt. The
+  // elevated script writes a result file we read back to know if it truly worked.
+  ipcMain.handle('band-comm-open-firewall', async () => {
+    if (process.platform !== 'win32') return { ok: false, error: 'Chỉ áp dụng trên Windows.' };
+    const { spawnSync } = require('child_process');
+    const exe = process.execPath;
+    const tmp = app.getPath('temp');
+    const ps1 = path.join(tmp, 'bandcomm-fw.ps1');
+    const res = path.join(tmp, 'bandcomm-fw-result.txt');
+    const port = bandCommStore ? bandCommStore.load().port : 7071;
+    const manual =
+      `netsh advfirewall firewall add rule name="Presentation Ban Comm" dir=in action=allow program="${exe}" enable=yes profile=any\n` +
+      `netsh advfirewall firewall add rule name="Presentation Ban Comm TCP" dir=in action=allow protocol=TCP localport=${port} enable=yes profile=any`;
+
+    const script = [
+      "$ErrorActionPreference = 'Stop'",
+      `$exe = '${exe.replace(/'/g, "''")}'`,
+      `$res = '${res.replace(/'/g, "''")}'`,
+      'try {',
+      "  cmd /c 'netsh advfirewall firewall delete rule name=\"Presentation Ban Comm\"' | Out-Null",
+      "  cmd /c 'netsh advfirewall firewall delete rule name=\"Presentation Ban Comm TCP\"' | Out-Null",
+      `  $r1 = cmd /c ('netsh advfirewall firewall add rule name=\"Presentation Ban Comm\" dir=in action=allow program=\"' + $exe + '\" enable=yes profile=any')`,
+      `  $r2 = cmd /c ('netsh advfirewall firewall add rule name=\"Presentation Ban Comm TCP\" dir=in action=allow protocol=TCP localport=${port} enable=yes profile=any')`,
+      "  if ($LASTEXITCODE -ne 0) { throw ('netsh: ' + $r1 + ' ' + $r2) }",
+      "  Set-Content -LiteralPath $res -Value 'OK' -Encoding ascii",
+      '} catch {',
+      "  Set-Content -LiteralPath $res -Value ('ERR: ' + $_.Exception.Message) -Encoding ascii",
+      '}'
+    ].join('\n');
+
+    try {
+      try { fs.unlinkSync(res); } catch (e) {}
+      fs.writeFileSync(ps1, script, 'utf8');
+      const r = spawnSync('powershell.exe', [
+        '-NoProfile', '-ExecutionPolicy', 'Bypass', '-Command',
+        `Start-Process -FilePath powershell -Verb RunAs -Wait -WindowStyle Hidden -ArgumentList @('-NoProfile','-ExecutionPolicy','Bypass','-File','${ps1.replace(/'/g, "''")}')`
+      ], { windowsHide: true, timeout: 120000 });
+      let out = '';
+      try { out = fs.readFileSync(res, 'utf8').trim(); } catch (e) {}
+      try { fs.unlinkSync(ps1); } catch (e) {}
+      try { fs.unlinkSync(res); } catch (e) {}
+      if (out === 'OK') return { ok: true };
+      if (out.indexOf('ERR:') === 0) return { ok: false, error: out + '\n\nChạy tay (PowerShell Admin):\n' + manual };
+      return { ok: false, error: 'Bị huỷ UAC hoặc không chạy được (' + (r.status) + '). Chạy tay (PowerShell/CMD Admin):\n' + manual };
+    } catch (e) {
+      return { ok: false, error: (e && e.message || 'Lỗi') + '\n\nChạy tay:\n' + manual };
+    }
+  });
+
+  ipcMain.handle('band-comm-status', () => {
+    initBandComm();
+    const st = commServer.getStatus();
+    st.operatorReplies = bandCommStore.load().operatorReplies;
+    st.error = lastBandStartError;
+    return st;
+  });
+
+  ipcMain.handle('band-comm-get-config', () => {
+    initBandComm();
+    return bandCommStore.load();
+  });
+
+  ipcMain.handle('band-comm-save-config', (e, cfg) => {
+    initBandComm();
+    const saved = bandCommStore.save(cfg);
+    sendBandStatus();
+    return saved;
+  });
+
+  ipcMain.handle('band-comm-send', (e, payload) => {
+    if (!commServer) return null;
+    return commServer.operatorSend(payload || {});
+  });
+
+  ipcMain.handle('band-comm-ack', (e, payload) => {
+    if (!commServer) return [];
+    return commServer.operatorAck(payload || {});
+  });
+
+  ipcMain.handle('band-comm-resolve', (e, payload) => {
+    if (!commServer) return null;
+    return commServer.operatorResolve(payload || {});
+  });
+
   ipcMain.handle('quit-app', () => {
     app.quit();
     return true;
@@ -1725,6 +1946,7 @@ app.on('before-quit', () => {
     clearTimeout(liveWindowSyncTimer);
     liveWindowSyncTimer = null;
   }
+  stopBandComm();
   if (liveWindow && !liveWindow.isDestroyed()) {
     liveWindow.destroy();
   }

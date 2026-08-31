@@ -12,3 +12,12 @@ index_test.html
 scan_bible.js
 image.png
 media/
+
+# Local scratch / one-off scripts (không thuộc app)
+_test_regex.js
+format_songs.js
+import_txt_to_json.js
+spellcheck_ai.js
+spellcheck_dict.js
+songs_preview.json
+songs_txt/

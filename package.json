@@ -24,6 +24,7 @@
       "live.html",
       "edit-song.html",
       "src/**/*",
+      "comm/**/*",
       "data/**/*.xml",
       "data/songs.json",
       "fonts/**/*",
