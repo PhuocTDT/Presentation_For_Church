@@ -56,6 +56,9 @@
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
       "shortcutName": "Presentation For Church"
+    },
+    "portable": {
+      "artifactName": "Presentation.For.Church.Portable.${version}.${ext}"
     }
   },
   "devDependencies": {
