@@ -198,6 +198,21 @@
             flex-direction: column;
         }
 
+        /* Songs Library header: co dãn liên tục theo bề rộng panel (container query) */
+        .lib-cq { container-type: inline-size; }
+        .lib-tabs button {
+            padding-left: clamp(4px, 2.2cqw, 8px);
+            padding-right: clamp(4px, 2.2cqw, 8px);
+            font-size: clamp(9px, 3.4cqw, 12px);
+        }
+        .lib-actions button {
+            width: clamp(18px, 6.5cqw, 26px);
+            height: clamp(18px, 6.5cqw, 26px);
+        }
+        .lib-actions .material-symbols-outlined {
+            font-size: clamp(12px, 4.6cqw, 15px);
+        }
+
         /* Song Editor Modal Styles */
         .win-button {
             border: 1px solid #707070;
@@ -921,6 +936,8 @@
          small tab that protrudes from the left edge. No CSS transitions: this app
          runs with flaky GPU compositing where transitions freeze mid-way. */
       :root { --bp-w: 340px; }
+      /* Sidebar docks: it pushes the app right, so the 3 content panels all
+         shrink by the same proportion (see #top-row / #bottom-row flex-basis). */
       body.bp-open { padding-left: var(--bp-w) !important; }
 
       /* z-index at "app chrome" level (above the 3 content panels z-10..30, below
@@ -928,14 +945,14 @@
          a modal such as Style Templates. */
       #bandPanelTab {
         position: fixed; left: 0; top: 50%; transform: translateY(-50%);
-        z-index: 40; background: #2563a8; color: #fff;
+        z-index: 40; background: #e8903f; color: #40260a;
         border: none; border-radius: 0 12px 12px 0;
         padding: 14px 6px; font: 700 11px/1 "Segoe UI", system-ui, sans-serif;
         writing-mode: vertical-rl; text-orientation: mixed; cursor: pointer;
-        letter-spacing: .08em; box-shadow: 3px 3px 14px rgba(15,30,60,.28);
+        letter-spacing: .08em; box-shadow: 3px 3px 14px rgba(80,45,10,.30);
         display: flex; align-items: center; gap: 8px;
       }
-      #bandPanelTab:hover { background: #1f5697; }
+      #bandPanelTab:hover { background: #d97f2c; }
       #bandPanelTab .nb { display: none; background: #ffdf6b; color: #4a3600;
         border-radius: 8px; padding: 1px 5px; font-size: 10px; writing-mode: horizontal-tb; }
       #bandPanelTab.has-unread .nb { display: inline-block; }
@@ -1138,7 +1155,7 @@
             <!-- Section 1: Schedule -->
             <section
                 class="panel bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden relative z-[20]"
-                style="width: 25%;">
+                style="flex: 25 1 0;">
                 <div class="px-3 py-1 bg-slate-800 dark:bg-black flex justify-between items-center text-white shrink-0 rounded-t-[7px]">
                     <h3 class="text-[10px] font-bold uppercase tracking-wider opacity-80">Schedule</h3>
                     <span class="text-white/60 text-xs font-bold">≡</span>
@@ -1154,7 +1171,7 @@
             <!-- Section 2: Preview Screen -->
             <section
                 class="panel bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden relative z-[20]"
-                style="width: 35%;">
+                style="flex: 37.5 1 0;">
                 <div class="px-3 py-1 bg-slate-800 dark:bg-black flex justify-between items-center text-white shrink-0 rounded-t-[7px]">
                     <h3 class="text-[10px] font-bold uppercase tracking-wider opacity-80">Preview</h3>
                     <div class="flex items-center gap-2">
@@ -1231,7 +1248,8 @@
 
             <!-- Section 3: Live Screen -->
             <section
-                class="panel bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 shadow-sm flex-1 overflow-hidden relative z-[20]">
+                class="panel bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden relative z-[20]"
+                style="flex: 37.5 1 0;">
                 <div class="px-3 py-1 bg-red-900 flex justify-between items-center text-white shrink-0 rounded-t-[7px]">
                     <div class="flex items-center gap-1.5">
                         <span class="size-1.5 rounded-full bg-red-500 animate-pulse"></span>
@@ -1267,15 +1285,15 @@
         <div class="flex gap-0 flex-1 min-h-0 relative z-[10]" id="bottom-row">
             <!-- Section 4: Songs Library -->
             <section
-                class="panel bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 shadow-sm"
-                style="width: 25%;">
-                <div class="px-3 py-2 bg-slate-800 dark:bg-black flex items-center gap-2 shrink-0 min-w-0">
-                    <div class="flex border-b border-white/20 shrink-0">
+                class="panel bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden lib-cq"
+                style="flex: 25 1 0;">
+                <div class="px-3 py-2 bg-slate-800 dark:bg-black flex items-center gap-2 shrink-0 min-w-0 rounded-t-[7px]">
+                    <div class="lib-tabs flex border-b border-white/20 shrink-0">
                         <button id="tab-songs"
-                            class="px-2 py-1 text-xs font-bold uppercase tracking-wider text-white border-b-2 border-primary"
+                            class="py-1 font-bold uppercase tracking-wider text-white border-b-2 border-primary"
                             onclick="switchLibraryTab('songs')">Songs</button>
                         <button id="tab-bible"
-                            class="px-2 py-1 text-xs font-bold uppercase tracking-wider text-white/40 hover:text-white/70"
+                            class="py-1 font-bold uppercase tracking-wider text-white/40 hover:text-white/70"
                             onclick="switchLibraryTab('bible')">Bible</button>
                     </div>
                     <div class="relative flex-1 min-w-0">
@@ -1286,15 +1304,15 @@
                             placeholder="Search..." type="text" oninput="filterLibrary()"
                             onkeydown="if((event.ctrlKey || event.metaKey) && event.key === 'a') { this.select(); event.preventDefault(); }" />
                     </div>
-                    <div class="flex items-center gap-1 shrink-0">
+                    <div class="lib-actions flex items-center gap-1 shrink-0">
                         <button id="header-import-btn" onclick="handleMainImport()" title="Import dữ liệu"
-                            class="size-6 flex items-center justify-center rounded bg-white/10 hover:bg-white/25 transition-colors">
-                            <span class="material-symbols-outlined text-[14px] text-white">upload_file</span>
+                            class="flex items-center justify-center rounded bg-white/10 hover:bg-white/25 transition-colors">
+                            <span class="material-symbols-outlined text-white">upload_file</span>
                         </button>
                         <button id="header-export-btn" onclick="exportSongsToFile()"
                             title="Export thư viện bài hát JSON"
-                            class="size-6 flex items-center justify-center rounded bg-white/10 hover:bg-white/25 transition-colors">
-                            <span class="material-symbols-outlined text-[14px] text-white">download</span>
+                            class="flex items-center justify-center rounded bg-white/10 hover:bg-white/25 transition-colors">
+                            <span class="material-symbols-outlined text-white">download</span>
                         </button>
                     </div>
                 </div>
@@ -1346,8 +1364,9 @@
 
             <!-- Section 5: Media Library -->
             <section
-                class="panel bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 shadow-sm flex-1">
-                <div class="px-3 py-1 bg-slate-800 dark:bg-black flex items-center justify-between text-white shrink-0">
+                class="panel bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden"
+                style="flex: 75 1 0;">
+                <div class="px-3 py-1 bg-slate-800 dark:bg-black flex items-center justify-between text-white shrink-0 rounded-t-[7px]">
                     <h3 class="text-[10px] font-bold uppercase tracking-wider opacity-80">Media</h3>
                     <div class="flex gap-1.5">
                         <button class="size-5 flex items-center justify-center rounded bg-white/10">
@@ -4259,13 +4278,16 @@
         function setupResizer(resizerId, panelBefore, panelAfter, isVertical = false) {
             const resizer = document.getElementById(resizerId);
             if (!resizer) return;
-            let startX, startY, startWidth, startHeight;
+            let startX, startY, startWidth, startHeight, startAfterWidth, startBeforeGrow, startAfterGrow;
 
             resizer.addEventListener('mousedown', (e) => {
                 startX = e.clientX;
                 startY = e.clientY;
                 startWidth = panelBefore.offsetWidth;
                 startHeight = panelBefore.offsetHeight;
+                startAfterWidth = panelAfter ? panelAfter.offsetWidth : 0;
+                startBeforeGrow = parseFloat(getComputedStyle(panelBefore).flexGrow) || 1;
+                startAfterGrow = panelAfter ? (parseFloat(getComputedStyle(panelAfter).flexGrow) || 1) : 1;
                 resizer.classList.add('dragging');
                 document.body.style.cursor = isVertical ? 'row-resize' : 'col-resize';
                 document.addEventListener('mousemove', onMouseMove);
@@ -4278,9 +4300,17 @@
                     panelBefore.style.height = `${startHeight + dy}px`;
                     panelBefore.style.flex = 'none';
                 } else {
+                    // Adjust the two panels' flex-grow (keep the sum) instead of a
+                    // fixed px width, so every panel in the row still shrinks by the
+                    // same proportion when the sidebar docks / the window resizes.
                     const dx = e.clientX - startX;
-                    panelBefore.style.width = `${startWidth + dx}px`;
-                    panelBefore.style.flex = 'none';
+                    const beforeW = startWidth + dx;
+                    const afterW = startAfterWidth - dx;
+                    if (beforeW < 140 || afterW < 140) return;
+                    const totalGrow = startBeforeGrow + startAfterGrow;
+                    const totalW = startWidth + startAfterWidth || 1;
+                    panelBefore.style.flex = `${(totalGrow * beforeW / totalW).toFixed(4)} 1 0`;
+                    if (panelAfter) panelAfter.style.flex = `${(totalGrow * afterW / totalW).toFixed(4)} 1 0`;
                 }
             }
 
