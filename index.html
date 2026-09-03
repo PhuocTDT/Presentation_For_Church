@@ -1269,26 +1269,24 @@
             <section
                 class="panel bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 shadow-sm"
                 style="width: 25%;">
-                <div class="px-3 py-2 bg-slate-800 dark:bg-black flex items-center justify-between shrink-0">
-                    <div class="flex items-center gap-4">
-                        <div class="flex border-b border-white/20">
-                            <button id="tab-songs"
-                                class="px-2 py-1 text-xs font-bold uppercase tracking-wider text-white border-b-2 border-primary"
-                                onclick="switchLibraryTab('songs')">Songs</button>
-                            <button id="tab-bible"
-                                class="px-2 py-1 text-xs font-bold uppercase tracking-wider text-white/40 hover:text-white/70"
-                                onclick="switchLibraryTab('bible')">Bible</button>
-                        </div>
-                        <div class="relative">
-                            <span
-                                class="material-symbols-outlined absolute left-2 top-1/2 -translate-y-1/2 text-slate-400 text-xs">search</span>
-                            <input id="library-search"
-                                class="pl-5 pr-2 py-0 bg-white border-none rounded text-[10px] text-slate-900 placeholder-slate-400 focus:ring-1 focus:ring-primary/30 w-44 h-6"
-                                placeholder="Search..." type="text" oninput="filterLibrary()"
-                                onkeydown="if((event.ctrlKey || event.metaKey) && event.key === 'a') { this.select(); event.preventDefault(); }" />
-                        </div>
+                <div class="px-3 py-2 bg-slate-800 dark:bg-black flex items-center gap-2 shrink-0 min-w-0">
+                    <div class="flex border-b border-white/20 shrink-0">
+                        <button id="tab-songs"
+                            class="px-2 py-1 text-xs font-bold uppercase tracking-wider text-white border-b-2 border-primary"
+                            onclick="switchLibraryTab('songs')">Songs</button>
+                        <button id="tab-bible"
+                            class="px-2 py-1 text-xs font-bold uppercase tracking-wider text-white/40 hover:text-white/70"
+                            onclick="switchLibraryTab('bible')">Bible</button>
                     </div>
-                    <div class="flex items-center gap-1">
+                    <div class="relative flex-1 min-w-0">
+                        <span
+                            class="material-symbols-outlined absolute left-2 top-1/2 -translate-y-1/2 text-slate-400 text-xs pointer-events-none">search</span>
+                        <input id="library-search"
+                            class="w-full min-w-0 pl-5 pr-2 py-0 bg-white border-none rounded text-[10px] text-slate-900 placeholder-slate-400 focus:ring-1 focus:ring-primary/30 h-6"
+                            placeholder="Search..." type="text" oninput="filterLibrary()"
+                            onkeydown="if((event.ctrlKey || event.metaKey) && event.key === 'a') { this.select(); event.preventDefault(); }" />
+                    </div>
+                    <div class="flex items-center gap-1 shrink-0">
                         <button id="header-import-btn" onclick="handleMainImport()" title="Import dữ liệu"
                             class="size-6 flex items-center justify-center rounded bg-white/10 hover:bg-white/25 transition-colors">
                             <span class="material-symbols-outlined text-[14px] text-white">upload_file</span>
