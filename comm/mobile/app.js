@@ -1,5 +1,7 @@
 /* Kênh Band — mobile client. Vanilla JS, no build, no CDN.
-   Downstream: EventSource (/api/stream). Upstream: fetch POST.
+   Downstream: WebSocket (/api/ws). Upstream: fetch POST.
+   WebSocket (not SSE) because Cloudflare Tunnel buffers streaming HTTP and
+   operator→phone messages would never arrive.
    No severity anywhere — every incoming message is handled the same way;
    only DIRECTION (band vs operator) changes the colour. */
 
@@ -9,7 +11,10 @@
   var LS_KEY = 'bandcomm.v1';
 
   var state = loadState();
-  var es = null;
+  var ws = null;
+  var lastId = null;          // last envelope id seen -> replay cursor on reconnect
+  var reconnTimer = null;
+  var reconnDelay = 1000;
   var pingTimer = null;
   var toastQueue = [];
   var toastShowing = false;
@@ -73,6 +78,7 @@
       }
       saveState();
       enterMain();
+      if (res.j.gallery) renderChords(res.j.gallery);
     }).catch(function () {
       $('joinBtn').disabled = false;
       $('joinErr').textContent = 'Không kết nối được máy trình chiếu. Cùng Wi-Fi chưa?';
@@ -91,27 +97,42 @@
   }
 
   function connect() {
-    if (es) { es.close(); es = null; }
+    if (ws) { try { ws.onclose = null; ws.close(); } catch (e) {} ws = null; }
     setDot('');
-    es = new EventSource('api/stream?token=' + encodeURIComponent(state.token));
-    es.onopen = function () { setDot('on'); };
-    es.onerror = function () {
-      setDot('off');
-      // EventSource retries on its own (server sends `retry:`). If the token
-      // is dead the stream keeps 401-ing — bounce to join after a while.
-      if (es && es.readyState === 2) { setTimeout(maybeReauth, 4000); }
-    };
-    es.onmessage = function (e) {
+    var proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+    var url = proto + '//' + location.host + '/api/ws?token=' + encodeURIComponent(state.token) +
+              (lastId ? '&since=' + encodeURIComponent(lastId) : '');
+    try { ws = new WebSocket(url); } catch (e) { scheduleReconnect(); return; }
+
+    ws.onopen = function () { setDot('on'); reconnDelay = 1000; };
+    ws.onmessage = function (e) {
       var env;
       try { env = JSON.parse(e.data); } catch (err) { return; }
+      if (env && env.id && env.type !== 'presence') lastId = env.id;
       handleEnvelope(env);
+    };
+    ws.onerror = function () { /* onclose fires right after */ };
+    ws.onclose = function () {
+      setDot('off');
+      ws = null;
+      scheduleReconnect();
     };
   }
 
-  function maybeReauth() {
-    fetch('api/ping', { method: 'POST', headers: authHeader() }).then(function (r) {
-      if (r.status === 401) { state.token = null; saveState(); location.reload(); }
-    }).catch(function () {});
+  // WebSocket has no auto-retry. Back off, and re-check the token each attempt
+  // (a dead token -> bounce to the join screen; still offline -> keep backing off).
+  function scheduleReconnect() {
+    if (reconnTimer) return;
+    reconnTimer = setTimeout(function () {
+      reconnTimer = null;
+      reconnDelay = Math.min(reconnDelay * 2, 10000);
+      fetch('api/ping', { method: 'POST', headers: authHeader(), body: '{}' })
+        .then(function (r) {
+          if (r.status === 401) { state.token = null; saveState(); location.reload(); return; }
+          connect();
+        })
+        .catch(function () { scheduleReconnect(); });
+    }, reconnDelay);
   }
 
   function authHeader() {
@@ -137,6 +158,7 @@
       return;
     }
     if (env.type === 'system') { return; }
+    if (env.type === 'gallery') { renderChords(env.meta || {}); return; }
 
     var mine = env.from && env.from.clientId === state.clientId;
     var label = env.meta && env.meta.label ? env.meta.label : '';
@@ -156,8 +178,9 @@
   /* ---------------- toast (2s, no persistent feed) ---------------- */
 
   // toast(kind, who, text, bold?) — `bold` is appended inside <strong>.
+  // operator messages stay up longer (3s) and use a bolder colour.
   function toast(kind, who, text, bold) {
-    toastQueue.push({ kind: kind, who: who, text: text || '', bold: bold || '' });
+    toastQueue.push({ kind: kind, who: who, text: text || '', bold: bold || '', dur: kind === 'op' ? 3000 : 2000 });
     if (state.vibrate && navigator.vibrate) { try { navigator.vibrate(kind === 'op' ? [30, 40, 30] : 30); } catch (e) {} }
     if (state.sound) beep();
     pumpToast();
@@ -182,7 +205,7 @@
       setTimeout(pumpToast, 120);
     };
     el.addEventListener('click', kill);
-    setTimeout(kill, 2000);   // 2s — không che màn hình lâu
+    setTimeout(kill, t.dur || 2000);
   }
 
   var audioCtx = null;
@@ -324,6 +347,56 @@
       body: JSON.stringify({ profileId: state.profileId, buttons: state.buttons })
     }).catch(function () {});
   }
+
+  /* ---------------- chord-sheet gallery ---------------- */
+
+  var chIds = [];
+
+  function renderChords(manifest) {
+    var imgs = (manifest && manifest.images) || [];
+    var ids = imgs.map(function (x) { return x.id; });
+    if (ids.join(',') === chIds.join(',')) return;   // no change
+    chIds = ids;
+    var sec = $('chords'), track = $('chView'), dots = $('chDots');
+    track.textContent = ''; dots.textContent = '';
+    if (!ids.length) { sec.classList.add('hidden'); return; }
+    sec.classList.remove('hidden');
+    ids.forEach(function (id, i) {
+      var im = document.createElement('img');
+      im.loading = 'lazy';
+      im.alt = 'Hợp âm ' + (i + 1);
+      im.src = 'api/gallery/image/' + encodeURIComponent(id) + '?token=' + encodeURIComponent(state.token || '');
+      track.appendChild(im);
+      var d = document.createElement('button');
+      d.type = 'button';
+      d.addEventListener('click', function () { goChord(i); });
+      dots.appendChild(d);
+    });
+    setActiveDot(0);
+  }
+
+  function goChord(i) {
+    var img = $('chView').children[i];
+    if (img && img.scrollIntoView) {
+      img.scrollIntoView({ block: 'nearest', inline: 'center' });   // instant + snap-aware
+    } else {
+      var v = $('chView');
+      v.scrollLeft = i * (v.clientWidth || v.offsetWidth || 1);
+    }
+    setActiveDot(i);
+  }
+  function setActiveDot(i) {
+    var ds = $('chDots').children;
+    for (var k = 0; k < ds.length; k++) ds[k].classList.toggle('on', k === i);
+  }
+  var chScrollTimer = null;
+  $('chView').addEventListener('scroll', function () {
+    clearTimeout(chScrollTimer);
+    chScrollTimer = setTimeout(function () {
+      var v = $('chView');
+      setActiveDot(v.clientWidth ? Math.round(v.scrollLeft / v.clientWidth) : 0);
+    }, 60);
+  });
 
   /* ---------------- composer + settings ---------------- */
 

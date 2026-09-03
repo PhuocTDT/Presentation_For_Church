@@ -20,6 +20,9 @@ function defaultConfig() {
     version: 1,
     room: { name: 'Kênh Band', pin: randomPin(), hostname: 'worship', uploaderPin: null },
     port: DEFAULT_PORT,
+    // Địa chỉ công khai band gõ/quét (Cloudflare Tunnel, domain riêng…). Rỗng =
+    // chưa cấu hình → sidebar chỉ hiện IP LAN + worship.local như trước.
+    publicUrl: '',
     operatorReplies: [...DEFAULT_REPLIES],
     profiles: {},
     gallery: { activeSetId: null, sets: [] }
@@ -40,6 +43,9 @@ function normalizeConfig(raw) {
       uploaderPin: /^\d{4,8}$/.test(String(room.uploaderPin || '')) ? String(room.uploaderPin) : null
     },
     port: Number.isInteger(cfg.port) && cfg.port > 0 ? cfg.port : base.port,
+    publicUrl: /^https?:\/\/[^\s]+$/i.test(String(cfg.publicUrl || '').trim())
+      ? String(cfg.publicUrl).trim().replace(/\/+$/, '')
+      : '',
     operatorReplies: Array.isArray(cfg.operatorReplies) && cfg.operatorReplies.length
       ? cfg.operatorReplies
           .map(s => String(s).replace(/[\u{1F000}-\u{1FFFF}\u{2190}-\u{2BFF}\u{FE0F}\u{200D}]/gu, '').replace(/\s+/g, ' ').trim())

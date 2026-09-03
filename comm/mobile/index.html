@@ -2,7 +2,7 @@
 <html lang="vi">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'unsafe-inline'; connect-src 'self'; img-src 'self' data:; base-uri 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'unsafe-inline'; connect-src 'self' ws: wss:; img-src 'self' data:; base-uri 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
 <meta name="theme-color" content="#ffffff">
 <title>Kênh Band</title>
@@ -92,6 +92,26 @@
   .group-label { margin:12px 0 6px; font-size:.75rem; color:var(--ink-faint); }
   .group-label:first-child { margin-top:0; }
 
+  /* chord-sheet gallery — horizontal swipe + dot pager, sits below the buttons.
+     The scroll container is itself the flex row (no inner track) so each full-
+     width slide reliably makes the container scrollable. */
+  .ch-view {
+    display:flex; overflow-x:auto; overflow-y:hidden;
+    scroll-snap-type:x mandatory; scroll-behavior:smooth;
+    -webkit-overflow-scrolling:touch; border:1px solid var(--line); border-radius:10px; background:#fff;
+  }
+  .ch-view::-webkit-scrollbar { display:none; }
+  .ch-view img {
+    flex:0 0 100%; width:100%; height:auto; max-height:64vh; object-fit:contain;
+    scroll-snap-align:center; background:#fff; display:block;
+  }
+  .ch-dots { display:flex; justify-content:center; gap:7px; padding:8px 0 2px; }
+  .ch-dots button {
+    width:8px; height:8px; padding:0; border-radius:50%; border:none;
+    background:var(--line); cursor:pointer;
+  }
+  .ch-dots button.on { background:var(--op); transform:scale(1.35); }
+
   /* composer */
   .composer {
     display:flex; gap:8px; padding:8px 12px;
@@ -126,10 +146,13 @@
     animation:drop .16s ease-out;
   }
   .toast.band { border-left-color:var(--band); }
-  .toast.op { border-left-color:var(--op); }
+  /* operator message = prominent solid blue, stands out on the light theme */
+  .toast.op { background:#1256b8; border-color:#1256b8; border-left-color:#0b3f8c; color:#fff; }
   .toast .who { font-size:.7rem; color:var(--ink-faint); }
+  .toast.op .who { color:rgba(255,255,255,.82); }
   .toast .body { font-size:.92rem; }
   .toast .body strong { font-weight:800; color:var(--ink); }
+  .toast.op .body strong { color:#fff; text-decoration:underline; }
   @keyframes drop { from { transform:translateY(-10px); opacity:0; } }
   @media (prefers-reduced-motion: reduce) { .toast { animation:none; } }
 
@@ -187,6 +210,11 @@
     <section class="block">
       <h2>Nút cảnh báo của bạn <button class="link" id="editModeBtn">Sửa</button></h2>
       <div id="buttons"></div>
+    </section>
+    <section class="block hidden" id="chords">
+      <h2>Hợp âm</h2>
+      <div class="ch-view" id="chView"></div>
+      <div class="ch-dots" id="chDots"></div>
     </section>
   </div>
 

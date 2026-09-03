@@ -1009,6 +1009,15 @@ function createWindow() {
   win.loadFile('index.html');
   setupMenu(win);
 
+  // Push a queued .bcsch again once the page is up (covers the launch-with-file
+  // case even if the renderer wired its listener after the first send).
+  win.webContents.on('did-finish-load', () => {
+    if (scheduleToOpen && mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('open-schedule-file', scheduleToOpen);
+      scheduleToOpen = null;
+    }
+  });
+
   // The operator window is the app itself. Closing it must shut everything
   // down — including the Screen Live window on the projector — so the user
   // never has to kill a stray process from Task Manager.
@@ -1063,8 +1072,64 @@ function setupMenu(win) {
 }
 
 // 4. App Lifecycle
+
+// --- Open a .bcsch schedule file passed on the command line / by the OS ---
+// Windows & Linux: the path is an argv entry when the file is double-clicked.
+// macOS: the `open-file` event (can fire before `ready`).
+//
+// Timing is race-prone (did-finish-load vs. the renderer wiring its IPC
+// listeners), so we do BOTH: stash the parsed file in `scheduleToOpen` for the
+// renderer to pull on startup via 'get-pending-schedule', AND push it live for
+// the already-running case (second-instance).
+let scheduleToOpen = null;
+
+function findSchedulePathInArgv(argv) {
+  return (argv || []).find(a =>
+    typeof a === 'string' && a.toLowerCase().endsWith('.bcsch') && fs.existsSync(a)
+  ) || null;
+}
+
+function deliverSchedulePath(p) {
+  if (!p) return;
+  let data;
+  try {
+    data = JSON.parse(fs.readFileSync(p, 'utf8'));
+  } catch (e) {
+    console.error('[Schedule] cannot read', p, e);
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      dialog.showMessageBox(mainWindow, { type: 'error', message: 'Không đọc được file lịch trình:\n' + p, detail: String(e && e.message || e) });
+    }
+    return;
+  }
+  console.log('[Schedule] queued from file:', p);
+  scheduleToOpen = { filePath: p, data };
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.send('open-schedule-file', scheduleToOpen);
+    scheduleToOpen = null; // consumed; don't clobber edits on a later reload
+  }
+}
+
+// Single instance: a second launch (e.g. double-clicking another .bcsch) must
+// reuse this window, not spin up a rival process that fights over userData /
+// the comm-server port.
+const hasInstanceLock = app.requestSingleInstanceLock();
+if (!hasInstanceLock) {
+  app.quit();
+} else {
+  app.on('second-instance', (_e, argv) => {
+    if (mainWindow) {
+      if (mainWindow.isMinimized()) mainWindow.restore();
+      mainWindow.focus();
+    }
+    deliverSchedulePath(findSchedulePathInArgv(argv));
+  });
+  app.on('open-file', (e, p) => { e.preventDefault(); deliverSchedulePath(p); });
+  deliverSchedulePath(findSchedulePathInArgv(process.argv));
+}
+
 bootstrapGpuAccelerationPreference();
 app.whenReady().then(() => {
+  if (!hasInstanceLock) return; // a rival instance — we're already quitting
   initializeData();
   // Band Comm: server auto-starts in the background (see band-comm-plan.md B1).
   // Result is reported to the operator sidebar via band-comm-status-changed +
@@ -1700,15 +1765,32 @@ app.whenReady().then(() => {
   });
 
   ipcMain.handle('show-open-dialog', async () => {
-    const r = await dialog.showOpenDialog({ properties: ['openFile'], filters: [{ name: 'Worship Schedule', extensions: ['bcsch'] }] });
-    if (!r.canceled && r.filePaths.length > 0) return { filePath: r.filePaths[0], data: JSON.parse(fs.readFileSync(r.filePaths[0], 'utf8')) };
+    // Parent the dialog to the window — a modeless native dialog on Windows can
+    // leave the BrowserWindow without keyboard/mouse focus ("app feels locked").
+    const r = await dialog.showOpenDialog(mainWindow, { properties: ['openFile'], filters: [{ name: 'Worship Schedule', extensions: ['bcsch'] }] });
+    if (mainWindow && !mainWindow.isDestroyed()) mainWindow.focus();
+    if (!r.canceled && r.filePaths.length > 0) {
+      try {
+        return { filePath: r.filePaths[0], data: JSON.parse(fs.readFileSync(r.filePaths[0], 'utf8')) };
+      } catch (e) {
+        return { error: String(e && e.message || e) };
+      }
+    }
     return null;
   });
 
   ipcMain.handle('show-save-dialog', async (e, d) => {
-    const r = await dialog.showSaveDialog({ filters: [{ name: 'Worship Schedule', extensions: ['bcsch'] }] });
+    const r = await dialog.showSaveDialog(mainWindow, { filters: [{ name: 'Worship Schedule', extensions: ['bcsch'] }] });
+    if (mainWindow && !mainWindow.isDestroyed()) mainWindow.focus();
     if (!r.canceled && r.filePath) { safeWriteSync(r.filePath, d); return r.filePath; }
     return null;
+  });
+
+  // Overwrite an already-known schedule file (Ctrl+S after Open) without a dialog.
+  ipcMain.handle('save-schedule-to-path', (e, payload) => {
+    const filePath = payload && payload.filePath;
+    if (!filePath || typeof filePath !== 'string' || !filePath.toLowerCase().endsWith('.bcsch')) return false;
+    return safeWriteSync(filePath, payload.data);
   });
 
   ipcMain.handle('import-media', async () => {
@@ -1870,6 +1952,11 @@ app.whenReady().then(() => {
     if (!commServer) return null;
     return commServer.operatorResolve(payload || {});
   });
+
+  ipcMain.handle('band-comm-gallery-list', () => commServer ? commServer.galleryManifest() : { images: [], updatedAt: 0 });
+  ipcMain.handle('band-comm-gallery-add', (e, p) => commServer ? commServer.galleryAdd(p || {}) : null);
+  ipcMain.handle('band-comm-gallery-remove', (e, id) => commServer ? commServer.galleryRemove(id) : null);
+  ipcMain.handle('band-comm-gallery-reorder', (e, ids) => commServer ? commServer.galleryReorder(ids || []) : null);
 
   ipcMain.handle('quit-app', () => {
     app.quit();

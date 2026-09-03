@@ -27,6 +27,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   exportSongsToFile: () => ipcRenderer.invoke('export-songs-to-file'),
   showOpenDialog: () => ipcRenderer.invoke('show-open-dialog'),
   showSaveDialog: (data) => ipcRenderer.invoke('show-save-dialog', data),
+  saveScheduleToPath: (filePath, data) => ipcRenderer.invoke('save-schedule-to-path', { filePath, data }),
   importMedia: () => ipcRenderer.invoke('import-media'),
   loadMedia: () => ipcRenderer.invoke('load-media'),
   selectFolder: () => ipcRenderer.invoke('select-folder'),
@@ -50,6 +51,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
   onMenuAction: (callback) => {
     ipcRenderer.removeAllListeners('menu-action');
     ipcRenderer.on('menu-action', callback);
+  },
+  onOpenScheduleFile: (callback) => {
+    ipcRenderer.removeAllListeners('open-schedule-file');
+    ipcRenderer.on('open-schedule-file', callback);
   },
   onLiveUpdateContent: (callback) => {
     ipcRenderer.removeAllListeners('live-update-content');
@@ -80,6 +85,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
     send: (payload) => ipcRenderer.invoke('band-comm-send', payload),
     ackAlert: (payload) => ipcRenderer.invoke('band-comm-ack', payload),
     resolveAlert: (payload) => ipcRenderer.invoke('band-comm-resolve', payload),
+    galleryList: () => ipcRenderer.invoke('band-comm-gallery-list'),
+    galleryAdd: (payload) => ipcRenderer.invoke('band-comm-gallery-add', payload),
+    galleryRemove: (id) => ipcRenderer.invoke('band-comm-gallery-remove', id),
+    galleryReorder: (ids) => ipcRenderer.invoke('band-comm-gallery-reorder', ids),
     onMessage: (callback) => {
       ipcRenderer.removeAllListeners('band-comm-event');
       ipcRenderer.on('band-comm-event', callback);

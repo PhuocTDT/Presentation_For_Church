@@ -87,7 +87,19 @@ Phía operator, kênh chat **không nhúng vào `index.html`** — nó là **m�
 
 ## 3. Công nghệ & lý do chọn
 
-**Transport: SSE + `fetch` POST, không thêm dependency.**
+> **CẬP NHẬT 2026-08-31 — transport đổi từ SSE sang WebSocket.**
+> Khi thử đưa kênh ra ngoài LAN qua **Cloudflare Tunnel**, phát hiện tunnel (và
+> nhiều reverse proxy) **buffer response streaming HTTP** → chiều operator→điện
+> thoại (SSE) không bao giờ tới nơi; chiều điện thoại→operator (POST) vẫn ổn.
+> WebSocket được proxy theo từng frame nên chạy cả qua tunnel lẫn LAN thô.
+> Vẫn giữ **0 dependency**: WS server tự viết ~180 dòng ở `src/band-comm/ws.js`
+> (handshake + framing tối giản, chỉ text frame). Downstream giờ là
+> `ws(s)://host/api/ws?token=…&since=<lastId>`; `/api/stream` (SSE) đã bỏ.
+> `fetch` POST cho join / message / profile giữ nguyên. Client tự reconnect
+> (backoff + kiểm token) vì WebSocket không auto-retry như `EventSource`.
+> Phần dưới của mục này giữ lại làm lịch sử quyết định ban đầu.
+
+**Transport: ~~SSE~~ WebSocket + `fetch` POST, không thêm dependency.**
 
 Nhu cầu thật: server đẩy tin xuống nhiều client *tức thì*; client gửi lên *thỉnh thoảng*, mỗi lần một tin nhỏ. Đúng hình dạng của SSE (một chiều server→client, tự động reconnect, có `Last-Event-ID` để phát lại) + `fetch` POST cho chiều ngược. WebSocket giải quyết bài toán lớn hơn (stream 2 chiều) mà ở đây không cần.
 

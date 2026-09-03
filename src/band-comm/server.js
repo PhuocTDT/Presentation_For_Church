@@ -1,7 +1,12 @@
-// Band Comm — LAN server (HTTP + SSE), lives in the Electron main process.
+// Band Comm — LAN server (HTTP + WebSocket), lives in the Electron main process.
 //
-// Transport: Server-Sent Events downstream (one long-lived GET per phone) +
-// plain `fetch` POST upstream. Zero new dependencies. See band-comm-plan.md §3.
+// Transport: one WebSocket per phone (downstream push + lightweight upstream) +
+// plain `fetch` POST for join / message / profile. Zero new dependencies — the
+// WS server is src/band-comm/ws.js. See band-comm-plan.md §3.
+//
+// Why WebSocket, not SSE: Cloudflare Tunnel (and many reverse proxies) buffer
+// long-lived streaming HTTP responses, so operator→phone messages never arrive.
+// WebSocket is relayed frame-by-frame, so it works over a tunnel AND on raw LAN.
 //
 // The operator side does NOT talk HTTP — main.js calls the methods returned by
 // createCommServer() and forwards inbound envelopes to the renderer windows via
@@ -13,10 +18,11 @@ const path = require('path');
 const crypto = require('crypto');
 const os = require('os');
 const { makeEnvelope, newId } = require('./protocol');
+const { acceptWebSocket } = require('./ws');
 
 const MOBILE_DIR = path.join(__dirname, '..', '..', 'comm', 'mobile');
 const RING_MAX = 120;          // messages replayed to a phone that reconnects
-const HEARTBEAT_MS = 15000;    // SSE keep-alive comment through NAT / proxies
+const HEARTBEAT_MS = 15000;    // WS ping to keep the connection alive through NAT / proxies
 const PRESENCE_STALE_MS = 25000;
 const DUP_WINDOW_MS = 5000;    // same button/text from same phone → ignored
 
@@ -86,8 +92,8 @@ function createCommServer({ store, onEvent, onPresence }) {
   let port = 0;
   let boundIp = null;
   let hb = null;
-  const clients = new Map(); // clientId -> { clientId, name, role, res, lastSeen, dupMap }
-  const ring = [];           // { id, frame }
+  const clients = new Map(); // clientId -> { clientId, name, role, ws, lastSeen, dupMap }
+  const ring = [];           // { id, env }
 
   // token = clientId.issued.<b64url(name)>.role.<hmac(payload)>
   // Name + role travel inside the token so a phone that was evicted server-side
@@ -114,17 +120,17 @@ function createCommServer({ store, onEvent, onPresence }) {
     return { clientId: parts[0], name: unb64url(parts[2]) || 'Ẩn danh', role: parts[3] === 'leader' ? 'leader' : 'band' };
   }
 
+  const wsAlive = (c) => !!(c && c.ws && c.ws.isAlive());
+
   function presenceList() {
     const now = Date.now();
     return [...clients.values()]
-      .filter(c => now - c.lastSeen < PRESENCE_STALE_MS)
-      .map(c => ({ clientId: c.clientId, name: c.name, role: c.role, online: !!c.res }));
+      .filter(c => wsAlive(c) || now - c.lastSeen < PRESENCE_STALE_MS)
+      .map(c => ({ clientId: c.clientId, name: c.name, role: c.role, online: wsAlive(c) }));
   }
 
-  const frameFor = (env) => `id: ${env.id}\ndata: ${JSON.stringify(env)}\n\n`;
-
   function remember(env) {
-    ring.push({ id: env.id, frame: frameFor(env) });
+    ring.push({ id: env.id, env });
     if (ring.length > RING_MAX) ring.shift();
   }
 
@@ -133,11 +139,11 @@ function createCommServer({ store, onEvent, onPresence }) {
   function fanout(env) {
     const isPresence = env.type === 'presence';
     if (!isPresence) remember(env);
-    const frame = frameFor(env);
+    const json = JSON.stringify(env);
     for (const c of clients.values()) {
-      if (!c.res) continue;
+      if (!wsAlive(c)) continue;
       if (env.to === 'all' || env.to === c.clientId) {
-        try { c.res.write(frame); } catch (e) { /* dead socket, close handler will clean up */ }
+        try { c.ws.send(json); } catch (e) { /* dead socket, close handler will clean up */ }
       }
     }
     if (!isPresence && onEvent) { try { onEvent(env); } catch (e) {} }
@@ -147,6 +153,48 @@ function createCommServer({ store, onEvent, onPresence }) {
     const list = presenceList();
     fanout(makeEnvelope({ type: 'presence', meta: { clients: list } }));
     if (onPresence) { try { onPresence(list); } catch (e) {} }
+  }
+
+  // Downstream channel: phone opens  ws(s)://host/api/ws?token=…&since=<lastId>
+  function handleUpgrade(req, socket) {
+    let u;
+    try { u = new URL(req.url, 'http://localhost'); } catch (e) { try { socket.destroy(); } catch (_) {} return; }
+    if (u.pathname !== '/api/ws') { try { socket.destroy(); } catch (e) {} return; }
+
+    const ident = verifyToken(u.searchParams.get('token') || '');
+    if (!ident) {
+      try { socket.write('HTTP/1.1 401 Unauthorized\r\nConnection: close\r\n\r\n'); socket.destroy(); } catch (e) {}
+      return;
+    }
+    const clientId = ident.clientId;
+    let client = clients.get(clientId);
+    if (!client) {
+      client = { clientId, name: ident.name, role: ident.role, ws: null, lastSeen: Date.now(), dupMap: new Map() };
+      clients.set(clientId, client);
+    }
+    client.lastSeen = Date.now();
+    if (client.ws && client.ws.isAlive()) { try { client.ws.close(1000); } catch (e) {} }
+
+    const conn = acceptWebSocket(req, socket, {
+      onMessage: () => { client.lastSeen = Date.now(); }, // {"t":"ping"} keep-alive; payload ignored
+      onClose: () => { if (client.ws === conn) client.ws = null; pushPresence(); }
+    });
+    if (!conn) return;
+    client.ws = conn;
+
+    // Replay whatever the phone missed while disconnected.
+    const since = u.searchParams.get('since');
+    let start = 0;
+    if (since) {
+      const idx = ring.findIndex(r => r.id === since);
+      if (idx >= 0) start = idx + 1;
+    }
+    for (let i = start; i < ring.length; i++) {
+      try { conn.send(JSON.stringify(ring[i].env)); } catch (e) {}
+    }
+    // No id → the client won't use it as a replay cursor.
+    conn.send(JSON.stringify({ type: 'system', ts: Date.now(), text: 'Đã kết nối kênh', meta: { event: 'connected' } }));
+    pushPresence();
   }
 
   function serveStatic(res, urlPath) {
@@ -185,7 +233,8 @@ function createCommServer({ store, onEvent, onPresence }) {
         clientId,
         room: { name: cfg.room.name },
         operatorReplies: cfg.operatorReplies,
-        profile: restore || null
+        profile: restore || null,
+        gallery: galleryManifest()
       });
     }
 
@@ -197,35 +246,12 @@ function createCommServer({ store, onEvent, onPresence }) {
     let client = clients.get(clientId);
     if (!client) {
       // valid token, but the record was swept / left — rebuild it from the token.
-      client = { clientId, name: ident.name, role: ident.role, res: null, lastSeen: Date.now(), dupMap: new Map() };
+      client = { clientId, name: ident.name, role: ident.role, ws: null, lastSeen: Date.now(), dupMap: new Map() };
       clients.set(clientId, client);
     }
     client.lastSeen = Date.now();
 
-    if (p === '/api/stream' && req.method === 'GET') {
-      res.writeHead(200, {
-        'Content-Type': 'text/event-stream; charset=utf-8',
-        'Cache-Control': 'no-store',
-        Connection: 'keep-alive',
-        'X-Accel-Buffering': 'no'
-      });
-      res.write('retry: 3000\n\n');
-      client.res = res;
-      const lastId = req.headers['last-event-id'];
-      let start = 0;
-      if (lastId) {
-        const idx = ring.findIndex(r => r.id === lastId);
-        if (idx >= 0) start = idx + 1;
-      }
-      for (let i = start; i < ring.length; i++) res.write(ring[i].frame);
-      res.write(frameFor(makeEnvelope({ type: 'system', text: 'Đã kết nối kênh', meta: { event: 'connected' } })));
-      pushPresence();
-      req.on('close', () => {
-        if (client.res === res) client.res = null;
-        pushPresence();
-      });
-      return;
-    }
+    // Downstream is the WebSocket at /api/ws — handled in `handleUpgrade`, not here.
 
     if (p === '/api/message' && req.method === 'POST') {
       const body = await readJson(req);
@@ -265,6 +291,24 @@ function createCommServer({ store, onEvent, onPresence }) {
       clients.delete(clientId);
       pushPresence();
       return sendJson(res, 200, { ok: true });
+    }
+
+    // ---- chord-sheet gallery (read side — token required, see above) ----
+    if (p === '/api/gallery' && req.method === 'GET') {
+      return sendJson(res, 200, galleryManifest());
+    }
+    if (p.indexOf('/api/gallery/image/') === 0 && req.method === 'GET') {
+      const gid = p.slice('/api/gallery/image/'.length).replace(/[^a-z0-9_.-]/gi, '');
+      const item = gallery.images.find(x => x.id === gid);
+      if (!item) return sendJson(res, 404, { error: 'not found' });
+      return fs.readFile(path.join(store.mediaDir, item.id + item.ext), (e, data) => {
+        if (e) return sendJson(res, 404, { error: 'gone' });
+        res.writeHead(200, {
+          'Content-Type': item.ext === '.png' ? 'image/png' : (item.ext === '.webp' ? 'image/webp' : 'image/jpeg'),
+          'Cache-Control': 'public, max-age=31536000, immutable'
+        });
+        res.end(data);
+      });
     }
 
     return sendJson(res, 404, { error: 'not found' });
@@ -309,6 +353,47 @@ function createCommServer({ store, onEvent, onPresence }) {
     return env;
   }
 
+  // ---- chord-sheet gallery: operator uploads, phones show them below the
+  // buttons. Persisted to its own file so store.js stays untouched. ----
+  const galleryFile = path.join(path.dirname(store.configPath), 'band-comm-gallery.json');
+  let gallery = (function () {
+    try { const g = JSON.parse(fs.readFileSync(galleryFile, 'utf8')); if (g && Array.isArray(g.images)) return g; } catch (e) {}
+    return { images: [], updatedAt: 0 };
+  })();
+  function saveGallery() { gallery.updatedAt = Date.now(); try { fs.writeFileSync(galleryFile, JSON.stringify(gallery)); } catch (e) {} }
+  function galleryManifest() { return { images: gallery.images.map(x => ({ id: x.id, name: x.name })), updatedAt: gallery.updatedAt || 0 }; }
+  function announceGallery() { fanout(makeEnvelope({ type: 'gallery', from: OPERATOR, to: 'all', meta: galleryManifest() })); }
+
+  function galleryAdd({ name = '', ext = '.jpg', dataB64 = '' } = {}) {
+    const b64 = String(dataB64 || '').replace(/^data:[^,]*,/, '');
+    if (!b64) return galleryManifest();
+    const cleanExt = /^\.(jpe?g|png|webp)$/i.test(ext) ? ext.toLowerCase().replace('.jpeg', '.jpg') : '.jpg';
+    let buf;
+    try { buf = Buffer.from(b64, 'base64'); } catch (e) { return galleryManifest(); }
+    if (!buf.length || buf.length > 8 * 1024 * 1024) return galleryManifest();
+    const id = newId('img');
+    try { fs.writeFileSync(path.join(store.mediaDir, id + cleanExt), buf); } catch (e) { return galleryManifest(); }
+    gallery.images.push({ id, name: String(name || 'Hợp âm').slice(0, 80), ext: cleanExt });
+    saveGallery(); announceGallery();
+    return galleryManifest();
+  }
+  function galleryRemove(id) {
+    const i = gallery.images.findIndex(x => x.id === id);
+    if (i < 0) return galleryManifest();
+    const [rm] = gallery.images.splice(i, 1);
+    try { fs.unlinkSync(path.join(store.mediaDir, rm.id + rm.ext)); } catch (e) {}
+    saveGallery(); announceGallery();
+    return galleryManifest();
+  }
+  function galleryReorder(ids) {
+    const map = new Map(gallery.images.map(x => [x.id, x]));
+    const next = (Array.isArray(ids) ? ids : []).map(id => map.get(id)).filter(Boolean);
+    gallery.images.forEach(x => { if (next.indexOf(x) < 0) next.push(x); });
+    gallery.images = next;
+    saveGallery(); announceGallery();
+    return galleryManifest();
+  }
+
   function getStatus() {
     const cfg = store.load();
     const host = `${cfg.room.hostname}.local`;
@@ -320,43 +405,85 @@ function createCommServer({ store, onEvent, onPresence }) {
       host,
       url: running && boundIp ? `http://${boundIp}:${port}` : null,
       hostUrl: running ? `http://${host}:${port}` : null,
+      publicUrl: cfg.publicUrl || '',
       pin: cfg.room.pin,
       roomName: cfg.room.name,
       clients: presenceList()
     };
   }
 
+  // Windows (Hyper-V / WSL / WinNAT) reserves scattered TCP port ranges; a bind
+  // in one fails with EACCES even though nothing is listening. So we don't trust
+  // a single fixed port — we walk a spread-out list, and when we land on a
+  // working one we persist it to band-comm.json so the QR / URL stays stable
+  // from then on. These are all outside the ranges Hyper-V typically grabs.
+  const FALLBACK_PORTS = [7071, 8471, 17771, 27700, 39393, 45517, 52731];
+
   function start(preferredPort) {
     if (running) return Promise.resolve(getStatus());
     secret = crypto.randomBytes(32);
     const cfg = store.load();
-    const wantPort = preferredPort || cfg.port || 7071;
-    return new Promise((resolve, reject) => {
-      server = http.createServer((req, res) => {
+    const first = preferredPort || cfg.port || 7071;
+    const candidates = [...new Set([first, ...FALLBACK_PORTS])];
+
+    const startHeartbeat = () => {
+      hb = setInterval(() => {
+        const now = Date.now();
+        for (const [cid, c] of clients) {
+          if (c.ws && c.ws.isAlive()) { try { c.ws.ping(); } catch (e) {} }
+          else if (now - c.lastSeen > PRESENCE_STALE_MS * 2) clients.delete(cid);
+        }
+      }, HEARTBEAT_MS);
+    };
+
+    const tryPort = (idx) => new Promise((resolve, reject) => {
+      if (idx >= candidates.length) {
+        const e = new Error('Không cổng nào khả dụng (đã thử: ' + candidates.join(', ') + '). Windows có thể đã dành hết các cổng này cho Hyper-V/WSL.');
+        e.code = 'ENOPORT';
+        return reject(e);
+      }
+      const p = candidates[idx];
+      const srv = http.createServer((req, res) => {
         handle(req, res).catch(() => { try { sendJson(res, 500, { error: 'server' }); } catch (e) {} });
       });
-      server.on('error', (e) => { running = false; server = null; reject(e); });
-      server.listen(wantPort, '0.0.0.0', () => {
+      srv.on('upgrade', (req, socket) => {
+        try { handleUpgrade(req, socket); } catch (e) { try { socket.destroy(); } catch (_) {} }
+      });
+      const onErr = (e) => {
+        srv.removeListener('error', onErr);
+        try { srv.close(); } catch (_) {}
+        if ((e.code === 'EADDRINUSE' || e.code === 'EACCES') && idx + 1 < candidates.length) {
+          console.warn(`[BandComm] cổng ${p} không dùng được (${e.code}) — thử ${candidates[idx + 1]}`);
+          resolve(tryPort(idx + 1));
+        } else {
+          running = false;
+          reject(e);
+        }
+      };
+      srv.on('error', onErr);
+      srv.listen(p, '0.0.0.0', () => {
+        srv.removeListener('error', onErr);
+        srv.on('error', (e) => console.error('[BandComm] server error:', e));
+        server = srv;
         running = true;
-        port = server.address().port;
-        const ips = lanIPv4List();
-        boundIp = ips[0] ? ips[0].address : '127.0.0.1';
-        hb = setInterval(() => {
-          const now = Date.now();
-          for (const [cid, c] of clients) {
-            if (c.res) { try { c.res.write(': hb\n\n'); } catch (e) {} }
-            else if (now - c.lastSeen > PRESENCE_STALE_MS * 2) clients.delete(cid);
-          }
-        }, HEARTBEAT_MS);
+        port = srv.address().port;
+        boundIp = (lanIPv4List()[0] || {}).address || '127.0.0.1';
+        if (port !== cfg.port) {
+          try { store.save({ ...cfg, port }); } catch (_) {}
+          console.log(`[BandComm] chốt cổng ${port} (đã lưu vào band-comm.json — QR sẽ ổn định từ lần sau)`);
+        }
+        startHeartbeat();
         resolve(getStatus());
       });
     });
+
+    return tryPort(0);
   }
 
   function stop() {
     if (!running && !server) return;
     if (hb) { clearInterval(hb); hb = null; }
-    for (const c of clients.values()) { if (c.res) { try { c.res.end(); } catch (e) {} } }
+    for (const c of clients.values()) { if (c.ws) { try { c.ws.close(1001); } catch (e) {} } }
     clients.clear();
     ring.length = 0;
     try { if (server) server.close(); } catch (e) {}
@@ -374,7 +501,11 @@ function createCommServer({ store, onEvent, onPresence }) {
     isRunning: () => running,
     operatorSend,
     operatorAck,
-    operatorResolve
+    operatorResolve,
+    galleryManifest,
+    galleryAdd,
+    galleryRemove,
+    galleryReorder
   };
 }
 

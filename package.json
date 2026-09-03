@@ -30,6 +30,15 @@
       "fonts/**/*",
       "package.json"
     ],
+    "fileAssociations": [
+      {
+        "ext": "bcsch",
+        "name": "Worship Schedule",
+        "description": "Presentation For Church schedule",
+        "role": "Editor",
+        "icon": "icon.ico"
+      }
+    ],
     "win": {
       "target": [
         "nsis",

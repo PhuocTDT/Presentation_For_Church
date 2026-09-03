@@ -2,7 +2,23 @@
 
 Tất cả các thay đổi và cập nhật quan trọng của dự án được ghi lại tại đây.
 
-## [Unreleased] - Kênh Band LAN (P1 + P2 + P2.5)
+## [Unreleased] - Kênh Band LAN (P1 + P2 + P2.5 + P4)
+
+### UI nâng cấp + thư viện ảnh hợp âm (2026-08-31)
+- **Feed operator**: tên người gửi ra **ngoài** bong bóng chat (gọn hơn, dễ nhận ra ai gửi). **Mỗi user một màu** (hash tên → hue pastel) thay vì cam đồng loạt. Cảnh báo band vẫn nhấp nháy (giờ bằng box-shadow nên hợp mọi màu) → bấm = "đã tiếp nhận".
+- **Toast operator→điện thoại**: 2s → **3s**, đổi sang **xanh đậm đặc `#1256b8` chữ trắng** — nổi bật hẳn trên theme sáng.
+- **Thư viện ảnh hợp âm (P4)**:
+  - Operator upload trong popup "Kết nối" (chọn nhiều ảnh → canvas nén cạnh dài ≤ 1400px, JPEG q0.82 → server). Danh sách + nút xoá.
+  - Server: `/api/gallery` (manifest) + `/api/gallery/image/:id?token=` (bytes, cache 1 năm); ảnh lưu `band-comm-media/`, manifest ở `band-comm-gallery.json` (không đụng `store.js`); phát envelope `gallery` khi đổi.
+  - Điện thoại: khu "Hợp âm" **ngay dưới các nút** (càng nhiều nút, ảnh càng xuống dưới). **Vuốt ngang** đổi ảnh (flex + scroll-snap); **hàng chấm** ở dưới theo dõi vị trí, **bấm chấm** để nhảy tới ảnh đó. Không có ảnh thì khu này ẩn.
+  - IPC mới: `bandComm.galleryList / galleryAdd / galleryRemove / galleryReorder`.
+
+### Cloud tunnel: transport SSE → WebSocket (2026-08-31)
+- **Nguyên nhân**: đưa kênh ra ngoài LAN qua **Cloudflare Quick Tunnel** — chiều điện thoại→operator (POST) chạy, nhưng chiều operator→điện thoại **không tới**: `cloudflared` (và nhiều reverse proxy) **buffer response SSE**. `--protocol quic` treo, `--protocol http2` trả 502. SSE qua localhost thì bình thường.
+- **Fix**: downstream đổi từ SSE sang **WebSocket** — proxy được từng frame nên chạy cả qua tunnel lẫn LAN. Giữ **0 dependency**: WS server tự viết `src/band-comm/ws.js` (handshake RFC 6455 + framing tối giản, chỉ text frame, xử lý mask/continuation/ping-pong/close).
+  - `server.js`: bỏ `/api/stream`, thêm `server.on('upgrade')` → `/api/ws?token=&since=<lastId>`; `fanout` gửi JSON qua `ws.send`; ring buffer lưu `env` thay vì frame SSE; heartbeat = WS ping; presence coi WS-alive là online.
+  - `comm/mobile/app.js`: `EventSource` → `WebSocket` (`wss:` khi trang https, `ws:` khi http); tự reconnect với backoff + kiểm token (WS không auto-retry như EventSource); track `lastId` làm con trỏ replay. CSP mobile thêm `ws: wss:` vào `connect-src`.
+- **Ô "Public URL"** trong sidebar Kênh Band: dán URL cloud (Cloudflare Tunnel / domain) → lưu `band-comm.json` (`publicUrl`), QR encode URL đó. Nút xoay QR: **Public URL → IP LAN → worship.local**. Chuyển Quick Tunnel ↔ Named Tunnel sau này chỉ là dán lại 1 dòng.
 
 ### P2.5 UI refinements (2026-08-31)
 - **Firewall**: nút "Mở cổng Firewall" giờ tạo rule bằng `netsh` + đọc file kết quả để xác nhận thật (bản cũ báo thành công giả). QR mặc định dùng **địa chỉ IP** (Android Chrome không phân giải `.local`); `worship.local` chỉ là dòng "cố định" + nút đổi.

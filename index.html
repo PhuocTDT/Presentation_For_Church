@@ -923,9 +923,12 @@
       :root { --bp-w: 340px; }
       body.bp-open { padding-left: var(--bp-w) !important; }
 
+      /* z-index at "app chrome" level (above the 3 content panels z-10..30, below
+         every app dialog / popover z-50..9999) so band-comm never bleeds over
+         a modal such as Style Templates. */
       #bandPanelTab {
         position: fixed; left: 0; top: 50%; transform: translateY(-50%);
-        z-index: 9997; background: #2563a8; color: #fff;
+        z-index: 40; background: #2563a8; color: #fff;
         border: none; border-radius: 0 12px 12px 0;
         padding: 14px 6px; font: 700 11px/1 "Segoe UI", system-ui, sans-serif;
         writing-mode: vertical-rl; text-orientation: mixed; cursor: pointer;
@@ -940,7 +943,7 @@
 
       #bandPanel {
         position: fixed; top: 0; left: 0; height: 100vh; width: var(--bp-w);
-        z-index: 9998; background: #ffffff; color: #1e2430;
+        z-index: 40; background: #ffffff; color: #1e2430;
         border-right: 1px solid #d7dae1;
         display: none; flex-direction: column; overflow: hidden;
         font: 13px/1.5 "Segoe UI", system-ui, sans-serif;
@@ -960,14 +963,6 @@
         display: flex; align-items: center; gap: 8px; padding: 8px 12px;
         border-bottom: 1px solid #e2e4e9; background: #f8f9fb; flex: none;
       }
-      #bandPanel .bp-status {
-        display: flex; align-items: center; gap: 8px; padding: 6px 12px; flex: none;
-        background: #f8f9fb; border-bottom: 1px solid #e2e4e9;
-        font-size: .82rem; color: #5b6472;
-      }
-      #bandPanel .bp-status #bpStatusLine { flex: 1; overflow-wrap: anywhere; font-family: Consolas, ui-monospace, monospace; }
-      #bandPanel .bp-linkbtn { background: none; border: none; color: #2563a8; font-size: .8rem; padding: 2px 4px; white-space: nowrap; flex: none; }
-      #bandPanel .bp-linkbtn:hover { text-decoration: underline; }
       #bandPanel .bp-dot { width: 8px; height: 8px; border-radius: 50%; background: #8a93a3; flex: none; }
       #bandPanel .bp-dot.on { background: #2f8a55; }
       #bandPanel .bp-dot.off { background: #c0392f; }
@@ -981,9 +976,21 @@
       #bandPanel .bp-btn.stop { background: #c0392f; border-color: #c0392f; color: #fff; font-weight: 700; }
       #bandPanel .bp-x { background: none; border: none; font-size: 1.1rem; color: #8a93a3; padding: 0 4px; }
 
+      /* Connection info popup — sits above the app content but is still capped
+         inside #bandPanel's stacking context, so an app dialog covers it too. */
       #bandPanel .bp-conn {
-        padding: 10px 12px; background: #f8f9fb; border-bottom: 1px solid #e2e4e9;
-        flex: none; overflow-y: auto; max-height: 46vh;
+        position: fixed; inset: 0; z-index: 45;
+        background: rgba(20, 25, 40, .45);
+        display: flex; align-items: center; justify-content: center; padding: 20px;
+      }
+      #bandPanel .bp-conn .bp-modal-card {
+        background: #fff; border-radius: 14px; width: 380px; max-width: 92vw;
+        max-height: 88vh; overflow-y: auto; padding: 16px;
+        box-shadow: 0 22px 60px -14px rgba(15, 25, 50, .45);
+      }
+      #bandPanel .bp-conn .bp-modal-head {
+        display: flex; justify-content: space-between; align-items: center;
+        font-weight: 700; font-size: .92rem; margin-bottom: 12px;
       }
       #bandPanel .bp-conn .bp-kv { display: flex; gap: 8px; align-items: baseline; margin-top: 6px; }
       #bandPanel .bp-conn .k { flex: none; width: 62px; color: #8a93a3; font-size: .7rem; text-transform: uppercase; letter-spacing: .05em; }
@@ -992,29 +999,36 @@
       #bandPanel .bp-conn .row2 { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
       #bandPanel .bp-conn .row2 > .bp-btn { flex: 1 1 auto; white-space: normal; }
       #bandPanel select.bp-btn { flex: 1 1 100%; }
+      #bandPanel .bp-conn .bp-gal { margin-top: 12px; border-top: 1px solid #e2e4e9; padding-top: 10px; }
+      #bandPanel .bp-conn .bp-gal #bpGalList { margin-top: 6px; display: flex; flex-direction: column; gap: 4px; }
+      #bandPanel .bp-conn .bp-gal .gi { display: flex; align-items: center; gap: 8px; font-size: .8rem; }
+      #bandPanel .bp-conn .bp-gal .gi .nm { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      #bandPanel .bp-conn .bp-gal .gi .rm { border: none; background: none; color: #c0392f; font-size: 1.05rem; line-height: 1; cursor: pointer; padding: 0 4px; }
+      #bandPanel .bp-conn .bp-gal .empty { color: #8a93a3; font-size: .78rem; }
 
-      /* Incoming band alert = a feed message that blinks until the operator
-         clicks it (= "đã tiếp nhận"). No separate board. */
-      #bandPanel .bp-msg.alert-pending {
-        cursor: pointer; border-left: 3px solid #b9740f;
-        animation: bandAlertPulse 1s ease-in-out infinite;
-      }
+      #bandPanel .bp-feed { flex: 1; overflow-y: auto; padding: 8px 10px; display: flex; flex-direction: column; gap: 9px; }
+
+      /* Sender name sits OUTSIDE the bubble; each band member gets their own hue. */
+      #bandPanel .bp-fr { display: flex; flex-direction: column; max-width: 92%; }
+      #bandPanel .bp-fr.band { align-self: flex-start; align-items: flex-start; }
+      #bandPanel .bp-fr.op { align-self: flex-end; align-items: flex-end; }
+      #bandPanel .bp-fr .who { font-size: .68rem; font-weight: 700; color: #8a93a3; margin: 0 5px 2px; }
+
+      #bandPanel .bp-msg { padding: 6px 10px; border-radius: 11px; font-size: .85rem; border: 1px solid transparent; overflow-wrap: anywhere; color: #1e2430; }
+      #bandPanel .bp-msg.op { background: #dfeeff; border-color: #b3d3f5; }
+      #bandPanel .bp-msg.sys { align-self: stretch; text-align: center; color: #8a93a3; font-size: .75rem; white-space: pre-wrap; overflow-wrap: anywhere; user-select: text; margin: 2px 0; }
+      #bandPanel .bp-empty { color: #8a93a3; text-align: center; padding: 22px 12px; font-size: .82rem; }
+
+      /* Incoming band alert = a bubble that pulses until the operator clicks it. */
+      #bandPanel .bp-msg.alert-pending { cursor: pointer; animation: bandAlertPulse 1s ease-in-out infinite; }
       #bandPanel .bp-msg.alert-pending::after { content: ' · bấm để tiếp nhận'; color: #8a93a3; font-size: .72rem; }
-      #bandPanel .bp-msg.alert-acked { opacity: .72; border-left: 3px solid #2f8a55; cursor: default; }
+      #bandPanel .bp-msg.alert-acked { opacity: .7; animation: none; cursor: default; }
       #bandPanel .bp-msg.alert-acked::after { content: none; }
       #bandPanel .bp-msg .ackmark { display: block; color: #2f8a55; font-size: .72rem; font-weight: 600; margin-top: 2px; }
-      @keyframes bandAlertPulse { 0%,100% { background: #fdf3e3; } 50% { background: #f6dcae; } }
+      @keyframes bandAlertPulse { 0%,100% { box-shadow: 0 0 0 0 rgba(191,120,20,0); } 50% { box-shadow: 0 0 0 3px rgba(191,120,20,.5); } }
       @media (prefers-reduced-motion: reduce) {
-        #bandPanel .bp-msg.alert-pending { animation: none; border-left-width: 5px; box-shadow: 0 0 0 2px #f0c98a inset; }
+        #bandPanel .bp-msg.alert-pending { animation: none; box-shadow: 0 0 0 2px rgba(191,120,20,.55); }
       }
-
-      #bandPanel .bp-feed { flex: 1; overflow-y: auto; padding: 8px 10px; display: flex; flex-direction: column; gap: 5px; }
-      #bandPanel .bp-msg { max-width: 90%; padding: 5px 9px; border-radius: 9px; font-size: .84rem; }
-      #bandPanel .bp-msg .who { display: block; font-size: .68rem; color: #8a93a3; }
-      #bandPanel .bp-msg.band { align-self: flex-start; background: #fdf3e3; border: 1px solid #eccf9f; }
-      #bandPanel .bp-msg.op { align-self: flex-end; background: #e8f1fb; border: 1px solid #bcd6f0; }
-      #bandPanel .bp-msg.sys { align-self: stretch; text-align: center; color: #8a93a3; font-size: .75rem; white-space: pre-wrap; overflow-wrap: anywhere; user-select: text; }
-      #bandPanel .bp-empty { color: #8a93a3; text-align: center; padding: 22px 12px; font-size: .82rem; }
 
       #bandPanel .bp-composer { flex: none; border-top: 1px solid #e2e4e9; background: #f8f9fb; padding: 8px 10px; }
       #bandPanel .bp-replies { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 7px; }
@@ -1032,8 +1046,14 @@
       #bandPanel .bp-conn .qrwrap img { width: 104px; height: 104px; image-rendering: pixelated; border: 1px solid #e2e4e9; border-radius: 6px; background: #fff; flex: none; }
       #bandPanel .bp-conn .qrwrap .u { flex: 1; font-size: .8rem; overflow-wrap: anywhere; }
       #bandPanel .bp-conn .qrwrap .u .host { font-family: Consolas, ui-monospace, monospace; font-weight: 700; font-size: .92rem; color: #1e2430; }
-      #bandPanel .bp-conn .qrwrap .u .alt { font-family: Consolas, ui-monospace, monospace; color: #5b6472; margin-top: 4px; }
       #bandPanel .bp-conn .qrwrap .u .note { color: #8a93a3; font-size: .72rem; margin-top: 3px; }
+      #bandPanel .bp-conn .bp-purl { margin-bottom: 10px; }
+      #bandPanel .bp-conn .bp-purl label { display: block; color: #8a93a3; font-size: .7rem; text-transform: uppercase; letter-spacing: .05em; margin-bottom: 3px; }
+      #bandPanel .bp-conn .bp-purl input {
+        width: 100%; border: 1px solid #d7dae1; border-radius: 8px; padding: 6px 9px;
+        font-family: Consolas, ui-monospace, monospace; font-size: .84rem; color: #1e2430; background: #fff;
+      }
+      #bandPanel .bp-conn .bp-purl input:focus { border-color: #2563a8; outline: none; }
 
       #bandPanel .bp-error {
         margin: 8px 12px 0; padding: 10px 12px; border-radius: 10px;
@@ -1056,34 +1076,45 @@
       <div class="bp-head">
         <span class="bp-dot" id="bpDot"></span>
         <span class="bp-title">Kênh Band</span>
+        <button class="bp-btn" id="bpDetailsToggle">Kết nối</button>
         <button class="bp-btn go" id="bpToggle">Bắt đầu</button>
         <button class="bp-x" id="bpClose" title="Đóng">&times;</button>
       </div>
       <div class="bp-error bp-hidden" id="bpError"></div>
-      <div class="bp-status bp-hidden" id="bpStatus">
-        <span id="bpStatusLine">—</span>
-        <button class="bp-linkbtn" id="bpDetailsToggle">Kết nối</button>
-      </div>
+
+      <!-- Connection info as a popup over the app (not inline in the column) -->
       <div class="bp-conn bp-hidden" id="bpConn">
-        <div class="qrwrap">
-          <img id="bpQr" alt="Mã QR kết nối">
-          <div class="u">
-            <div class="host" id="bpHost">—</div>
-            <div class="note" id="bpQrNote"></div>
-            <div class="alt">Cố định: <span id="bpAlt"></span></div>
-            <div class="note">Android: gõ địa chỉ trên vào Chrome. Dòng "cố định" (<code>worship.local</code>) chỉ iPhone / Android mới quét được.</div>
+        <div class="bp-modal-card">
+          <div class="bp-modal-head">
+            <span>Thông tin kết nối</span>
+            <button class="bp-x" id="bpConnClose" title="Đóng">&times;</button>
+          </div>
+          <div class="bp-purl">
+            <label for="bpPublicUrl">Public URL (Cloudflare Tunnel / domain)</label>
+            <input id="bpPublicUrl" type="url" spellcheck="false" autocomplete="off"
+                   placeholder="Dán URL cloud để band vào từ 4G — trống = chỉ LAN">
+          </div>
+          <div class="qrwrap">
+            <img id="bpQr" alt="Mã QR kết nối">
+            <div class="u">
+              <div class="host" id="bpHost">—</div>
+            </div>
+          </div>
+          <div class="bp-kv"><span class="k">Mã PIN</span><span class="v pin" id="bpPin">—</span></div>
+          <div class="bp-kv"><span class="k">Đang nối</span><span class="v" id="bpCount">0</span></div>
+          <div class="row2">
+            <button class="bp-btn" id="bpFw">Mở cổng Firewall (nếu điện thoại không vào được)</button>
+          </div>
+          <div class="bp-gal">
+            <div class="bp-kv">
+              <span class="k">Ảnh hợp âm</span>
+              <label class="bp-btn" style="flex:none">Thêm ảnh<input type="file" id="bpGalInput" accept="image/*" multiple hidden></label>
+            </div>
+            <div id="bpGalList"></div>
           </div>
         </div>
-        <div class="bp-kv"><span class="k">Mã PIN</span><span class="v pin" id="bpPin">—</span></div>
-        <div class="row2">
-          <select id="bpIpSel" class="bp-btn bp-hidden"></select>
-          <button class="bp-btn" id="bpQrMode">QR: dùng worship.local</button>
-          <button class="bp-btn" id="bpCopy">Sao chép</button>
-        </div>
-        <div class="row2">
-          <button class="bp-btn" id="bpFw">Mở cổng Firewall (nếu điện thoại không vào được)</button>
-        </div>
       </div>
+
       <div class="bp-feed" id="bpFeed">
         <div class="bp-empty" id="bpEmpty">Bấm "Bắt đầu" rồi cho band mở địa chỉ + nhập PIN.</div>
       </div>
@@ -6726,13 +6757,13 @@
 
         async function executeAction(action) {
             switch (action) {
-                case 'new-schedule': schedule = []; renderSchedule(); break;
+                case 'new-schedule': schedule = []; currentScheduleIndex = -1; currentLiveScheduleIndex = -1; currentScheduleFilePath = null; updateWindowTitleForSchedule(); renderSchedule(); break;
                 case 'new-song': currentEditingSong = null; openSongEditor('Create New Song'); break;
                 case 'import-media': importMedia(); break;
                 case 'import-file': handleMainImport(); break;
                 case 'save-schedule': saveSchedule(); break;
                 case 'open-schedule': openSchedule(); break;
-                case 'close-schedule': schedule = []; renderSchedule(); break;
+                case 'close-schedule': schedule = []; currentScheduleIndex = -1; currentLiveScheduleIndex = -1; currentScheduleFilePath = null; updateWindowTitleForSchedule(); renderSchedule(); break;
                 case 'open-settings': openSettings(); break;
                 case 'toggle-live-window': await toggleLiveWindow(); break;
                 case 'close-live-window':
@@ -6798,26 +6829,76 @@
             executeAction(action);
         });
 
+        // Path of the .bcsch currently open (via Open Schedule or a double-clicked
+        // file). Ctrl+S overwrites it in place; null → Save As dialog.
+        let currentScheduleFilePath = null;
+
+        function loadScheduleData(data, filePath) {
+            console.log('[Schedule] loadScheduleData:', filePath, Array.isArray(data) ? data.length + ' items' : typeof data);
+            try {
+                const list = normalizeScheduleList(data);
+                if (!Array.isArray(list)) throw new Error('Nội dung file không hợp lệ.');
+                schedule = list;
+                currentScheduleIndex = -1;
+                currentLiveScheduleIndex = -1;
+                currentPreviewIndex = -1;
+                currentScheduleFilePath = filePath || null;
+                renderSchedule();
+                updateWindowTitleForSchedule();
+            } catch (error) {
+                console.error('loadScheduleData failed:', error, data);
+                alert('Không đọc được file lịch trình: ' + (error && error.message || error));
+            }
+        }
+
+        function updateWindowTitleForSchedule() {
+            try {
+                const base = 'Presentation For Church';
+                const name = currentScheduleFilePath
+                    ? currentScheduleFilePath.replace(/^.*[\\/]/, '')
+                    : '';
+                document.title = name ? `${name} — ${base}` : base;
+            } catch (e) {}
+        }
+
+        // Double-clicked .bcsch → main sends { filePath, data } here.
+        window.electronAPI.onOpenScheduleFile((event, payload) => {
+            if (payload && payload.data) loadScheduleData(payload.data, payload.filePath);
+        });
+
         async function saveSchedule() {
             if (schedule.length === 0) { alert('Schedule is empty!'); return; }
+            const payload = normalizeScheduleList(schedule);
             try {
-                const result = await window.electronAPI.showSaveDialog(normalizeScheduleList(schedule));
-                if (result) alert('Schedule saved successfully!');
+                if (currentScheduleFilePath) {
+                    const ok = await window.electronAPI.saveScheduleToPath(currentScheduleFilePath, payload);
+                    if (ok) { flashScheduleSaved(); return; }
+                    // fall through to Save As if the in-place write failed
+                }
+                const savedPath = await window.electronAPI.showSaveDialog(payload);
+                if (savedPath) {
+                    currentScheduleFilePath = savedPath;
+                    updateWindowTitleForSchedule();
+                    flashScheduleSaved();
+                }
             } catch (error) {
-                alert('Error saving schedule: ' + error.message);
+                alert('Error saving schedule: ' + (error && error.message || error));
             }
+        }
+
+        function flashScheduleSaved() {
+            const el = document.getElementById('preview-style-template-status');
+            if (el) { el.textContent = 'Đã lưu lịch trình' + (currentScheduleFilePath ? ' → ' + currentScheduleFilePath.replace(/^.*[\\/]/, '') : ''); }
         }
 
         async function openSchedule() {
             try {
                 const result = await window.electronAPI.showOpenDialog();
-                if (result) {
-                    schedule = normalizeScheduleList(result.data);
-                    renderSchedule();
-                    alert('Schedule loaded successfully!');
-                }
+                if (!result) return;
+                if (result.error) { alert('Không mở được file: ' + result.error); return; }
+                loadScheduleData(result.data, result.filePath);
             } catch (error) {
-                alert('Error loading schedule: ' + error.message);
+                alert('Error loading schedule: ' + (error && error.message || error));
             }
         }
 
@@ -7108,11 +7189,19 @@
         if (e.key === 'Escape' && panel.classList.contains('open') && panel.contains(document.activeElement)) closePanel();
       });
 
-      // QR defaults to the raw IP URL — that is what every phone can open today.
-      // worship.local is offered as a "bookmark this, survives IP changes"
-      // alternative for devices that resolve mDNS (iPhone / newer Android).
-      var qrMode = 'ip';        // 'ip' | 'host'
-      var ipUrl = '', hostUrl = '';
+      // QR mode: 'public' = Public URL (Cloudflare Tunnel / domain — mọi mạng),
+      // 'ip' = IP LAN (mọi điện thoại nếu cùng WiFi), 'host' = worship.local (mDNS).
+      // Mặc định về 'public' khi đã cấu hình publicUrl, ngược lại 'ip'.
+      var qrMode = 'ip';
+      var qrModeUserSet = false;      // true khi operator tự bấm đổi mode
+      var ipUrl = '', hostUrl = '', publicUrl = '';
+
+      function qrModes() { return publicUrl ? ['public', 'ip', 'host'] : ['ip', 'host']; }
+      function urlForMode(m) {
+        if (m === 'public') return publicUrl;
+        if (m === 'host') return hostUrl;
+        return ipUrl;
+      }
 
       function doToggle() {
         $('bpToggle').disabled = true;
@@ -7120,14 +7209,24 @@
           .catch(function (err) { $('bpToggle').disabled = false; addFeed('sys', '', 'Không mở được kênh: ' + (err && err.message || err)); });
       }
       $('bpToggle').addEventListener('click', doToggle);
-      $('bpCopy').addEventListener('click', function () {
-        var u = $('bpQr').dataset.url || '';
-        if (u && navigator.clipboard) navigator.clipboard.writeText(u);
-      });
-      $('bpQrMode').addEventListener('click', function () {
-        qrMode = qrMode === 'ip' ? 'host' : 'ip';
-        refreshQr();
-      });
+
+      // Public URL: dán vào -> lưu band-comm.json -> QR chuyển sang dùng nó.
+      function commitPublicUrl() {
+        var val = $('bpPublicUrl').value.trim().replace(/\/+$/, '');
+        if (val && !/^https?:\/\//i.test(val)) val = 'https://' + val;
+        if (val === publicUrl) return;
+        api.getConfig().then(function (cfg) {
+          return api.saveConfig(Object.assign({}, cfg, { publicUrl: val }));
+        }).then(function (saved) {
+          publicUrl = (saved && saved.publicUrl) || '';
+          $('bpPublicUrl').value = publicUrl;
+          if (publicUrl) { qrMode = 'public'; qrModeUserSet = true; }
+          else if (qrMode === 'public') { qrMode = 'ip'; }
+          refreshQr();
+        }).catch(function () {});
+      }
+      $('bpPublicUrl').addEventListener('change', commitPublicUrl);
+      $('bpPublicUrl').addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); $('bpPublicUrl').blur(); } });
       var FW_LABEL = 'Mở cổng Firewall (nếu điện thoại không vào được)';
       $('bpFw').addEventListener('click', function () {
         $('bpFw').disabled = true;
@@ -7143,30 +7242,60 @@
           $('bpFw').textContent = FW_LABEL;
         });
       });
-      // Multi-NIC override: pick which IP the QR uses.
-      $('bpIpSel').addEventListener('change', function () { ipUrl = $('bpIpSel').value; if (qrMode === 'ip') refreshQr(); });
 
-      // Connection details are collapsed by default — one summary line + a toggle.
-      var detailsOpen = false, lastShort = '', lastPin = '—';
-      function setStatusLine(n) {
-        $('bpStatusLine').textContent = lastShort + '  ·  PIN ' + lastPin + '  ·  ' + n + ' người';
+      // ---- chord-sheet gallery (operator uploads; phones show below buttons) ----
+      function renderGal(m) {
+        var list = $('bpGalList'); list.textContent = '';
+        var imgs = (m && m.images) || [];
+        if (!imgs.length) { var e = document.createElement('div'); e.className = 'empty'; e.textContent = 'Chưa có ảnh nào.'; list.appendChild(e); return; }
+        imgs.forEach(function (im) {
+          var row = document.createElement('div'); row.className = 'gi';
+          var nm = document.createElement('span'); nm.className = 'nm'; nm.textContent = im.name || im.id;
+          var rm = document.createElement('button'); rm.className = 'rm'; rm.textContent = '×'; rm.title = 'Xoá';
+          rm.addEventListener('click', function () { api.galleryRemove(im.id).then(renderGal).catch(function () {}); });
+          row.appendChild(nm); row.appendChild(rm);
+          list.appendChild(row);
+        });
       }
-      $('bpDetailsToggle').addEventListener('click', function () {
-        detailsOpen = !detailsOpen;
-        $('bpConn').classList.toggle('bp-hidden', !detailsOpen);
-        $('bpDetailsToggle').textContent = detailsOpen ? 'Ẩn' : 'Kết nối';
+      function downscaleImg(file, cb) {
+        var img = new Image();
+        img.onload = function () {
+          var max = 1400, w = img.naturalWidth, h = img.naturalHeight;
+          if (w > max || h > max) { var s = max / Math.max(w, h); w = Math.round(w * s); h = Math.round(h * s); }
+          var c = document.createElement('canvas'); c.width = w; c.height = h;
+          c.getContext('2d').drawImage(img, 0, 0, w, h);
+          try { cb(c.toDataURL('image/jpeg', 0.82)); } catch (e) {}
+          URL.revokeObjectURL(img.src);
+        };
+        img.onerror = function () { URL.revokeObjectURL(img.src); };
+        img.src = URL.createObjectURL(file);
+      }
+      $('bpGalInput').addEventListener('change', function (ev) {
+        var files = Array.prototype.slice.call(ev.target.files || []);
+        ev.target.value = '';
+        files.forEach(function (f) {
+          downscaleImg(f, function (dataUrl) {
+            api.galleryAdd({ name: f.name, ext: '.jpg', dataB64: dataUrl }).then(renderGal).catch(function () {});
+          });
+        });
+      });
+
+      // "Kết nối" opens the connection info as a popup over the whole app.
+      function openConnModal() { refreshQr(); api.galleryList().then(renderGal).catch(function () {}); $('bpConn').classList.remove('bp-hidden'); }
+      function closeConnModal() { $('bpConn').classList.add('bp-hidden'); }
+      $('bpDetailsToggle').addEventListener('click', openConnModal);
+      $('bpConnClose').addEventListener('click', closeConnModal);
+      $('bpConn').addEventListener('click', function (e) { if (e.target === $('bpConn')) closeConnModal(); });
+      document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape' && !$('bpConn').classList.contains('bp-hidden')) closeConnModal();
       });
 
       function refreshQr() {
-        var primary = qrMode === 'host' ? (hostUrl || ipUrl) : (ipUrl || hostUrl);
-        var alt = qrMode === 'host' ? ipUrl : hostUrl;
+        var ms = qrModes();
+        if (ms.indexOf(qrMode) < 0) qrMode = ms[0];
+        var primary = urlForMode(qrMode) || ipUrl || hostUrl || publicUrl;
         renderQr(primary);
-        $('bpHost').textContent = primary;
-        $('bpAlt').textContent = alt || '—';
-        $('bpQrNote').textContent = qrMode === 'host'
-          ? 'Quét mã (worship.local — máy cũ không mở được thì gõ dòng 🔖 IP bên dưới).'
-          : 'Quét mã, hoặc gõ địa chỉ này vào trình duyệt điện thoại.';
-        $('bpQrMode').textContent = qrMode === 'ip' ? 'QR: dùng worship.local' : 'QR: dùng địa chỉ IP';
+        $('bpHost').textContent = primary || '—';
       }
 
       function renderQr(url) {
@@ -7210,39 +7339,27 @@
 
         if (st.error) { showBandError(st.error); } else { hideBandError(); }
 
-        var nClients = st.clients ? st.clients.length : 0;
-        $('bpStatus').classList.toggle('bp-hidden', !running);
-        $('bpConn').classList.toggle('bp-hidden', !running || !detailsOpen);
+        $('bpToggle').disabled = false;
+        $('bpDetailsToggle').classList.toggle('bp-hidden', !running);
         $('bpPin').textContent = st.pin || '—';
+        $('bpCount').textContent = (st.clients ? st.clients.length : 0);
+
+        // Public URL từ band-comm.json (có kể cả khi kênh chưa chạy).
+        if (typeof st.publicUrl === 'string') {
+          publicUrl = st.publicUrl;
+          if (document.activeElement !== $('bpPublicUrl')) $('bpPublicUrl').value = publicUrl;
+          if (!qrModeUserSet && publicUrl) qrMode = 'public';
+          if (!publicUrl && qrMode === 'public') qrMode = 'ip';
+        }
 
         if (running) {
           hostUrl = st.hostUrl || (st.host && st.port ? 'http://' + st.host + ':' + st.port : '');
-          var ipFromStatus = st.url || (st.ip && st.port ? 'http://' + st.ip + ':' + st.port : '');
-
-          var ips = Array.isArray(st.ips) ? st.ips : [], sel = $('bpIpSel');
-          if (ips.length > 1 && st.port) {
-            sel.classList.remove('bp-hidden'); sel.textContent = '';
-            var keep = ipUrl || ipFromStatus;
-            ips.forEach(function (x) {
-              var o = document.createElement('option');
-              o.value = 'http://' + x.address + ':' + st.port;
-              o.textContent = x.address + '  (' + x.iface + ')';
-              if (o.value === keep) o.selected = true;
-              sel.appendChild(o);
-            });
-            ipUrl = sel.value || keep || ipFromStatus;
-          } else {
-            sel.classList.add('bp-hidden');
-            ipUrl = ipFromStatus || ipUrl;
-          }
-
+          ipUrl = st.url || (st.ip && st.port ? 'http://' + st.ip + ':' + st.port : '') || ipUrl;
           refreshQr();
-          lastShort = (ipUrl || hostUrl || '').replace(/^https?:\/\//, '');
-          lastPin = st.pin || '—';
-          setStatusLine(nClients);
           $('bpEmpty').classList.add('bp-hidden');
-          if (!readyShown) { readyShown = true; addFeed('sys', '', 'Kênh đã sẵn sàng · ' + lastShort); }
+          readyShown = true;
         } else {
+          closeConnModal();
           if (!st.error) readyShown = false;
         }
 
@@ -7269,7 +7386,7 @@
       }
 
       api.onMessage(function (_e, env) { handle(env); });
-      api.onPresence(function (_e, list) { setStatusLine(list ? list.length : 0); });
+      api.onPresence(function (_e, list) { $('bpCount').textContent = (list ? list.length : 0); });
       api.onServerStatus(function (_e, st) { applyStatus(st); });
 
       function bumpUnread() {
@@ -7294,9 +7411,11 @@
           if (env.from && (env.from.clientId === 'operator' || env.from.role === 'operator')) return;
           addFeed('op', env.from.name, env.text);
         }
+        else if (env.type === 'gallery') { renderGal(env.meta || {}); }
         // ack / resolve: nothing to add — the source message shows "đã tiếp nhận".
         else if (env.type === 'system') {
-          if (/^Kênh đã sẵn sàng/.test(env.text || '')) readyShown = true;
+          // Skip the routine "Kênh đã sẵn sàng" chatter; keep real notices (errors).
+          if (/^Kênh đã sẵn sàng/.test(env.text || '')) { readyShown = true; return; }
           addFeed('sys', '', env.text);
         }
       }
@@ -7315,20 +7434,47 @@
         }
       }
 
+      // Stable per-user hue from the sender name.
+      function userHsl(key, s, l) {
+        var k = String(key || ''), h = 0;
+        for (var i = 0; i < k.length; i++) h = (h * 31 + k.charCodeAt(i)) >>> 0;
+        return 'hsl(' + (h % 360) + ', ' + s + '%, ' + l + '%)';
+      }
+
       function addFeed(kind, who, text, meta) {
         $('bpEmpty').classList.add('bp-hidden');
         var feed = $('bpFeed');
-        var el = document.createElement('div');
-        el.className = 'bp-msg ' + kind;
-        if (kind !== 'sys' && who) { var w = document.createElement('span'); w.className = 'who'; w.textContent = who; el.appendChild(w); }
-        el.appendChild(document.createTextNode(text));
-        if (meta && meta.alert) {
-          el.classList.add('alert-pending');
-          if (meta.sender) el.dataset.sender = meta.sender;
-          el.dataset.label = meta.label || text;
-          el.addEventListener('click', function () { ackFeedMsg(el); });
+        var node;
+        if (kind === 'sys') {
+          node = document.createElement('div');
+          node.className = 'bp-msg sys';
+          node.textContent = text;
+        } else {
+          node = document.createElement('div');
+          node.className = 'bp-fr ' + kind;
+          if (who) {
+            var w = document.createElement('div');
+            w.className = 'who';
+            w.textContent = who;
+            if (kind === 'band') w.style.color = userHsl(who, 45, 40);
+            node.appendChild(w);
+          }
+          var el = document.createElement('div');
+          el.className = 'bp-msg ' + kind;
+          el.appendChild(document.createTextNode(text));
+          if (kind === 'band') {
+            el.style.background = userHsl(who, 72, 94);
+            el.style.borderColor = userHsl(who, 52, 80);
+          }
+          if (meta && meta.alert) {
+            el.classList.add('alert-pending');
+            if (meta.sender) el.dataset.sender = meta.sender;
+            el.dataset.label = meta.label || text;
+            el.addEventListener('click', function () { ackFeedMsg(el); });
+          }
+          node.appendChild(el);
         }
-        feed.appendChild(el);
+        feed.appendChild(node);
         if (feed.scrollHeight - feed.scrollTop - feed.clientHeight < 200) feed.scrollTop = feed.scrollHeight;
         while (feed.children.length > 300) feed.removeChild(feed.firstChild);
       }
