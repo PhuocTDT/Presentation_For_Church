@@ -4,6 +4,14 @@ Tất cả các thay đổi và cập nhật quan trọng của dự án đượ
 
 ## [Unreleased] - Kênh Band LAN (P1 + P2 + P2.5 + P4)
 
+### M1b — setlist LAN: UI soạn trên điện thoại (2026-09-09)
+- `comm/mobile`: nút "📋 Setlist" ở topbar → section soạn: danh sách bài đã chọn
+  (nút ↑ ↓ ×), ô tìm bài (khớp không dấu theo tiêu đề + lời), chạm để thêm/bỏ,
+  ô tên + nút "Gửi". `GET /api/library` (cache `state.slLibCache` cho lần sau /
+  lúc mạng chờn). Draft giữ trong `localStorage` (`state.slDraft`) — không mất khi
+  đóng app. Gửi 200 → xoá draft + đóng section; lỗi → giữ draft, báo "máy chiếu
+  chưa online" (retry queue = M2/M3).
+
 ### M1a — setlist LAN: server + operator nhận (2026-09-09)
 - `src/band-comm/server.js`: `createCommServer` nhận thêm `getLibraryIndex` + `onSetlist`.
   - `GET /api/library` → chỉ mục thư viện bài hát `{id,title,lyrics}` (điện thoại chọn bài).

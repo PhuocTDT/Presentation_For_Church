@@ -114,6 +114,24 @@
   }
   .ch-dots button.on { background:var(--op); transform:scale(1.35); }
 
+  /* setlist */
+  #setlistBlock input { width:100%; box-sizing:border-box; background:#fff; border:1px solid var(--line); border-radius:10px; padding:9px 12px; color:var(--ink); outline:none; margin-top:8px; }
+  #setlistBlock input:focus { border-color:var(--op); }
+  .sl-draft { display:flex; flex-direction:column; gap:4px; }
+  .sl-draft .row { display:flex; align-items:center; gap:6px; background:#fff; border:1px solid var(--line); border-radius:9px; padding:6px 8px; font-size:.86rem; }
+  .sl-draft .row .n { flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .sl-draft .row button { border:none; background:var(--panel-2); border-radius:7px; padding:3px 8px; font-size:.9rem; color:var(--ink-soft); }
+  .sl-draft .row button.x { color:var(--danger); }
+  .sl-draft .empty { color:var(--ink-faint); font-size:.8rem; padding:4px 2px; }
+  .sl-results { max-height:44vh; overflow-y:auto; border:1px solid var(--line); border-radius:10px; margin-top:6px; background:#fff; }
+  .sl-results .r { padding:9px 12px; border-bottom:1px solid var(--line); font-size:.86rem; }
+  .sl-results .r:last-child { border-bottom:none; }
+  .sl-results .r .ly { display:block; font-size:.74rem; color:var(--ink-faint); margin-top:2px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .sl-results .r.added { background:var(--op-bg); }
+  .sl-foot { display:flex; gap:8px; align-items:flex-end; }
+  .sl-foot input { flex:1; }
+  .sl-foot .send { background:var(--op); border:none; border-radius:10px; padding:0 16px; height:38px; font-weight:700; color:#fff; margin-top:8px; }
+
   /* composer */
   .composer {
     display:flex; gap:8px; padding:8px 12px;
@@ -205,6 +223,7 @@
     <span class="dot" id="dot"></span>
     <span class="room" id="roomName">Kênh Band</span>
     <span class="count" id="count">0</span>
+    <button class="txtbtn" id="slToggleBtn">📋 Setlist</button>
     <button class="txtbtn" id="chToggleBtn" hidden>🎼 Hợp âm<span class="nb" id="chNew" hidden></span></button>
     <button class="txtbtn" id="gearBtn">Âm/rung</button>
   </div>
@@ -213,6 +232,16 @@
     <section class="block">
       <h2>Nút cảnh báo của bạn <button class="link" id="editModeBtn">Sửa</button></h2>
       <div id="buttons"></div>
+    </section>
+    <section class="block hidden" id="setlistBlock">
+      <h2>Setlist gửi máy chiếu</h2>
+      <div id="slDraft" class="sl-draft"></div>
+      <input id="slSearch" placeholder="Gõ tên / số bài để thêm…" autocomplete="off">
+      <div id="slResults" class="sl-results hidden"></div>
+      <div class="sl-foot">
+        <input id="slName" placeholder="Tên setlist (VD: CN sáng 09/09)" maxlength="80">
+        <button class="send" id="slSend">Gửi</button>
+      </div>
     </section>
     <section class="block hidden" id="chords">
       <h2>Hợp âm

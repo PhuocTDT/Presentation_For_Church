@@ -29,6 +29,7 @@
     if (!Array.isArray(s.buttons)) s.buttons = [];
     if (typeof s.sound !== 'boolean') s.sound = true;
     if (typeof s.vibrate !== 'boolean') s.vibrate = true;
+    if (!Array.isArray(s.slDraft)) s.slDraft = [];
     return s;
   }
   function saveState() {
@@ -504,6 +505,118 @@
       setActiveDot(v.clientWidth ? Math.round(v.scrollLeft / v.clientWidth) : 0);
     }, 60);
   });
+
+  /* ---------------- setlist (soạn danh sách bài gửi máy chiếu) ---------------- */
+
+  var slSongs = [];
+  var slLibLoaded = false;
+
+  function fetchLibrary() {
+    // fallback từ cache trước cho nhanh / lúc mạng chờn
+    if (!slSongs.length && state.slLibCache && Array.isArray(state.slLibCache.songs)) slSongs = state.slLibCache.songs;
+    fetch('api/library', { headers: authHeader() })
+      .then(function (r) { return r.json(); })
+      .then(function (j) {
+        if (j && Array.isArray(j.songs)) {
+          slSongs = j.songs;
+          slLibLoaded = true;
+          state.slLibCache = { songs: j.songs, ts: Date.now() };
+          saveState();
+          renderSlResults($('slSearch').value);
+        }
+      }).catch(function () {});
+  }
+
+  function renderSlDraft() {
+    var box = $('slDraft'); box.textContent = '';
+    var d = state.slDraft || [];
+    if (!d.length) { var e = document.createElement('div'); e.className = 'empty'; e.textContent = 'Chưa có bài. Gõ tìm bên dưới rồi chạm để thêm.'; box.appendChild(e); return; }
+    d.forEach(function (it, i) {
+      var row = document.createElement('div'); row.className = 'row';
+      var n = document.createElement('span'); n.className = 'n'; n.textContent = (i + 1) + '. ' + it.title;
+      row.appendChild(n);
+      [['↑', -1], ['↓', 1], ['×', 0]].forEach(function (pair) {
+        var b = document.createElement('button');
+        b.type = 'button'; b.textContent = pair[0];
+        if (pair[1] === 0) b.className = 'x';
+        b.addEventListener('click', function () {
+          if (pair[1] === 0) { state.slDraft.splice(i, 1); }
+          else { var j = i + pair[1]; if (j < 0 || j >= state.slDraft.length) return; var t = state.slDraft[i]; state.slDraft[i] = state.slDraft[j]; state.slDraft[j] = t; }
+          saveState(); renderSlDraft(); renderSlResults($('slSearch').value);
+        });
+        row.appendChild(b);
+      });
+      box.appendChild(row);
+    });
+  }
+
+  function norm(s) {
+    return String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/đ/gi, 'd').toLowerCase();
+  }
+  function renderSlResults(query) {
+    var wrap = $('slResults');
+    var q = norm(query).trim();
+    if (!q) { wrap.classList.add('hidden'); wrap.textContent = ''; return; }
+    var inDraft = {}; (state.slDraft || []).forEach(function (x) { inDraft[String(x.id)] = 1; });
+    var hits = slSongs.filter(function (s) { return norm(s.title).indexOf(q) >= 0 || norm(s.lyrics).indexOf(q) >= 0; }).slice(0, 40);
+    wrap.textContent = '';
+    if (!hits.length) { wrap.classList.remove('hidden'); var e = document.createElement('div'); e.className = 'r'; e.textContent = slLibLoaded ? 'Không thấy bài nào.' : 'Đang tải thư viện…'; wrap.appendChild(e); return; }
+    hits.forEach(function (s) {
+      var r = document.createElement('div'); r.className = 'r' + (inDraft[String(s.id)] ? ' added' : '');
+      var title = document.createElement('span'); title.textContent = (inDraft[String(s.id)] ? '✓ ' : '') + s.title;
+      r.appendChild(title);
+      if (s.lyrics) { var ly = document.createElement('span'); ly.className = 'ly'; ly.textContent = s.lyrics.replace(/\n+/g, ' · ').slice(0, 90); r.appendChild(ly); }
+      r.addEventListener('click', function () {
+        var k = String(s.id);
+        if (inDraft[k]) { state.slDraft = state.slDraft.filter(function (x) { return String(x.id) !== k; }); }
+        else { state.slDraft.push({ id: s.id, title: s.title }); }
+        saveState(); renderSlDraft(); renderSlResults(query);
+      });
+      wrap.appendChild(r);
+    });
+    wrap.classList.remove('hidden');
+  }
+
+  function sendSetlist() {
+    var d = state.slDraft || [];
+    if (!d.length) { toast('band', '', 'Setlist đang trống.'); return; }
+    var name = $('slName').value.trim() || 'Setlist';
+    var payload = {
+      id: 'sl-' + Date.now().toString(16) + Math.random().toString(16).slice(2, 8),
+      name: name,
+      items: d.map(function (x) { return { type: 'song', id: x.id, title: x.title }; })
+    };
+    $('slSend').disabled = true;
+    fetch('api/setlist', { method: 'POST', headers: authHeader(), body: JSON.stringify(payload) })
+      .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+      .then(function (res) {
+        $('slSend').disabled = false;
+        if (res.ok && res.j && res.j.ok) {
+          state.slDraft = []; saveState();
+          $('slName').value = ''; $('slSearch').value = '';
+          renderSlDraft(); renderSlResults('');
+          toast('op', '', 'Đã gửi setlist cho máy chiếu.');
+          $('setlistBlock').classList.add('hidden');
+        } else {
+          toast('band', '', (res.j && res.j.error) || 'Máy chiếu chưa nhận được.');
+        }
+      })
+      .catch(function () { $('slSend').disabled = false; toast('band', '', 'Chưa gửi được — máy chiếu chưa online. Danh sách vẫn được giữ.'); });
+  }
+
+  $('slToggleBtn') && $('slToggleBtn').addEventListener('click', function () {
+    var sec = $('setlistBlock');
+    var show = sec.classList.contains('hidden');
+    sec.classList.toggle('hidden', !show);
+    $('slToggleBtn').classList.toggle('active', show);
+    if (show) {
+      renderSlDraft();
+      if (!slLibLoaded) fetchLibrary();
+      sec.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  });
+  $('slSearch') && $('slSearch').addEventListener('input', function () { renderSlResults(this.value); });
+  $('slSend') && $('slSend').addEventListener('click', sendSetlist);
 
   /* ---------------- composer + settings ---------------- */
 
