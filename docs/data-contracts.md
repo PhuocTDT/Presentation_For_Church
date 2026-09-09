@@ -132,3 +132,11 @@ Xem `band-comm-plan.md` để biết đầy đủ. Tóm tắt contract:
   - `POST /api/join` trả thêm `hasUploaderPin` (điện thoại biết có nên hiện nút "Phụ trách ảnh").
 - Operator side: sidebar `#bandPanel` (khu "Ảnh hợp âm" trong popup "Kết nối") có nút Thêm ảnh + danh sách xoá + ô "Mã phụ trách" (đặt `room.uploaderPin`). Operator luôn thêm/xoá được qua IPC `band-comm-gallery-list|add|remove|reorder`.
 - Mobile: ảnh **không tự hiện** — nút "🎼 Hợp âm" ở topbar (chấm đỏ khi bộ ảnh đổi), bấm mới mở khu xem (vuốt ngang + dot pager). Người phụ trách thấy khu này thường trực kèm nút Thêm / Xoá.
+
+### Setlist (soạn danh sách bài từ điện thoại) — M1, LAN
+
+- `GET /api/library` → `{ songs:[{id,title,lyrics}], count, updatedAt }` — chỉ mục thư viện bài hát để điện thoại chọn (lyrics kèm để nhận diện đúng bài). Do `main.js` cung cấp qua callback `getLibraryIndex` (đọc `songs.json` + `migrateItem`).
+- `POST /api/setlist` `{ id?, name, items:[{type:'song', id, title?}] }` → server lưu vào bộ nhớ **phiên** (RAM, tối đa 30, idempotent theo `id`), phát callback `onSetlist` → main.js `broadcastToRenderers('band-comm-setlist', setlist)` + nháy taskbar. Trả `{ok, id}`. `items` lọc còn `type:'song'`, tối đa 60. Rỗng → `400`.
+- `GET /api/setlist` → `{ setlists }` — xem lại các setlist đã gửi trong phiên.
+- Setlist KHÔNG bền qua restart server (M1). Hàng đợi khi laptop tắt hẳn = M2 (Cloudflare Worker + KV).
+- IPC operator: `band-comm-setlist` (envelope setlist) → sidebar hiện thẻ "📋 Setlist: … · N bài · từ …" với [Xem] / [Nạp vào Schedule]. **Nạp = luôn thay thế** toàn bộ `schedule`; bài khớp `id` trong `songLibrary` thì lấy đủ (lyrics/style), không khớp → item tạm chỉ có tiêu đề.

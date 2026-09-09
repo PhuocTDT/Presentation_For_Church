@@ -989,7 +989,22 @@ function initBandComm() {
         }
       }
     },
-    onPresence: (list) => broadcastToRenderers('band-comm-presence', list)
+    onPresence: (list) => broadcastToRenderers('band-comm-presence', list),
+    // Chỉ mục thư viện bài hát cho /api/library (điện thoại soạn setlist).
+    getLibraryIndex: () => {
+      try {
+        const raw = JSON.parse(fs.readFileSync(songsFilePath, 'utf8') || '[]');
+        return raw.map(migrateItem)
+          .filter(s => s && s.title)
+          .map(s => ({ id: s.id, title: s.title, lyrics: s.lyrics || '' }));
+      } catch (e) { return []; }
+    },
+    onSetlist: (sl) => {
+      broadcastToRenderers('band-comm-setlist', sl);
+      if (mainWindow && !mainWindow.isDestroyed() && !mainWindow.isFocused()) {
+        try { mainWindow.flashFrame(true); } catch (e) {}
+      }
+    }
   });
 }
 

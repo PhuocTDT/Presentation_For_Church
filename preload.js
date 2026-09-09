@@ -104,6 +104,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
     onTogglePanel: (callback) => {
       ipcRenderer.removeAllListeners('band-comm-toggle-panel');
       ipcRenderer.on('band-comm-toggle-panel', callback);
+    },
+    onSetlist: (callback) => {
+      ipcRenderer.removeAllListeners('band-comm-setlist');
+      ipcRenderer.on('band-comm-setlist', callback);
     }
   }
 });

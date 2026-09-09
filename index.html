@@ -1022,6 +1022,12 @@
       #bandPanel .bp-conn .bp-gal .gi .nm { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
       #bandPanel .bp-conn .bp-gal .gi .rm { border: none; background: none; color: #c0392f; font-size: 1.05rem; line-height: 1; cursor: pointer; padding: 0 4px; }
       #bandPanel .bp-conn .bp-gal .empty { color: #8a93a3; font-size: .78rem; }
+      #bandPanel .bp-slcard { align-self: stretch; border: 1px solid #bcd6f0; background: #eef5fd; border-radius: 11px; padding: 8px 10px; margin: 2px 0; }
+      #bandPanel .bp-slcard .t { font-weight: 700; font-size: .88rem; }
+      #bandPanel .bp-slcard .s { font-size: .76rem; color: #5b6472; margin: 2px 0 6px; }
+      #bandPanel .bp-slcard .a { display: flex; gap: 6px; }
+      #bandPanel .bp-slcard .a .bp-btn { flex: 1; }
+      #bandPanel .bp-slcard .list { white-space: pre-wrap; font-size: .78rem; color: #1e2430; margin-top: 6px; border-top: 1px solid #cfe0f3; padding-top: 6px; }
 
       #bandPanel .bp-feed { flex: 1; overflow-y: auto; padding: 8px 10px; display: flex; flex-direction: column; gap: 9px; }
 
@@ -7445,6 +7451,60 @@
       api.onMessage(function (_e, env) { handle(env); });
       api.onPresence(function (_e, list) { $('bpCount').textContent = (list ? list.length : 0); });
       api.onServerStatus(function (_e, st) { applyStatus(st); });
+      api.onSetlist && api.onSetlist(function (_e, sl) { showSetlistCard(sl); });
+
+      // ---- setlist từ điện thoại: hiện thẻ trong feed, [Xem] / [Nạp vào Schedule] ----
+      function showSetlistCard(sl) {
+        if (!sl || !Array.isArray(sl.items)) return;
+        var feed = $('bpFeed');
+        $('bpEmpty').classList.add('bp-hidden');
+        var card = document.createElement('div');
+        card.className = 'bp-slcard';
+        var who = (sl.from && sl.from.name) || 'ai đó';
+        card.innerHTML =
+          '<div class="t">📋 Setlist: ' + escHtml(sl.name) + '</div>' +
+          '<div class="s">' + sl.items.length + ' bài · từ ' + escHtml(who) + '</div>' +
+          '<div class="a"><button class="bp-btn" data-x="view">Xem</button>' +
+          '<button class="bp-btn go" data-x="load">Nạp vào Schedule</button></div>' +
+          '<div class="list bp-hidden"></div>';
+        var listEl = card.querySelector('.list');
+        listEl.textContent = sl.items.map(function (it, i) { return (i + 1) + '. ' + (it.title || it.id); }).join('\n');
+        card.querySelector('[data-x="view"]').addEventListener('click', function () {
+          listEl.classList.toggle('bp-hidden');
+        });
+        card.querySelector('[data-x="load"]').addEventListener('click', function () {
+          if (!confirm('Nạp setlist "' + sl.name + '" — thay thế toàn bộ Schedule hiện tại?')) return;
+          loadSetlistIntoSchedule(sl);
+        });
+        feed.appendChild(card);
+        feed.scrollTop = feed.scrollHeight;
+        bumpUnread();
+      }
+
+      function escHtml(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]; }); }
+
+      function loadSetlistIntoSchedule(sl) {
+        var out = [];
+        (sl.items || []).forEach(function (it) {
+          var src = (songLibrary || []).find(function (s) { return String(s.id) === String(it.id); });
+          if (src) {
+            var copy = JSON.parse(JSON.stringify(src));
+            delete copy.scheduleId;
+            out.push(normalizeScheduleItem(copy));
+          } else {
+            out.push(normalizeScheduleItem({ type: 'song', title: it.title || 'Bài không có trong thư viện', lyrics: '' }));
+          }
+        });
+        out = out.filter(Boolean);
+        schedule = out;                    // spec: LUÔN thay thế
+        currentScheduleIndex = -1;
+        currentLiveScheduleIndex = -1;
+        if (typeof currentPreviewIndex !== 'undefined') currentPreviewIndex = -1;
+        currentScheduleFilePath = null;
+        if (typeof updateWindowTitleForSchedule === 'function') updateWindowTitleForSchedule();
+        renderSchedule();
+        addFeed('sys', '', 'Đã nạp setlist "' + sl.name + '" — ' + out.length + ' bài vào Schedule.');
+      }
 
       function bumpUnread() {
         if (panel.classList.contains('open')) return;

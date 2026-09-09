@@ -85,8 +85,10 @@ function sendJson(res, code, obj, headers) {
  * @param {object}   opts.store       from ./store createStore()
  * @param {Function} [opts.onEvent]   (envelope) => void — every non-presence message
  * @param {Function} [opts.onPresence](clientList) => void
+ * @param {Function} [opts.getLibraryIndex] () => [{id,title,lyrics}] — for /api/library
+ * @param {Function} [opts.onSetlist] (setlist) => void — a phone sent a setlist
  */
-function createCommServer({ store, onEvent, onPresence }) {
+function createCommServer({ store, onEvent, onPresence, getLibraryIndex, onSetlist }) {
   let server = null;
   let running = false;
   let secret = null;
@@ -95,6 +97,8 @@ function createCommServer({ store, onEvent, onPresence }) {
   let hb = null;
   const clients = new Map(); // clientId -> { clientId, name, role, ws, lastSeen, dupMap }
   const ring = [];           // { id, env }
+  const setlists = [];             // setlist gửi từ điện thoại trong phiên (RAM)
+  const receivedSetlistIds = new Set(); // idempotent theo setlist.id
 
   // token = clientId.issued.<b64url(name)>.role.<hmac(payload)>
   // Name + role travel inside the token so a phone that was evicted server-side
@@ -347,6 +351,38 @@ function createCommServer({ store, onEvent, onPresence }) {
       return sendJson(res, 200, galleryRemove(body && body.id));
     }
 
+    // ---- setlist: điện thoại soạn danh sách bài -> operator nạp vào Schedule ----
+    if (p === '/api/library' && req.method === 'GET') {
+      const idx = (typeof getLibraryIndex === 'function' && getLibraryIndex()) || [];
+      return sendJson(res, 200, { songs: idx, count: idx.length, updatedAt: Date.now() });
+    }
+    if (p === '/api/setlist' && req.method === 'GET') {
+      return sendJson(res, 200, { setlists });
+    }
+    if (p === '/api/setlist' && req.method === 'POST') {
+      const body = await readJson(req);
+      if (!body) return sendJson(res, 400, { error: 'bad json' });
+      const items = (Array.isArray(body.items) ? body.items : [])
+        .filter(it => it && it.type === 'song' && it.id != null)
+        .slice(0, 60)
+        .map(it => ({ type: 'song', id: it.id, title: String(it.title || '').slice(0, 200) }));
+      if (!items.length) return sendJson(res, 400, { error: 'Setlist rỗng' });
+      const sl = {
+        id: String(body.id || newId('sl')),
+        name: String(body.name || '').trim().slice(0, 80) || 'Setlist',
+        from: { name: client.name, role: client.role },
+        ts: Date.now(),
+        items
+      };
+      if (!receivedSetlistIds.has(sl.id)) {
+        receivedSetlistIds.add(sl.id);
+        setlists.push(sl);
+        if (setlists.length > 30) setlists.shift();
+        if (onSetlist) { try { onSetlist(sl); } catch (e) {} }
+      }
+      return sendJson(res, 200, { ok: true, id: sl.id });
+    }
+
     return sendJson(res, 404, { error: 'not found' });
   }
 
@@ -523,6 +559,8 @@ function createCommServer({ store, onEvent, onPresence }) {
     for (const c of clients.values()) { if (c.ws) { try { c.ws.close(1001); } catch (e) {} } }
     clients.clear();
     ring.length = 0;
+    setlists.length = 0;
+    receivedSetlistIds.clear();
     try { if (server) server.close(); } catch (e) {}
     server = null;
     running = false;

@@ -4,6 +4,16 @@ Tất cả các thay đổi và cập nhật quan trọng của dự án đượ
 
 ## [Unreleased] - Kênh Band LAN (P1 + P2 + P2.5 + P4)
 
+### M1a — setlist LAN: server + operator nhận (2026-09-09)
+- `src/band-comm/server.js`: `createCommServer` nhận thêm `getLibraryIndex` + `onSetlist`.
+  - `GET /api/library` → chỉ mục thư viện bài hát `{id,title,lyrics}` (điện thoại chọn bài).
+  - `POST /api/setlist {name, items}` → lưu RAM phiên (≤30, idempotent theo `id`), phát `onSetlist`; `items` lọc `type:'song'` ≤60; rỗng → 400. `GET /api/setlist` xem lại.
+  - `stop()` xoá `setlists` + `receivedSetlistIds`.
+- `main.js`: `getLibraryIndex` (đọc `songs.json` + `migrateItem`), `onSetlist` → `broadcastToRenderers('band-comm-setlist', sl)` + nháy taskbar.
+- `preload.js`: `bandComm.onSetlist(cb)`.
+- `index.html` sidebar: nhận `onSetlist` → thẻ "📋 Setlist" trong feed với [Xem] (bung danh sách bài) / [Nạp vào Schedule] (xác nhận → **luôn thay thế** `schedule`; bài khớp `id` lấy đủ, không khớp → item tạm).
+- Còn M1b: UI soạn setlist trên điện thoại.
+
 ### M0 — thư viện ảnh hợp âm: điện thoại upload + xem theo yêu cầu (2026-09-09)
 - **Điện thoại upload (người phụ trách ảnh)**:
   - `room.uploaderPin` (4–8 số, đặt ở sidebar operator — ô "Mã phụ trách"). Trống = điện thoại không upload được.
