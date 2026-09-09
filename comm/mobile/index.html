@@ -68,7 +68,9 @@
   .dot.off { background:var(--danger); }
   .topbar .room { font-weight:600; flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .topbar .count { color:var(--ink-soft); font-size:.8rem; }
-  .topbar .txtbtn { background:none; border:1px solid var(--line); border-radius:8px; padding:5px 10px; font-size:.78rem; color:var(--ink-soft); }
+  .topbar .txtbtn { background:none; border:1px solid var(--line); border-radius:8px; padding:5px 10px; font-size:.78rem; color:var(--ink-soft); white-space:nowrap; }
+  .topbar .txtbtn.active { background:var(--op-bg); border-color:var(--op); color:var(--op); }
+  .topbar .txtbtn .nb { display:inline-block; width:7px; height:7px; border-radius:50%; background:var(--danger); margin-left:5px; vertical-align:middle; }
 
   .scroll { flex:1; overflow-y:auto; -webkit-overflow-scrolling:touch; }
   section.block { padding:10px 12px; }
@@ -203,6 +205,7 @@
     <span class="dot" id="dot"></span>
     <span class="room" id="roomName">Kênh Band</span>
     <span class="count" id="count">0</span>
+    <button class="txtbtn" id="chToggleBtn" hidden>🎼 Hợp âm<span class="nb" id="chNew" hidden></span></button>
     <button class="txtbtn" id="gearBtn">Âm/rung</button>
   </div>
 
@@ -212,7 +215,10 @@
       <div id="buttons"></div>
     </section>
     <section class="block hidden" id="chords">
-      <h2>Hợp âm</h2>
+      <h2>Hợp âm
+        <button class="link" id="chManageBtn" hidden>Phụ trách</button>
+        <label class="link" id="chAddLabel" hidden>＋ Thêm ảnh<input type="file" id="chAddInput" accept="image/*" multiple hidden></label>
+      </h2>
       <div class="ch-view" id="chView"></div>
       <div class="ch-dots" id="chDots"></div>
     </section>

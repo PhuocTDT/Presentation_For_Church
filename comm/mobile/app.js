@@ -73,12 +73,14 @@
       state.role = role;
       state.roomName = res.j.room && res.j.room.name || 'Kênh Band';
       state.operatorReplies = res.j.operatorReplies || [];
+      hasUploaderPin = !!res.j.hasUploaderPin;
       if ((!state.buttons || !state.buttons.length) && res.j.profile && res.j.profile.buttons && res.j.profile.buttons.length) {
         state.buttons = res.j.profile.buttons;
       }
       saveState();
       enterMain();
       if (res.j.gallery) renderChords(res.j.gallery);
+      reclaimUploader();
     }).catch(function () {
       $('joinBtn').disabled = false;
       $('joinErr').textContent = 'Không kết nối được máy trình chiếu. Cùng Wi-Fi chưa?';
@@ -351,22 +353,43 @@
   /* ---------------- chord-sheet gallery ---------------- */
 
   var chIds = [];
+  var chUpdatedAt = 0;
+  var chOpen = false;           // người xem đã bấm "Xem hợp âm" chưa
+  var hasUploaderPin = false;   // máy chiếu có bật cho điện thoại upload không
+  var isUploader = false;       // client này đã giành quyền phụ trách ảnh
 
   function renderChords(manifest) {
     var imgs = (manifest && manifest.images) || [];
     var ids = imgs.map(function (x) { return x.id; });
-    if (ids.join(',') === chIds.join(',')) return;   // no change
+    var force = ids.join(',') !== chIds.join(',');
     chIds = ids;
+    chUpdatedAt = (manifest && manifest.updatedAt) || chUpdatedAt;
+    updateChToggle();
     var sec = $('chords'), track = $('chView'), dots = $('chDots');
-    track.textContent = ''; dots.textContent = '';
-    if (!ids.length) { sec.classList.add('hidden'); return; }
+    // Ảnh KHÔNG tự hiện: người xem phải bấm "🎼 Hợp âm". Uploader luôn thấy để quản lý.
+    var show = isUploader || (chOpen && ids.length);
+    if (!show) { sec.classList.add('hidden'); if (force) { track.textContent = ''; dots.textContent = ''; } return; }
     sec.classList.remove('hidden');
+    updateUploaderUI();
+    if (!force) return;
+    track.textContent = ''; dots.textContent = '';
     ids.forEach(function (id, i) {
+      var wrap = document.createElement('div');
+      wrap.style.cssText = 'flex:0 0 100%;position:relative;scroll-snap-align:center;';
       var im = document.createElement('img');
       im.loading = 'lazy';
       im.alt = 'Hợp âm ' + (i + 1);
       im.src = 'api/gallery/image/' + encodeURIComponent(id) + '?token=' + encodeURIComponent(state.token || '');
-      track.appendChild(im);
+      im.style.cssText = 'width:100%;height:auto;max-height:64vh;object-fit:contain;background:#fff;display:block;';
+      wrap.appendChild(im);
+      if (isUploader) {
+        var rm = document.createElement('button');
+        rm.type = 'button'; rm.textContent = 'Xoá';
+        rm.style.cssText = 'position:absolute;top:6px;right:6px;background:#c0392f;color:#fff;border:none;border-radius:8px;padding:4px 10px;font-weight:700;';
+        rm.addEventListener('click', function (e) { e.stopPropagation(); removeChord(id); });
+        wrap.appendChild(rm);
+      }
+      track.appendChild(wrap);
       var d = document.createElement('button');
       d.type = 'button';
       d.addEventListener('click', function () { goChord(i); });
@@ -374,6 +397,90 @@
     });
     setActiveDot(0);
   }
+
+  function updateUploaderUI() {
+    var mb = $('chManageBtn'), al = $('chAddLabel');
+    if (mb) { mb.hidden = !hasUploaderPin; mb.textContent = isUploader ? 'Đang phụ trách ✓' : 'Phụ trách ảnh'; }
+    if (al) al.hidden = !isUploader;
+  }
+
+  function updateChToggle() {
+    var b = $('chToggleBtn'), nb = $('chNew');
+    if (!b) return;
+    b.hidden = !(chIds.length || isUploader);
+    b.classList.toggle('active', chOpen || isUploader);
+    if (nb) nb.hidden = !(chIds.length && chUpdatedAt > (state.chSeenAt || 0) && !chOpen);
+  }
+
+  $('chToggleBtn') && $('chToggleBtn').addEventListener('click', function () {
+    chOpen = !chOpen;
+    if (chOpen) { state.chSeenAt = chUpdatedAt || Date.now(); saveState(); }
+    var cur = chIds.slice(); chIds = [];          // ép render lại
+    renderChords({ images: cur.map(function (id) { return { id: id }; }), updatedAt: chUpdatedAt });
+    if (chOpen) { var s = $('chords'); if (s && s.scrollIntoView) s.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+  });
+
+  function reclaimUploader() {
+    if (state.uploaderPin) claimUploader(state.uploaderPin, true);
+    else updateUploaderUI();
+  }
+
+  function claimUploader(pin, silent) {
+    fetch('api/gallery/claim', { method: 'POST', headers: authHeader(), body: JSON.stringify({ pin: pin }) })
+      .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+      .then(function (res) {
+        if (res.ok && res.j && res.j.uploader) {
+          isUploader = true; state.uploaderPin = pin; saveState();
+          var cur = chIds.slice(); chIds = [];   // ép render lại kèm nút Xoá
+          updateUploaderUI(); renderChords({ images: cur.map(function (id) { return { id: id }; }) });
+          if (!silent) toast('op', '', 'Bạn là người phụ trách ảnh hợp âm.');
+        } else {
+          isUploader = false;
+          if (!silent) toast('band', '', (res.j && res.j.error) || 'Không nhận được quyền.');
+          if (res.j && (res.j.error || '').indexOf('Sai') === 0) { state.uploaderPin = null; saveState(); }
+          updateUploaderUI();
+        }
+      }).catch(function () { if (!silent) toast('band', '', 'Không kết nối được máy chiếu.'); });
+  }
+
+  function removeChord(id) {
+    fetch('api/gallery/remove', { method: 'POST', headers: authHeader(), body: JSON.stringify({ id: id }) })
+      .then(function (r) { return r.json(); })
+      .then(function (m) { renderChords(m); })
+      .catch(function () { toast('band', '', 'Xoá không được.'); });
+  }
+
+  function downscaleChordImg(file, cb) {
+    var img = new Image();
+    img.onload = function () {
+      var max = 1400, w = img.naturalWidth, h = img.naturalHeight;
+      if (w > max || h > max) { var s = max / Math.max(w, h); w = Math.round(w * s); h = Math.round(h * s); }
+      var c = document.createElement('canvas'); c.width = w; c.height = h;
+      c.getContext('2d').drawImage(img, 0, 0, w, h);
+      try { cb(c.toDataURL('image/jpeg', 0.82)); } catch (e) {}
+      URL.revokeObjectURL(img.src);
+    };
+    img.onerror = function () { URL.revokeObjectURL(img.src); };
+    img.src = URL.createObjectURL(file);
+  }
+
+  document.getElementById('chManageBtn') && $('chManageBtn').addEventListener('click', function () {
+    if (isUploader) { toast('op', '', 'Bạn đang phụ trách ảnh.'); return; }
+    var pin = prompt('Nhập mã phụ trách ảnh (máy chiếu cấp):');
+    if (pin) claimUploader(pin.replace(/\D/g, ''), false);
+  });
+  document.getElementById('chAddInput') && $('chAddInput').addEventListener('change', function (ev) {
+    var files = Array.prototype.slice.call(ev.target.files || []);
+    ev.target.value = '';
+    files.forEach(function (f) {
+      downscaleChordImg(f, function (dataUrl) {
+        fetch('api/gallery/add', { method: 'POST', headers: authHeader(), body: JSON.stringify({ name: f.name, ext: '.jpg', dataB64: dataUrl }) })
+          .then(function (r) { return r.json(); })
+          .then(function (m) { renderChords(m); })
+          .catch(function () { toast('band', '', 'Tải ảnh lên không được.'); });
+      });
+    });
+  });
 
   function goChord(i) {
     var img = $('chView').children[i];

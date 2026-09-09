@@ -4,6 +4,17 @@ Tất cả các thay đổi và cập nhật quan trọng của dự án đượ
 
 ## [Unreleased] - Kênh Band LAN (P1 + P2 + P2.5 + P4)
 
+### M0 — thư viện ảnh hợp âm: điện thoại upload + xem theo yêu cầu (2026-09-09)
+- **Điện thoại upload (người phụ trách ảnh)**:
+  - `room.uploaderPin` (4–8 số, đặt ở sidebar operator — ô "Mã phụ trách"). Trống = điện thoại không upload được.
+  - `POST /api/gallery/claim {pin}` — giành quyền; chỉ **1 người online** giữ, người cũ offline > 25s bị thay; người thứ 2 → `409`.
+  - `POST /api/gallery/add` / `POST /api/gallery/remove` — chỉ người phụ trách. `readJson` nới giới hạn body 1MB → 12MB cho ảnh base64.
+  - `POST /api/join` trả thêm `hasUploaderPin`; `getStatus()` trả `uploaderPin` cho sidebar.
+  - Mobile: nút "Phụ trách ảnh" (nhập PIN, nhớ trong `localStorage` để tự giành lại sau reconnect) → hiện nút "＋ Thêm ảnh" (nén canvas ≤ 1400px q0.82) + nút "Xoá" trên mỗi ảnh.
+- **Xem theo yêu cầu (M0c)**: ảnh hợp âm **không tự hiện** với người xem. Topbar mobile có nút **"🎼 Hợp âm"** (chấm đỏ khi bộ ảnh đổi, ẩn cho tới khi có ảnh) → bấm mới mở khu xem. Người phụ trách vẫn thấy khu này thường trực.
+- Sidebar operator: khu "Ảnh hợp âm" tự refresh khi nhận envelope `gallery` (kể cả do điện thoại upload).
+- Docs: `docs/data-contracts.md` — cập nhật endpoints gallery + `hasUploaderPin` + `uploaderPin`; sửa "SSE `/api/stream`" → "WebSocket `/api/ws`" cho khớp transport hiện tại.
+
 ### UI nâng cấp + thư viện ảnh hợp âm (2026-08-31)
 - **Feed operator**: tên người gửi ra **ngoài** bong bóng chat (gọn hơn, dễ nhận ra ai gửi). **Mỗi user một màu** (hash tên → hue pastel) thay vì cam đồng loạt. Cảnh báo band vẫn nhấp nháy (giờ bằng box-shadow nên hợp mọi màu) → bấm = "đã tiếp nhận".
 - **Toast operator→điện thoại**: 2s → **3s**, đổi sang **xanh đậm đặc `#1256b8` chữ trắng** — nổi bật hẳn trên theme sáng.

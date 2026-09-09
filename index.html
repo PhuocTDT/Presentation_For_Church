@@ -1127,6 +1127,12 @@
               <span class="k">Ảnh hợp âm</span>
               <label class="bp-btn" style="flex:none">Thêm ảnh<input type="file" id="bpGalInput" accept="image/*" multiple hidden></label>
             </div>
+            <div class="bp-kv" style="margin-top:6px">
+              <span class="k">Mã phụ trách</span>
+              <input id="bpUploaderPin" class="v" type="text" inputmode="numeric" maxlength="8"
+                     placeholder="4–8 số · trống = không cho điện thoại upload"
+                     style="flex:1;border:1px solid #d7dae1;border-radius:8px;padding:5px 8px;font:inherit">
+            </div>
             <div id="bpGalList"></div>
           </div>
         </div>
@@ -7255,6 +7261,25 @@
       }
       $('bpPublicUrl').addEventListener('change', commitPublicUrl);
       $('bpPublicUrl').addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); $('bpPublicUrl').blur(); } });
+
+      // Mã phụ trách ảnh: đặt/xoá -> lưu band-comm.json (room.uploaderPin).
+      var uploaderPin = '';
+      function commitUploaderPin() {
+        var val = $('bpUploaderPin').value.replace(/\D/g, '').slice(0, 8);
+        $('bpUploaderPin').value = val;
+        if (val && val.length < 4) { addFeed('sys', '', 'Mã phụ trách phải 4–8 chữ số.'); return; }
+        if (val === uploaderPin) return;
+        api.getConfig().then(function (cfg) {
+          var room = Object.assign({}, cfg.room, { uploaderPin: val || null });
+          return api.saveConfig(Object.assign({}, cfg, { room: room }));
+        }).then(function (saved) {
+          uploaderPin = (saved && saved.room && saved.room.uploaderPin) || '';
+          $('bpUploaderPin').value = uploaderPin;
+          addFeed('sys', '', uploaderPin ? 'Đã đặt mã phụ trách ảnh: ' + uploaderPin : 'Đã tắt quyền upload ảnh từ điện thoại.');
+        }).catch(function () {});
+      }
+      $('bpUploaderPin').addEventListener('change', commitUploaderPin);
+      $('bpUploaderPin').addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); $('bpUploaderPin').blur(); } });
       var FW_LABEL = 'Mở cổng Firewall (nếu điện thoại không vào được)';
       $('bpFw').addEventListener('click', function () {
         $('bpFw').disabled = true;
@@ -7378,6 +7403,10 @@
           if (document.activeElement !== $('bpPublicUrl')) $('bpPublicUrl').value = publicUrl;
           if (!qrModeUserSet && publicUrl) qrMode = 'public';
           if (!publicUrl && qrMode === 'public') qrMode = 'ip';
+        }
+        if (typeof st.uploaderPin === 'string') {
+          uploaderPin = st.uploaderPin;
+          if (document.activeElement !== $('bpUploaderPin')) $('bpUploaderPin').value = uploaderPin;
         }
 
         if (running) {

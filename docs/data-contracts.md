@@ -112,13 +112,23 @@ Xem `band-comm-plan.md` để biết đầy đủ. Tóm tắt contract:
 - Comm server **tự khởi chạy** khi mở app; kết quả (chạy / lỗi chi tiết) đẩy về sidebar qua `band-comm-status-changed` + tin `system` trong feed. Cổng cố định — bận thì báo lỗi, không đổi cổng.
 - **mDNS** (`src/band-comm/mdns.js`, tự viết) announce `<room.hostname>.local` → IP LAN hiện tại; QR encode `http://<hostname>.local:<port>` nên IP đổi không ảnh hưởng.
 - Cấu hình lưu ở `app.getPath('userData')/band-comm.json`, **không** đi qua `src/schema.js` / `migrateItem`. `src/band-comm/store.js` tự chuẩn hoá field thiếu khi load.
-  - `room` (`name`, `pin` 4–8 chữ số — sinh ngẫu nhiên nếu thiếu, `hostname` mặc định `worship`, `uploaderPin` — `null` hoặc 4–8 số), `port` (mặc định 7071)
+  - `room` (`name`, `pin` 4–8 chữ số — sinh ngẫu nhiên nếu thiếu, `hostname` mặc định `worship`, `uploaderPin` — `null` hoặc 4–8 số: mã cấp quyền **"người phụ trách ảnh hợp âm"** cho 1 điện thoại), `port` (mặc định 7071 — tự dò cổng khác nếu bị Windows/Hyper-V reserve, cổng chốt được lưu lại)
+  - `publicUrl` — URL công khai (Cloudflare Tunnel / domain) để QR trỏ ra; rỗng = chỉ LAN
   - `operatorReplies` — mảng câu trả lời nhanh của người vận hành
   - `profiles` — backup bộ nút cá nhân theo `profileId`: `{ name, role, updatedAt, buttons:[{id,label,icon,group}] }`
-  - `gallery` — thư viện ảnh hợp âm (P4, chưa dùng)
+  - `gallery` — thư viện ảnh hợp âm. Metadata + file ảnh KHÔNG nằm trong `band-comm.json` mà ở `band-comm-gallery.json` + thư mục `band-comm-media/` (cùng `userData`). Manifest: `{ images: [{id, name}], updatedAt }`; file ảnh lưu `<id><ext>` (`.jpg`/`.png`/`.webp`), nén phía client ≤ 1400px trước khi gửi.
 - **Bộ nút cảnh báo là của từng người**, tạo trên điện thoại, lưu `localStorage` phía client; server chỉ giữ 1 bản backup. Không có bộ nút mặc định. **Không có `severity`/mức độ** — mọi tin xử lý như nhau.
-- Envelope tin nhắn trên dây (SSE + IPC `band-comm-event`): `{ id, ts, type, from:{clientId,name,role}, to, refId, buttonId, dedupKey, text, meta }`.
-  - `type`: `alert` (từ band) · `text` (từ operator) · `ack` (đã tiếp nhận, nhắm riêng người gửi) · `resolve` (đã xử lý, phát tất cả) · `presence` · `system` · `gallery`.
+- Envelope tin nhắn trên dây (WebSocket + IPC `band-comm-event`): `{ id, ts, type, from:{clientId,name,role}, to, refId, buttonId, dedupKey, text, meta }`.
+  - `type`: `alert` (từ band) · `text` (từ operator) · `ack` (đã tiếp nhận, nhắm riêng người gửi) · `resolve` (đã xử lý, phát tất cả) · `presence` · `system` · `gallery` (`meta` = manifest ảnh hợp âm; phát khi bộ ảnh đổi).
   - `dedupKey` = `text` chuẩn hoá (bỏ dấu, thường, gộp khoảng trắng) — sidebar Kênh Band gộp cảnh báo trùng theo khoá này.
 - Token phiên = `clientId.issued.<b64url(name)>.role.<hmac>`; secret ký sinh mới mỗi lần bật server (restart server = mọi phone phải vào lại).
-- HTTP endpoints: `POST /api/join`, `GET /api/stream` (SSE, `Last-Event-ID`), `POST /api/message`, `POST /api/ping`, `POST|GET /api/profile`, `POST /api/leave`. Mọi route trừ `join` cần token.
+- HTTP endpoints: `POST /api/join`, `POST /api/message`, `POST /api/ping`, `POST|GET /api/profile`, `POST /api/leave`. Downstream là **WebSocket** `GET /api/ws?token=…&since=<lastEnvelopeId>` (không còn `/api/stream` SSE — Cloudflare Tunnel buffer streaming HTTP). Mọi route trừ `join` cần token.
+- Ảnh hợp âm — endpoints:
+  - `GET /api/gallery` → manifest.
+  - `GET /api/gallery/image/:id?token=` → bytes ảnh.
+  - `POST /api/gallery/claim` `{pin}` → giành quyền "người phụ trách ảnh" bằng `room.uploaderPin`; chỉ **1 người online** giữ quyền, người cũ offline > 25s bị thay. Trả `{ok, uploader:true}` hoặc `409`.
+  - `POST /api/gallery/add` `{name, ext, dataB64}` → thêm ảnh (chỉ người phụ trách). Phát `gallery` envelope.
+  - `POST /api/gallery/remove` `{id}` → xoá ảnh (chỉ người phụ trách).
+  - `POST /api/join` trả thêm `hasUploaderPin` (điện thoại biết có nên hiện nút "Phụ trách ảnh").
+- Operator side: sidebar `#bandPanel` (khu "Ảnh hợp âm" trong popup "Kết nối") có nút Thêm ảnh + danh sách xoá + ô "Mã phụ trách" (đặt `room.uploaderPin`). Operator luôn thêm/xoá được qua IPC `band-comm-gallery-list|add|remove|reorder`.
+- Mobile: ảnh **không tự hiện** — nút "🎼 Hợp âm" ở topbar (chấm đỏ khi bộ ảnh đổi), bấm mới mở khu xem (vuốt ngang + dot pager). Người phụ trách thấy khu này thường trực kèm nút Thêm / Xoá.

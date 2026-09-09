@@ -67,7 +67,8 @@ function lanIPv4List() {
 function readJson(req) {
   return new Promise((resolve) => {
     let buf = '';
-    req.on('data', d => { buf += d; if (buf.length > 1e6) req.destroy(); });
+    // 12MB: chord-sheet image uploads (base64 of a downscaled JPEG) go through here.
+    req.on('data', d => { buf += d; if (buf.length > 12e6) req.destroy(); });
     req.on('end', () => { try { resolve(JSON.parse(buf || '{}')); } catch (e) { resolve(null); } });
     req.on('error', () => resolve(null));
   });
@@ -223,7 +224,7 @@ function createCommServer({ store, onEvent, onPresence }) {
       const name = String(body.name || '').trim().slice(0, 40) || 'Ẩn danh';
       const role = ['band', 'leader'].includes(body.role) ? body.role : 'band';
       const clientId = newId('c');
-      clients.set(clientId, { clientId, name, role, res: null, lastSeen: Date.now(), dupMap: new Map() });
+      clients.set(clientId, { clientId, name, role, ws: null, isUploader: false, lastSeen: Date.now(), dupMap: new Map() });
       const restore = body.profileId && cfg.profiles[body.profileId]
         ? { profileId: body.profileId, ...cfg.profiles[body.profileId] }
         : store.findProfileByName(name);
@@ -234,7 +235,8 @@ function createCommServer({ store, onEvent, onPresence }) {
         room: { name: cfg.room.name },
         operatorReplies: cfg.operatorReplies,
         profile: restore || null,
-        gallery: galleryManifest()
+        gallery: galleryManifest(),
+        hasUploaderPin: !!cfg.room.uploaderPin
       });
     }
 
@@ -246,7 +248,7 @@ function createCommServer({ store, onEvent, onPresence }) {
     let client = clients.get(clientId);
     if (!client) {
       // valid token, but the record was swept / left — rebuild it from the token.
-      client = { clientId, name: ident.name, role: ident.role, ws: null, lastSeen: Date.now(), dupMap: new Map() };
+      client = { clientId, name: ident.name, role: ident.role, ws: null, isUploader: false, lastSeen: Date.now(), dupMap: new Map() };
       clients.set(clientId, client);
     }
     client.lastSeen = Date.now();
@@ -309,6 +311,40 @@ function createCommServer({ store, onEvent, onPresence }) {
         });
         res.end(data);
       });
+    }
+
+    // ---- chord-sheet gallery (write side — "người phụ trách ảnh" only) ----
+    // Grab the uploader role by proving `room.uploaderPin`. Only one online
+    // uploader at a time; a stale one (offline > PRESENCE_STALE_MS) is displaced.
+    if (p === '/api/gallery/claim' && req.method === 'POST') {
+      const cfg = store.load();
+      if (!cfg.room.uploaderPin) return sendJson(res, 400, { error: 'Chưa đặt mã phụ trách ảnh trên máy chiếu' });
+      const body = await readJson(req);
+      if (String((body && body.pin) || '') !== String(cfg.room.uploaderPin)) {
+        return sendJson(res, 403, { error: 'Sai mã phụ trách ảnh' });
+      }
+      const now = Date.now();
+      const others = [...clients.values()].filter(c => c.isUploader && c.clientId !== clientId);
+      const onlineOther = others.find(c => wsAlive(c) || now - c.lastSeen < PRESENCE_STALE_MS);
+      if (onlineOther) {
+        return sendJson(res, 409, { error: 'Đã có người phụ trách ảnh (' + (onlineOther.name || '?') + ') đang online' });
+      }
+      others.forEach(c => { c.isUploader = false; });
+      client.isUploader = true;
+      return sendJson(res, 200, { ok: true, uploader: true });
+    }
+
+    if (p === '/api/gallery/add' && req.method === 'POST') {
+      if (!client.isUploader) return sendJson(res, 403, { error: 'Bạn không phải người phụ trách ảnh' });
+      const body = await readJson(req);
+      if (!body) return sendJson(res, 400, { error: 'bad json' });
+      return sendJson(res, 200, galleryAdd({ name: body.name, ext: body.ext, dataB64: body.dataB64 }));
+    }
+
+    if (p === '/api/gallery/remove' && req.method === 'POST') {
+      if (!client.isUploader) return sendJson(res, 403, { error: 'Bạn không phải người phụ trách ảnh' });
+      const body = await readJson(req);
+      return sendJson(res, 200, galleryRemove(body && body.id));
     }
 
     return sendJson(res, 404, { error: 'not found' });
@@ -407,6 +443,7 @@ function createCommServer({ store, onEvent, onPresence }) {
       hostUrl: running ? `http://${host}:${port}` : null,
       publicUrl: cfg.publicUrl || '',
       pin: cfg.room.pin,
+      uploaderPin: cfg.room.uploaderPin || '',
       roomName: cfg.room.name,
       clients: presenceList()
     };
