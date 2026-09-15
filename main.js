@@ -67,7 +67,7 @@ let commServer = null;
 let bandMdns = null;
 let lastBandStartError = null;
 let bandTunnelProc = null;   // child cloudflared, null nếu không chạy
-let bandTunnelName = null;   // tên tunnel mà bandTunnelProc đang chạy (để biết khi nào cần restart)
+let bandTunnelMode = null;   // 'named:<tên>' hoặc 'quick' — mode mà bandTunnelProc đang chạy
 let globalSettings = {};
 let liveWindowTargetDisplayId = null;
 const bundledBibleDataPath = path.join(__dirname, 'data');
@@ -972,41 +972,106 @@ async function startBandComm() {
   }
 }
 
-// Cloudflare Named Tunnel — luôn 1 tiến trình con ngoài app (không đóng gói
-// cloudflared, không phụ thuộc nó để chạy). `tunnelName` rỗng = tắt tính năng,
-// không ảnh hưởng máy nào chưa tự cấu hình cloudflared. Gọi lại an toàn nhiều
-// lần: no-op nếu tên không đổi, tự restart nếu tên đổi, tự dừng nếu bị xoá.
+// Binary cloudflared: ưu tiên bản đóng gói sẵn trong app (extraResources —
+// xem scripts/fetch-cloudflared.js), rồi tới bản dev tải qua postinstall,
+// cuối cùng mới thử PATH hệ thống (máy đã tự cài cloudflared từ trước, như
+// hành vi cũ trước khi có tính năng bundle). Không có cái nào -> vẫn trả về
+// 'cloudflared' để spawn() tự báo ENOENT rõ ràng thay vì im lặng.
+function resolveCloudflaredCmd() {
+  const candidates = [];
+  if (app.isPackaged) candidates.push(path.join(process.resourcesPath, 'cloudflared', 'cloudflared.exe'));
+  candidates.push(path.join(__dirname, 'vendor', 'cloudflared', 'win', 'cloudflared.exe'));
+  for (const p of candidates) {
+    try { if (fs.existsSync(p)) return p; } catch (e) {}
+  }
+  return 'cloudflared';
+}
+
+// Cloudflare Tunnel — luôn 1 tiến trình con ngoài app. 2 chế độ:
+//  - "named:<tên>"  cfg.tunnelName được set (nâng cao, domain cố định của
+//    riêng church đó) -> `cloudflared tunnel run <tên>`.
+//  - "quick"         mặc định khi CHƯA cấu hình tunnelName -> `cloudflared
+//    tunnel --url http://127.0.0.1:<port>`, tự bắt URL *.trycloudflare.com
+//    in ra rồi lưu vào publicUrl. Đổi mỗi lần band-comm start (bản chất
+//    Quick Tunnel), QR tự cập nhật theo `publicUrl` như bình thường.
+// Gọi lại an toàn nhiều lần: no-op nếu mode/tên không đổi và tunnel vẫn
+// đang sống; tự restart khi đổi; KHÔNG có trạng thái "tắt hẳn" — luôn có
+// 1 trong 2 chế độ chạy, đúng tinh thần "mặc định có internet, không cần ai
+// tự cấu hình gì".
 function syncBandTunnel() {
+  if (!commServer) return;
   const cfg = bandCommStore ? bandCommStore.load() : null;
-  const wantName = (cfg && cfg.tunnelName) || null;
-  if (wantName === bandTunnelName && (bandTunnelProc || !wantName)) return;
+  const wantMode = cfg && cfg.tunnelName ? ('named:' + cfg.tunnelName) : 'quick';
+  if (wantMode === bandTunnelMode && bandTunnelProc) return;
   if (bandTunnelProc) { try { bandTunnelProc.kill(); } catch (e) {} bandTunnelProc = null; }
-  bandTunnelName = wantName;
-  if (!wantName) return;
+  bandTunnelMode = wantMode;
+
+  const isNamed = wantMode.indexOf('named:') === 0;
+  const port = commServer.getStatus().port;
+  if (!isNamed && !port) return; // band-comm chưa thật sự chạy, chưa có cổng để trỏ tới
+  let args;
+  if (isNamed) {
+    args = ['tunnel', 'run', cfg.tunnelName];
+  } else {
+    // QUAN TRỌNG: cloudflared tự nạp %USERPROFILE%\.cloudflared\config.yml
+    // theo mặc định NGAY CẢ KHI dùng --url — nếu máy đó đã có Named Tunnel
+    // cấu hình (config.yml có ingress + catch-all http_status:404), Quick
+    // Tunnel sẽ bị đè bởi catch-all đó (mọi request trả 404 dù origin sống
+    // bình thường). Test thật đã tái hiện đúng lỗi này. Cô lập bằng cách trỏ
+    // --config sang 1 file rỗng riêng, ghi trong userData mỗi lần dùng.
+    const quickCfgPath = path.join(app.getPath('userData'), 'cloudflared-quick.yml');
+    try { fs.writeFileSync(quickCfgPath, '{}\n'); } catch (e) {}
+    args = ['tunnel', '--config', quickCfgPath, '--url', `http://127.0.0.1:${port}`];
+  }
+  const label = isNamed ? `Named Tunnel "${cfg.tunnelName}"` : 'Quick Tunnel';
+
   let child;
   try {
-    child = require('child_process').spawn('cloudflared', ['tunnel', 'run', wantName], { windowsHide: true, stdio: 'ignore' });
+    child = require('child_process').spawn(resolveCloudflaredCmd(), args, {
+      windowsHide: true,
+      stdio: isNamed ? 'ignore' : ['ignore', 'pipe', 'pipe']
+    });
   } catch (e) {
-    bandSystemLine(`Không chạy được Cloudflare Tunnel "${wantName}": ${e.message}`);
+    bandSystemLine(`Không chạy được ${label}: ${e.message}`);
     return;
   }
   bandTunnelProc = child;
   child.on('error', (e) => {
     if (bandTunnelProc === child) bandTunnelProc = null;
-    const hint = e.code === 'ENOENT' ? 'không tìm thấy lệnh cloudflared (chưa cài hoặc chưa có trong PATH)' : e.message;
-    bandSystemLine(`Cloudflare Tunnel "${wantName}" lỗi: ${hint}. Kênh vẫn hoạt động bình thường trong LAN.`);
+    const hint = e.code === 'ENOENT' ? 'không tìm thấy cloudflared (chưa tải/cài được)' : e.message;
+    bandSystemLine(`${label} lỗi: ${hint}. Kênh vẫn hoạt động bình thường trong LAN.`);
   });
   child.on('exit', (code) => {
     if (bandTunnelProc === child) bandTunnelProc = null;
-    if (code) bandSystemLine(`Cloudflare Tunnel "${wantName}" đã dừng (mã ${code}). Kênh vẫn hoạt động trong LAN.`);
+    if (code) bandSystemLine(`${label} đã dừng (mã ${code}). Kênh vẫn hoạt động trong LAN.`);
   });
-  bandSystemLine(`Đang bật Cloudflare Tunnel "${wantName}" cho truy cập ngoài LAN…`);
+
+  if (isNamed) {
+    bandSystemLine(`Đang bật ${label} cho truy cập ngoài LAN…`);
+  } else {
+    // Quick Tunnel in URL ra stdout/stderr dạng "https://xxx.trycloudflare.com"
+    // — bắt 1 lần đầu tiên thấy, tự lưu vào publicUrl + báo sidebar.
+    let captured = false;
+    const onData = (buf) => {
+      if (captured) return;
+      const m = String(buf).match(/https:\/\/[a-z0-9-]+\.trycloudflare\.com/i);
+      if (!m) return;
+      captured = true;
+      try {
+        const saved = bandCommStore.patch({ publicUrl: m[0] });
+        sendBandStatus();
+        bandSystemLine(`Quick Tunnel sẵn sàng · ${saved.publicUrl}`);
+      } catch (e) {}
+    };
+    if (child.stdout) child.stdout.on('data', onData);
+    if (child.stderr) child.stderr.on('data', onData);
+  }
 }
 
 function stopBandTunnel() {
   if (bandTunnelProc) { try { bandTunnelProc.kill(); } catch (e) {} }
   bandTunnelProc = null;
-  bandTunnelName = null;
+  bandTunnelMode = null;
 }
 
 function stopBandComm() {

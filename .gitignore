@@ -4,6 +4,10 @@ node_modules/
 Thumbs.db
 dist/
 out/
+
+# Binary cloudflared tải về qua scripts/fetch-cloudflared.js (postinstall) —
+# không commit vào git, ~50-90MB/platform.
+vendor/cloudflared/
 task.md
 plan.md
 Long_Verses_Check.txt

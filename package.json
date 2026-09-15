@@ -4,6 +4,7 @@
   "description": "Presentation For Church - Worship Presentation App",
   "main": "main.js",
   "scripts": {
+    "postinstall": "node scripts/fetch-cloudflared.js",
     "start": "electron .",
     "build": "npm run build:all",
     "build:win": "electron-builder --win",
@@ -44,7 +45,10 @@
         "nsis",
         "portable"
       ],
-      "icon": "icon.ico"
+      "icon": "icon.ico",
+      "extraResources": [
+        { "from": "vendor/cloudflared/win/cloudflared.exe", "to": "cloudflared/cloudflared.exe" }
+      ]
     },
     "mac": {
       "target": "dmg",

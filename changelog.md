@@ -4,6 +4,28 @@ Tất cả các thay đổi và cập nhật quan trọng của dự án đượ
 
 ## [Unreleased] - Kênh Band LAN (P1 + P2 + P2.5 + P4)
 
+### feat(band): bundle cloudflared + tự động Quick Tunnel mặc định (2026-09-15)
+- Lý do: app sắp phân phối cho nhiều nhà thờ khác, không phải ai cũng có
+  Cloudflare account/domain/cloudflared cài sẵn — cần zero-setup cho ai cũng
+  ra internet được ngay khi mở app.
+- `scripts/fetch-cloudflared.js` (mới) — tải binary `cloudflared` chính thức
+  (GitHub Releases) vào `vendor/cloudflared/win/`, chạy tự động qua
+  `npm run postinstall`; lỗi mạng chỉ cảnh báo, không phá install.
+  `.gitignore` thêm `vendor/cloudflared/` (không commit binary).
+- `package.json`: `build.win.extraResources` đóng gói binary vào bộ cài.
+- `main.js`: `syncBandTunnel()` viết lại — 2 mode `named:<tên>` (như cũ) và
+  `quick` (MẶC ĐỊNH khi `tunnelName` rỗng): tự spawn `cloudflared tunnel
+  --url http://127.0.0.1:<port>`, tự bắt URL `*.trycloudflare.com` từ
+  stdout/stderr, tự lưu vào `publicUrl` — không cần gõ tay. `resolveCloudflaredCmd()`
+  ưu tiên binary đóng gói > bản dev > PATH hệ thống.
+- **Bug tìm thấy + fix qua test thật**: Quick Tunnel bị `cloudflared` tự nạp
+  nhầm `config.yml` mặc định của Named Tunnel (nếu máy có), áp catch-all
+  `http_status:404` đè lên `--url` → mọi request qua Quick Tunnel trả 404 dù
+  origin sống. Fix: truyền `--config` trỏ file rỗng riêng (`userData/cloudflared-quick.yml`).
+- Verify thật đầy đủ: Quick Tunnel tự spawn + tự điền publicUrl + HTTP 200
+  qua domain `*.trycloudflare.com` thật; sau đó test hồi quy Named Tunnel
+  (`blessing-band`) vẫn hoạt động đúng sau khi refactor chung 1 hàm.
+
 ### feat(ui): icon Hỗ trợ kỹ thuật trong sidebar Kênh Band (2026-09-15)
 - Popup Kết nối thêm nút "🆘 Hỗ trợ kỹ thuật" → hiện 3 kênh liên hệ (Email,
   Zalo, Facebook) — người dùng tự chọn, không tự động gửi gì cả.
