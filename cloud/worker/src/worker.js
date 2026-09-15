@@ -16,6 +16,10 @@
 
 const TTL_SECONDS = 7 * 24 * 60 * 60; // 7 ngày
 const MAX_ITEMS = 60;
+// Worker này dùng CHUNG cho mọi bản cài app (roomId hardcode làm namespace,
+// không auth thật) — cap cứng số setlist tồn tại/phòng để 1 roomId bị
+// spam/đoán trúng không thể ghi vô hạn vào KV chung. Cũ nhất bị dọn trước.
+const MAX_SETLISTS_PER_ROOM = 40;
 const CORS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
@@ -48,10 +52,13 @@ export default {
       const sl = body && body.setlist;
       if (!isValidRoomId(roomId)) return json({ error: 'roomId không hợp lệ' }, 400);
       if (!sl || typeof sl.id !== 'string' || !sl.id) return json({ error: 'thiếu setlist.id' }, 400);
+      // Chặn sớm mảng khổng lồ trước khi .filter() phải duyệt hết — tránh tốn
+      // CPU time (giới hạn theo request) cho payload rác.
+      if (Array.isArray(sl.items) && sl.items.length > 500) return json({ error: 'Setlist quá lớn' }, 400);
       const items = (Array.isArray(sl.items) ? sl.items : [])
         .filter((it) => it && it.type === 'song' && it.id != null)
         .slice(0, MAX_ITEMS)
-        .map((it) => ({ type: 'song', id: it.id, title: String(it.title || '').slice(0, 200) }));
+        .map((it) => ({ type: 'song', id: String(it.id).slice(0, 100), title: String(it.title || '').slice(0, 200) }));
       if (!items.length) return json({ error: 'Setlist rỗng' }, 400);
       const clean = {
         id: String(sl.id).slice(0, 80),
@@ -60,6 +67,18 @@ export default {
         ts: Date.now(),
         items
       };
+
+      // Cap cứng/phòng: dọn bớt key cũ nhất nếu đã đầy trước khi ghi thêm.
+      // Tên key mang id dạng "sl-<hex timestamp>..." (sinh ở app.js) nên sort
+      // theo tên xấp xỉ đúng thứ tự thời gian — đủ tốt cho dọn dẹp, không cần
+      // đọc lại từng giá trị để lấy `ts` thật (tốn thêm N lượt đọc KV).
+      const existing = await env.SETLISTS.list({ prefix: `sl:${roomId}:`, limit: 1000 });
+      if (existing.keys.length >= MAX_SETLISTS_PER_ROOM) {
+        const sorted = existing.keys.map((k) => k.name).sort();
+        const toDelete = sorted.slice(0, sorted.length - MAX_SETLISTS_PER_ROOM + 1);
+        await Promise.all(toDelete.map((k) => env.SETLISTS.delete(k)));
+      }
+
       await env.SETLISTS.put(`sl:${roomId}:${clean.id}`, JSON.stringify(clean), { expirationTtl: TTL_SECONDS });
       return json({ ok: true, id: clean.id });
     }
