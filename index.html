@@ -1025,9 +1025,15 @@
         box-shadow: 0 22px 60px -14px rgba(15, 25, 50, .45);
       }
       #bandPanel .bp-conn .bp-modal-head {
-        display: flex; justify-content: space-between; align-items: center;
+        display: flex; align-items: center; gap: 8px;
         font-weight: 700; font-size: .92rem; margin-bottom: 12px;
       }
+      #bandPanel .bp-conn .bp-modal-head > span { flex: 1; }
+      #bandPanel .bp-conn .bp-modal-head .bp-btn.support {
+        flex: none; background: #2563a8; border-color: #2563a8; color: #fff;
+        font-weight: 700; padding: 5px 10px; white-space: nowrap;
+      }
+      #bandPanel .bp-conn .bp-modal-head .bp-btn.support:hover { background: #1d4d85; border-color: #1d4d85; }
       #bandPanel .bp-conn .bp-kv { display: flex; gap: 8px; align-items: baseline; margin-top: 6px; }
       #bandPanel .bp-conn .k { flex: none; width: 62px; color: #8a93a3; font-size: .7rem; text-transform: uppercase; letter-spacing: .05em; }
       #bandPanel .bp-conn .v { font-family: Consolas, ui-monospace, monospace; font-size: .92rem; user-select: text; overflow-wrap: anywhere; }
@@ -1131,6 +1137,7 @@
         <div class="bp-modal-card">
           <div class="bp-modal-head">
             <span>Thông tin kết nối</span>
+            <button class="bp-btn support" id="bpSupportBtn">🆘 Hỗ trợ kỹ thuật</button>
             <button class="bp-x" id="bpConnClose" title="Đóng">&times;</button>
           </div>
           <div class="bp-purl">
@@ -1153,7 +1160,6 @@
           <div class="bp-kv"><span class="k">Đang nối</span><span class="v" id="bpCount">0</span></div>
           <div class="row2">
             <button class="bp-btn" id="bpFw">Mở cổng Firewall (nếu điện thoại không vào được)</button>
-            <button class="bp-btn" id="bpSupportBtn">🆘 Hỗ trợ kỹ thuật</button>
           </div>
           <div class="bp-support bp-hidden" id="bpSupportMenu">
             <button class="bp-btn" id="bpSupportEmail">✉️ Email: tdtp2005@gmail.com</button>
