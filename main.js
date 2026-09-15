@@ -66,6 +66,8 @@ let bandCommStore = null;
 let commServer = null;
 let bandMdns = null;
 let lastBandStartError = null;
+let bandTunnelProc = null;   // child cloudflared, null nếu không chạy
+let bandTunnelName = null;   // tên tunnel mà bandTunnelProc đang chạy (để biết khi nào cần restart)
 let globalSettings = {};
 let liveWindowTargetDisplayId = null;
 const bundledBibleDataPath = path.join(__dirname, 'data');
@@ -952,6 +954,7 @@ async function startBandComm() {
     lastBandStartError = null;
     sendBandStatus({ error: null });
     bandSystemLine(`Kênh đã sẵn sàng · ${st.hostUrl || st.url || ''}`);
+    syncBandTunnel();
     return commServer.getStatus();
   } catch (err) {
     const detail = {
@@ -969,9 +972,47 @@ async function startBandComm() {
   }
 }
 
+// Cloudflare Named Tunnel — luôn 1 tiến trình con ngoài app (không đóng gói
+// cloudflared, không phụ thuộc nó để chạy). `tunnelName` rỗng = tắt tính năng,
+// không ảnh hưởng máy nào chưa tự cấu hình cloudflared. Gọi lại an toàn nhiều
+// lần: no-op nếu tên không đổi, tự restart nếu tên đổi, tự dừng nếu bị xoá.
+function syncBandTunnel() {
+  const cfg = bandCommStore ? bandCommStore.load() : null;
+  const wantName = (cfg && cfg.tunnelName) || null;
+  if (wantName === bandTunnelName && (bandTunnelProc || !wantName)) return;
+  if (bandTunnelProc) { try { bandTunnelProc.kill(); } catch (e) {} bandTunnelProc = null; }
+  bandTunnelName = wantName;
+  if (!wantName) return;
+  let child;
+  try {
+    child = require('child_process').spawn('cloudflared', ['tunnel', 'run', wantName], { windowsHide: true, stdio: 'ignore' });
+  } catch (e) {
+    bandSystemLine(`Không chạy được Cloudflare Tunnel "${wantName}": ${e.message}`);
+    return;
+  }
+  bandTunnelProc = child;
+  child.on('error', (e) => {
+    if (bandTunnelProc === child) bandTunnelProc = null;
+    const hint = e.code === 'ENOENT' ? 'không tìm thấy lệnh cloudflared (chưa cài hoặc chưa có trong PATH)' : e.message;
+    bandSystemLine(`Cloudflare Tunnel "${wantName}" lỗi: ${hint}. Kênh vẫn hoạt động bình thường trong LAN.`);
+  });
+  child.on('exit', (code) => {
+    if (bandTunnelProc === child) bandTunnelProc = null;
+    if (code) bandSystemLine(`Cloudflare Tunnel "${wantName}" đã dừng (mã ${code}). Kênh vẫn hoạt động trong LAN.`);
+  });
+  bandSystemLine(`Đang bật Cloudflare Tunnel "${wantName}" cho truy cập ngoài LAN…`);
+}
+
+function stopBandTunnel() {
+  if (bandTunnelProc) { try { bandTunnelProc.kill(); } catch (e) {} }
+  bandTunnelProc = null;
+  bandTunnelName = null;
+}
+
 function stopBandComm() {
   if (bandMdns) bandMdns.stop();
   if (commServer) commServer.stop();
+  stopBandTunnel();
 }
 
 function initBandComm() {
@@ -1949,6 +1990,7 @@ app.whenReady().then(() => {
   ipcMain.handle('band-comm-save-config', (e, cfg) => {
     initBandComm();
     const saved = bandCommStore.save(cfg);
+    if (commServer && commServer.isRunning()) syncBandTunnel();
     sendBandStatus();
     return saved;
   });

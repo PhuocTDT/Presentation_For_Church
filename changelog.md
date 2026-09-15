@@ -4,6 +4,18 @@ Tất cả các thay đổi và cập nhật quan trọng của dự án đượ
 
 ## [Unreleased] - Kênh Band LAN (P1 + P2 + P2.5 + P4)
 
+### M2 — app tự chạy Named Tunnel cùng band-comm (2026-09-15)
+- `band-comm.json`: thêm `tunnelName` (rỗng mặc định — không ảnh hưởng máy chưa
+  cấu hình cloudflared).
+- `main.js`: `syncBandTunnel()`/`stopBandTunnel()` — tự spawn `cloudflared tunnel
+  run <tunnelName>` ngay sau khi band-comm server start, tự kill lúc dừng/app
+  quit; đổi tên lúc đang chạy tự restart, xoá trắng tự dừng; lỗi (ENOENT, tunnel
+  không tồn tại…) chỉ log vào feed sidebar, không chặn LAN.
+- Sidebar Kênh Band: thêm ô "Tên Cloudflare Named Tunnel" cạnh Public URL.
+- Test cô lập bằng tunnel thật (`blessing-band`): rỗng không spawn, tên sai
+  không crash app, tên đúng ra PID thật, gọi lại không trùng, dừng sạch không
+  mồ côi tiến trình — cả 5 kịch bản PASS.
+
 ### M2 — Named Tunnel: domain cố định thay Quick Tunnel (2026-09-15)
 - Tạo Cloudflare Named Tunnel `blessing-band` (`cloudflared tunnel login` → `create` →
   `route dns`), trỏ `blessing.worship-official.link` cố định — không còn URL đổi mỗi

@@ -26,6 +26,10 @@ function defaultConfig() {
     // Namespace phòng trên Cloudflare Worker (hộp thư setlist khi laptop tắt
     // hẳn — xem cloud/worker). Sinh 1 lần, ổn định vĩnh viễn cho máy này.
     cloudRoomId: crypto.randomUUID(),
+    // Tên Cloudflare Named Tunnel để main.js tự spawn `cloudflared tunnel run
+    // <tunnelName>` cùng lúc band-comm start. Rỗng = không tự chạy tunnel (mặc
+    // định — máy nào chưa tự thiết lập cloudflared thì không bị ảnh hưởng).
+    tunnelName: '',
     operatorReplies: [...DEFAULT_REPLIES],
     profiles: {},
     gallery: { activeSetId: null, sets: [] }
@@ -50,6 +54,7 @@ function normalizeConfig(raw) {
       ? String(cfg.publicUrl).trim().replace(/\/+$/, '')
       : '',
     cloudRoomId: /^[a-zA-Z0-9_-]{8,64}$/.test(String(cfg.cloudRoomId || '')) ? String(cfg.cloudRoomId) : base.cloudRoomId,
+    tunnelName: /^[a-zA-Z0-9][a-zA-Z0-9_-]{0,63}$/.test(String(cfg.tunnelName || '')) ? String(cfg.tunnelName) : '',
     operatorReplies: Array.isArray(cfg.operatorReplies) && cfg.operatorReplies.length
       ? cfg.operatorReplies
           .map(s => String(s).replace(/[\u{1F000}-\u{1FFFF}\u{2190}-\u{2BFF}\u{FE0F}\u{200D}]/gu, '').replace(/\s+/g, ' ').trim())

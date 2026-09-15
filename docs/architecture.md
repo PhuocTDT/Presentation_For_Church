@@ -10,8 +10,10 @@
 - `edit-song.html`: modal/editor giao diện bài hát
 - `preload.js`: cầu nối an toàn qua `window.electronAPI`
 - `src/schema.js`: validate/migrate dữ liệu
-- `src/band-comm/`: server (HTTP + SSE) + store + protocol + mDNS + vendor QR encoder cho Kênh Band
-- `comm/mobile/`: web client cho điện thoại band (server tự phục vụ)
+- `src/band-comm/`: server (HTTP + **WebSocket**, xem `ws.js`) + store + protocol + mDNS + vendor QR encoder cho Kênh Band
+- `comm/mobile/`: web client cho điện thoại band (server tự phục vụ) — cảnh báo/chat, thư viện ảnh hợp âm, soạn setlist
+- `cloud/worker/`: Cloudflare Worker + KV — hộp thư setlist khi laptop tắt hẳn. **Không** đóng gói vào app (không có trong `files` của `electron-builder`), chỉ deploy độc lập bằng `wrangler`
+- `cloud/tunnel/`: script chạy Cloudflare Named Tunnel (domain cố định cho Kênh Band ngoài LAN) — tiến trình ngoài app, không do `main.js` spawn
 
 ## Luồng dữ liệu
 
@@ -21,14 +23,16 @@
 4. Dữ liệu được đọc/ghi trong `app.getPath('userData')`
 5. Nếu có live window, `main.js` đẩy nội dung sang `live.html`
 
-### Kênh Band (LAN)
+### Kênh Band (LAN + cloud)
 
 1. Mở app → `main.js` **auto-start** comm server + mDNS; kết quả (chạy / lỗi) đẩy vào sidebar `#bandPanel`.
 2. Điện thoại band quét QR (`http://<hostname>.local:<port>`) hoặc gõ IP → tải `comm/mobile/` từ comm server.
-3. `POST /api/join` (name + role + PIN) → token; `GET /api/stream` mở SSE.
-4. Điện thoại gửi lên bằng `fetch` POST; server fan-out qua SSE cho các điện thoại khác **và** gọi `onEvent` → `main.js` `webContents.send('band-comm-event', …)` tới sidebar trong `index.html`.
-5. Operator thao tác trong sidebar → `electronAPI.bandComm.*` → `main.js` → `commServer.operator*()` → SSE.
-6. Cấu hình + backup hồ sơ nút lưu ở `userData/band-comm.json` (qua `safeWriteSync`).
+3. `POST /api/join` (name + role + PIN) → token; downstream là **WebSocket** `GET /api/ws?token=&since=` (không dùng SSE — Cloudflare Tunnel buffer streaming HTTP nên phía operator→phone không tới được).
+4. Điện thoại gửi lên bằng `fetch` POST; server fan-out qua WebSocket cho các điện thoại khác **và** gọi `onEvent` → `main.js` `webContents.send('band-comm-event', …)` tới sidebar trong `index.html`.
+5. Operator thao tác trong sidebar → `electronAPI.bandComm.*` → `main.js` → `commServer.operator*()` → WebSocket.
+6. Cấu hình + backup hồ sơ nút lưu ở `userData/band-comm.json` (qua `safeWriteSync`), gồm cả `cloudRoomId` (namespace cho hộp thư cloud).
+7. **Ảnh hợp âm**: 1 điện thoại giữ vai "người phụ trách" (`room.uploaderPin`) mới được thêm/xoá ảnh; ảnh không tự hiện, mỗi user bấm "Xem" mới tải.
+8. **Setlist**: điện thoại chọn bài từ `GET /api/library`, gửi `POST /api/setlist` → operator thấy thẻ trong sidebar, "Nạp" luôn **thay thế** toàn bộ Schedule. Nếu LAN không gửi được (laptop tắt hẳn), điện thoại fallback gửi thẳng lên Cloudflare Worker (`cloud/worker/`) bằng `cloudRoomId`; server local tự vét hộp thư này lúc `start()` + định kỳ khi đang chạy — xem `docs/data-contracts.md` mục Kênh Band để biết đầy đủ endpoint.
 
 ## File chịu trách nhiệm chính
 
@@ -41,10 +45,12 @@
 | `edit-song.html` | UI chỉnh bài hát kiểu Windows cổ điển |
 | `index.html` (sidebar `#bandPanel`) | Kênh Band: QR, bảng cảnh báo gộp, feed, soạn tin |
 | `src/schema.js` | Migrate và validate item |
-| `src/band-comm/server.js` | HTTP + SSE, PIN/token, presence, ring buffer |
-| `src/band-comm/store.js` | Đọc/ghi `band-comm.json` + backup hồ sơ nút |
+| `src/band-comm/server.js` | HTTP + WebSocket, PIN/token, presence, ring buffer, gallery, setlist (LAN + poll cloud) |
+| `src/band-comm/ws.js` | WebSocket server tự viết (RFC 6455), 0 dependency |
+| `src/band-comm/store.js` | Đọc/ghi `band-comm.json` + backup hồ sơ nút + `cloudRoomId` |
 | `src/band-comm/protocol.js` | Envelope tin nhắn, chuẩn hoá `dedupKey` |
 | `src/band-comm/mdns.js` | mDNS responder cho `<hostname>.local` |
+| `cloud/worker/src/worker.js` | Cloudflare Worker — hộp thư setlist (KV) khi laptop tắt hẳn |
 
 ## Dữ liệu lưu ở userData
 
@@ -55,8 +61,9 @@
 - `bible-versions/` cho XML Kinh Thánh do người dùng import
 - `bible-cache-<xmlName>.json`
 - `.backup.1/.backup.2/.backup.3` cho dữ liệu đã backup
-- `band-comm.json` — cấu hình Kênh Band (PIN, port, câu trả lời nhanh, backup hồ sơ nút, thư viện ảnh)
-- `band-comm-media/` — ảnh hợp âm upload (P4, chưa dùng)
+- `band-comm.json` — cấu hình Kênh Band (PIN, port, câu trả lời nhanh, backup hồ sơ nút, `cloudRoomId`, `publicUrl`)
+- `band-comm-media/` — ảnh hợp âm đã upload
+- `band-comm-gallery.json` — manifest ảnh hợp âm (tên, thứ tự)
 
 ## Đặc điểm quan trọng
 

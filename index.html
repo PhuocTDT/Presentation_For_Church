@@ -1117,6 +1117,11 @@
             <input id="bpPublicUrl" type="url" spellcheck="false" autocomplete="off"
                    placeholder="Dán URL cloud để band vào từ 4G — trống = chỉ LAN">
           </div>
+          <div class="bp-purl">
+            <label for="bpTunnelName">Tên Cloudflare Named Tunnel (tự chạy cùng app)</label>
+            <input id="bpTunnelName" type="text" spellcheck="false" autocomplete="off"
+                   placeholder="VD: blessing-band — trống = không tự chạy tunnel">
+          </div>
           <div class="qrwrap">
             <img id="bpQr" alt="Mã QR kết nối">
             <div class="u">
@@ -7268,6 +7273,22 @@
       $('bpPublicUrl').addEventListener('change', commitPublicUrl);
       $('bpPublicUrl').addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); $('bpPublicUrl').blur(); } });
 
+      // Tên Named Tunnel: lưu vào band-comm.json -> main.js tự spawn/dừng
+      // `cloudflared tunnel run <tên>` song song với app (đổi tên = tự restart).
+      var tunnelName = '';
+      function commitTunnelName() {
+        var val = $('bpTunnelName').value.trim();
+        if (val === tunnelName) return;
+        api.getConfig().then(function (cfg) {
+          return api.saveConfig(Object.assign({}, cfg, { tunnelName: val }));
+        }).then(function (saved) {
+          tunnelName = (saved && saved.tunnelName) || '';
+          $('bpTunnelName').value = tunnelName;
+        }).catch(function () {});
+      }
+      $('bpTunnelName').addEventListener('change', commitTunnelName);
+      $('bpTunnelName').addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); $('bpTunnelName').blur(); } });
+
       // Mã phụ trách ảnh: đặt/xoá -> lưu band-comm.json (room.uploaderPin).
       var uploaderPin = '';
       function commitUploaderPin() {
@@ -7413,6 +7434,10 @@
         if (typeof st.uploaderPin === 'string') {
           uploaderPin = st.uploaderPin;
           if (document.activeElement !== $('bpUploaderPin')) $('bpUploaderPin').value = uploaderPin;
+        }
+        if (typeof st.tunnelName === 'string') {
+          tunnelName = st.tunnelName;
+          if (document.activeElement !== $('bpTunnelName')) $('bpTunnelName').value = tunnelName;
         }
 
         if (running) {

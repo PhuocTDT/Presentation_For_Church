@@ -518,6 +518,7 @@ function createCommServer({ store, onEvent, onPresence, getLibraryIndex, onSetli
       url: running && boundIp ? `http://${boundIp}:${port}` : null,
       hostUrl: running ? `http://${host}:${port}` : null,
       publicUrl: cfg.publicUrl || '',
+      tunnelName: cfg.tunnelName || '',
       pin: cfg.room.pin,
       uploaderPin: cfg.room.uploaderPin || '',
       roomName: cfg.room.name,
