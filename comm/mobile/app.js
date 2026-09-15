@@ -79,6 +79,7 @@
       state.operatorReplies = res.j.operatorReplies || [];
       state.cloudRoomId = res.j.cloudRoomId || '';
       hasUploaderPin = !!res.j.hasUploaderPin;
+      $('slToggleBtn').hidden = !res.j.setlistEnabled;
       if ((!state.buttons || !state.buttons.length) && res.j.profile && res.j.profile.buttons && res.j.profile.buttons.length) {
         state.buttons = res.j.profile.buttons;
       }

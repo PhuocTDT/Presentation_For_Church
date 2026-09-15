@@ -4,6 +4,28 @@ Tất cả các thay đổi và cập nhật quan trọng của dự án đượ
 
 ## [Unreleased] - Kênh Band LAN (P1 + P2 + P2.5 + P4)
 
+### fix(band): setlist chỉ bật khi có Named Tunnel (2026-09-15)
+- Lý do: app sắp phân phối cho nhiều nhà thờ khác, đa số sẽ dùng Quick Tunnel
+  (URL đổi mỗi lần chạy) hoặc chỉ LAN — không có link cố định để band soạn
+  setlist từ xa, nên tính năng vô nghĩa/gây hiểu lầm nếu vẫn hiện ra.
+- `src/band-comm/server.js`: `setlistEnabled() = !!store.load().tunnelName`,
+  áp cho `GET /api/library`, `GET/POST /api/setlist` (404 khi tắt); `POST
+  /api/join` trả thêm `setlistEnabled`.
+- `comm/mobile/app.js` + `index.html`: nút "📋 Setlist" mặc định `hidden`,
+  chỉ hiện khi `setlistEnabled` từ response join.
+- Test thật bằng server thật cả 2 nhánh (tunnelName rỗng vs có giá trị) —
+  PASS: rỗng → 404 + ẩn nút; có → 200 + hiện nút.
+
+### cloud/worker hardening (2026-09-15)
+- Worker `api.worship-official.link` dùng chung cho MỌI bản cài app (không
+  auth thật, roomId làm namespace) — thêm cap cứng 40 setlist/phòng (dọn cũ
+  nhất trước khi ghi thêm), cắt độ dài field `id` (trước đây không giới hạn),
+  chặn sớm mảng `items` > 500 phần tử. Verify thật trên production: cap từ
+  45 xuống 41 (soft cap, xê dịch do KV eventually-consistent), id 5000 ký tự
+  bị cắt đúng còn 100.
+- Domain `worship-official.link`: xác nhận đã bật auto-renew + transfer-lock
+  sẵn (hết hạn 2027) — không cần làm thêm cho rủi ro hết hạn/bị cướp domain.
+
 ### fix(ui): header Kênh Band đồng bộ style + cảnh báo đỏ khi đóng khung (2026-09-15)
 - `.bp-head` (header sidebar Kênh Band, gồm chấm trạng thái + "Kênh Band" + nút
   Kết nối/Bắt đầu-Dừng + ×) đổi sang cùng style với header Schedule/Preview/Live:

@@ -171,6 +171,13 @@ function createCommServer({ store, onEvent, onPresence, getLibraryIndex, onSetli
 
   const wsAlive = (c) => !!(c && c.ws && c.ws.isAlive());
 
+  // Setlist (soạn từ xa/khi laptop tắt) chỉ có ý nghĩa khi có link CỐ ĐỊNH để
+  // band vào từ ngoài LAN (Named Tunnel). Quick Tunnel đổi URL mỗi lần chạy —
+  // không có cách nào gửi cho band 1 link dùng lại được, nên ẩn hẳn tính năng
+  // thay vì hứa hẹn nửa vời. `tunnelName` chỉ được set khi cấu hình Named
+  // Tunnel (main.js), nên dùng luôn làm cờ bật/tắt, không cần field riêng.
+  function setlistEnabled() { return !!store.load().tunnelName; }
+
   function presenceList() {
     const now = Date.now();
     return [...clients.values()]
@@ -285,7 +292,8 @@ function createCommServer({ store, onEvent, onPresence, getLibraryIndex, onSetli
         profile: restore || null,
         gallery: galleryManifest(),
         hasUploaderPin: !!cfg.room.uploaderPin,
-        cloudRoomId: cfg.cloudRoomId
+        cloudRoomId: cfg.cloudRoomId,
+        setlistEnabled: setlistEnabled()
       });
     }
 
@@ -397,14 +405,18 @@ function createCommServer({ store, onEvent, onPresence, getLibraryIndex, onSetli
     }
 
     // ---- setlist: điện thoại soạn danh sách bài -> operator nạp vào Schedule ----
+    // (chỉ khi setlistEnabled() — xem giải thích ở định nghĩa hàm)
     if (p === '/api/library' && req.method === 'GET') {
+      if (!setlistEnabled()) return sendJson(res, 404, { error: 'not found' });
       const idx = (typeof getLibraryIndex === 'function' && getLibraryIndex()) || [];
       return sendJson(res, 200, { songs: idx, count: idx.length, updatedAt: Date.now() });
     }
     if (p === '/api/setlist' && req.method === 'GET') {
+      if (!setlistEnabled()) return sendJson(res, 404, { error: 'not found' });
       return sendJson(res, 200, { setlists });
     }
     if (p === '/api/setlist' && req.method === 'POST') {
+      if (!setlistEnabled()) return sendJson(res, 404, { error: 'not found' });
       const body = await readJson(req);
       if (!body) return sendJson(res, 400, { error: 'bad json' });
       const items = (Array.isArray(body.items) ? body.items : [])

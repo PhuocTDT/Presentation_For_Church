@@ -141,6 +141,7 @@ Xem `band-comm-plan.md` để biết đầy đủ. Tóm tắt contract:
 - `POST /api/setlist` `{ id?, name, items:[{type:'song', id, title?}] }` → server lưu vào bộ nhớ **phiên** (RAM, tối đa 30, idempotent theo `id`), phát callback `onSetlist` → main.js `broadcastToRenderers('band-comm-setlist', setlist)` + nháy taskbar. Trả `{ok, id}`. `items` lọc còn `type:'song'`, tối đa 60. Rỗng → `400`.
 - `GET /api/setlist` → `{ setlists }` — xem lại các setlist đã gửi trong phiên.
 - Setlist qua LAN KHÔNG bền qua restart server (M1). Hàng đợi khi laptop tắt hẳn = M2, xem dưới.
+- **Chỉ bật khi có Named Tunnel** (`cfg.tunnelName` khác rỗng) — hàm `setlistEnabled()` trong `server.js`. Quick Tunnel đổi URL mỗi lần chạy nên không có cách nào gửi cho band 1 link soạn-từ-xa dùng lại được; thay vì hứa hẹn nửa vời, `GET /api/library`, `GET/POST /api/setlist` trả `404` và mobile ẩn hẳn nút "📋 Setlist" khi tắt (server trả `setlistEnabled` trong `POST /api/join`).
 - IPC operator: `band-comm-setlist` (envelope setlist) → sidebar hiện thẻ "📋 Setlist: … · N bài · từ …" với [Xem] / [Nạp vào Schedule]. **Nạp = luôn thay thế** toàn bộ `schedule`; bài khớp `id` trong `songLibrary` thì lấy đủ (lyrics/style), không khớp → item tạm chỉ có tiêu đề.
 
 ### Setlist — hộp thư cloud khi laptop tắt hẳn (M2)
