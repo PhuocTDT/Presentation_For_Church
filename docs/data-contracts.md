@@ -113,7 +113,8 @@ Xem `band-comm-plan.md` để biết đầy đủ. Tóm tắt contract:
 - **mDNS** (`src/band-comm/mdns.js`, tự viết) announce `<room.hostname>.local` → IP LAN hiện tại; QR encode `http://<hostname>.local:<port>` nên IP đổi không ảnh hưởng.
 - Cấu hình lưu ở `app.getPath('userData')/band-comm.json`, **không** đi qua `src/schema.js` / `migrateItem`. `src/band-comm/store.js` tự chuẩn hoá field thiếu khi load.
   - `room` (`name`, `pin` 4–8 chữ số — sinh ngẫu nhiên nếu thiếu, `hostname` mặc định `worship`, `uploaderPin` — `null` hoặc 4–8 số: mã cấp quyền **"người phụ trách ảnh hợp âm"** cho 1 điện thoại), `port` (mặc định 7071 — tự dò cổng khác nếu bị Windows/Hyper-V reserve, cổng chốt được lưu lại)
-  - `publicUrl` — URL công khai (Cloudflare Tunnel / domain) để QR trỏ ra; rỗng = chỉ LAN
+  - `publicUrl` — URL công khai (Cloudflare Tunnel / domain) để QR trỏ ra; rỗng = chỉ LAN. Từ khi có Named Tunnel: đặt 1 lần `https://blessing.worship-official.link` (xem "Named Tunnel" bên dưới), không cần dán lại URL tạm mỗi lần chạy nữa.
+  - `cloudRoomId` — UUID cho hộp thư cloud (M2), xem mục Setlist bên dưới
   - `operatorReplies` — mảng câu trả lời nhanh của người vận hành
   - `profiles` — backup bộ nút cá nhân theo `profileId`: `{ name, role, updatedAt, buttons:[{id,label,icon,group}] }`
   - `gallery` — thư viện ảnh hợp âm. Metadata + file ảnh KHÔNG nằm trong `band-comm.json` mà ở `band-comm-gallery.json` + thư mục `band-comm-media/` (cùng `userData`). Manifest: `{ images: [{id, name}], updatedAt }`; file ảnh lưu `<id><ext>` (`.jpg`/`.png`/`.webp`), nén phía client ≤ 1400px trước khi gửi.
@@ -148,3 +149,12 @@ Xem `band-comm-plan.md` để biết đầy đủ. Tóm tắt contract:
 - Worker endpoints (không cần token — xác thực bằng `roomId` khó đoán): `POST /setlist {roomId, setlist:{id,name,from:{name,role},items}}`, `GET /setlist?roomId=` → `{setlists}`, `POST /setlist/ack {roomId,id}`, `GET /setlist/ack?roomId=&ids=a,b,c` → `{acked}`, `GET /health`.
 - Mobile (`comm/mobile/app.js`, `sendSetlist()`): thử `POST api/setlist` qua LAN trước; **chỉ khi lỗi mạng** (laptop/tunnel không tới được, không phải lỗi validate) mới fallback `POST` thẳng lên `CLOUD_API_BASE` bằng `state.cloudRoomId` đã lưu lúc join.
 - Server local (`src/band-comm/server.js`): `ingestSetlist()` là điểm nhận chung cho cả 2 nguồn (LAN + cloud), idempotent theo `id` giống nhau nên không trùng dù phone gửi lặp qua 2 đường. `pollCloud()` chạy ngay lúc `start()` (vét hộp thư sau khi laptop mở lại) + định kỳ mỗi 60s trong lúc server đang chạy (vét trường hợp phone rơi vào nhánh cloud dù laptop vẫn đang mở), ack lại từng id đã nhận. Cloud không tới được → im lặng bỏ qua, không ảnh hưởng LAN.
+
+### Named Tunnel (thay Quick Tunnel) — domain cố định cho band-comm
+
+- App **không tự chạy `cloudflared`** — luôn là tiến trình ngoài, người dùng tự bật khi cần band truy cập từ ngoài LAN (giống Quick Tunnel trước đây), chỉ khác là giờ URL **cố định**, không đổi mỗi lần chạy.
+- Setup 1 lần trên máy vận hành (đã làm): `cloudflared tunnel login` (đăng nhập trình duyệt, tải `cert.pem`) → `cloudflared tunnel create blessing-band` (sinh tunnel id + file credentials JSON, cả 2 nằm trong `%USERPROFILE%\.cloudflared\`, KHÔNG commit vào repo) → `cloudflared tunnel route dns blessing-band blessing.worship-official.link` (tạo CNAME trỏ tunnel).
+- `%USERPROFILE%\.cloudflared\config.yml` (không nằm trong repo, máy nào chạy tunnel phải tự có): ingress `blessing.worship-official.link` → `http://127.0.0.1:7071` (khớp `DEFAULT_PORT` trong `store.js`; nếu server fallback sang cổng khác do bị Windows/Hyper-V reserve, phải sửa lại `service:` trong file này cho khớp cổng thật).
+- Chạy tunnel: `cloud/tunnel/start-tunnel.bat` (gọi `cloudflared tunnel run blessing-band`, đọc `config.yml` mặc định). Chạy song song với app, không phụ thuộc thứ tự.
+- Sau khi tunnel chạy, đặt **Public URL** trong sidebar Kênh Band (`#bpPublicUrl`) = `https://blessing.worship-official.link` một lần — QR/link cho band từ đó luôn dùng domain cố định này, kể cả khi laptop đổi mạng.
+- Đã verify thật (không chỉ đọc log): chạy server local thật ở cổng 7071 + tunnel thật → `GET https://blessing.worship-official.link/` trả `200` và đúng nội dung trang mobile.

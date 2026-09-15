@@ -4,6 +4,17 @@ Tất cả các thay đổi và cập nhật quan trọng của dự án đượ
 
 ## [Unreleased] - Kênh Band LAN (P1 + P2 + P2.5 + P4)
 
+### M2 — Named Tunnel: domain cố định thay Quick Tunnel (2026-09-15)
+- Tạo Cloudflare Named Tunnel `blessing-band` (`cloudflared tunnel login` → `create` →
+  `route dns`), trỏ `blessing.worship-official.link` cố định — không còn URL đổi mỗi
+  lần chạy như Quick Tunnel. Config (`%USERPROFILE%\.cloudflared\config.yml`) ingress
+  về `127.0.0.1:7071`, credentials không commit vào repo.
+- `cloud/tunnel/start-tunnel.bat` — script chạy tunnel (`cloudflared tunnel run
+  blessing-band`), thay cho lệnh Quick Tunnel gõ tay trước đây.
+- Verify thật: chạy server band-comm thật + tunnel thật, `GET
+  https://blessing.worship-official.link/` trả 200 đúng nội dung trang mobile.
+- Việc còn lại: đặt Public URL trong sidebar Kênh Band = domain cố định này (1 lần).
+
 ### M2 — hộp thư setlist cloud khi laptop tắt hẳn (2026-09-15)
 - Hạ tầng mới `cloud/worker/`: Cloudflare Worker + Workers KV (`band-comm-relay`),
   domain riêng `api.worship-official.link` (Route 53 trỏ NS sang Cloudflare, DNS/route
