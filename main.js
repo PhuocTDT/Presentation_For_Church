@@ -2060,6 +2060,112 @@ app.whenReady().then(() => {
     return saved;
   });
 
+  // ---- Named Tunnel wizard ("Cài đặt nâng cao" trong sidebar) — tự động hoá
+  // đúng quy trình `cloudflared tunnel login/create/route dns` mà trước đó
+  // phải gõ tay trong terminal. KHÔNG tự động hoá việc đổi Nameserver domain
+  // ở nơi mua domain — luôn là thao tác thủ công của người dùng ở ngoài.
+  function cloudflaredCertPath() { return path.join(os.homedir(), '.cloudflared', 'cert.pem'); }
+
+  ipcMain.handle('band-comm-tunnel-check-login', () => {
+    return { loggedIn: fs.existsSync(cloudflaredCertPath()) };
+  });
+
+  ipcMain.handle('band-comm-tunnel-login', () => {
+    return new Promise((resolve) => {
+      const { spawn } = require('child_process');
+      let child;
+      try {
+        child = spawn(resolveCloudflaredCmd(), ['tunnel', 'login'], { windowsHide: true });
+      } catch (e) {
+        return resolve({ ok: false, error: e.message });
+      }
+      let urlSent = false;
+      const timer = setTimeout(() => {
+        try { child.kill(); } catch (e) {}
+        resolve({ ok: false, error: 'Hết thời gian chờ đăng nhập (5 phút). Thử lại.' });
+      }, 5 * 60 * 1000);
+      const onData = (buf) => {
+        if (urlSent) return;
+        const m = String(buf).match(/https:\/\/dash\.cloudflare\.com\/argotunnel\S*/);
+        if (!m) return;
+        urlSent = true;
+        try { shell.openExternal(m[0]); } catch (e) {}
+        broadcastToRenderers('band-comm-tunnel-login-url', m[0]);
+      };
+      if (child.stdout) child.stdout.on('data', onData);
+      if (child.stderr) child.stderr.on('data', onData);
+      child.on('exit', (code) => {
+        clearTimeout(timer);
+        resolve(fs.existsSync(cloudflaredCertPath())
+          ? { ok: true }
+          : { ok: false, error: `Đăng nhập chưa hoàn tất (mã thoát ${code}).` });
+      });
+      child.on('error', (e) => {
+        clearTimeout(timer);
+        resolve({ ok: false, error: e.code === 'ENOENT' ? 'Không tìm thấy cloudflared.' : e.message });
+      });
+    });
+  });
+
+  ipcMain.handle('band-comm-tunnel-create', (e, payload) => {
+    const name = String((payload && payload.name) || '').trim();
+    const domain = String((payload && payload.domain) || '').trim().toLowerCase();
+    if (!/^[a-zA-Z0-9][a-zA-Z0-9_-]{2,63}$/.test(name)) {
+      return { ok: false, error: 'Tên tunnel không hợp lệ (chỉ chữ/số/-/_, 3-64 ký tự).' };
+    }
+    if (!/^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?(\.[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)+$/.test(domain)) {
+      return { ok: false, error: 'Domain không hợp lệ.' };
+    }
+    if (!fs.existsSync(cloudflaredCertPath())) return { ok: false, error: 'Chưa đăng nhập Cloudflare.' };
+
+    const { spawnSync } = require('child_process');
+    const cmd = resolveCloudflaredCmd();
+    // --config trỏ file rỗng riêng: cloudflared tự nạp config.yml mặc định
+    // (nếu máy đã có tunnel khác từ trước) và ÂM THẦM dùng `tunnel:` trong đó
+    // thay vì tên tunnel truyền trên CLI — test thật đã tái hiện đúng lỗi
+    // này cho `route dns` (domain mới bị trỏ nhầm sang tunnel CŨ). Cô lập cho
+    // cả create lẫn route dns để chắc chắn không dính lại.
+    const isoConfigPath = path.join(app.getPath('userData'), 'cloudflared-wizard.yml');
+    try { fs.writeFileSync(isoConfigPath, '{}\n'); } catch (e) {}
+
+    const created = spawnSync(cmd, ['tunnel', '--config', isoConfigPath, 'create', name], { windowsHide: true, encoding: 'utf8' });
+    const createdOut = (created.stdout || '') + (created.stderr || '');
+    if (created.status !== 0) {
+      return { ok: false, error: 'Tạo tunnel lỗi: ' + createdOut.trim().slice(0, 500) };
+    }
+    const idMatch = createdOut.match(/with id ([0-9a-fA-F-]{36})/);
+    const credMatch = createdOut.match(/credentials written to (.+\.json)/i);
+    const tunnelId = idMatch && idMatch[1];
+    if (!tunnelId) return { ok: false, error: 'Tạo tunnel thành công nhưng không đọc được tunnel ID:\n' + createdOut.slice(0, 500) };
+    const credFile = (credMatch && credMatch[1].trim()) || path.join(path.dirname(cloudflaredCertPath()), `${tunnelId}.json`);
+
+    const routed = spawnSync(cmd, ['tunnel', '--config', isoConfigPath, 'route', 'dns', '-f', name, domain], { windowsHide: true, encoding: 'utf8' });
+    if (routed.status !== 0) {
+      return {
+        ok: false,
+        error: 'Trỏ DNS lỗi: ' + ((routed.stderr || routed.stdout || '').trim().slice(0, 500)) +
+          '\n\nKiểm tra: domain đã trỏ Nameserver sang Cloudflare chưa? (đổi NS ở nơi mua domain, có thể mất vài giờ để có hiệu lực)'
+      };
+    }
+
+    const cloudflaredDir = path.dirname(cloudflaredCertPath());
+    const configPath = path.join(cloudflaredDir, 'config.yml');
+    const port = (commServer && commServer.getStatus().port) || (bandCommStore ? bandCommStore.load().port : 7071);
+    const configYml = `tunnel: ${tunnelId}\ncredentials-file: ${credFile}\n\ningress:\n  - hostname: ${domain}\n    service: http://127.0.0.1:${port}\n  - service: http_status:404\n`;
+    try {
+      fs.writeFileSync(configPath, configYml, 'utf8');
+    } catch (err) {
+      return { ok: false, error: 'Ghi config.yml lỗi: ' + err.message };
+    }
+
+    initBandComm();
+    const cur = bandCommStore.load();
+    const saved = bandCommStore.save({ ...cur, tunnelName: name, publicUrl: `https://${domain}` });
+    if (commServer && commServer.isRunning()) syncBandTunnel();
+    sendBandStatus();
+    return { ok: true, tunnelName: name, publicUrl: saved.publicUrl };
+  });
+
   ipcMain.handle('band-comm-send', (e, payload) => {
     if (!commServer) return null;
     return commServer.operatorSend(payload || {});

@@ -109,6 +109,13 @@ contextBridge.exposeInMainWorld('electronAPI', {
     onSetlist: (callback) => {
       ipcRenderer.removeAllListeners('band-comm-setlist');
       ipcRenderer.on('band-comm-setlist', callback);
+    },
+    tunnelCheckLogin: () => ipcRenderer.invoke('band-comm-tunnel-check-login'),
+    tunnelLogin: () => ipcRenderer.invoke('band-comm-tunnel-login'),
+    tunnelCreate: (payload) => ipcRenderer.invoke('band-comm-tunnel-create', payload),
+    onTunnelLoginUrl: (callback) => {
+      ipcRenderer.removeAllListeners('band-comm-tunnel-login-url');
+      ipcRenderer.on('band-comm-tunnel-login-url', callback);
     }
   }
 });

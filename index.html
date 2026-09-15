@@ -1025,6 +1025,7 @@
         box-shadow: 0 22px 60px -14px rgba(15, 25, 50, .45);
       }
       #bandPanel .bp-conn .bp-modal-head {
+        position: relative;
         display: flex; align-items: center; gap: 8px;
         font-weight: 700; font-size: .92rem; margin-bottom: 12px;
       }
@@ -1038,10 +1039,40 @@
       #bandPanel .bp-conn .k { flex: none; width: 62px; color: #8a93a3; font-size: .7rem; text-transform: uppercase; letter-spacing: .05em; }
       #bandPanel .bp-conn .v { font-family: Consolas, ui-monospace, monospace; font-size: .92rem; user-select: text; overflow-wrap: anywhere; }
       #bandPanel .bp-conn .v.pin { font-size: 1.15rem; font-weight: 700; letter-spacing: .16em; color: #b9740f; }
+      #bandPanel .bp-conn .bp-pin-reload {
+        margin-left: auto; align-self: center; border: none; background: none; color: #8a93a3;
+        font-size: .95rem; line-height: 1; cursor: pointer; padding: 3px 5px; border-radius: 6px; flex: none;
+      }
+      #bandPanel .bp-conn .bp-pin-reload:hover { color: #2563a8; background: #eef3fa; }
+      #bandPanel .bp-conn .bp-pin-reload.spin { animation: bpPinSpin .5s linear; }
+      @keyframes bpPinSpin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
       #bandPanel .bp-conn .row2 { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
       #bandPanel .bp-conn .row2 > .bp-btn { flex: 1 1 auto; white-space: normal; }
-      #bandPanel .bp-conn .bp-support { display: flex; flex-direction: column; gap: 6px; margin-top: 6px; }
-      #bandPanel .bp-conn .bp-support .bp-btn { text-align: left; white-space: normal; }
+
+      /* Support menu = a speech bubble anchored under the "Hỗ trợ kỹ thuật"
+         button, tail pointing up at it (bpSupportBtn lives in .bp-modal-head,
+         which is the positioning context). */
+      #bandPanel .bp-conn .bp-support {
+        position: absolute; top: 100%; right: 30px; margin-top: 14px; z-index: 6;
+        width: 236px; max-width: calc(92vw - 40px);
+        flex-direction: column; gap: 6px;
+        background: #fffdf6; border: 2px solid #1e2430; border-radius: 16px;
+        padding: 12px 13px; box-shadow: 0 14px 30px -10px rgba(15, 25, 50, .4);
+      }
+      #bandPanel .bp-conn .bp-support.bp-hidden { display: none; }
+      #bandPanel .bp-conn .bp-support:not(.bp-hidden) { display: flex; }
+      #bandPanel .bp-conn .bp-support::before {
+        content: ''; position: absolute; bottom: 100%; right: 22px;
+        border: 9px solid transparent; border-bottom-color: #1e2430;
+      }
+      #bandPanel .bp-conn .bp-support::after {
+        content: ''; position: absolute; bottom: calc(100% - 2px); right: 24px;
+        border: 7px solid transparent; border-bottom-color: #fffdf6;
+      }
+      #bandPanel .bp-conn .bp-support .bp-btn {
+        text-align: left; white-space: normal; background: transparent; border-color: transparent;
+      }
+      #bandPanel .bp-conn .bp-support .bp-btn:hover { background: #f4efdc; border-color: #e6dfc4; }
       #bandPanel select.bp-btn { flex: 1 1 100%; }
       #bandPanel .bp-conn .bp-gal { margin-top: 12px; border-top: 1px solid #e2e4e9; padding-top: 10px; }
       #bandPanel .bp-conn .bp-gal #bpGalList { margin-top: 6px; display: flex; flex-direction: column; gap: 4px; }
@@ -1104,6 +1135,13 @@
         font-family: Consolas, ui-monospace, monospace; font-size: .84rem; color: #1e2430; background: #fff;
       }
       #bandPanel .bp-conn .bp-purl input:focus { border-color: #2563a8; outline: none; }
+      #bandPanel .bp-conn .bp-wizard {
+        margin-top: 8px; padding: 10px; border: 1px dashed #bcd6f0; border-radius: 10px; background: #f5faff;
+      }
+      #bandPanel .bp-conn .bp-wizard-p { font-size: .78rem; color: #46617e; margin: 0 0 8px; line-height: 1.4; }
+      #bandPanel .bp-conn .bp-wizard-status { font-size: .78rem; margin-top: 6px; white-space: pre-wrap; word-break: break-word; }
+      #bandPanel .bp-conn .bp-wizard-status.ok { color: #1e6b3c; }
+      #bandPanel .bp-conn .bp-wizard-status.err { color: #b8362a; }
 
       #bandPanel .bp-error {
         margin: 8px 12px 0; padding: 10px 12px; border-radius: 10px;
@@ -1140,6 +1178,11 @@
             <button class="bp-btn support" id="bpSupportBtn">🆘 Hỗ trợ kỹ thuật</button>
             <button class="bp-x" id="bpConnClose" title="Đóng">&times;</button>
           </div>
+          <div class="bp-support bp-hidden" id="bpSupportMenu">
+            <button class="bp-btn" id="bpSupportEmail">✉️ Email: tdtp2005@gmail.com</button>
+            <button class="bp-btn" id="bpSupportZalo">💬 Zalo: +84 845910084</button>
+            <button class="bp-btn" id="bpSupportFb">📘 Facebook</button>
+          </div>
           <div class="bp-purl">
             <label for="bpPublicUrl">Public URL (Cloudflare Tunnel / domain)</label>
             <input id="bpPublicUrl" type="url" spellcheck="false" autocomplete="off"
@@ -1148,7 +1191,27 @@
           <div class="bp-purl">
             <label for="bpTunnelName">Tên Cloudflare Named Tunnel (tự chạy cùng app)</label>
             <input id="bpTunnelName" type="text" spellcheck="false" autocomplete="off"
-                   placeholder="VD: blessing-band — trống = không tự chạy tunnel">
+                   placeholder="VD: blessing-band — trống = dùng Quick Tunnel (URL đổi mỗi lần chạy)">
+          </div>
+          <button class="bp-btn" id="bpWizOpenBtn">⚙️ Thiết lập domain riêng tự động (nâng cao)</button>
+          <div class="bp-wizard bp-hidden" id="bpWizard">
+            <div id="bpWizStep1">
+              <p class="bp-wizard-p">Domain phải <b>đã trỏ Nameserver sang Cloudflare</b> trước — làm ở nơi bạn mua domain (bước này app không tự làm thay được). Xong bước đó rồi mới đăng nhập ở đây.</p>
+              <button class="bp-btn go" id="bpWizLoginBtn">1. Đăng nhập Cloudflare</button>
+              <div class="bp-wizard-status" id="bpWizLoginStatus"></div>
+            </div>
+            <div id="bpWizStep2" class="bp-hidden">
+              <div class="bp-purl">
+                <label for="bpWizName">Tên tunnel (đặt tuỳ ý)</label>
+                <input id="bpWizName" type="text" spellcheck="false" autocomplete="off" placeholder="vd: my-church-band">
+              </div>
+              <div class="bp-purl">
+                <label for="bpWizDomain">Domain / subdomain sẽ dùng</label>
+                <input id="bpWizDomain" type="text" spellcheck="false" autocomplete="off" placeholder="vd: band.mychurch.org">
+              </div>
+              <button class="bp-btn go" id="bpWizCreateBtn">2. Tạo &amp; Kết nối</button>
+              <div class="bp-wizard-status" id="bpWizCreateStatus"></div>
+            </div>
           </div>
           <div class="qrwrap">
             <img id="bpQr" alt="Mã QR kết nối">
@@ -1156,15 +1219,10 @@
               <div class="host" id="bpHost">—</div>
             </div>
           </div>
-          <div class="bp-kv"><span class="k">Mã PIN</span><span class="v pin" id="bpPin">—</span></div>
+          <div class="bp-kv"><span class="k">Mã PIN</span><span class="v pin" id="bpPin">—</span><button class="bp-pin-reload" id="bpPinReload" type="button" title="Tạo mã PIN mới">🔄</button></div>
           <div class="bp-kv"><span class="k">Đang nối</span><span class="v" id="bpCount">0</span></div>
           <div class="row2">
             <button class="bp-btn" id="bpFw">Mở cổng Firewall (nếu điện thoại không vào được)</button>
-          </div>
-          <div class="bp-support bp-hidden" id="bpSupportMenu">
-            <button class="bp-btn" id="bpSupportEmail">✉️ Email: tdtp2005@gmail.com</button>
-            <button class="bp-btn" id="bpSupportZalo">💬 Zalo: +84 845910084</button>
-            <button class="bp-btn" id="bpSupportFb">📘 Facebook</button>
           </div>
           <div class="bp-gal">
             <div class="bp-kv">
@@ -7322,6 +7380,83 @@
       $('bpTunnelName').addEventListener('change', commitTunnelName);
       $('bpTunnelName').addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); $('bpTunnelName').blur(); } });
 
+      // Wizard "domain riêng tự động" — tự động hoá cloudflared tunnel
+      // login/create/route dns thay vì gõ tay trong terminal. Không tự động
+      // hoá việc đổi Nameserver domain (luôn phải làm thủ công ở nơi mua
+      // domain trước khi dùng wizard này).
+      $('bpWizOpenBtn').addEventListener('click', function () {
+        var show = $('bpWizard').classList.contains('bp-hidden');
+        $('bpWizard').classList.toggle('bp-hidden', !show);
+        if (show) {
+          $('bpWizLoginStatus').textContent = '';
+          $('bpWizLoginStatus').className = 'bp-wizard-status';
+          api.tunnelCheckLogin().then(function (r) {
+            var loggedIn = r && r.loggedIn;
+            $('bpWizStep1').classList.toggle('bp-hidden', loggedIn);
+            $('bpWizStep2').classList.toggle('bp-hidden', !loggedIn);
+          }).catch(function () {});
+        }
+      });
+      api.onTunnelLoginUrl(function (_e, url) {
+        var st = $('bpWizLoginStatus');
+        st.textContent = 'Đang chờ xác nhận trong trình duyệt… Nếu trình duyệt không tự mở, vào link: ' + url;
+        st.className = 'bp-wizard-status';
+      });
+      $('bpWizLoginBtn').addEventListener('click', function () {
+        $('bpWizLoginBtn').disabled = true;
+        var st = $('bpWizLoginStatus');
+        st.textContent = 'Đang mở trình duyệt để đăng nhập Cloudflare…';
+        st.className = 'bp-wizard-status';
+        api.tunnelLogin().then(function (r) {
+          $('bpWizLoginBtn').disabled = false;
+          if (r && r.ok) {
+            st.textContent = '✅ Đăng nhập thành công.';
+            st.className = 'bp-wizard-status ok';
+            $('bpWizStep1').classList.add('bp-hidden');
+            $('bpWizStep2').classList.remove('bp-hidden');
+          } else {
+            st.textContent = '❌ ' + ((r && r.error) || 'Đăng nhập thất bại.');
+            st.className = 'bp-wizard-status err';
+          }
+        }).catch(function (err) {
+          $('bpWizLoginBtn').disabled = false;
+          st.textContent = '❌ ' + (err && err.message || err);
+          st.className = 'bp-wizard-status err';
+        });
+      });
+      $('bpWizCreateBtn').addEventListener('click', function () {
+        var name = $('bpWizName').value.trim();
+        var domain = $('bpWizDomain').value.trim();
+        var st = $('bpWizCreateStatus');
+        if (!name || !domain) {
+          st.textContent = 'Nhập đủ tên tunnel và domain.';
+          st.className = 'bp-wizard-status err';
+          return;
+        }
+        $('bpWizCreateBtn').disabled = true;
+        st.textContent = 'Đang tạo tunnel + trỏ DNS + kết nối… (vài giây)';
+        st.className = 'bp-wizard-status';
+        api.tunnelCreate({ name: name, domain: domain }).then(function (r) {
+          $('bpWizCreateBtn').disabled = false;
+          if (r && r.ok) {
+            st.textContent = '✅ Đã kết nối: ' + r.publicUrl;
+            st.className = 'bp-wizard-status ok';
+            tunnelName = r.tunnelName || name;
+            $('bpTunnelName').value = tunnelName;
+            publicUrl = r.publicUrl || '';
+            $('bpPublicUrl').value = publicUrl;
+            if (publicUrl) { qrMode = 'public'; qrModeUserSet = true; refreshQr(); }
+          } else {
+            st.textContent = '❌ ' + ((r && r.error) || 'Thất bại.');
+            st.className = 'bp-wizard-status err';
+          }
+        }).catch(function (err) {
+          $('bpWizCreateBtn').disabled = false;
+          st.textContent = '❌ ' + (err && err.message || err);
+          st.className = 'bp-wizard-status err';
+        });
+      });
+
       // Hỗ trợ kỹ thuật: chỉ hiện 3 kênh liên hệ, người dùng tự chọn —
       // không tự động hoá gì thêm, mình chỉ hỗ trợ khi họ chủ động liên hệ.
       function openExternalLink(url) {
@@ -7335,6 +7470,28 @@
       });
       $('bpSupportZalo').addEventListener('click', function () { openExternalLink('https://zalo.me/84845910084'); });
       $('bpSupportFb').addEventListener('click', function () { openExternalLink('https://www.facebook.com/phuoctdt.260823/'); });
+
+      // Tạo lại mã PIN phòng — không ảnh hưởng máy đã join (token riêng), chỉ
+      // chặn người mới dùng PIN cũ.
+      function genRoomPin() {
+        var buf = new Uint32Array(1);
+        (window.crypto || window.msCrypto).getRandomValues(buf);
+        return String(buf[0] % 10000).padStart(4, '0');
+      }
+      $('bpPinReload').addEventListener('click', function () {
+        if (!confirm('Tạo mã PIN mới cho phòng? Máy đã kết nối không bị ảnh hưởng, người vào sau phải dùng mã mới.')) return;
+        var btn = this;
+        btn.classList.remove('spin'); void btn.offsetWidth; btn.classList.add('spin');
+        setTimeout(function () { btn.classList.remove('spin'); }, 500);
+        api.getConfig().then(function (cfg) {
+          var room = Object.assign({}, cfg.room, { pin: genRoomPin() });
+          return api.saveConfig(Object.assign({}, cfg, { room: room }));
+        }).then(function (saved) {
+          var pin = (saved && saved.room && saved.room.pin) || '—';
+          $('bpPin').textContent = pin;
+          addFeed('sys', '', 'Đã tạo mã PIN mới: ' + pin);
+        }).catch(function () {});
+      });
 
       // Mã phụ trách ảnh: đặt/xoá -> lưu band-comm.json (room.uploaderPin).
       var uploaderPin = '';

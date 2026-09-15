@@ -4,6 +4,29 @@ Tất cả các thay đổi và cập nhật quan trọng của dự án đượ
 
 ## [Unreleased] - Kênh Band LAN (P1 + P2 + P2.5 + P4)
 
+### feat(band): wizard tự động thiết lập Named Tunnel domain riêng (2026-09-15)
+- Sidebar Kênh Band, popup Kết nối: nút "⚙️ Thiết lập domain riêng tự động"
+  mở wizard 2 bước — thay thế hoàn toàn việc gõ tay `cloudflared tunnel
+  login/create/route dns` trong terminal.
+- `main.js`: 3 IPC handler mới — `band-comm-tunnel-check-login` (đọc
+  cert.pem), `band-comm-tunnel-login` (spawn login, bắt URL, mở trình
+  duyệt, chờ tới khi xong), `band-comm-tunnel-create({name,domain})`
+  (create → route dns -f → ghi config.yml → lưu tunnelName+publicUrl →
+  syncBandTunnel()). `preload.js` expose cả 3 + event `onTunnelLoginUrl`.
+- **Bug tìm thấy + fix qua test thật (cùng họ với bug Quick Tunnel)**:
+  `cloudflared tunnel route dns <name> <domain>` bỏ qua tên tunnel truyền
+  trên CLI nếu máy đã có `~/.cloudflared/config.yml` từ trước — domain mới
+  bị trỏ NHẦM sang tunnel cũ trong config đó. Test thật tái hiện đúng lỗi
+  (domain test bị trỏ sang `blessing-band` dù tạo tunnel khác). Fix: mọi
+  lệnh wizard dùng `--config <file rỗng riêng>` + `-f` để cô lập + cho phép
+  ghi đè.
+- Verify thật toàn chuỗi bằng tunnel/domain throwaway: create → route dns
+  (đúng tunnel, không bị đè) → config.yml → chạy → domain trả 200 qua
+  origin thật — PASS, đã dọn sạch tunnel/DNS test sau khi xong.
+- Ghi chú: phát hiện có phiên Claude Code khác đang làm việc song song trên
+  cùng repo (thêm nút "Tạo mã PIN mới" trong sidebar) — đã nhắn phối hợp để
+  tránh đụng độ, không có xung đột code thực sự xảy ra.
+
 ### feat(band): bundle cloudflared + tự động Quick Tunnel mặc định (2026-09-15)
 - Lý do: app sắp phân phối cho nhiều nhà thờ khác, không phải ai cũng có
   Cloudflare account/domain/cloudflared cài sẵn — cần zero-setup cho ai cũng
