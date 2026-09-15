@@ -956,6 +956,15 @@
       #bandPanelTab .nb { display: none; background: #ffdf6b; color: #4a3600;
         border-radius: 8px; padding: 1px 5px; font-size: 10px; writing-mode: horizontal-tb; }
       #bandPanelTab.has-unread .nb { display: inline-block; }
+      /* Cảnh báo band bấm nút (khẩn, cần xử lý ngay) trong lúc khung đang đóng
+         -> đỏ + vòng sóng lan toả, nổi bật rõ hơn hẳn badge vàng thường. */
+      #bandPanelTab.has-alert { background: #dc2626; color: #fff; animation: bpTabPulse 1.4s ease-in-out infinite; }
+      #bandPanelTab.has-alert:hover { background: #b91c1c; }
+      #bandPanelTab.has-alert .nb { background: #fff; color: #b91c1c; }
+      @keyframes bpTabPulse {
+        0%, 100% { box-shadow: 3px 3px 14px rgba(80,45,10,.30), 0 0 0 0 rgba(220,38,38,.55); }
+        50% { box-shadow: 3px 3px 14px rgba(80,45,10,.30), 0 0 0 9px rgba(220,38,38,0); }
+      }
       body.bp-open #bandPanelTab { display: none !important; }
 
       #bandPanel {
@@ -978,12 +987,17 @@
 
       #bandPanel .bp-head {
         display: flex; align-items: center; gap: 8px; padding: 8px 12px;
-        border-bottom: 1px solid #e2e4e9; background: #f8f9fb; flex: none;
+        background: #1e293b; color: #fff; flex: none; border-radius: 7px 7px 0 0;
       }
-      #bandPanel .bp-dot { width: 8px; height: 8px; border-radius: 50%; background: #8a93a3; flex: none; }
-      #bandPanel .bp-dot.on { background: #2f8a55; }
-      #bandPanel .bp-dot.off { background: #c0392f; }
-      #bandPanel .bp-title { font-weight: 700; font-size: .9rem; flex: 1; }
+      #bandPanel .bp-dot { width: 8px; height: 8px; border-radius: 50%; background: #8a93a3; flex: none; position: relative; }
+      #bandPanel .bp-dot.on { background: #34d399; }
+      /* Hiệu ứng lan sóng: 1 vòng tròn giãn ra + mờ dần, lặp lại — chỉ khi đang kết nối. */
+      #bandPanel .bp-dot.on::after {
+        content: ''; position: absolute; inset: -5px; border-radius: 50%;
+        border: 2px solid #34d399; animation: bpDotWave 1.8s ease-out infinite;
+      }
+      #bandPanel .bp-dot.off { background: #f87171; }
+      #bandPanel .bp-title { font-weight: 700; font-size: .9rem; flex: 1; color: #fff; }
       #bandPanel .bp-btn {
         background: #ffffff; border: 1px solid #d7dae1; border-radius: 8px;
         padding: 5px 10px; font-size: .8rem; color: #5b6472;
@@ -991,7 +1005,12 @@
       #bandPanel .bp-btn:hover { border-color: #8a93a3; color: #1e2430; }
       #bandPanel .bp-btn.go { background: #2f8a55; border-color: #2f8a55; color: #fff; font-weight: 700; }
       #bandPanel .bp-btn.stop { background: #c0392f; border-color: #c0392f; color: #fff; font-weight: 700; }
-      #bandPanel .bp-x { background: none; border: none; font-size: 1.1rem; color: #8a93a3; padding: 0 4px; }
+      #bandPanel .bp-x { background: none; border: none; font-size: 1.1rem; color: #94a3b8; padding: 0 4px; }
+      #bandPanel .bp-x:hover { color: #fff; }
+      @keyframes bpDotWave {
+        0% { transform: scale(.6); opacity: .9; }
+        100% { transform: scale(2); opacity: 0; }
+      }
 
       /* Connection info popup — sits above the app content but is still capped
          inside #bandPanel's stacking context, so an app dialog covers it too. */
@@ -7190,7 +7209,7 @@
       }
       function openPanel() {
         revealPanel();
-        tab.classList.remove('has-unread'); unread = 0;
+        tab.classList.remove('has-unread', 'has-alert'); unread = 0;
         api.getStatus().then(applyStatus).catch(function () {});
       }
       function closePanel() {
@@ -7531,9 +7550,12 @@
         addFeed('sys', '', 'Đã nạp setlist "' + sl.name + '" — ' + out.length + ' bài vào Schedule.');
       }
 
-      function bumpUnread() {
+      // isAlert = true cho cảnh báo band bấm nút (khẩn) -> tab đỏ + pulse, khác
+      // với hoạt động thường (setlist, v.v.) chỉ hiện badge vàng như cũ.
+      function bumpUnread(isAlert) {
         if (panel.classList.contains('open')) return;
         unread++; tab.classList.add('has-unread');
+        if (isAlert) tab.classList.add('has-alert');
         $('bandPanelTabCount').textContent = unread;
       }
 
@@ -7546,7 +7568,7 @@
             sender: env.from && env.from.clientId,
             label: env.text
           });
-          bumpUnread();
+          bumpUnread(true);
         }
         else if (env.type === 'text') {
           // operator text is echoed back over SSE — already added optimistically.

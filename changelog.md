@@ -4,6 +4,18 @@ Tất cả các thay đổi và cập nhật quan trọng của dự án đượ
 
 ## [Unreleased] - Kênh Band LAN (P1 + P2 + P2.5 + P4)
 
+### fix(ui): header Kênh Band đồng bộ style + cảnh báo đỏ khi đóng khung (2026-09-15)
+- `.bp-head` (header sidebar Kênh Band, gồm chấm trạng thái + "Kênh Band" + nút
+  Kết nối/Bắt đầu-Dừng + ×) đổi sang cùng style với header Schedule/Preview/Live:
+  nền `#1e293b`, chữ trắng, bo góc trên `7px`.
+  Chấm xanh khi đang kết nối (`.bp-dot.on`) có hiệu ứng lan sóng (vòng tròn giãn
+  ra + mờ dần, lặp lại) qua `::after` + `@keyframes bpDotWave`.
+- Tab thu gọn (`#bandPanelTab`) khi có **cảnh báo band bấm nút** (khẩn) lúc
+  khung đang đóng → chuyển đỏ + hiệu ứng pulse (`@keyframes bpTabPulse`), thay
+  vì chỉ badge vàng như trước (dễ bị bỏ sót). Hoạt động thường (setlist…) vẫn
+  chỉ hiện badge vàng, không đỏ hoá tràn lan. `bumpUnread(isAlert)` nhận thêm
+  cờ để phân biệt 2 mức; xoá cả `has-unread` + `has-alert` khi mở panel.
+
 ### M2 — app tự chạy Named Tunnel cùng band-comm (2026-09-15)
 - `band-comm.json`: thêm `tunnelName` (rỗng mặc định — không ảnh hưởng máy chưa
   cấu hình cloudflared).
