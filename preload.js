@@ -39,6 +39,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   liveSendBackground: (data) => ipcRenderer.invoke('live-send-background', data),
   liveSendClear: () => ipcRenderer.invoke('live-send-clear'),
   quitApp: () => ipcRenderer.invoke('quit-app'),
+  openExternal: (url) => ipcRenderer.invoke('open-external', url),
   getCpuUsage: () => ipcRenderer.invoke('get-cpu-usage'),
   onLiveWindowClosed: (callback) => {
     ipcRenderer.removeAllListeners('live-window-closed');

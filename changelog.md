@@ -4,6 +4,13 @@ Tất cả các thay đổi và cập nhật quan trọng của dự án đượ
 
 ## [Unreleased] - Kênh Band LAN (P1 + P2 + P2.5 + P4)
 
+### feat(ui): icon Hỗ trợ kỹ thuật trong sidebar Kênh Band (2026-09-15)
+- Popup Kết nối thêm nút "🆘 Hỗ trợ kỹ thuật" → hiện 3 kênh liên hệ (Email,
+  Zalo, Facebook) — người dùng tự chọn, không tự động gửi gì cả.
+- `main.js`: IPC `open-external` mở link qua `shell.openExternal` (allowlist
+  `https:`/`mailto:`), thay vì điều hướng cả cửa sổ renderer.
+- `preload.js`: expose `electronAPI.openExternal(url)`.
+
 ### fix(band): setlist chỉ bật khi có Named Tunnel (2026-09-15)
 - Lý do: app sắp phân phối cho nhiều nhà thờ khác, đa số sẽ dùng Quick Tunnel
   (URL đổi mỗi lần chạy) hoặc chỉ LAN — không có link cố định để band soạn

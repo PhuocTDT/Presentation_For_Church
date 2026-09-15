@@ -1034,6 +1034,8 @@
       #bandPanel .bp-conn .v.pin { font-size: 1.15rem; font-weight: 700; letter-spacing: .16em; color: #b9740f; }
       #bandPanel .bp-conn .row2 { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
       #bandPanel .bp-conn .row2 > .bp-btn { flex: 1 1 auto; white-space: normal; }
+      #bandPanel .bp-conn .bp-support { display: flex; flex-direction: column; gap: 6px; margin-top: 6px; }
+      #bandPanel .bp-conn .bp-support .bp-btn { text-align: left; white-space: normal; }
       #bandPanel select.bp-btn { flex: 1 1 100%; }
       #bandPanel .bp-conn .bp-gal { margin-top: 12px; border-top: 1px solid #e2e4e9; padding-top: 10px; }
       #bandPanel .bp-conn .bp-gal #bpGalList { margin-top: 6px; display: flex; flex-direction: column; gap: 4px; }
@@ -1151,6 +1153,12 @@
           <div class="bp-kv"><span class="k">Đang nối</span><span class="v" id="bpCount">0</span></div>
           <div class="row2">
             <button class="bp-btn" id="bpFw">Mở cổng Firewall (nếu điện thoại không vào được)</button>
+            <button class="bp-btn" id="bpSupportBtn">🆘 Hỗ trợ kỹ thuật</button>
+          </div>
+          <div class="bp-support bp-hidden" id="bpSupportMenu">
+            <button class="bp-btn" id="bpSupportEmail">✉️ Email: tdtp2005@gmail.com</button>
+            <button class="bp-btn" id="bpSupportZalo">💬 Zalo: +84 845910084</button>
+            <button class="bp-btn" id="bpSupportFb">📘 Facebook</button>
           </div>
           <div class="bp-gal">
             <div class="bp-kv">
@@ -7307,6 +7315,20 @@
       }
       $('bpTunnelName').addEventListener('change', commitTunnelName);
       $('bpTunnelName').addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); $('bpTunnelName').blur(); } });
+
+      // Hỗ trợ kỹ thuật: chỉ hiện 3 kênh liên hệ, người dùng tự chọn —
+      // không tự động hoá gì thêm, mình chỉ hỗ trợ khi họ chủ động liên hệ.
+      function openExternalLink(url) {
+        if (window.electronAPI && window.electronAPI.openExternal) window.electronAPI.openExternal(url);
+      }
+      $('bpSupportBtn').addEventListener('click', function () {
+        $('bpSupportMenu').classList.toggle('bp-hidden');
+      });
+      $('bpSupportEmail').addEventListener('click', function () {
+        openExternalLink('mailto:tdtp2005@gmail.com?subject=' + encodeURIComponent('Hỗ trợ Phần Mềm Worship'));
+      });
+      $('bpSupportZalo').addEventListener('click', function () { openExternalLink('https://zalo.me/84845910084'); });
+      $('bpSupportFb').addEventListener('click', function () { openExternalLink('https://www.facebook.com/phuoctdt.260823/'); });
 
       // Mã phụ trách ảnh: đặt/xoá -> lưu band-comm.json (room.uploaderPin).
       var uploaderPin = '';

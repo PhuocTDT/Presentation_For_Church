@@ -1,4 +1,4 @@
-const { app, BrowserWindow, Menu, ipcMain, dialog, protocol, net, screen } = require('electron');
+const { app, BrowserWindow, Menu, ipcMain, dialog, protocol, net, screen, shell } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const os = require('os');
@@ -2014,6 +2014,17 @@ app.whenReady().then(() => {
   ipcMain.handle('band-comm-gallery-add', (e, p) => commServer ? commServer.galleryAdd(p || {}) : null);
   ipcMain.handle('band-comm-gallery-remove', (e, id) => commServer ? commServer.galleryRemove(id) : null);
   ipcMain.handle('band-comm-gallery-reorder', (e, ids) => commServer ? commServer.galleryReorder(ids || []) : null);
+
+  // Mở link ngoài (icon "Hỗ trợ" trong sidebar Kênh Band) qua trình duyệt/app
+  // mặc định của hệ điều hành thay vì điều hướng cả cửa sổ renderer. Allowlist
+  // scheme phòng khi sau này URL không còn hardcode trong index.html nữa.
+  ipcMain.handle('open-external', (e, url) => {
+    if (typeof url === 'string' && /^(https:|mailto:)/i.test(url)) {
+      shell.openExternal(url);
+      return true;
+    }
+    return false;
+  });
 
   ipcMain.handle('quit-app', () => {
     app.quit();
