@@ -9,6 +9,9 @@
   'use strict';
 
   var LS_KEY = 'bandcomm.v1';
+  // Hộp thư setlist trên Cloudflare khi máy chiếu tắt hẳn — chỉ dùng khi gửi
+  // LAN thất bại (network error), xem cloud/worker/src/worker.js.
+  var CLOUD_API_BASE = 'https://api.worship-official.link';
 
   var state = loadState();
   var ws = null;
@@ -74,6 +77,7 @@
       state.role = role;
       state.roomName = res.j.room && res.j.room.name || 'Kênh Band';
       state.operatorReplies = res.j.operatorReplies || [];
+      state.cloudRoomId = res.j.cloudRoomId || '';
       hasUploaderPin = !!res.j.hasUploaderPin;
       if ((!state.buttons || !state.buttons.length) && res.j.profile && res.j.profile.buttons && res.j.profile.buttons.length) {
         state.buttons = res.j.profile.buttons;
@@ -590,18 +594,46 @@
     fetch('api/setlist', { method: 'POST', headers: authHeader(), body: JSON.stringify(payload) })
       .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
       .then(function (res) {
-        $('slSend').disabled = false;
-        if (res.ok && res.j && res.j.ok) {
-          state.slDraft = []; saveState();
-          $('slName').value = ''; $('slSearch').value = '';
-          renderSlDraft(); renderSlResults('');
-          toast('op', '', 'Đã gửi setlist cho máy chiếu.');
-          $('setlistBlock').classList.add('hidden');
-        } else {
-          toast('band', '', (res.j && res.j.error) || 'Máy chiếu chưa nhận được.');
-        }
+        if (res.ok && res.j && res.j.ok) { $('slSend').disabled = false; finishSetlistSent(false); }
+        else { $('slSend').disabled = false; toast('band', '', (res.j && res.j.error) || 'Máy chiếu chưa nhận được.'); }
       })
-      .catch(function () { $('slSend').disabled = false; toast('band', '', 'Chưa gửi được — máy chiếu chưa online. Danh sách vẫn được giữ.'); });
+      // Lỗi mạng (không phải lỗi validate) -> máy chiếu có thể đang tắt hẳn ->
+      // thử gửi qua hộp thư cloud để nó lấy về khi mở lại.
+      .catch(function () { sendSetlistToCloud(payload); });
+  }
+
+  function finishSetlistSent(viaCloud) {
+    state.slDraft = []; saveState();
+    $('slName').value = ''; $('slSearch').value = '';
+    renderSlDraft(); renderSlResults('');
+    toast('op', '', viaCloud ? 'Máy chiếu đang tắt — đã gửi qua hộp thư, sẽ tới khi máy chiếu mở lại.' : 'Đã gửi setlist cho máy chiếu.');
+    $('setlistBlock').classList.add('hidden');
+  }
+
+  function sendSetlistToCloud(payload) {
+    if (!state.cloudRoomId) {
+      $('slSend').disabled = false;
+      toast('band', '', 'Chưa gửi được — máy chiếu chưa online. Danh sách vẫn được giữ.');
+      return;
+    }
+    fetch(CLOUD_API_BASE + '/setlist', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        roomId: state.cloudRoomId,
+        setlist: { id: payload.id, name: payload.name, from: { name: state.name, role: state.role }, items: payload.items }
+      })
+    })
+      .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+      .then(function (res) {
+        $('slSend').disabled = false;
+        if (res.ok && res.j && res.j.ok) finishSetlistSent(true);
+        else toast('band', '', 'Chưa gửi được — thử lại sau.');
+      })
+      .catch(function () {
+        $('slSend').disabled = false;
+        toast('band', '', 'Không có mạng — thử lại khi có kết nối.');
+      });
   }
 
   $('slToggleBtn') && $('slToggleBtn').addEventListener('click', function () {

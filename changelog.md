@@ -4,6 +4,24 @@ Tất cả các thay đổi và cập nhật quan trọng của dự án đượ
 
 ## [Unreleased] - Kênh Band LAN (P1 + P2 + P2.5 + P4)
 
+### M2 — hộp thư setlist cloud khi laptop tắt hẳn (2026-09-15)
+- Hạ tầng mới `cloud/worker/`: Cloudflare Worker + Workers KV (`band-comm-relay`),
+  domain riêng `api.worship-official.link` (Route 53 trỏ NS sang Cloudflare, DNS/route
+  thật nằm ở Cloudflare; deploy kiểu Custom Domain để tự tạo DNS record). Endpoints
+  `POST/GET /setlist`, `POST/GET /setlist/ack`, `GET /health`. Verify thật qua
+  `curl`/test script — POST/GET/ack đều PASS trên KV thật.
+- `src/band-comm/store.js`: thêm `cloudRoomId` (UUID sinh 1 lần, ổn định qua restart
+  và qua nâng cấp từ config cũ chưa có field này — đã test cả 2 kịch bản).
+- `src/band-comm/server.js`: `ingestSetlist()` — điểm nhận chung cho setlist từ LAN
+  lẫn cloud (idempotent theo `id`, không trùng dù về từ 2 đường). `pollCloud()` chạy
+  lúc `start()` (vét hộp thư sau khi laptop mở lại) + định kỳ 60s trong lúc chạy, ack
+  lại từng id đã nhận. `POST /api/join` trả thêm `cloudRoomId`.
+- `comm/mobile/app.js`: `sendSetlist()` thử LAN trước; lỗi mạng (không phải lỗi
+  validate) mới fallback gửi thẳng lên Worker bằng `state.cloudRoomId`. Toast báo rõ
+  khi gửi qua đường cloud.
+- Còn lại của M2: chuyển Cloudflare Tunnel từ Quick Tunnel sang Named Tunnel gắn
+  `band.worship-official.link`.
+
 ### M1b — setlist LAN: UI soạn trên điện thoại (2026-09-09)
 - `comm/mobile`: nút "📋 Setlist" ở topbar → section soạn: danh sách bài đã chọn
   (nút ↑ ↓ ×), ô tìm bài (khớp không dấu theo tiêu đề + lời), chạm để thêm/bỏ,

@@ -26,6 +26,12 @@ const HEARTBEAT_MS = 15000;    // WS ping to keep the connection alive through N
 const PRESENCE_STALE_MS = 25000;
 const DUP_WINDOW_MS = 5000;    // same button/text from same phone → ignored
 
+// Hộp thư setlist khi laptop tắt hẳn (M2, xem cloud/worker). Kéo về lúc
+// server khởi động + định kỳ trong khi chạy, phòng khi phone tự fallback lên
+// cloud vì mất LAN thoáng qua dù laptop vẫn đang mở.
+const CLOUD_API_BASE = 'https://api.worship-official.link';
+const CLOUD_POLL_MS = 60000;
+
 const MIME = {
   '.html': 'text/html; charset=utf-8',
   '.js': 'text/javascript; charset=utf-8',
@@ -99,6 +105,44 @@ function createCommServer({ store, onEvent, onPresence, getLibraryIndex, onSetli
   const ring = [];           // { id, env }
   const setlists = [];             // setlist gửi từ điện thoại trong phiên (RAM)
   const receivedSetlistIds = new Set(); // idempotent theo setlist.id
+  let cloudPollTimer = null;
+
+  // Điểm nhận duy nhất cho 1 setlist đã hợp lệ, dù đến từ LAN (POST /api/setlist)
+  // hay kéo về từ hộp thư cloud — cùng idempotent theo id, cùng phát ra onSetlist.
+  function ingestSetlist(sl) {
+    if (!sl || typeof sl.id !== 'string' || !sl.id || receivedSetlistIds.has(sl.id)) return false;
+    receivedSetlistIds.add(sl.id);
+    setlists.push(sl);
+    if (setlists.length > 30) setlists.shift();
+    if (onSetlist) { try { onSetlist(sl); } catch (e) {} }
+    return true;
+  }
+
+  async function pollCloud() {
+    const cfg = store.load();
+    const roomId = cfg.cloudRoomId;
+    if (!roomId) return;
+    let data;
+    try {
+      const r = await fetch(`${CLOUD_API_BASE}/setlist?roomId=${encodeURIComponent(roomId)}`, { signal: AbortSignal.timeout(8000) });
+      if (!r.ok) return;
+      data = await r.json();
+    } catch (e) { return; } // cloud không tới được — LAN vẫn hoạt động bình thường, im lặng bỏ qua
+    const list = (data && Array.isArray(data.setlists)) ? data.setlists : [];
+    const newIds = [];
+    for (const sl of list) {
+      if (sl && Array.isArray(sl.items) && sl.items.length && ingestSetlist(sl)) newIds.push(sl.id);
+    }
+    if (!newIds.length) return;
+    console.log(`[BandComm] Đã nhận ${newIds.length} setlist từ hộp thư cloud.`);
+    for (const id of newIds) {
+      fetch(`${CLOUD_API_BASE}/setlist/ack`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ roomId, id })
+      }).catch(() => {});
+    }
+  }
 
   // token = clientId.issued.<b64url(name)>.role.<hmac(payload)>
   // Name + role travel inside the token so a phone that was evicted server-side
@@ -240,7 +284,8 @@ function createCommServer({ store, onEvent, onPresence, getLibraryIndex, onSetli
         operatorReplies: cfg.operatorReplies,
         profile: restore || null,
         gallery: galleryManifest(),
-        hasUploaderPin: !!cfg.room.uploaderPin
+        hasUploaderPin: !!cfg.room.uploaderPin,
+        cloudRoomId: cfg.cloudRoomId
       });
     }
 
@@ -374,12 +419,7 @@ function createCommServer({ store, onEvent, onPresence, getLibraryIndex, onSetli
         ts: Date.now(),
         items
       };
-      if (!receivedSetlistIds.has(sl.id)) {
-        receivedSetlistIds.add(sl.id);
-        setlists.push(sl);
-        if (setlists.length > 30) setlists.shift();
-        if (onSetlist) { try { onSetlist(sl); } catch (e) {} }
-      }
+      ingestSetlist(sl);
       return sendJson(res, 200, { ok: true, id: sl.id });
     }
 
@@ -546,6 +586,8 @@ function createCommServer({ store, onEvent, onPresence, getLibraryIndex, onSetli
           console.log(`[BandComm] chốt cổng ${port} (đã lưu vào band-comm.json — QR sẽ ổn định từ lần sau)`);
         }
         startHeartbeat();
+        pollCloud().catch(() => {});
+        cloudPollTimer = setInterval(() => { pollCloud().catch(() => {}); }, CLOUD_POLL_MS);
         resolve(getStatus());
       });
     });
@@ -556,6 +598,7 @@ function createCommServer({ store, onEvent, onPresence, getLibraryIndex, onSetli
   function stop() {
     if (!running && !server) return;
     if (hb) { clearInterval(hb); hb = null; }
+    if (cloudPollTimer) { clearInterval(cloudPollTimer); cloudPollTimer = null; }
     for (const c of clients.values()) { if (c.ws) { try { c.ws.close(1001); } catch (e) {} } }
     clients.clear();
     ring.length = 0;

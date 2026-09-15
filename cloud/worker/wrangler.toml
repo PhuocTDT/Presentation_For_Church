@@ -1,0 +1,15 @@
+name = "band-comm-relay"
+main = "src/worker.js"
+compatibility_date = "2026-01-01"
+
+# Điền id sau khi chạy: npx wrangler kv namespace create SETLISTS
+kv_namespaces = [
+  { binding = "SETLISTS", id = "65d8f621e90a400c8e2758bc19ff9bb2" }
+]
+
+# Không cần workers.dev — Worker chỉ nghe trên domain riêng.
+workers_dev = false
+
+[[routes]]
+pattern = "api.worship-official.link"
+custom_domain = true
