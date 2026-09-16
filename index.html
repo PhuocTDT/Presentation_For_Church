@@ -1141,16 +1141,169 @@
       #bandPanel .bp-conn .bp-purl input:focus { border-color: #2563a8; outline: none; }
       #bandPanel .bp-conn .bp-wizard-hint-in-conn { font-size: .74rem; color: #8a93a3; margin: -4px 0 10px; }
 
-      /* Wizard Named Tunnel — sống trong #settings-modal (File -> Cài đặt),
-         nên theo style "classic Windows" của modal đó, không dùng .bp-* của
-         Kênh Band (ui-guidelines: không trộn style giữa các khu vực). */
-      #settings-modal .bp-wizard {
-        margin-top: 8px; padding: 8px; border: 1px dashed #94a3b8; border-radius: 4px; background: #f8fafc;
+      /* ===== Settings modal v2 — sidebar + danh mục, màu đồng bộ theo
+         Tailwind config của app (primary #5048e5, background-light/dark).
+         Scope toàn bộ dưới #settings-modal, đổi theme qua [data-theme] do
+         JS set (đồng bộ globalSettings.theme — KHÔNG dùng prefers-color-scheme
+         vì app đã có công tắc theme riêng, không theo hệ điều hành). ===== */
+      #settings-modal {
+        --stg-accent: #5048e5; --stg-accent-dim: #423bc4; --stg-accent-soft: rgba(80,72,229,.16);
+        --stg-accent-contrast: #ffffff; --stg-danger: #dc4c4c;
+        --stg-bg: #121121; --stg-surface: #1a1830; --stg-surface-2: #221f3d; --stg-surface-3: #2b2749;
+        --stg-border: #332f54; --stg-border-soft: #26233f;
+        --stg-text: #f1f0f6; --stg-text-dim: #a8a4c0; --stg-text-faint: #6d6890;
+        --stg-shadow: rgba(0,0,0,.5);
       }
-      #settings-modal .bp-wizard-p { font-size: 10px; color: #475569; margin: 0 0 6px; line-height: 1.4; }
-      #settings-modal .bp-wizard-status { font-size: 10px; margin-top: 6px; white-space: pre-wrap; word-break: break-word; }
-      #settings-modal .bp-wizard-status.ok { color: #15803d; }
-      #settings-modal .bp-wizard-status.err { color: #b91c1c; }
+      #settings-modal[data-theme="light"] {
+        --stg-accent-soft: rgba(80,72,229,.10);
+        --stg-bg: #f6f6f8; --stg-surface: #ffffff; --stg-surface-2: #f1f1f5; --stg-surface-3: #e7e7ee;
+        --stg-border: #dcdce6; --stg-border-soft: #ececf2;
+        --stg-text: #1c1b2e; --stg-text-dim: #5c5a75; --stg-text-faint: #8b899f;
+        --stg-shadow: rgba(20,20,35,.12);
+      }
+      #settings-modal .stg-modal {
+        width: 100%; max-width: 860px; height: min(680px, 92vh);
+        background: var(--stg-surface); border: 1px solid var(--stg-border); border-radius: 14px;
+        box-shadow: 0 24px 60px var(--stg-shadow);
+        display: flex; flex-direction: column; overflow: hidden;
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; color: var(--stg-text);
+      }
+      #settings-modal .stg-head {
+        display: flex; align-items: center; gap: 10px; padding: 16px 18px;
+        border-bottom: 1px solid var(--stg-border-soft); flex-shrink: 0;
+      }
+      #settings-modal .stg-head .stg-icon {
+        width: 30px; height: 30px; border-radius: 8px; background: var(--stg-accent-soft);
+        display: flex; align-items: center; justify-content: center; color: var(--stg-accent); flex-shrink: 0;
+      }
+      #settings-modal .stg-head h1 { font-size: 15px; font-weight: 600; margin: 0; flex: 1; letter-spacing: -.01em; }
+      #settings-modal .stg-head .stg-sub { font-size: 12px; color: var(--stg-text-faint); margin-top: 1px; }
+      #settings-modal .stg-close {
+        width: 28px; height: 28px; border-radius: 7px; border: none; background: transparent; color: var(--stg-text-dim);
+        display: flex; align-items: center; justify-content: center; cursor: pointer;
+        transition: background .15s, color .15s; flex-shrink: 0;
+      }
+      #settings-modal .stg-close:hover { background: var(--stg-surface-3); color: var(--stg-text); }
+
+      #settings-modal .stg-body { flex: 1; display: flex; min-height: 0; }
+      #settings-modal .stg-sidebar {
+        width: 208px; flex-shrink: 0; border-right: 1px solid var(--stg-border-soft);
+        padding: 12px; display: flex; flex-direction: column; gap: 10px;
+      }
+      #settings-modal .stg-search {
+        display: flex; align-items: center; gap: 7px; background: var(--stg-surface-2);
+        border: 1px solid var(--stg-border); border-radius: 6px; padding: 7px 9px; color: var(--stg-text-faint);
+      }
+      #settings-modal .stg-search svg { flex-shrink: 0; }
+      #settings-modal .stg-search input {
+        background: none; border: none; outline: none; color: var(--stg-text);
+        font-family: inherit; font-size: 12.5px; width: 100%;
+      }
+      #settings-modal .stg-search input::placeholder { color: var(--stg-text-faint); }
+      #settings-modal .stg-nav { display: flex; flex-direction: column; gap: 2px; }
+      #settings-modal .stg-nav-item {
+        display: flex; align-items: center; gap: 9px; padding: 7px 9px; border-radius: 6px;
+        color: var(--stg-text-dim); font-size: 13px; font-weight: 500; cursor: pointer;
+        border: none; background: none; text-align: left; width: 100%; transition: background .15s, color .15s;
+      }
+      #settings-modal .stg-nav-item svg { flex-shrink: 0; opacity: .8; }
+      #settings-modal .stg-nav-item:hover { background: var(--stg-surface-2); color: var(--stg-text); }
+      #settings-modal .stg-nav-item.active { background: var(--stg-accent-soft); color: var(--stg-accent); }
+      #settings-modal .stg-nav-item.active svg { opacity: 1; }
+      #settings-modal .stg-sidebar-footer {
+        margin-top: auto; padding: 9px; font-size: 11px; color: var(--stg-text-faint);
+        border-top: 1px solid var(--stg-border-soft); line-height: 1.5;
+      }
+
+      #settings-modal .stg-content { flex: 1; overflow-y: auto; padding: 22px 26px 10px; min-width: 0; }
+      #settings-modal .stg-content::-webkit-scrollbar { width: 9px; }
+      #settings-modal .stg-content::-webkit-scrollbar-thumb { background: var(--stg-surface-3); border-radius: 5px; }
+      #settings-modal .stg-content::-webkit-scrollbar-track { background: transparent; }
+      #settings-modal .stg-pane { display: none; }
+      #settings-modal .stg-pane.active { display: block; animation: stgFade .15s ease; }
+      @keyframes stgFade { from { opacity: 0; transform: translateY(3px); } to { opacity: 1; transform: translateY(0); } }
+      #settings-modal .stg-pane-title { font-size: 16px; font-weight: 600; margin: 0 0 3px; letter-spacing: -.01em; }
+      #settings-modal .stg-pane-desc { font-size: 12.5px; color: var(--stg-text-faint); margin: 0 0 22px; }
+      #settings-modal .stg-section { margin-bottom: 26px; }
+      #settings-modal .stg-section-label {
+        font-size: 12px; font-weight: 600; color: var(--stg-text-dim); margin: 0 0 12px;
+        padding-bottom: 8px; border-bottom: 1px solid var(--stg-border-soft);
+      }
+      #settings-modal .stg-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; padding: 11px 0; }
+      #settings-modal .stg-row + .stg-row { border-top: 1px solid var(--stg-border-soft); }
+      #settings-modal .stg-row-text { flex: 1; min-width: 0; }
+      #settings-modal .stg-row-text .stg-label { font-size: 13px; font-weight: 500; color: var(--stg-text); }
+      #settings-modal .stg-row-text .stg-help { font-size: 11.5px; color: var(--stg-text-faint); margin-top: 3px; line-height: 1.5; }
+      #settings-modal .stg-row-control { flex-shrink: 0; display: flex; align-items: center; gap: 8px; }
+
+      #settings-modal select.stg-input, #settings-modal input[type="text"].stg-input,
+      #settings-modal input[type="number"].stg-input, #settings-modal input[type="url"].stg-input {
+        font-family: inherit; font-size: 13px; color: var(--stg-text);
+        background: var(--stg-surface-2); border: 1px solid var(--stg-border); border-radius: 6px;
+        padding: 7px 10px; outline: none; transition: border-color .15s, background .15s;
+      }
+      #settings-modal select.stg-input:hover, #settings-modal input.stg-input:hover { border-color: var(--stg-text-faint); }
+      #settings-modal select.stg-input:focus, #settings-modal input.stg-input:focus { border-color: var(--stg-accent); background: var(--stg-surface-3); }
+      #settings-modal select.stg-input {
+        min-width: 190px; appearance: none; padding-right: 30px;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%239A9DA6' stroke-width='2.2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+        background-repeat: no-repeat; background-position: right 10px center; cursor: pointer;
+      }
+      #settings-modal input[type="number"].stg-input { width: 72px; text-align: right; }
+      #settings-modal input[type="text"].stg-input, #settings-modal input[type="url"].stg-input { width: 100%; }
+      #settings-modal .stg-field-pair { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
+      #settings-modal .stg-num-with-color { display: flex; align-items: center; gap: 8px; }
+      #settings-modal .stg-swatch {
+        width: 30px; height: 30px; border-radius: 6px; border: 1px solid var(--stg-border);
+        cursor: pointer; padding: 0; background: none; position: relative; overflow: hidden; flex-shrink: 0;
+      }
+      #settings-modal .stg-swatch input[type="color"] { position: absolute; inset: -4px; border: none; cursor: pointer; width: 200%; height: 200%; }
+
+      #settings-modal .stg-toggle { position: relative; width: 38px; height: 22px; flex-shrink: 0; }
+      #settings-modal .stg-toggle input { opacity: 0; width: 0; height: 0; }
+      #settings-modal .stg-toggle .stg-track {
+        position: absolute; inset: 0; background: var(--stg-surface-3); border: 1px solid var(--stg-border);
+        border-radius: 999px; cursor: pointer; transition: background .15s, border-color .15s;
+      }
+      #settings-modal .stg-toggle .stg-track::after {
+        content: ""; position: absolute; width: 16px; height: 16px; left: 2px; top: 2px;
+        background: var(--stg-text-dim); border-radius: 50%; transition: transform .18s, background .15s;
+      }
+      #settings-modal .stg-toggle input:checked + .stg-track { background: var(--stg-accent-soft); border-color: var(--stg-accent-dim); }
+      #settings-modal .stg-toggle input:checked + .stg-track::after { transform: translateX(16px); background: var(--stg-accent); }
+
+      #settings-modal .stg-box-grid { display: grid; grid-template-columns: repeat(4, 52px); gap: 8px; text-align: center; }
+      #settings-modal .stg-box-grid .stg-cell input { width: 100%; text-align: center; padding: 6px 4px; }
+      #settings-modal .stg-box-grid .stg-cell label { display: block; font-size: 10px; color: var(--stg-text-faint); margin-top: 4px; letter-spacing: .02em; }
+
+      #settings-modal .stg-btn {
+        font-family: inherit; font-size: 12.5px; font-weight: 500; padding: 8px 13px; border-radius: 6px;
+        border: 1px solid var(--stg-border); background: var(--stg-surface-2); color: var(--stg-text);
+        cursor: pointer; display: inline-flex; align-items: center; gap: 7px; transition: background .15s, border-color .15s;
+      }
+      #settings-modal .stg-btn:hover { background: var(--stg-surface-3); border-color: var(--stg-text-faint); }
+      #settings-modal .stg-btn-primary { background: var(--stg-accent); border-color: var(--stg-accent); color: var(--stg-accent-contrast); font-weight: 600; }
+      #settings-modal .stg-btn-primary:hover { background: var(--stg-accent-dim); border-color: var(--stg-accent-dim); }
+
+      #settings-modal .stg-path-row { display: flex; gap: 8px; align-items: center; width: 100%; }
+      #settings-modal .stg-path-row input { flex: 1; color: var(--stg-text-dim); }
+      #settings-modal .stg-plain .stg-label { font-size: 13px; font-weight: 500; margin-bottom: 4px; }
+      #settings-modal .stg-plain .stg-help { font-size: 12px; color: var(--stg-text-faint); margin-bottom: 12px; line-height: 1.55; }
+
+      #settings-modal .stg-footer {
+        display: flex; justify-content: flex-end; gap: 9px; padding: 14px 20px;
+        border-top: 1px solid var(--stg-border-soft); flex-shrink: 0;
+      }
+
+      /* Wizard Named Tunnel — nằm trong tab Media & Band, dùng chung palette
+         mới ở trên thay vì màu cứng như trước (đồng bộ dark/light). */
+      #settings-modal .bp-wizard {
+        margin-top: 10px; padding: 10px; border: 1px dashed var(--stg-border); border-radius: 8px; background: var(--stg-surface-2);
+      }
+      #settings-modal .bp-wizard-p { font-size: 11.5px; color: var(--stg-text-dim); margin: 0 0 8px; line-height: 1.5; }
+      #settings-modal .bp-wizard-status { font-size: 11.5px; margin-top: 8px; white-space: pre-wrap; word-break: break-word; color: var(--stg-text-dim); }
+      #settings-modal .bp-wizard-status.ok { color: #34d399; }
+      #settings-modal .bp-wizard-status.err { color: #f87171; }
 
       #bandPanel .bp-error {
         margin: 8px 12px 0; padding: 10px 12px; border-radius: 10px;
@@ -2098,283 +2251,353 @@
         </div>
     </div>
 
-    <!-- Settings Modal -->
+    <!-- Settings Modal v2 — sidebar + danh mục -->
     <div class="modal-overlay" id="settings-modal">
-        <div class="win-modal-container" style="width: 500px; height: auto; max-height: 80vh;">
-            <div class="bg-white px-2 py-1 flex items-center justify-between border-b border-win-border shrink-0">
-                <div class="flex items-center gap-2">
-                    <span class="material-symbols-outlined text-sm">settings</span>
-                    <span class="text-[11px] font-semibold">Cài đặt hệ thống</span>
-                </div>
-                <button
-                    class="w-6 h-5 hover:bg-red-500 hover:text-white flex items-center justify-center transition-colors"
-                    onclick="closeSettings()">
-                    <span class="material-symbols-outlined text-xs">close</span>
-                </button>
-            </div>
-            <div class="p-4 bg-white space-y-4 overflow-y-auto custom-scrollbar">
-                <!-- Theme -->
-                <div>
-                    <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Giao diện</label>
-                    <select id="settings-theme"
-                        class="w-full text-[12px] border border-win-border px-2 py-1 focus:outline-none">
-                        <option value="dark">Dark Mode</option>
-                        <option value="light">Light Mode</option>
-                    </select>
-                </div>
-                <div>
-                    <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">GPU Acceleration</label>
-                    <select id="settings-gpu-acceleration"
-                        class="w-full text-[12px] border border-win-border px-2 py-1 focus:outline-none">
-                        <option value="on">Bật</option>
-                        <option value="off">Tắt</option>
-                    </select>
-                    <div class="text-[10px] text-slate-500 mt-1">Cần mở lại ứng dụng để áp dụng thay đổi.</div>
-                </div>
-                <div>
-                    <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Màn hình Live &
-                        Monitor</label>
-                    <div class="space-y-2">
-                        <select id="settings-show-next-verse"
-                            class="w-full text-[12px] border border-win-border px-2 py-1 focus:outline-none">
-                            <option value="on">Bật hiển thị câu tiếp theo</option>
-                            <option value="off">Tắt hiển thị câu tiếp theo</option>
-                        </select>
-                        <select id="settings-allow-single-display-live"
-                            class="w-full text-[12px] border border-win-border px-2 py-1 focus:outline-none">
-                            <option value="on">Bật Monitor khi không có màn hình phụ</option>
-                            <option value="off">Chỉ cho phép khi có màn hình phụ</option>
-                        </select>
-                    </div>
-                </div>
-                <div>
-                    <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Tự co chữ khi lời
-                        dài</label>
-                    <select id="settings-auto-fit-text"
-                        class="w-full text-[12px] border border-win-border px-2 py-1 focus:outline-none">
-                        <option value="on">Bật tự giảm font để không tràn khung</option>
-                        <option value="off">Tắt, giữ nguyên cỡ chữ gốc</option>
-                    </select>
-                    <div class="text-[10px] text-slate-500 mt-1">Áp dụng cho Preview, Live, Media monitor và Editor
-                        preview.</div>
-                </div>
-                <!-- Media Path -->
-                <div>
-                    <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Thư mục Media</label>
-                    <div class="flex gap-2">
-                        <input type="text" id="settings-media-path"
-                            class="flex-1 text-[11px] border border-win-border px-2 py-1 bg-slate-50" readonly>
-                        <button class="win-button text-[11px]" onclick="selectMediaFolder()">Chọn...</button>
-                    </div>
-                </div>
-                <!-- Kênh Band: Named Tunnel (domain riêng) -->
-                <div>
-                    <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Kênh Band — Tên Cloudflare Named Tunnel</label>
-                    <input id="bpTunnelName" type="text" spellcheck="false" autocomplete="off"
-                        class="w-full text-[12px] border border-win-border px-2 py-1 focus:outline-none"
-                        placeholder="VD: blessing-church — trống = dùng Quick Tunnel (URL đổi mỗi lần chạy)">
-                    <div class="text-[10px] text-slate-500 mt-1">Tự chạy cùng app khi có giá trị. Cần để bật tính năng Setlist (soạn từ xa).</div>
-                    <button class="win-button text-[11px] mt-2" id="bpWizOpenBtn" type="button">⚙️ Thiết lập domain riêng tự động</button>
-                    <div class="bp-wizard hidden" id="bpWizard">
-                        <div id="bpWizStep1">
-                            <p class="bp-wizard-p">Domain phải <b>đã trỏ Nameserver sang Cloudflare</b> trước — làm ở nơi bạn mua domain (bước này app không tự làm thay được). Xong bước đó rồi mới đăng nhập ở đây.</p>
-                            <button class="win-button text-[11px]" id="bpWizLoginBtn" type="button">1. Đăng nhập Cloudflare</button>
-                            <div class="bp-wizard-status" id="bpWizLoginStatus"></div>
-                        </div>
-                        <div id="bpWizStep2" class="hidden">
-                            <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Tên tunnel (đặt tuỳ ý)</label>
-                            <input id="bpWizName" type="text" spellcheck="false" autocomplete="off" placeholder="vd: my-church-band"
-                                class="w-full text-[12px] border border-win-border px-2 py-1 mb-2 focus:outline-none">
-                            <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Domain / subdomain sẽ dùng</label>
-                            <input id="bpWizDomain" type="text" spellcheck="false" autocomplete="off" placeholder="vd: band.mychurch.org"
-                                class="w-full text-[12px] border border-win-border px-2 py-1 mb-2 focus:outline-none">
-                            <button class="win-button text-[11px]" id="bpWizCreateBtn" type="button">Tạo &amp; Kết nối</button>
-                            <div class="bp-wizard-status" id="bpWizCreateStatus"></div>
-                        </div>
-                    </div>
-                </div>
-                <!-- Default Font -->
-                <div class="grid grid-cols-2 gap-3">
-                    <div>
-                        <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Font Songs mặc
-                            định</label>
-                        <select id="settings-font-family-song"
-                            class="w-full text-[12px] border border-win-border px-2 py-1 focus:outline-none">
-                            <option value="Times New Roman">Times New Roman</option>
-                            <option value="Arial">Arial</option>
-                            <option value="Tahoma">Tahoma</option>
-                            <option value="CMG Sans">CMG Sans</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Font Bible mặc
-                            định</label>
-                        <select id="settings-font-family-bible"
-                            class="w-full text-[12px] border border-win-border px-2 py-1 focus:outline-none">
-                            <option value="Times New Roman">Times New Roman</option>
-                            <option value="Arial">Arial</option>
-                            <option value="Tahoma">Tahoma</option>
-                            <option value="CMG Sans">CMG Sans</option>
-                        </select>
-                    </div>
-                </div>
-                <div class="grid grid-cols-2 gap-3">
-                    <div>
-                        <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Size mặc định</label>
-                        <input type="number" id="settings-font-size"
-                            class="w-full text-[12px] border border-win-border px-2 py-1 focus:outline-none" value="80">
-                    </div>
-                    <div>
-                        <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Viền chữ mặc
-                            định</label>
-                        <div class="flex gap-2">
-                            <input type="number" id="settings-text-stroke-width"
-                                class="w-20 text-[12px] border border-win-border px-2 py-1 focus:outline-none" min="0"
-                                value="5">
-                            <input type="color" id="settings-text-stroke-color"
-                                class="flex-1 h-8 border border-win-border p-0 focus:outline-none" value="#000000">
-                        </div>
-                    </div>
-                </div>
-                <!-- Default Style -->
-                <div class="grid grid-cols-2 gap-3">
-                    <div>
-                        <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Màu chữ mặc
-                            định</label>
-                        <input type="color" id="settings-font-color"
-                            class="w-full h-8 border border-win-border p-0 focus:outline-none" value="#ffffff">
-                    </div>
-                    <div>
-                        <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Căn lề mặc định</label>
-                        <select id="settings-text-align"
-                            class="w-full text-[12px] border border-win-border px-2 py-1 focus:outline-none">
-                            <option value="left">Trái</option>
-                            <option value="center" selected>Giữa</option>
-                            <option value="right">Phải</option>
-                        </select>
-                    </div>
-                </div>
-                <div class="grid grid-cols-2 gap-3">
-                    <div>
-                        <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Margin chữ
-                            (T,R,B,L)</label>
-                        <div class="grid grid-cols-4 gap-1">
-                            <input type="number" id="settings-margin-top"
-                                class="w-full text-[11px] border border-win-border px-1 py-1 focus:outline-none"
-                                value="0">
-                            <input type="number" id="settings-margin-right"
-                                class="w-full text-[11px] border border-win-border px-1 py-1 focus:outline-none"
-                                value="0">
-                            <input type="number" id="settings-margin-bottom"
-                                class="w-full text-[11px] border border-win-border px-1 py-1 focus:outline-none"
-                                value="0">
-                            <input type="number" id="settings-margin-left"
-                                class="w-full text-[11px] border border-win-border px-1 py-1 focus:outline-none"
-                                value="0">
-                        </div>
-                    </div>
-                    <div>
-                        <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Padding chữ
-                            (T,R,B,L)</label>
-                        <div class="grid grid-cols-4 gap-1">
-                            <input type="number" id="settings-padding-top"
-                                class="w-full text-[11px] border border-win-border px-1 py-1 focus:outline-none"
-                                value="0">
-                            <input type="number" id="settings-padding-right"
-                                class="w-full text-[11px] border border-win-border px-1 py-1 focus:outline-none"
-                                value="0">
-                            <input type="number" id="settings-padding-bottom"
-                                class="w-full text-[11px] border border-win-border px-1 py-1 focus:outline-none"
-                                value="0">
-                            <input type="number" id="settings-padding-left"
-                                class="w-full text-[11px] border border-win-border px-1 py-1 focus:outline-none"
-                                value="0">
-                        </div>
-                    </div>
-                </div>
-                <div class="border-t border-slate-100 pt-3">
-                    <label class="block text-[10px] font-bold text-slate-500 uppercase mb-2">Style Templates</label>
-                    <div class="text-[11px] text-slate-500">Tạo preset style để áp nhanh cho từng item trong Schedule.
-                    </div>
-                    <div class="mt-3">
-                        <button class="win-button text-[11px] text-slate-900" onclick="openStyleTemplateManager()">Thêm
-                            Template Style</button>
-                    </div>
-                </div>
-                <!-- Shortcuts -->
-                <div class="border-t border-slate-100 pt-3">
-                    <label class="block text-[10px] font-bold text-slate-500 uppercase mb-2">Phím tắt (Keyboard
-                        Shortcuts)</label>
-                    <div class="text-[11px] text-slate-500">Cấu hình toàn bộ phím tắt trong hộp thoại bên dưới.</div>
-                    <div class="mt-3">
-                        <button class="win-button text-[11px] text-slate-900" onclick="openShortcutsModal()">Phím tắt
-                            nâng cao...</button>
-                    </div>
-                </div>
-                <div class="border-t border-slate-100 pt-3">
-                    <label class="block text-[10px] font-bold text-slate-500 uppercase mb-2">Tìm kiếm & thay thế dữ
-                        liệu</label>
-                    <div class="text-[11px] text-slate-500 mb-3">Sửa hàng loạt lỗi chính tả trong Songs và các bản dịch
-                        Bible XML đã lưu.</div>
-                    <div class="grid grid-cols-2 gap-3">
-                        <div>
-                            <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Tìm</label>
-                            <input type="text" id="bulk-replace-find"
-                                class="w-full text-[12px] border border-win-border px-2 py-1 focus:outline-none"
-                                placeholder="Ví dụ: nhẳc lên">
-                        </div>
-                        <div>
-                            <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Thay bằng</label>
-                            <input type="text" id="bulk-replace-replace"
-                                class="w-full text-[12px] border border-win-border px-2 py-1 focus:outline-none"
-                                placeholder="Ví dụ: nhắc lên">
-                        </div>
-                    </div>
-                    <div class="grid grid-cols-3 gap-3 mt-3">
-                        <div>
-                            <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Phạm vi</label>
-                            <select id="bulk-replace-target"
-                                class="w-full text-[12px] border border-win-border px-2 py-1 focus:outline-none"
-                                onchange="syncBulkReplaceFieldOptions()">
-                                <option value="songs">Songs</option>
-                                <option value="bible">Bible XML</option>
-                                <option value="all">Songs + Bible XML</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Phần dữ
-                                liệu</label>
-                            <select id="bulk-replace-field"
-                                class="w-full text-[12px] border border-win-border px-2 py-1 focus:outline-none">
-                                <option value="all">Tiêu đề + Lời</option>
-                                <option value="title">Chỉ tiêu đề</option>
-                                <option value="lyrics">Chỉ lời / nội dung</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Hoa/thường</label>
-                            <select id="bulk-replace-case-sensitive"
-                                class="w-full text-[12px] border border-win-border px-2 py-1 focus:outline-none">
-                                <option value="off">Không phân biệt</option>
-                                <option value="on">Phân biệt</option>
-                            </select>
-                        </div>
-                    </div>
-                    <div id="bulk-replace-summary" class="text-[10px] text-slate-500 mt-3 min-h-[16px]">Chưa có preview.
-                    </div>
-                    <div class="mt-3 flex justify-end gap-2">
-                        <button class="win-button text-[11px] text-slate-900"
-                            onclick="previewBulkReplace()">Preview</button>
-                        <button class="win-button text-[11px] text-slate-900" onclick="applyBulkReplace()">Replace
-                            All</button>
-                    </div>
-                </div>
-            </div>
-            <footer class="bg-[#f0f0f0] border-t border-white h-12 shrink-0 flex items-center justify-end px-3 gap-2">
-                <button class="win-button text-[11px] text-slate-900" onclick="saveSettings()">Save</button>
-                <button class="win-button text-[11px] text-slate-900" onclick="closeSettings()">Cancel</button>
-            </footer>
+      <div class="stg-modal">
+        <div class="stg-head">
+          <div class="stg-icon">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+          </div>
+          <div>
+            <h1>Cài đặt</h1>
+            <div class="stg-sub">Tuỳ chỉnh hiển thị, media và phím tắt</div>
+          </div>
+          <button class="stg-close" id="stgThemeToggle" type="button" title="Chuyển giao diện sáng / tối">
+            <svg class="stg-icon-sun" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+            <svg class="stg-icon-moon hidden" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3 7 7 0 0 0 21 12.8Z"/></svg>
+          </button>
+          <button class="stg-close" type="button" title="Đóng" onclick="closeSettings()">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+          </button>
         </div>
+
+        <div class="stg-body">
+          <div class="stg-sidebar">
+            <div class="stg-search">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+              <input id="stgSearchInput" type="text" placeholder="Tìm cài đặt...">
+            </div>
+            <div class="stg-nav" id="stgNavList">
+              <button class="stg-nav-item active" data-tab="chung" type="button">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/></svg>
+                Chung
+              </button>
+              <button class="stg-nav-item" data-tab="hienthi" type="button">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="13" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+                Hiển thị Live
+              </button>
+              <button class="stg-nav-item" data-tab="chuvastyle" type="button">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7V4h16v3M9 20h6M12 4v16"/></svg>
+                Chữ &amp; kiểu mặc định
+              </button>
+              <button class="stg-nav-item" data-tab="media" type="button">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+                Media &amp; Band
+              </button>
+              <button class="stg-nav-item" data-tab="phimtat" type="button">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M6 14h12"/></svg>
+                Phím tắt
+              </button>
+              <button class="stg-nav-item" data-tab="dulieu" type="button">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v14c0 1.66 3.58 3 8 3s8-1.34 8-3V5M4 12c0 1.66 3.58 3 8 3s8-1.34 8-3"/></svg>
+                Dữ liệu
+              </button>
+            </div>
+            <div class="stg-sidebar-footer">Presentation For Church</div>
+          </div>
+
+          <div class="stg-content">
+
+            <!-- CHUNG -->
+            <div class="stg-pane active" id="stg-pane-chung">
+              <h2 class="stg-pane-title">Chung</h2>
+              <p class="stg-pane-desc">Hiệu năng và hành vi tổng thể của ứng dụng.</p>
+              <div class="stg-section">
+                <div class="stg-row" data-search="gpu acceleration tăng tốc đồ hoạ">
+                  <div class="stg-row-text">
+                    <div class="stg-label">Tăng tốc bằng GPU</div>
+                    <div class="stg-help">Cần mở lại ứng dụng để áp dụng thay đổi.</div>
+                  </div>
+                  <div class="stg-row-control">
+                    <label class="stg-toggle">
+                      <input type="checkbox" id="settings-gpu-acceleration" checked>
+                      <span class="stg-track"></span>
+                    </label>
+                  </div>
+                </div>
+                <div class="stg-row" data-search="tự co chữ khi lời dài giảm font">
+                  <div class="stg-row-text">
+                    <div class="stg-label">Tự giảm cỡ chữ khi lời dài</div>
+                    <div class="stg-help">Áp dụng cho Preview, Live, Media monitor và Editor preview.</div>
+                  </div>
+                  <div class="stg-row-control">
+                    <label class="stg-toggle">
+                      <input type="checkbox" id="settings-auto-fit-text" checked>
+                      <span class="stg-track"></span>
+                    </label>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- HIỂN THỊ LIVE -->
+            <div class="stg-pane" id="stg-pane-hienthi">
+              <h2 class="stg-pane-title">Hiển thị Live</h2>
+              <p class="stg-pane-desc">Cách màn hình trình chiếu và màn hình phụ hoạt động.</p>
+              <div class="stg-section">
+                <div class="stg-row" data-search="màn hình live hiển thị câu tiếp theo">
+                  <div class="stg-row-text">
+                    <div class="stg-label">Câu tiếp theo trên màn hình Live</div>
+                    <div class="stg-help">Ẩn hoặc hiện dòng lời sắp tới bên dưới dòng hiện tại.</div>
+                  </div>
+                  <div class="stg-row-control">
+                    <select id="settings-show-next-verse" class="stg-input">
+                      <option value="off">Tắt hiển thị câu tiếp theo</option>
+                      <option value="on">Bật hiển thị câu tiếp theo</option>
+                    </select>
+                  </div>
+                </div>
+                <div class="stg-row" data-search="monitor màn hình phụ">
+                  <div class="stg-row-text">
+                    <div class="stg-label">Monitor khi không có màn hình phụ</div>
+                    <div class="stg-help">Tự bật cửa sổ Monitor nếu chỉ có một màn hình.</div>
+                  </div>
+                  <div class="stg-row-control">
+                    <select id="settings-allow-single-display-live" class="stg-input">
+                      <option value="on">Bật Monitor khi không có màn hình phụ</option>
+                      <option value="off">Chỉ cho phép khi có màn hình phụ</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- CHỮ & STYLE -->
+            <div class="stg-pane" id="stg-pane-chuvastyle">
+              <h2 class="stg-pane-title">Chữ &amp; kiểu mặc định</h2>
+              <p class="stg-pane-desc">Font, cỡ chữ và bố cục áp dụng khi tạo bài hát hoặc Kinh Thánh mới.</p>
+
+              <div class="stg-section">
+                <div class="stg-section-label">Font mặc định</div>
+                <div class="stg-row" data-search="font songs bài hát">
+                  <div class="stg-row-text"><div class="stg-label">Bài hát (Songs)</div></div>
+                  <div class="stg-row-control">
+                    <select id="settings-font-family-song" class="stg-input">
+                      <option value="Times New Roman">Times New Roman</option>
+                      <option value="Arial">Arial</option>
+                      <option value="Tahoma">Tahoma</option>
+                      <option value="CMG Sans">CMG Sans</option>
+                    </select>
+                  </div>
+                </div>
+                <div class="stg-row" data-search="font bible kinh thánh">
+                  <div class="stg-row-text"><div class="stg-label">Kinh Thánh (Bible)</div></div>
+                  <div class="stg-row-control">
+                    <select id="settings-font-family-bible" class="stg-input">
+                      <option value="Times New Roman">Times New Roman</option>
+                      <option value="Arial">Arial</option>
+                      <option value="Tahoma">Tahoma</option>
+                      <option value="CMG Sans">CMG Sans</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              <div class="stg-section">
+                <div class="stg-section-label">Kích thước &amp; màu</div>
+                <div class="stg-row" data-search="size cỡ chữ mặc định">
+                  <div class="stg-row-text"><div class="stg-label">Cỡ chữ mặc định</div></div>
+                  <div class="stg-row-control"><input type="number" id="settings-font-size" class="stg-input" value="80"></div>
+                </div>
+                <div class="stg-row" data-search="viền chữ outline">
+                  <div class="stg-row-text"><div class="stg-label">Viền chữ mặc định</div></div>
+                  <div class="stg-row-control">
+                    <div class="stg-num-with-color">
+                      <input type="number" id="settings-text-stroke-width" class="stg-input" style="width:56px;" min="0" value="5">
+                      <button class="stg-swatch" type="button"><input type="color" id="settings-text-stroke-color" value="#000000"></button>
+                    </div>
+                  </div>
+                </div>
+                <div class="stg-row" data-search="màu chữ mặc định">
+                  <div class="stg-row-text"><div class="stg-label">Màu chữ mặc định</div></div>
+                  <div class="stg-row-control">
+                    <button class="stg-swatch" type="button"><input type="color" id="settings-font-color" value="#ffffff"></button>
+                  </div>
+                </div>
+                <div class="stg-row" data-search="căn lề mặc định">
+                  <div class="stg-row-text"><div class="stg-label">Căn lề mặc định</div></div>
+                  <div class="stg-row-control">
+                    <select id="settings-text-align" class="stg-input">
+                      <option value="left">Trái</option>
+                      <option value="center" selected>Giữa</option>
+                      <option value="right">Phải</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              <div class="stg-section">
+                <div class="stg-section-label">Khoảng cách chữ</div>
+                <div class="stg-row" data-search="margin trên phải dưới trái">
+                  <div class="stg-row-text"><div class="stg-label">Margin</div><div class="stg-help">Trên · Phải · Dưới · Trái</div></div>
+                  <div class="stg-row-control">
+                    <div class="stg-box-grid">
+                      <div class="stg-cell"><input type="number" id="settings-margin-top" class="stg-input" value="0"><label>Trên</label></div>
+                      <div class="stg-cell"><input type="number" id="settings-margin-right" class="stg-input" value="0"><label>Phải</label></div>
+                      <div class="stg-cell"><input type="number" id="settings-margin-bottom" class="stg-input" value="0"><label>Dưới</label></div>
+                      <div class="stg-cell"><input type="number" id="settings-margin-left" class="stg-input" value="0"><label>Trái</label></div>
+                    </div>
+                  </div>
+                </div>
+                <div class="stg-row" data-search="padding trên phải dưới trái">
+                  <div class="stg-row-text"><div class="stg-label">Padding</div><div class="stg-help">Trên · Phải · Dưới · Trái</div></div>
+                  <div class="stg-row-control">
+                    <div class="stg-box-grid">
+                      <div class="stg-cell"><input type="number" id="settings-padding-top" class="stg-input" value="0"><label>Trên</label></div>
+                      <div class="stg-cell"><input type="number" id="settings-padding-right" class="stg-input" value="0"><label>Phải</label></div>
+                      <div class="stg-cell"><input type="number" id="settings-padding-bottom" class="stg-input" value="0"><label>Dưới</label></div>
+                      <div class="stg-cell"><input type="number" id="settings-padding-left" class="stg-input" value="0"><label>Trái</label></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="stg-section">
+                <div class="stg-section-label">Style Templates</div>
+                <div class="stg-plain" data-search="style template preset">
+                  <div class="stg-help" style="margin-bottom:12px;">Tạo preset style để áp nhanh cho từng item trong Schedule.</div>
+                  <button class="stg-btn" type="button" onclick="openStyleTemplateManager()">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+                    Thêm Template Style
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- MEDIA & BAND -->
+            <div class="stg-pane" id="stg-pane-media">
+              <h2 class="stg-pane-title">Media &amp; Band</h2>
+              <p class="stg-pane-desc">Nơi lưu media và kênh kết nối cho tính năng liên lạc với ban nhạc.</p>
+
+              <div class="stg-section">
+                <div class="stg-plain" data-search="thư mục media folder">
+                  <div class="stg-label">Thư mục Media</div>
+                  <div class="stg-help">Ảnh, video và nhạc nền được lưu tại đây.</div>
+                  <div class="stg-path-row">
+                    <input type="text" id="settings-media-path" class="stg-input" readonly>
+                    <button class="stg-btn" type="button" onclick="selectMediaFolder()">Chọn...</button>
+                  </div>
+                </div>
+              </div>
+
+              <div class="stg-section">
+                <div class="stg-plain" data-search="kênh band cloudflare tunnel domain">
+                  <div class="stg-label">Kênh Band — Tên Cloudflare Named Tunnel</div>
+                  <div class="stg-help">Tự chạy cùng app khi có giá trị. Cần để bật tính năng Setlist (soạn từ xa).</div>
+                  <div class="stg-path-row" style="margin-bottom:10px;">
+                    <input type="text" id="bpTunnelName" class="stg-input" spellcheck="false" autocomplete="off"
+                           placeholder="VD: blessing-church — trống = dùng Quick Tunnel (URL đổi mỗi lần chạy)">
+                  </div>
+                  <button class="stg-btn" id="bpWizOpenBtn" type="button">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                    Thiết lập domain riêng tự động
+                  </button>
+                  <div class="bp-wizard hidden" id="bpWizard">
+                    <div id="bpWizStep1">
+                      <p class="bp-wizard-p">Domain phải <b>đã trỏ Nameserver sang Cloudflare</b> trước — làm ở nơi bạn mua domain (bước này app không tự làm thay được). Xong bước đó rồi mới đăng nhập ở đây.</p>
+                      <button class="stg-btn" id="bpWizLoginBtn" type="button">1. Đăng nhập Cloudflare</button>
+                      <div class="bp-wizard-status" id="bpWizLoginStatus"></div>
+                    </div>
+                    <div id="bpWizStep2" class="hidden">
+                      <div class="stg-plain" style="margin-bottom:8px;">
+                        <div class="stg-label" style="margin-bottom:6px;">Tên tunnel (đặt tuỳ ý)</div>
+                        <input id="bpWizName" type="text" class="stg-input" spellcheck="false" autocomplete="off" placeholder="vd: my-church-band" style="margin-bottom:8px;">
+                        <div class="stg-label" style="margin-bottom:6px;">Domain / subdomain sẽ dùng</div>
+                        <input id="bpWizDomain" type="text" class="stg-input" spellcheck="false" autocomplete="off" placeholder="vd: band.mychurch.org">
+                      </div>
+                      <button class="stg-btn stg-btn-primary" id="bpWizCreateBtn" type="button">2. Tạo &amp; Kết nối</button>
+                      <div class="bp-wizard-status" id="bpWizCreateStatus"></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- PHÍM TẮT -->
+            <div class="stg-pane" id="stg-pane-phimtat">
+              <h2 class="stg-pane-title">Phím tắt</h2>
+              <p class="stg-pane-desc">Tuỳ chỉnh phím tắt cho các thao tác thường dùng.</p>
+              <div class="stg-section">
+                <div class="stg-plain" data-search="phím tắt nâng cao keyboard shortcuts">
+                  <div class="stg-help" style="margin-bottom:12px;">Cấu hình toàn bộ phím tắt trong hộp thoại bên dưới.</div>
+                  <button class="stg-btn" type="button" onclick="openShortcutsModal()">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M6 14h12"/></svg>
+                    Phím tắt nâng cao...
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- DỮ LIỆU -->
+            <div class="stg-pane" id="stg-pane-dulieu">
+              <h2 class="stg-pane-title">Dữ liệu</h2>
+              <p class="stg-pane-desc">Công cụ bảo trì dữ liệu Songs và Bible đã lưu.</p>
+              <div class="stg-section">
+                <div class="stg-plain" data-search="tìm kiếm thay thế dữ liệu lỗi chính tả">
+                  <div class="stg-label">Tìm kiếm &amp; thay thế dữ liệu</div>
+                  <div class="stg-help">Sửa hàng loạt lỗi chính tả trong Songs và các bản dịch Bible XML đã lưu.</div>
+                  <div class="stg-row" style="border:none; padding-top:8px;">
+                    <div class="stg-row-text">
+                      <div class="stg-label" style="font-weight:400; font-size:11px; text-transform:uppercase; color:var(--stg-text-faint); margin-bottom:4px;">Tìm</div>
+                      <input type="text" id="bulk-replace-find" class="stg-input" placeholder="Ví dụ: nhẳc lên">
+                    </div>
+                    <div class="stg-row-text">
+                      <div class="stg-label" style="font-weight:400; font-size:11px; text-transform:uppercase; color:var(--stg-text-faint); margin-bottom:4px;">Thay bằng</div>
+                      <input type="text" id="bulk-replace-replace" class="stg-input" placeholder="Ví dụ: nhắc lên">
+                    </div>
+                  </div>
+                  <div class="stg-row" style="border-top:1px solid var(--stg-border-soft); padding-top:11px;">
+                    <div class="stg-row-text">
+                      <div class="stg-label" style="font-weight:400; font-size:11px; text-transform:uppercase; color:var(--stg-text-faint); margin-bottom:4px;">Phạm vi</div>
+                      <select id="bulk-replace-target" class="stg-input" onchange="syncBulkReplaceFieldOptions()" style="width:100%;">
+                        <option value="songs">Songs</option>
+                        <option value="bible">Bible XML</option>
+                        <option value="all">Songs + Bible XML</option>
+                      </select>
+                    </div>
+                    <div class="stg-row-text">
+                      <div class="stg-label" style="font-weight:400; font-size:11px; text-transform:uppercase; color:var(--stg-text-faint); margin-bottom:4px;">Phần dữ liệu</div>
+                      <select id="bulk-replace-field" class="stg-input" style="width:100%;">
+                        <option value="all">Tiêu đề + Lời</option>
+                        <option value="title">Chỉ tiêu đề</option>
+                        <option value="lyrics">Chỉ lời / nội dung</option>
+                      </select>
+                    </div>
+                    <div class="stg-row-text">
+                      <div class="stg-label" style="font-weight:400; font-size:11px; text-transform:uppercase; color:var(--stg-text-faint); margin-bottom:4px;">Hoa/thường</div>
+                      <select id="bulk-replace-case-sensitive" class="stg-input" style="width:100%;">
+                        <option value="off">Không phân biệt</option>
+                        <option value="on">Phân biệt</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div id="bulk-replace-summary" class="stg-help" style="margin-top:10px; min-height:16px;">Chưa có preview.</div>
+                  <div style="margin-top:10px; display:flex; justify-content:flex-end; gap:8px;">
+                    <button class="stg-btn" type="button" onclick="previewBulkReplace()">Preview</button>
+                    <button class="stg-btn stg-btn-primary" type="button" onclick="applyBulkReplace()">Replace All</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <div class="stg-footer">
+          <button class="stg-btn" type="button" onclick="closeSettings()">Huỷ</button>
+          <button class="stg-btn stg-btn-primary" type="button" onclick="saveSettings()">Lưu thay đổi</button>
+        </div>
+      </div>
     </div>
 
     <div class="modal-overlay" id="shortcuts-modal" style="display:none;">
@@ -4167,15 +4390,28 @@
             refreshPreviewAfterScheduleTemplateApply();
         }
 
+        // Đồng bộ theme modal Settings với globalSettings.theme (dùng chung
+        // công tắc theme của app — KHÔNG theo prefers-color-scheme hệ điều
+        // hành, vì app đã có setting riêng, đổi ở đây phải áp dụng cho cả app).
+        function applyStgTheme() {
+            const modal = document.getElementById('settings-modal');
+            const isLight = globalSettings.theme === 'light';
+            modal.setAttribute('data-theme', isLight ? 'light' : 'dark');
+            const sun = modal.querySelector('.stg-icon-sun');
+            const moon = modal.querySelector('.stg-icon-moon');
+            if (sun) sun.classList.toggle('hidden', isLight);
+            if (moon) moon.classList.toggle('hidden', !isLight);
+        }
+
         function openSettings() {
             const modal = document.getElementById('settings-modal');
             ensureSelectHasOption(document.getElementById('settings-font-family-song'), globalSettings.fontFamilySong);
             ensureSelectHasOption(document.getElementById('settings-font-family-bible'), globalSettings.fontFamilyBible);
-            document.getElementById('settings-theme').value = globalSettings.theme;
-            document.getElementById('settings-gpu-acceleration').value = globalSettings.gpuAcceleration === false ? 'off' : 'on';
+            applyStgTheme();
+            document.getElementById('settings-gpu-acceleration').checked = globalSettings.gpuAcceleration !== false;
             document.getElementById('settings-allow-single-display-live').value = globalSettings.allowSingleDisplayLiveWindow === false ? 'off' : 'on';
             document.getElementById('settings-show-next-verse').value = globalSettings.showNextVerse === false ? 'off' : 'on';
-            document.getElementById('settings-auto-fit-text').value = globalSettings.autoFitText === false ? 'off' : 'on';
+            document.getElementById('settings-auto-fit-text').checked = globalSettings.autoFitText !== false;
             document.getElementById('settings-media-path').value = globalSettings.mediaPath || '';
             // Kênh Band: Named Tunnel — refresh phòng khi Settings mở trước khi
             // band-comm kịp phát status đầu tiên (ví dụ mở app xong bấm liền).
@@ -4214,17 +4450,64 @@
             document.getElementById('settings-modal').style.display = 'none';
         }
 
+        // Settings v2: sidebar chuyển tab, tìm kiếm lọc dòng, toggle theme áp
+        // dụng ngay cho cả app (không chờ bấm Lưu).
+        (function initSettingsV2() {
+            var navItems = document.querySelectorAll('#settings-modal .stg-nav-item');
+            var panes = document.querySelectorAll('#settings-modal .stg-pane');
+            navItems.forEach(function (item) {
+                item.addEventListener('click', function () {
+                    navItems.forEach(function (n) { n.classList.remove('active'); });
+                    panes.forEach(function (p) { p.classList.remove('active'); });
+                    item.classList.add('active');
+                    document.getElementById('stg-pane-' + item.dataset.tab).classList.add('active');
+                });
+            });
+
+            var searchInput = document.getElementById('stgSearchInput');
+            if (searchInput) {
+                searchInput.addEventListener('input', function () {
+                    var q = searchInput.value.trim().toLowerCase();
+                    var rows = document.querySelectorAll('#settings-modal [data-search]');
+                    var firstMatchPane = null;
+                    rows.forEach(function (row) {
+                        var hay = row.dataset.search.toLowerCase();
+                        var match = q === '' || hay.indexOf(q) >= 0;
+                        row.style.opacity = match ? '1' : '.28';
+                        if (match && q !== '' && !firstMatchPane) {
+                            firstMatchPane = row.closest('.stg-pane').id.replace('stg-pane-', '');
+                        }
+                    });
+                    if (firstMatchPane) {
+                        navItems.forEach(function (n) { n.classList.toggle('active', n.dataset.tab === firstMatchPane); });
+                        panes.forEach(function (p) { p.classList.toggle('active', p.id === 'stg-pane-' + firstMatchPane); });
+                    }
+                });
+            }
+
+            var themeToggle = document.getElementById('stgThemeToggle');
+            if (themeToggle) {
+                themeToggle.addEventListener('click', function () {
+                    globalSettings.theme = globalSettings.theme === 'light' ? 'dark' : 'light';
+                    applyStgTheme();
+                    applySettings();
+                });
+            }
+        })();
+
         async function saveSettings() {
             const oldMediaPath = globalSettings.mediaPath;
             const toNumber = (id) => {
                 const value = Number(document.getElementById(id).value);
                 return Number.isFinite(value) ? value : 0;
             };
-            globalSettings.theme = document.getElementById('settings-theme').value;
-            globalSettings.gpuAcceleration = document.getElementById('settings-gpu-acceleration').value === 'on';
+            // globalSettings.theme đã được cập nhật trực tiếp lúc bấm nút toggle
+            // trong header (xem stgThemeToggle) — áp dụng ngay lúc đó, không
+            // chờ tới khi bấm Lưu, nên không đọc lại ở đây.
+            globalSettings.gpuAcceleration = document.getElementById('settings-gpu-acceleration').checked;
             globalSettings.allowSingleDisplayLiveWindow = document.getElementById('settings-allow-single-display-live').value === 'on';
             globalSettings.showNextVerse = document.getElementById('settings-show-next-verse').value === 'on';
-            globalSettings.autoFitText = document.getElementById('settings-auto-fit-text').value === 'on';
+            globalSettings.autoFitText = document.getElementById('settings-auto-fit-text').checked;
             globalSettings.mediaPath = document.getElementById('settings-media-path').value;
             globalSettings.fontFamilySong = document.getElementById('settings-font-family-song').value;
             globalSettings.fontFamilyBible = document.getElementById('settings-font-family-bible').value;

@@ -4,6 +4,25 @@ Tất cả các thay đổi và cập nhật quan trọng của dự án đượ
 
 ## [Unreleased] - Kênh Band LAN (P1 + P2 + P2.5 + P4)
 
+### feat(ui): viết lại Settings modal — sidebar danh mục + tìm kiếm (2026-09-16)
+- Thay hẳn Settings cũ (list dài cuộn, style "classic Windows" lệch chuẩn UI
+  của `index.html` — docs ghi rõ operator window phải "hiện đại, dark-ish,
+  dense") bằng thiết kế mới: sidebar 6 danh mục (Chung / Hiển thị Live / Chữ
+  & kiểu mặc định / Media & Band / Phím tắt / Dữ liệu), ô tìm kiếm lọc theo
+  `data-search` trên từng dòng, nút chuyển theme (☀️/🌙) ngay trên header áp
+  dụng ngay lập tức cho cả app (không cần bấm Lưu).
+- Toàn bộ ~20 control giữ nguyên ID + hành vi thật (`openSettings()`/
+  `saveSettings()` chỉ đổi 2 chỗ: GPU Acceleration + Tự co chữ chuyển từ
+  `<select>` sang toggle switch thật — đọc `.checked` thay vì `.value`).
+  Tab "Media & Band" giữ nguyên field Thư mục Media + toàn bộ wizard Named
+  Tunnel đã chuyển vào đây trước đó. Tab "Dữ liệu" giữ nguyên đầy đủ công cụ
+  Tìm & thay thế hàng loạt (không rút gọn như bản mockup ban đầu).
+- Màu sắc đồng bộ với app thật: lấy `primary:#5048e5`/`background-light:
+  #f6f6f8`/`background-dark:#121121` từ chính `tailwind.config` của
+  `index.html` (không dùng màu vàng/cam của bản mockup gốc).
+- CSS scope hoàn toàn dưới `#settings-modal` (biến `--stg-*`), không đụng
+  `.win-modal-container` dùng chung với `song-editor-modal`/`shortcuts-modal`.
+
 ### fix: cho chọn nơi lưu dữ liệu, không cố định ổ C (2026-09-16)
 - Lý do: `app.getPath('userData')` mặc định của Electron luôn ở `%APPDATA%`
   (ổ hệ thống, thường là ổ C) — ổ C đầy (dễ xảy ra khi thêm nhiều ảnh/video
