@@ -461,10 +461,15 @@ function createCommServer({ store, onEvent, onPresence, getLibraryIndex, onSetli
       if (!setlistEnabled()) return sendJson(res, 404, { error: 'not found' });
       const body = await readJson(req);
       if (!body) return sendJson(res, 400, { error: 'bad json' });
+      // Strip < > defense-in-depth: item.title for an id that doesn't match a
+      // real library song reaches the operator's Electron renderer as free
+      // text (see loadSetlistIntoSchedule() in index.html) — the render side
+      // must escape it regardless, but a joined phone shouldn't be able to
+      // hand the operator raw HTML either.
       const items = (Array.isArray(body.items) ? body.items : [])
         .filter(it => it && it.type === 'song' && it.id != null)
         .slice(0, 60)
-        .map(it => ({ type: 'song', id: it.id, title: String(it.title || '').slice(0, 200) }));
+        .map(it => ({ type: 'song', id: it.id, title: String(it.title || '').replace(/[<>]/g, '').slice(0, 200) }));
       if (!items.length) return sendJson(res, 400, { error: 'Setlist rỗng' });
       const sl = {
         id: String(body.id || newId('sl')),

@@ -6066,7 +6066,7 @@
                 div.innerHTML = `
                 <div class="w-[60px] h-[40px] bg-black rounded flex-shrink-0 overflow-hidden">${thumbHtml}</div>
                 <div class="flex-1 min-w-0">
-                    <span class="text-[11px] font-semibold truncate block">${item.title}</span>
+                    <span class="text-[11px] font-semibold truncate block">${escapeHtml(item.title)}</span>
                 </div>
                 <div class="flex items-center gap-0.5">
                     <span class="text-xs font-bold opacity-0 group-hover:opacity-100 ${isActive ? 'text-red-200' : 'text-red-500'} hover:scale-110 transition-all cursor-pointer" onclick="event.stopPropagation(); removeFromSchedule(${index})">X</span>
