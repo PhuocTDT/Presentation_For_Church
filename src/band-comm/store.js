@@ -15,6 +15,16 @@ function randomPin() {
   return String(crypto.randomInt(0, 10000)).padStart(4, '0');
 }
 
+// `profiles` is a plain object keyed by client-supplied profileId, so a key of
+// "__proto__" (etc.) reaching a bracket assignment would reassign the
+// object's own prototype instead of adding a normal entry. Reject those
+// specifically rather than trying to allowlist a charset (profileId is
+// otherwise free-form, e.g. "p-1a2b3c4d").
+const UNSAFE_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
+function isSafeProfileId(id) {
+  return typeof id === 'string' && id.length > 0 && id.length <= 64 && !UNSAFE_KEYS.has(id);
+}
+
 function defaultConfig() {
   return {
     version: 1,
@@ -121,7 +131,7 @@ function createStore(userDataPath, safeWriteSync) {
   }
 
   function saveProfile(profileId, { name, role, buttons }) {
-    if (!profileId) return null;
+    if (!isSafeProfileId(profileId)) return null;
     const cur = load();
     const entry = {
       name: String(name || '').trim().slice(0, 40) || 'Ẩn danh',
@@ -151,4 +161,4 @@ function createStore(userDataPath, safeWriteSync) {
   return { configPath, mediaDir, load, save, patch, saveProfile, findProfileByName };
 }
 
-module.exports = { createStore, defaultConfig, DEFAULT_PORT };
+module.exports = { createStore, defaultConfig, DEFAULT_PORT, isSafeProfileId };

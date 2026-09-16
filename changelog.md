@@ -4,6 +4,48 @@ Tất cả các thay đổi và cập nhật quan trọng của dự án đượ
 
 ## [Unreleased] - Kênh Band LAN (P1 + P2 + P2.5 + P4)
 
+### fix(band): 4 vấn đề từ code review PR #5 (2026-09-16)
+- **`readJson()` bị treo vĩnh viễn với body quá 12MB** (`src/band-comm/server.js`):
+  `req.destroy()` không tham số chỉ phát `'close'`, không phát `'end'`/`'error'`
+  — promise cũ không bao giờ resolve, treo request mãi mãi trên `/api/join`
+  (endpoint duy nhất không cần xác thực). Fix: thêm listener `'close'` +
+  resolve ngay khi vượt giới hạn, có guard chống resolve 2 lần. Verify bằng
+  test đơn vị mô phỏng đúng hành vi `destroy()` thật của Node.
+- **`spawnSync` làm đứng hình toàn bộ app** (`main.js`, 2 IPC handler
+  `band-comm-open-firewall` + `band-comm-tunnel-create`): `spawnSync` chặn cả
+  main process Electron (mọi cửa sổ, mọi IPC khác) trong lúc chờ UAC prompt
+  (tới 120s) hoặc gọi API Cloudflare. Thêm helper `spawnAsync()` (dựa trên
+  `spawn` bất đồng bộ, giữ nguyên shape `{status,stdout,stderr}`) thay thế cả 2
+  chỗ.
+- **`profileId` không lọc → có thể ghi `__proto__`** (`src/band-comm/store.js`,
+  `saveProfile()`): `cur.profiles[profileId] = entry` với `profileId` từ
+  client, gửi `"__proto__"` sẽ đổi prototype của object `profiles`. Thêm
+  `isSafeProfileId()` chặn `__proto__`/`constructor`/`prototype`, áp dụng cả
+  lúc ghi (`store.saveProfile`) lẫn lúc đọc (`/api/join`'s restore-by-id).
+- **`datadir.json` ghi bằng `fs.writeFileSync` thô** (`main.js`, tính năng
+  chọn nơi lưu dữ liệu): đổi cả 4 chỗ sang `safeWriteSync` (tmp+rename) —
+  nhất quán với mọi file dữ liệu khác trong app, tránh việc ghi dở bị ngắt
+  quãng làm marker hỏng, âm thầm hỏi lại "chọn nơi lưu" dù user đã chọn rồi.
+- **`hasUploaderPin`/`setlistEnabled` bị "đông cứng" từ lúc join** (bug mà 2
+  fix trước đó chưa xử lý hết): nếu operator đặt mã phụ trách ảnh SAU KHI điện
+  thoại đã join, điện thoại đó không có cách nào biết — reconnect chỉ gọi lại
+  `/api/ping`, không gọi lại `/api/join`. Thêm envelope type mới `'room'`
+  (`protocol.js`'s `MSG_TYPES`) + `announceRoomConfig()` trong `server.js`
+  (mirror `announceGallery()`), gọi từ `main.js` mỗi khi `band-comm-save-config`
+  hoặc wizard Named Tunnel đổi `uploaderPin`/`tunnelName`; `comm/mobile/app.js`
+  nghe type `'room'` để cập nhật UI ngay không cần rejoin.
+- Sửa 2 comment còn ghi "SSE" sót lại từ đợt chuyển sang WebSocket
+  (`index.html`, `main.js`).
+- Sửa mô tả sai/tự mâu thuẫn về hành vi Quick Tunnel mặc định trong
+  `CLAUDE.md`, `docs/architecture.md`, `docs/data-contracts.md` — cả 3 trước
+  đây nói tunnelName rỗng = "không tự chạy gì"/"không do main.js spawn", thực
+  tế app luôn tự chạy Quick Tunnel mặc định (public URL ngẫu nhiên đổi mỗi
+  lần chạy) từ commit `94276e3`.
+- Verify: test Node độc lập (không cần Electron) cho cả 4 vấn đề kỹ thuật —
+  11/11 PASS; test riêng phát hiện `announceRoomConfig()` ban đầu không gửi
+  được vì `makeEnvelope()` tự hạ type lạ về `'system'` — phải thêm `'room'`
+  vào `MSG_TYPES` mới hoạt động thật.
+
 ### fix(band): bug thứ 2 cùng họ — bấm "Hợp âm" xong section vẫn ẩn (2026-09-16)
 - Fix trước chỉ sửa được nút TOGGLE hiện ra; bấm vào thì `renderChords()` tính
   `show = isUploader || (chOpen && ids.length)` — thư viện trống thì `ids.length`

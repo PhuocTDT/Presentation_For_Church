@@ -202,7 +202,8 @@ function applyStoredUserDataLocation() {
   const looksLikeExistingInstall = fs.existsSync(path.join(defaultUserData, 'songs.json')) ||
     fs.existsSync(path.join(defaultUserData, 'settings.json'));
   if (looksLikeExistingInstall) {
-    try { fs.mkdirSync(defaultUserData, { recursive: true }); fs.writeFileSync(markerPath, JSON.stringify({ path: defaultUserData })); } catch (e) {}
+    try { fs.mkdirSync(defaultUserData, { recursive: true }); } catch (e) {}
+    safeWriteSync(markerPath, { path: defaultUserData });
     return false;
   }
 
@@ -224,7 +225,8 @@ function promptUserDataLocationIfNeeded(pending) {
       title: 'Không tìm thấy nơi lưu dữ liệu',
       message: `Không truy cập được thư mục dữ liệu đã chọn trước đó:\n${oldPath}\n\nCó thể ổ đĩa/thư mục đó đã bị ngắt kết nối hoặc xoá. App sẽ dùng lại vị trí mặc định (ổ C) cho lần chạy này — cắm lại ổ đĩa đó rồi mở app lại nếu muốn tiếp tục dùng dữ liệu cũ.`
     });
-    try { fs.mkdirSync(defaultUserData, { recursive: true }); fs.writeFileSync(markerPath, JSON.stringify({ path: defaultUserData })); } catch (e) {}
+    try { fs.mkdirSync(defaultUserData, { recursive: true }); } catch (e) {}
+    safeWriteSync(markerPath, { path: defaultUserData });
     return;
   }
 
@@ -252,7 +254,7 @@ function promptUserDataLocationIfNeeded(pending) {
         fs.writeFileSync(probe, 'ok');
         fs.unlinkSync(probe);
         fs.mkdirSync(defaultUserData, { recursive: true });
-        fs.writeFileSync(markerPath, JSON.stringify({ path: target }));
+        safeWriteSync(markerPath, { path: target });
         app.setPath('userData', target);
         return;
       } catch (e) {
@@ -265,7 +267,8 @@ function promptUserDataLocationIfNeeded(pending) {
     }
   }
 
-  try { fs.mkdirSync(defaultUserData, { recursive: true }); fs.writeFileSync(markerPath, JSON.stringify({ path: defaultUserData })); } catch (e) {}
+  try { fs.mkdirSync(defaultUserData, { recursive: true }); } catch (e) {}
+  safeWriteSync(markerPath, { path: defaultUserData });
 }
 
 function bootstrapGpuAccelerationPreference() {
@@ -1024,7 +1027,7 @@ function sendBandStatus(extra) {
   broadcastToRenderers('band-comm-status-changed', Object.assign(st, extra || {}));
 }
 
-// A system line for the operator sidebar feed only (not sent over SSE to phones).
+// A system line for the operator sidebar feed only (not sent over WebSocket to phones).
 function bandSystemLine(text) {
   broadcastToRenderers('band-comm-event', {
     id: 'sys-' + Date.now(), ts: Date.now(), type: 'system',
@@ -1089,6 +1092,33 @@ function resolveCloudflaredCmd() {
     try { if (fs.existsSync(p)) return p; } catch (e) {}
   }
   return 'cloudflared';
+}
+
+// spawnSync blocks the WHOLE Electron main process (every window, every other
+// IPC call) for as long as the child runs — fatal here since the firewall
+// handler waits on a human clicking a UAC prompt, and the tunnel wizard waits
+// on two sequential Cloudflare API calls. This is the async, non-blocking
+// equivalent (same {status, stdout, stderr} shape spawnSync callers expect),
+// with an optional `timeout` (ms) that kills the child instead of hanging.
+function spawnAsync(cmd, args, opts) {
+  const { spawn } = require('child_process');
+  return new Promise((resolve) => {
+    let child;
+    try {
+      child = spawn(cmd, args, Object.assign({ windowsHide: true }, opts));
+    } catch (e) {
+      return resolve({ status: -1, stdout: '', stderr: e.message || String(e) });
+    }
+    let stdout = '', stderr = '', settled = false, timer = null;
+    const finish = (result) => { if (settled) return; settled = true; if (timer) clearTimeout(timer); resolve(result); };
+    if (opts && opts.timeout) {
+      timer = setTimeout(() => { try { child.kill(); } catch (e) {} finish({ status: null, stdout, stderr, timedOut: true }); }, opts.timeout);
+    }
+    if (child.stdout) child.stdout.on('data', d => { stdout += d; });
+    if (child.stderr) child.stderr.on('data', d => { stderr += d; });
+    child.on('error', (e) => finish({ status: -1, stdout, stderr: stderr || e.message || String(e) }));
+    child.on('exit', (code) => finish({ status: code, stdout, stderr }));
+  });
 }
 
 // Cloudflare Tunnel — luôn 1 tiến trình con ngoài app. 2 chế độ:
@@ -2100,7 +2130,6 @@ app.whenReady().then(() => {
   // elevated script writes a result file we read back to know if it truly worked.
   ipcMain.handle('band-comm-open-firewall', async () => {
     if (process.platform !== 'win32') return { ok: false, error: 'Chỉ áp dụng trên Windows.' };
-    const { spawnSync } = require('child_process');
     const exe = process.execPath;
     const tmp = app.getPath('temp');
     const ps1 = path.join(tmp, 'bandcomm-fw.ps1');
@@ -2129,10 +2158,10 @@ app.whenReady().then(() => {
     try {
       try { fs.unlinkSync(res); } catch (e) {}
       fs.writeFileSync(ps1, script, 'utf8');
-      const r = spawnSync('powershell.exe', [
+      const r = await spawnAsync('powershell.exe', [
         '-NoProfile', '-ExecutionPolicy', 'Bypass', '-Command',
         `Start-Process -FilePath powershell -Verb RunAs -Wait -WindowStyle Hidden -ArgumentList @('-NoProfile','-ExecutionPolicy','Bypass','-File','${ps1.replace(/'/g, "''")}')`
-      ], { windowsHide: true, timeout: 120000 });
+      ], { timeout: 120000 });
       let out = '';
       try { out = fs.readFileSync(res, 'utf8').trim(); } catch (e) {}
       try { fs.unlinkSync(ps1); } catch (e) {}
@@ -2161,7 +2190,10 @@ app.whenReady().then(() => {
   ipcMain.handle('band-comm-save-config', (e, cfg) => {
     initBandComm();
     const saved = bandCommStore.save(cfg);
-    if (commServer && commServer.isRunning()) syncBandTunnel();
+    if (commServer && commServer.isRunning()) {
+      syncBandTunnel();
+      commServer.announceRoomConfig();
+    }
     sendBandStatus();
     return saved;
   });
@@ -2213,7 +2245,7 @@ app.whenReady().then(() => {
     });
   });
 
-  ipcMain.handle('band-comm-tunnel-create', (e, payload) => {
+  ipcMain.handle('band-comm-tunnel-create', async (e, payload) => {
     const name = String((payload && payload.name) || '').trim();
     const domain = String((payload && payload.domain) || '').trim().toLowerCase();
     if (!/^[a-zA-Z0-9][a-zA-Z0-9_-]{2,63}$/.test(name)) {
@@ -2224,7 +2256,6 @@ app.whenReady().then(() => {
     }
     if (!fs.existsSync(cloudflaredCertPath())) return { ok: false, error: 'Chưa đăng nhập Cloudflare.' };
 
-    const { spawnSync } = require('child_process');
     const cmd = resolveCloudflaredCmd();
     // --config trỏ file rỗng riêng: cloudflared tự nạp config.yml mặc định
     // (nếu máy đã có tunnel khác từ trước) và ÂM THẦM dùng `tunnel:` trong đó
@@ -2234,7 +2265,7 @@ app.whenReady().then(() => {
     const isoConfigPath = path.join(app.getPath('userData'), 'cloudflared-wizard.yml');
     try { fs.writeFileSync(isoConfigPath, '{}\n'); } catch (e) {}
 
-    const created = spawnSync(cmd, ['tunnel', '--config', isoConfigPath, 'create', name], { windowsHide: true, encoding: 'utf8' });
+    const created = await spawnAsync(cmd, ['tunnel', '--config', isoConfigPath, 'create', name], {});
     const createdOut = (created.stdout || '') + (created.stderr || '');
     if (created.status !== 0) {
       return { ok: false, error: 'Tạo tunnel lỗi: ' + createdOut.trim().slice(0, 500) };
@@ -2245,7 +2276,7 @@ app.whenReady().then(() => {
     if (!tunnelId) return { ok: false, error: 'Tạo tunnel thành công nhưng không đọc được tunnel ID:\n' + createdOut.slice(0, 500) };
     const credFile = (credMatch && credMatch[1].trim()) || path.join(path.dirname(cloudflaredCertPath()), `${tunnelId}.json`);
 
-    const routed = spawnSync(cmd, ['tunnel', '--config', isoConfigPath, 'route', 'dns', '-f', name, domain], { windowsHide: true, encoding: 'utf8' });
+    const routed = await spawnAsync(cmd, ['tunnel', '--config', isoConfigPath, 'route', 'dns', '-f', name, domain], {});
     if (routed.status !== 0) {
       return {
         ok: false,
@@ -2267,7 +2298,10 @@ app.whenReady().then(() => {
     initBandComm();
     const cur = bandCommStore.load();
     const saved = bandCommStore.save({ ...cur, tunnelName: name, publicUrl: `https://${domain}` });
-    if (commServer && commServer.isRunning()) syncBandTunnel();
+    if (commServer && commServer.isRunning()) {
+      syncBandTunnel();
+      commServer.announceRoomConfig(); // tunnelName changed -> setlistEnabled changed too
+    }
     sendBandStatus();
     return { ok: true, tunnelName: name, publicUrl: saved.publicUrl };
   });

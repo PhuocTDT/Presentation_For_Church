@@ -19,6 +19,7 @@ const crypto = require('crypto');
 const os = require('os');
 const { makeEnvelope, newId } = require('./protocol');
 const { acceptWebSocket } = require('./ws');
+const { isSafeProfileId } = require('./store');
 
 const MOBILE_DIR = path.join(__dirname, '..', '..', 'comm', 'mobile');
 const RING_MAX = 120;          // messages replayed to a phone that reconnects
@@ -73,10 +74,16 @@ function lanIPv4List() {
 function readJson(req) {
   return new Promise((resolve) => {
     let buf = '';
+    let done = false;
+    // destroy() with no error arg only ever emits 'close', never 'end'/'error' —
+    // listening for 'close' too (and guarding against a double-resolve) is what
+    // actually stops the request from hanging forever on an oversized body.
+    const finish = (v) => { if (done) return; done = true; resolve(v); };
     // 12MB: chord-sheet image uploads (base64 of a downscaled JPEG) go through here.
-    req.on('data', d => { buf += d; if (buf.length > 12e6) req.destroy(); });
-    req.on('end', () => { try { resolve(JSON.parse(buf || '{}')); } catch (e) { resolve(null); } });
-    req.on('error', () => resolve(null));
+    req.on('data', d => { buf += d; if (buf.length > 12e6) { req.destroy(); finish(null); } });
+    req.on('end', () => { try { finish(JSON.parse(buf || '{}')); } catch (e) { finish(null); } });
+    req.on('error', () => finish(null));
+    req.on('close', () => finish(null));
   });
 }
 
@@ -315,7 +322,7 @@ function createCommServer({ store, onEvent, onPresence, getLibraryIndex, onSetli
       const role = ['band', 'leader'].includes(body.role) ? body.role : 'band';
       const clientId = newId('c');
       clients.set(clientId, { clientId, name, role, ws: null, isUploader: false, lastSeen: Date.now(), dupMap: new Map() });
-      const restore = body.profileId && cfg.profiles[body.profileId]
+      const restore = isSafeProfileId(body.profileId) && cfg.profiles[body.profileId]
         ? { profileId: body.profileId, ...cfg.profiles[body.profileId] }
         : store.findProfileByName(name);
       setTimeout(pushPresence, 50);
@@ -523,6 +530,21 @@ function createCommServer({ store, onEvent, onPresence, getLibraryIndex, onSetli
   function galleryManifest() { return { images: gallery.images.map(x => ({ id: x.id, name: x.name })), updatedAt: gallery.updatedAt || 0 }; }
   function announceGallery() { fanout(makeEnvelope({ type: 'gallery', from: OPERATOR, to: 'all', meta: galleryManifest() })); }
 
+  // Phones only learn `hasUploaderPin`/`setlistEnabled` once, from their
+  // /api/join response — if the operator changes room.uploaderPin or
+  // tunnelName (which drives setlistEnabled) AFTER a phone already joined,
+  // that phone's WS reconnect path (POST /api/ping) never re-fetches them, so
+  // it'd be stuck not seeing the chord-upload/setlist UI for the rest of its
+  // (long-lived) session. Push the current values so already-connected
+  // phones can react live, the same way gallery changes already do.
+  function announceRoomConfig() {
+    const cfg = store.load();
+    fanout(makeEnvelope({
+      type: 'room', from: OPERATOR, to: 'all',
+      meta: { hasUploaderPin: !!cfg.room.uploaderPin, setlistEnabled: setlistEnabled() }
+    }));
+  }
+
   function galleryAdd({ name = '', ext = '.jpg', dataB64 = '' } = {}) {
     const b64 = String(dataB64 || '').replace(/^data:[^,]*,/, '');
     if (!b64) return galleryManifest();
@@ -672,7 +694,8 @@ function createCommServer({ store, onEvent, onPresence, getLibraryIndex, onSetli
     galleryManifest,
     galleryAdd,
     galleryRemove,
-    galleryReorder
+    galleryReorder,
+    announceRoomConfig
   };
 }
 

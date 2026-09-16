@@ -8073,7 +8073,7 @@
           bumpUnread(true);
         }
         else if (env.type === 'text') {
-          // operator text is echoed back over SSE — already added optimistically.
+          // operator text is echoed back over the WebSocket — already added optimistically.
           if (env.from && (env.from.clientId === 'operator' || env.from.role === 'operator')) return;
           addFeed('op', env.from.name, env.text);
         }

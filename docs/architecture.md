@@ -13,7 +13,7 @@
 - `src/band-comm/`: server (HTTP + **WebSocket**, xem `ws.js`) + store + protocol + mDNS + vendor QR encoder cho Kênh Band
 - `comm/mobile/`: web client cho điện thoại band (server tự phục vụ) — cảnh báo/chat, thư viện ảnh hợp âm, soạn setlist
 - `cloud/worker/`: Cloudflare Worker + KV — hộp thư setlist khi laptop tắt hẳn. **Không** đóng gói vào app (không có trong `files` của `electron-builder`), chỉ deploy độc lập bằng `wrangler`
-- `cloud/tunnel/`: script chạy Cloudflare Named Tunnel (domain cố định cho Kênh Band ngoài LAN) — tiến trình ngoài app, không do `main.js` spawn
+- `main.js` **tự spawn `cloudflared`** (bundle sẵn, `scripts/fetch-cloudflared.js`) ngay khi band-comm start — mặc định Quick Tunnel (`*.trycloudflare.com`, đổi mỗi lần chạy), hoặc Named Tunnel domain cố định nếu đã cấu hình `tunnelName` (qua wizard trong app). `cloud/tunnel/start-tunnel.bat` chỉ còn là cách chạy tunnel thủ công/dự phòng, không phải đường chính
 
 ## Luồng dữ liệu
 

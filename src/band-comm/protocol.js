@@ -15,6 +15,7 @@ const MSG_TYPES = [
   'resolve',  // operator closed the issue — broadcast to everyone
   'presence', // connected-clients list changed
   'gallery',  // active chord-sheet set changed (P4)
+  'room',     // hasUploaderPin/setlistEnabled changed after phones already joined
   'system'    // server notices (channel opened/closed, errors)
 ];
 

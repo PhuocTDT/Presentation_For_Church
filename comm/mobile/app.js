@@ -167,6 +167,21 @@
     }
     if (env.type === 'system') { return; }
     if (env.type === 'gallery') { renderChords(env.meta || {}); return; }
+    if (env.type === 'room') {
+      // Operator changed room.uploaderPin / tunnelName AFTER this phone already
+      // joined — hasUploaderPin/setlistEnabled only ever came from /api/join's
+      // response, and reconnect (POST /api/ping) doesn't re-fetch them, so
+      // without this the chord-upload/setlist UI could stay hidden for the
+      // rest of a long-lived session even after the operator turns it on.
+      if (env.meta && typeof env.meta.hasUploaderPin === 'boolean') {
+        hasUploaderPin = env.meta.hasUploaderPin;
+        updateChToggle();
+      }
+      if (env.meta && typeof env.meta.setlistEnabled === 'boolean') {
+        $('slToggleBtn').hidden = !env.meta.setlistEnabled;
+      }
+      return;
+    }
 
     var mine = env.from && env.from.clientId === state.clientId;
     var label = env.meta && env.meta.label ? env.meta.label : '';
