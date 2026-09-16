@@ -107,6 +107,26 @@ function createCommServer({ store, onEvent, onPresence, getLibraryIndex, onSetli
   const receivedSetlistIds = new Set(); // idempotent theo setlist.id
   let cloudPollTimer = null;
 
+  // Chống dò mã PIN bằng brute force trên /api/join — PIN mặc định chỉ 4 số
+  // (10.000 khả năng), không có gì khác chặn thử liên tục qua HTTP thô. Khoá
+  // tăng dần theo IP nguồn (đơn giản, không cần dependency ngoài); qua
+  // Cloudflare Tunnel mọi request đều tới từ 127.0.0.1 (cloudflared proxy nội
+  // bộ) nên khi đó khoá này thành khoá dùng chung cho toàn bộ traffic ngoài
+  // LAN — chấp nhận được, còn hơn không có gì chặn.
+  const joinAttempts = new Map(); // ip -> { fails, blockUntil, lastAt }
+  function pinBackoffMs(fails) {
+    if (fails < 5) return 0;
+    if (fails < 10) return 30 * 1000;
+    if (fails < 20) return 5 * 60 * 1000;
+    return 30 * 60 * 1000;
+  }
+  function pruneJoinAttempts() {
+    const now = Date.now();
+    for (const [ip, att] of joinAttempts) {
+      if (now - att.lastAt > 60 * 60 * 1000) joinAttempts.delete(ip);
+    }
+  }
+
   // Điểm nhận duy nhất cho 1 setlist đã hợp lệ, dù đến từ LAN (POST /api/setlist)
   // hay kéo về từ hộp thư cloud — cùng idempotent theo id, cùng phát ra onSetlist.
   function ingestSetlist(sl) {
@@ -270,12 +290,27 @@ function createCommServer({ store, onEvent, onPresence, getLibraryIndex, onSetli
 
     if (req.method === 'GET' && !p.startsWith('/api/')) return serveStatic(res, p);
 
-    // --- join is the only unauthenticated endpoint ---
+    // --- join is the only unauthenticated endpoint — rate-limit PIN guesses ---
     if (p === '/api/join' && req.method === 'POST') {
+      const ip = (req.socket && req.socket.remoteAddress) || 'unknown';
+      const now = Date.now();
+      const att = joinAttempts.get(ip);
+      if (att && att.blockUntil > now) {
+        res.setHeader('Retry-After', String(Math.ceil((att.blockUntil - now) / 1000)));
+        return sendJson(res, 429, { error: 'Thử sai mã PIN quá nhiều lần, vui lòng đợi ' + Math.ceil((att.blockUntil - now) / 1000) + 's rồi thử lại' });
+      }
       const body = await readJson(req);
       if (!body) return sendJson(res, 400, { error: 'bad json' });
       const cfg = store.load();
-      if (String(body.pin || '') !== String(cfg.room.pin)) return sendJson(res, 403, { error: 'Sai mã PIN' });
+      if (String(body.pin || '') !== String(cfg.room.pin)) {
+        const next = att || { fails: 0, blockUntil: 0, lastAt: now };
+        next.fails += 1;
+        next.lastAt = now;
+        next.blockUntil = now + pinBackoffMs(next.fails);
+        joinAttempts.set(ip, next);
+        return sendJson(res, 403, { error: 'Sai mã PIN' });
+      }
+      joinAttempts.delete(ip);
       const name = String(body.name || '').trim().slice(0, 40) || 'Ẩn danh';
       const role = ['band', 'leader'].includes(body.role) ? body.role : 'band';
       const clientId = newId('c');
@@ -559,6 +594,7 @@ function createCommServer({ store, onEvent, onPresence, getLibraryIndex, onSetli
           if (c.ws && c.ws.isAlive()) { try { c.ws.ping(); } catch (e) {} }
           else if (now - c.lastSeen > PRESENCE_STALE_MS * 2) clients.delete(cid);
         }
+        pruneJoinAttempts();
       }, HEARTBEAT_MS);
     };
 
