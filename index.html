@@ -1050,10 +1050,14 @@
       #bandPanel .bp-conn .row2 > .bp-btn { flex: 1 1 auto; white-space: normal; }
 
       /* Support menu = a speech bubble anchored under the "Hỗ trợ kỹ thuật"
-         button, tail pointing up at it (bpSupportBtn lives in .bp-modal-head,
-         which is the positioning context). */
+         button, tail pointing up-left at it. `position: fixed` (left/top set
+         by JS via getBoundingClientRect on open) instead of absolute inside
+         .bp-modal-head: .bp-modal-card has overflow-y:auto, which per spec
+         computes overflow-x to auto too and CLIPS an absolutely-positioned
+         bubble that bulges past the card's edge — fixed positioning escapes
+         that clip since it's relative to the viewport, not the card. */
       #bandPanel .bp-conn .bp-support {
-        position: absolute; top: 100%; right: 30px; margin-top: 14px; z-index: 6;
+        position: fixed; z-index: 46;
         width: max-content; max-width: calc(92vw - 40px);
         flex-direction: column; gap: 6px;
         background: #fffdf6; border: 2px solid #1e2430; border-radius: 16px;
@@ -1062,11 +1066,11 @@
       #bandPanel .bp-conn .bp-support.bp-hidden { display: none; }
       #bandPanel .bp-conn .bp-support:not(.bp-hidden) { display: flex; }
       #bandPanel .bp-conn .bp-support::before {
-        content: ''; position: absolute; bottom: 100%; right: 22px;
+        content: ''; position: absolute; bottom: 100%; left: 22px;
         border: 9px solid transparent; border-bottom-color: #1e2430;
       }
       #bandPanel .bp-conn .bp-support::after {
-        content: ''; position: absolute; bottom: calc(100% - 2px); right: 24px;
+        content: ''; position: absolute; bottom: calc(100% - 2px); left: 24px;
         border: 7px solid transparent; border-bottom-color: #fffdf6;
       }
       #bandPanel .bp-conn .bp-support .bp-btn {
@@ -7477,7 +7481,16 @@
         if (window.electronAPI && window.electronAPI.openExternal) window.electronAPI.openExternal(url);
       }
       $('bpSupportBtn').addEventListener('click', function () {
-        $('bpSupportMenu').classList.toggle('bp-hidden');
+        var menu = $('bpSupportMenu');
+        var show = menu.classList.contains('bp-hidden');
+        if (show) {
+          // Đuôi bong bóng neo dưới góc trái nút -> thân bong bóng giãn sang
+          // phải, có thể lồi ra ngoài khung popup Kết nối (chủ ý).
+          var r = $('bpSupportBtn').getBoundingClientRect();
+          menu.style.left = Math.round(r.left - 22) + 'px';
+          menu.style.top = Math.round(r.bottom + 14) + 'px';
+        }
+        menu.classList.toggle('bp-hidden', !show);
       });
       $('bpSupportEmail').addEventListener('click', function () {
         openExternalLink('mailto:tdtp2005@gmail.com?subject=' + encodeURIComponent('Hỗ trợ Phần Mềm Worship'));

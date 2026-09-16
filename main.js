@@ -164,6 +164,110 @@ function resolveBibleBookName(bookRef, language = 'unknown') {
   return bibleBookMap[bookRef] || bookRef;
 }
 
+// Electron mặc định lưu userData ở %APPDATA%\<appName> — LUÔN nằm ở ổ hệ
+// thống (thường là ổ C) bất kể Windows/app cài ở đâu. App lưu khá nhiều dữ
+// liệu ở đây (songs, bible, media mặc định, backup…) — ổ C đầy thì không ghi
+// được nữa, coi như không dùng được app. Cho phép chọn ổ khác ngay từ lần
+// đầu mở app, ghi lại lựa chọn vào 1 file marker nhỏ (datadir.json) ngay tại
+// vị trí mặc định — file này CHỈ vài chục byte nên vẫn ghi được dù ổ C gần
+// đầy, và là nơi duy nhất app luôn biết chắc để tìm lại lựa chọn thật.
+// Phase 1 — chạy NGAY lúc module load, TRƯỚC app.whenReady() và trước
+// bootstrapGpuAccelerationPreference() (hàm đó bắt buộc chạy trước ready, và
+// cần đọc đúng settings.json ở vị trí ĐÃ redirect nếu có, không phải vị trí
+// mặc định). Chỉ đọc file, KHÔNG hiện dialog — app chưa ready, dialog không
+// an toàn ở giai đoạn này. Trả 'first-run'/'invalid' nếu cần hỏi sau khi
+// ready, false nếu đã xử lý xong (đã redirect hoặc xác nhận dùng mặc định).
+function applyStoredUserDataLocation() {
+  const defaultUserData = app.getPath('userData');
+  const markerPath = path.join(defaultUserData, 'datadir.json');
+
+  try {
+    if (fs.existsSync(markerPath)) {
+      const marker = JSON.parse(fs.readFileSync(markerPath, 'utf8'));
+      if (marker && typeof marker.path === 'string' && marker.path) {
+        if (fs.existsSync(marker.path)) {
+          if (marker.path !== defaultUserData) app.setPath('userData', marker.path);
+          return false;
+        }
+        return 'invalid'; // ổ ngoài/thư mục cũ không còn -> hỏi lại sau khi ready
+      }
+    }
+  } catch (e) {
+    console.error('Không đọc được datadir.json:', e);
+  }
+
+  // Thư mục mặc định đã có dữ liệu thật -> bản cài cũ nâng cấp lên bản có
+  // tính năng này, không phải first-run. Âm thầm ghi marker trỏ về mặc định,
+  // KHÔNG hỏi gì cả — tránh làm người dùng cũ hoảng vì tưởng mất dữ liệu.
+  const looksLikeExistingInstall = fs.existsSync(path.join(defaultUserData, 'songs.json')) ||
+    fs.existsSync(path.join(defaultUserData, 'settings.json'));
+  if (looksLikeExistingInstall) {
+    try { fs.mkdirSync(defaultUserData, { recursive: true }); fs.writeFileSync(markerPath, JSON.stringify({ path: defaultUserData })); } catch (e) {}
+    return false;
+  }
+
+  return 'first-run';
+}
+
+// Phase 2 — chạy trong app.whenReady(), trước initializeData(). An toàn để
+// hiện dialog. Chỉ làm gì đó khi phase 1 báo cần hỏi.
+function promptUserDataLocationIfNeeded(pending) {
+  if (!pending) return;
+  const defaultUserData = app.getPath('userData');
+  const markerPath = path.join(defaultUserData, 'datadir.json');
+
+  if (pending === 'invalid') {
+    let oldPath = '(không đọc được)';
+    try { oldPath = JSON.parse(fs.readFileSync(markerPath, 'utf8')).path || oldPath; } catch (e) {}
+    dialog.showMessageBoxSync({
+      type: 'warning',
+      title: 'Không tìm thấy nơi lưu dữ liệu',
+      message: `Không truy cập được thư mục dữ liệu đã chọn trước đó:\n${oldPath}\n\nCó thể ổ đĩa/thư mục đó đã bị ngắt kết nối hoặc xoá. App sẽ dùng lại vị trí mặc định (ổ C) cho lần chạy này — cắm lại ổ đĩa đó rồi mở app lại nếu muốn tiếp tục dùng dữ liệu cũ.`
+    });
+    try { fs.mkdirSync(defaultUserData, { recursive: true }); fs.writeFileSync(markerPath, JSON.stringify({ path: defaultUserData })); } catch (e) {}
+    return;
+  }
+
+  // 'first-run'
+  const choice = dialog.showMessageBoxSync({
+    type: 'question',
+    title: 'Chọn nơi lưu dữ liệu',
+    message: 'Phần mềm sẽ lưu bài hát, lịch trình, media, cấu hình… ở một thư mục cố định trong suốt quá trình dùng.\n\nMặc định là ổ C — nếu ổ C của bạn ít dung lượng trống (nhất là khi thêm nhiều ảnh/video làm nền), nên chọn ổ khác ngay từ bây giờ.',
+    buttons: ['Chọn thư mục khác…', 'Dùng mặc định (ổ C)'],
+    defaultId: 1,
+    cancelId: 1,
+    noLink: true
+  });
+
+  if (choice === 0) {
+    const picked = dialog.showOpenDialogSync({
+      title: 'Chọn thư mục lưu dữ liệu',
+      properties: ['openDirectory', 'createDirectory']
+    });
+    if (picked && picked[0]) {
+      const target = path.join(picked[0], 'PresentationForChurch-Data');
+      try {
+        fs.mkdirSync(target, { recursive: true });
+        const probe = path.join(target, '.write-test');
+        fs.writeFileSync(probe, 'ok');
+        fs.unlinkSync(probe);
+        fs.mkdirSync(defaultUserData, { recursive: true });
+        fs.writeFileSync(markerPath, JSON.stringify({ path: target }));
+        app.setPath('userData', target);
+        return;
+      } catch (e) {
+        dialog.showMessageBoxSync({
+          type: 'error',
+          title: 'Không ghi được vào thư mục đã chọn',
+          message: `Lỗi: ${e.message}\n\nApp sẽ dùng vị trí mặc định (ổ C) thay thế.`
+        });
+      }
+    }
+  }
+
+  try { fs.mkdirSync(defaultUserData, { recursive: true }); fs.writeFileSync(markerPath, JSON.stringify({ path: defaultUserData })); } catch (e) {}
+}
+
 function bootstrapGpuAccelerationPreference() {
   try {
     const bootstrapSettingsPath = path.join(app.getPath('userData'), 'settings.json');
@@ -1248,9 +1352,11 @@ if (!hasInstanceLock) {
   deliverSchedulePath(findSchedulePathInArgv(process.argv));
 }
 
+const pendingUserDataPrompt = applyStoredUserDataLocation();
 bootstrapGpuAccelerationPreference();
 app.whenReady().then(() => {
   if (!hasInstanceLock) return; // a rival instance — we're already quitting
+  promptUserDataLocationIfNeeded(pendingUserDataPrompt);
   initializeData();
   // Band Comm: server auto-starts in the background (see band-comm-plan.md B1).
   // Result is reported to the operator sidebar via band-comm-status-changed +

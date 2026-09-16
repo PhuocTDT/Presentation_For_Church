@@ -54,6 +54,8 @@
 
 ## Dữ liệu lưu ở userData
 
+`userData` **không cố định ở `%APPDATA%`** — `main.js` (`applyStoredUserDataLocation()` chạy trước `app.whenReady()`, `promptUserDataLocationIfNeeded()` chạy trong đó) cho phép người dùng chọn ổ khác ngay lần đầu mở app (tránh ổ C đầy làm app không ghi được gì). Lựa chọn ghi vào `%APPDATA%\<appName>\datadir.json` (marker nhỏ, luôn ở vị trí mặc định để app tìm lại được dù `userData` thật nằm ở đâu) — `{"path": "..."}`. Bản cài cũ (đã có `songs.json`/`settings.json` ở mặc định trước khi tính năng này tồn tại) không bị hỏi, tự động coi như đã chọn mặc định. Đổi ổ/thư mục sau khi đã chọn cần sửa tay `datadir.json` (chưa có UI trong app).
+
 - `songs.json`
 - `bible.json`
 - `settings.json`

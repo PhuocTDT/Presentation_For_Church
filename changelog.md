@@ -4,6 +4,24 @@ Tất cả các thay đổi và cập nhật quan trọng của dự án đượ
 
 ## [Unreleased] - Kênh Band LAN (P1 + P2 + P2.5 + P4)
 
+### fix: cho chọn nơi lưu dữ liệu, không cố định ổ C (2026-09-16)
+- Lý do: `app.getPath('userData')` mặc định của Electron luôn ở `%APPDATA%`
+  (ổ hệ thống, thường là ổ C) — ổ C đầy (dễ xảy ra khi thêm nhiều ảnh/video
+  làm nền) thì app không ghi được gì nữa, coi như không dùng được.
+- `main.js`: `applyStoredUserDataLocation()` (chạy trước `app.whenReady()`,
+  cần thiết vì `bootstrapGpuAccelerationPreference()` cũng chạy trước ready
+  và phải đọc đúng `settings.json` ở vị trí đã redirect) + `promptUserDataLocationIfNeeded()`
+  (chạy trong `whenReady()`, an toàn hiện dialog). Lần đầu mở app (chưa có
+  dữ liệu) → hỏi chọn thư mục khác hoặc dùng mặc định; lựa chọn ghi vào
+  marker `datadir.json` tại vị trí mặc định (vài chục byte, luôn ghi được dù
+  ổ C gần đầy). Bản cài cũ đã có `songs.json`/`settings.json` sẵn → im lặng
+  coi như đã chọn mặc định, KHÔNG hỏi gì (tránh làm người dùng cũ hoảng vì
+  tưởng mất dữ liệu). Thư mục cũ không truy cập được (ổ ngoài rút mất) →
+  cảnh báo + tự dùng lại mặc định cho lần chạy đó.
+- Verify thật: chạy trên máy đang có dữ liệu sẵn ở ổ C — xác nhận app khởi
+  động thẳng, không hiện dialog, marker tự ghi đúng, band-comm/tunnel vẫn
+  hoạt động bình thường sau đó.
+
 ### fix(ui): chuyển wizard Named Tunnel vào File → Cài đặt + fix Email xuống dòng (2026-09-16)
 - Wizard "⚙️ Thiết lập domain riêng tự động" + `#bpTunnelName` chuyển từ popup
   Kết nối (sidebar Kênh Band) sang `#settings-modal` (File → Cài đặt) — tách
