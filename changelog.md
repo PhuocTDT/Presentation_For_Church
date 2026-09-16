@@ -4,6 +4,18 @@ Tất cả các thay đổi và cập nhật quan trọng của dự án đượ
 
 ## [Unreleased] - Kênh Band LAN (P1 + P2 + P2.5 + P4)
 
+### fix(band): bug thứ 2 cùng họ — bấm "Hợp âm" xong section vẫn ẩn (2026-09-16)
+- Fix trước chỉ sửa được nút TOGGLE hiện ra; bấm vào thì `renderChords()` tính
+  `show = isUploader || (chOpen && ids.length)` — thư viện trống thì `ids.length`
+  vẫn = 0 nên `show` vẫn sai dù đã bấm mở, section (chứa nút "Phụ trách ảnh")
+  tiếp tục ẩn, `updateUploaderUI()` không bao giờ được gọi.
+- Fix: `show = isUploader || (chOpen && (ids.length || hasUploaderPin))`.
+- Xoá nút "Âm/rung" ở topbar mobile (`#gearBtn`) theo yêu cầu — sound/vibrate
+  giữ nguyên mặc định bật (không còn cách tắt qua UI).
+- Verify: bảng chân trị 6 kịch bản (trống+có mã, trống+không mã, đã có ảnh,
+  đã có ảnh nhưng chưa bấm mở, đã là uploader×2 trạng thái gallery) — chạy
+  đúng biểu thức thật trong code, PASS cả 6.
+
 ### fix(band): nút "Hợp âm" bị kẹt vòng lặp không lối ra khi thư viện còn trống (2026-09-16)
 - Báo lỗi: join role "người hướng dẫn" chỉ thấy nút Setlist, không thấy chỗ
   upload ảnh hợp âm dù operator đã đặt mã phụ trách.

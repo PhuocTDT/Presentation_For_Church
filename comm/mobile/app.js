@@ -372,8 +372,12 @@
     chUpdatedAt = (manifest && manifest.updatedAt) || chUpdatedAt;
     updateChToggle();
     var sec = $('chords'), track = $('chView'), dots = $('chDots');
-    // Ảnh KHÔNG tự hiện: người xem phải bấm "🎼 Hợp âm". Uploader luôn thấy để quản lý.
-    var show = isUploader || (chOpen && ids.length);
+    // Ảnh KHÔNG tự hiện: người xem phải bấm "🎼 Hợp âm". Uploader luôn thấy để
+    // quản lý. Thêm hasUploaderPin: cùng lý do như updateChToggle() ở dưới —
+    // thư viện trống + chưa ai phụ trách thì vẫn phải mở được section này ra
+    // (sau khi bấm nút) để thấy nút "Phụ trách ảnh" mà giành quyền lần đầu,
+    // nếu không thì bấm "🎼 Hợp âm" xong chẳng thấy gì cả.
+    var show = isUploader || (chOpen && (ids.length || hasUploaderPin));
     if (!show) { sec.classList.add('hidden'); if (force) { track.textContent = ''; dots.textContent = ''; } return; }
     sec.classList.remove('hidden');
     updateUploaderUI();
@@ -668,14 +672,6 @@
     fetch('api/message', { method: 'POST', headers: authHeader(), body: JSON.stringify({ text: v }) })
       .catch(function () { toast('band', '', 'Chưa gửi được — thử lại.'); });
   }
-
-  $('gearBtn').addEventListener('click', function () {
-    var on = !state.sound;
-    // simple cycle: sound+vibrate / silent
-    state.sound = on; state.vibrate = on;
-    saveState();
-    toast('op', '', on ? 'Âm & rung: bật' : 'Âm & rung: tắt');
-  });
 
   // NOTE: no leave-on-pagehide — phones background constantly and that would log
   // them out. Truly-gone clients fall out of the presence list after ~25s; the
