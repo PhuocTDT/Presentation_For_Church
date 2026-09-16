@@ -4,6 +4,20 @@ Tất cả các thay đổi và cập nhật quan trọng của dự án đượ
 
 ## [Unreleased] - Kênh Band LAN (P1 + P2 + P2.5 + P4)
 
+### fix(ui): chuyển wizard Named Tunnel vào File → Cài đặt + fix Email xuống dòng (2026-09-16)
+- Wizard "⚙️ Thiết lập domain riêng tự động" + `#bpTunnelName` chuyển từ popup
+  Kết nối (sidebar Kênh Band) sang `#settings-modal` (File → Cài đặt) — tách
+  "cấu hình 1 lần" khỏi "thông tin kết nối hằng ngày" (QR/PIN/Public URL vẫn
+  ở popup Kết nối). Style đổi theo quy ước classic-Windows của Settings
+  (`win-button`, `border-win-border`) thay vì `.bp-btn` của Kênh Band; dùng
+  Tailwind `hidden` thay `.bp-hidden` vì phần tử giờ nằm ngoài `#bandPanel`.
+  Logic JS không đổi chỗ, chỉ HTML — event listener vẫn hoạt động bình
+  thường. `openSettings()` gọi thêm `bandComm.getConfig()` để refresh
+  `#bpTunnelName` phòng khi mở Settings trước khi band-comm kịp phát status.
+- Bong bóng "🆘 Hỗ trợ kỹ thuật": dòng Email bị xuống dòng do box cố định
+  236px không đủ rộng — đổi `width: max-content` + `white-space: nowrap`
+  cho từng dòng, box tự giãn theo nội dung dài nhất, mọi dòng luôn 1 hàng.
+
 ### feat(band): wizard tự động thiết lập Named Tunnel domain riêng (2026-09-15)
 - Sidebar Kênh Band, popup Kết nối: nút "⚙️ Thiết lập domain riêng tự động"
   mở wizard 2 bước — thay thế hoàn toàn việc gõ tay `cloudflared tunnel

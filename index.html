@@ -1054,7 +1054,7 @@
          which is the positioning context). */
       #bandPanel .bp-conn .bp-support {
         position: absolute; top: 100%; right: 30px; margin-top: 14px; z-index: 6;
-        width: 236px; max-width: calc(92vw - 40px);
+        width: max-content; max-width: calc(92vw - 40px);
         flex-direction: column; gap: 6px;
         background: #fffdf6; border: 2px solid #1e2430; border-radius: 16px;
         padding: 12px 13px; box-shadow: 0 14px 30px -10px rgba(15, 25, 50, .4);
@@ -1070,7 +1070,7 @@
         border: 7px solid transparent; border-bottom-color: #fffdf6;
       }
       #bandPanel .bp-conn .bp-support .bp-btn {
-        text-align: left; white-space: normal; background: transparent; border-color: transparent;
+        text-align: left; white-space: nowrap; background: transparent; border-color: transparent;
       }
       #bandPanel .bp-conn .bp-support .bp-btn:hover { background: #f4efdc; border-color: #e6dfc4; }
       #bandPanel select.bp-btn { flex: 1 1 100%; }
@@ -1135,13 +1135,18 @@
         font-family: Consolas, ui-monospace, monospace; font-size: .84rem; color: #1e2430; background: #fff;
       }
       #bandPanel .bp-conn .bp-purl input:focus { border-color: #2563a8; outline: none; }
-      #bandPanel .bp-conn .bp-wizard {
-        margin-top: 8px; padding: 10px; border: 1px dashed #bcd6f0; border-radius: 10px; background: #f5faff;
+      #bandPanel .bp-conn .bp-wizard-hint-in-conn { font-size: .74rem; color: #8a93a3; margin: -4px 0 10px; }
+
+      /* Wizard Named Tunnel — sống trong #settings-modal (File -> Cài đặt),
+         nên theo style "classic Windows" của modal đó, không dùng .bp-* của
+         Kênh Band (ui-guidelines: không trộn style giữa các khu vực). */
+      #settings-modal .bp-wizard {
+        margin-top: 8px; padding: 8px; border: 1px dashed #94a3b8; border-radius: 4px; background: #f8fafc;
       }
-      #bandPanel .bp-conn .bp-wizard-p { font-size: .78rem; color: #46617e; margin: 0 0 8px; line-height: 1.4; }
-      #bandPanel .bp-conn .bp-wizard-status { font-size: .78rem; margin-top: 6px; white-space: pre-wrap; word-break: break-word; }
-      #bandPanel .bp-conn .bp-wizard-status.ok { color: #1e6b3c; }
-      #bandPanel .bp-conn .bp-wizard-status.err { color: #b8362a; }
+      #settings-modal .bp-wizard-p { font-size: 10px; color: #475569; margin: 0 0 6px; line-height: 1.4; }
+      #settings-modal .bp-wizard-status { font-size: 10px; margin-top: 6px; white-space: pre-wrap; word-break: break-word; }
+      #settings-modal .bp-wizard-status.ok { color: #15803d; }
+      #settings-modal .bp-wizard-status.err { color: #b91c1c; }
 
       #bandPanel .bp-error {
         margin: 8px 12px 0; padding: 10px 12px; border-radius: 10px;
@@ -1188,31 +1193,7 @@
             <input id="bpPublicUrl" type="url" spellcheck="false" autocomplete="off"
                    placeholder="Dán URL cloud để band vào từ 4G — trống = chỉ LAN">
           </div>
-          <div class="bp-purl">
-            <label for="bpTunnelName">Tên Cloudflare Named Tunnel (tự chạy cùng app)</label>
-            <input id="bpTunnelName" type="text" spellcheck="false" autocomplete="off"
-                   placeholder="VD: blessing-band — trống = dùng Quick Tunnel (URL đổi mỗi lần chạy)">
-          </div>
-          <button class="bp-btn" id="bpWizOpenBtn">⚙️ Thiết lập domain riêng tự động (nâng cao)</button>
-          <div class="bp-wizard bp-hidden" id="bpWizard">
-            <div id="bpWizStep1">
-              <p class="bp-wizard-p">Domain phải <b>đã trỏ Nameserver sang Cloudflare</b> trước — làm ở nơi bạn mua domain (bước này app không tự làm thay được). Xong bước đó rồi mới đăng nhập ở đây.</p>
-              <button class="bp-btn go" id="bpWizLoginBtn">1. Đăng nhập Cloudflare</button>
-              <div class="bp-wizard-status" id="bpWizLoginStatus"></div>
-            </div>
-            <div id="bpWizStep2" class="bp-hidden">
-              <div class="bp-purl">
-                <label for="bpWizName">Tên tunnel (đặt tuỳ ý)</label>
-                <input id="bpWizName" type="text" spellcheck="false" autocomplete="off" placeholder="vd: my-church-band">
-              </div>
-              <div class="bp-purl">
-                <label for="bpWizDomain">Domain / subdomain sẽ dùng</label>
-                <input id="bpWizDomain" type="text" spellcheck="false" autocomplete="off" placeholder="vd: band.mychurch.org">
-              </div>
-              <button class="bp-btn go" id="bpWizCreateBtn">2. Tạo &amp; Kết nối</button>
-              <div class="bp-wizard-status" id="bpWizCreateStatus"></div>
-            </div>
-          </div>
+          <div class="bp-wizard-hint-in-conn">Cấu hình domain riêng (Named Tunnel) đã chuyển sang <b>File → Cài đặt</b>.</div>
           <div class="qrwrap">
             <img id="bpQr" alt="Mã QR kết nối">
             <div class="u">
@@ -2180,6 +2161,32 @@
                         <input type="text" id="settings-media-path"
                             class="flex-1 text-[11px] border border-win-border px-2 py-1 bg-slate-50" readonly>
                         <button class="win-button text-[11px]" onclick="selectMediaFolder()">Chọn...</button>
+                    </div>
+                </div>
+                <!-- Kênh Band: Named Tunnel (domain riêng) -->
+                <div>
+                    <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Kênh Band — Tên Cloudflare Named Tunnel</label>
+                    <input id="bpTunnelName" type="text" spellcheck="false" autocomplete="off"
+                        class="w-full text-[12px] border border-win-border px-2 py-1 focus:outline-none"
+                        placeholder="VD: blessing-church — trống = dùng Quick Tunnel (URL đổi mỗi lần chạy)">
+                    <div class="text-[10px] text-slate-500 mt-1">Tự chạy cùng app khi có giá trị. Cần để bật tính năng Setlist (soạn từ xa).</div>
+                    <button class="win-button text-[11px] mt-2" id="bpWizOpenBtn" type="button">⚙️ Thiết lập domain riêng tự động</button>
+                    <div class="bp-wizard hidden" id="bpWizard">
+                        <div id="bpWizStep1">
+                            <p class="bp-wizard-p">Domain phải <b>đã trỏ Nameserver sang Cloudflare</b> trước — làm ở nơi bạn mua domain (bước này app không tự làm thay được). Xong bước đó rồi mới đăng nhập ở đây.</p>
+                            <button class="win-button text-[11px]" id="bpWizLoginBtn" type="button">1. Đăng nhập Cloudflare</button>
+                            <div class="bp-wizard-status" id="bpWizLoginStatus"></div>
+                        </div>
+                        <div id="bpWizStep2" class="hidden">
+                            <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Tên tunnel (đặt tuỳ ý)</label>
+                            <input id="bpWizName" type="text" spellcheck="false" autocomplete="off" placeholder="vd: my-church-band"
+                                class="w-full text-[12px] border border-win-border px-2 py-1 mb-2 focus:outline-none">
+                            <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Domain / subdomain sẽ dùng</label>
+                            <input id="bpWizDomain" type="text" spellcheck="false" autocomplete="off" placeholder="vd: band.mychurch.org"
+                                class="w-full text-[12px] border border-win-border px-2 py-1 mb-2 focus:outline-none">
+                            <button class="win-button text-[11px]" id="bpWizCreateBtn" type="button">Tạo &amp; Kết nối</button>
+                            <div class="bp-wizard-status" id="bpWizCreateStatus"></div>
+                        </div>
                     </div>
                 </div>
                 <!-- Default Font -->
@@ -4166,6 +4173,13 @@
             document.getElementById('settings-show-next-verse').value = globalSettings.showNextVerse === false ? 'off' : 'on';
             document.getElementById('settings-auto-fit-text').value = globalSettings.autoFitText === false ? 'off' : 'on';
             document.getElementById('settings-media-path').value = globalSettings.mediaPath || '';
+            // Kênh Band: Named Tunnel — refresh phòng khi Settings mở trước khi
+            // band-comm kịp phát status đầu tiên (ví dụ mở app xong bấm liền).
+            if (window.electronAPI && window.electronAPI.bandComm) {
+                window.electronAPI.bandComm.getConfig().then(function (cfg) {
+                    document.getElementById('bpTunnelName').value = (cfg && cfg.tunnelName) || '';
+                }).catch(function () {});
+            }
             document.getElementById('settings-font-family-song').value = globalSettings.fontFamilySong;
             document.getElementById('settings-font-family-bible').value = globalSettings.fontFamilyBible;
             document.getElementById('settings-font-size').value = parseInt(globalSettings.fontSize);
@@ -7385,15 +7399,15 @@
       // hoá việc đổi Nameserver domain (luôn phải làm thủ công ở nơi mua
       // domain trước khi dùng wizard này).
       $('bpWizOpenBtn').addEventListener('click', function () {
-        var show = $('bpWizard').classList.contains('bp-hidden');
-        $('bpWizard').classList.toggle('bp-hidden', !show);
+        var show = $('bpWizard').classList.contains('hidden');
+        $('bpWizard').classList.toggle('hidden', !show);
         if (show) {
           $('bpWizLoginStatus').textContent = '';
           $('bpWizLoginStatus').className = 'bp-wizard-status';
           api.tunnelCheckLogin().then(function (r) {
             var loggedIn = r && r.loggedIn;
-            $('bpWizStep1').classList.toggle('bp-hidden', loggedIn);
-            $('bpWizStep2').classList.toggle('bp-hidden', !loggedIn);
+            $('bpWizStep1').classList.toggle('hidden', loggedIn);
+            $('bpWizStep2').classList.toggle('hidden', !loggedIn);
           }).catch(function () {});
         }
       });
@@ -7412,8 +7426,8 @@
           if (r && r.ok) {
             st.textContent = '✅ Đăng nhập thành công.';
             st.className = 'bp-wizard-status ok';
-            $('bpWizStep1').classList.add('bp-hidden');
-            $('bpWizStep2').classList.remove('bp-hidden');
+            $('bpWizStep1').classList.add('hidden');
+            $('bpWizStep2').classList.remove('hidden');
           } else {
             st.textContent = '❌ ' + ((r && r.error) || 'Đăng nhập thất bại.');
             st.className = 'bp-wizard-status err';
