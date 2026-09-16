@@ -4,6 +4,34 @@ Tất cả các thay đổi và cập nhật quan trọng của dự án đượ
 
 ## [Unreleased] - Kênh Band LAN (P1 + P2 + P2.5 + P4)
 
+### fix(band): nút "Hợp âm" bị kẹt vòng lặp không lối ra khi thư viện còn trống (2026-09-16)
+- Báo lỗi: join role "người hướng dẫn" chỉ thấy nút Setlist, không thấy chỗ
+  upload ảnh hợp âm dù operator đã đặt mã phụ trách.
+- Nguyên nhân: `updateChToggle()` (`comm/mobile/app.js`) chỉ hiện nút "🎼 Hợp
+  âm" khi `chIds.length || isUploader` — lúc thư viện CÒN TRỐNG và CHƯA AI
+  giành quyền phụ trách, cả 2 điều kiện đều sai nên nút không bao giờ hiện.
+  Nút "Phụ trách ảnh" (để giành quyền lần đầu) lại nằm BÊN TRONG section chỉ
+  mở được bằng cách bấm đúng nút đang bị ẩn đó — kẹt vòng lặp không lối ra,
+  không phải do role.
+- Fix: thêm `hasUploaderPin` vào điều kiện hiện nút — operator đã bật tính
+  năng (đặt mã) thì nút phải hiện để có người bấm vào giành quyền lần đầu,
+  không phụ thuộc thư viện đã có ảnh hay chưa.
+- Verify thật: server thật với mã phụ trách đã đặt + gallery trống — xác
+  nhận `/api/join` trả đúng `hasUploaderPin:true` cùng `gallery.images:[]`.
+
+### fix(band): chống brute force mã PIN + UI đi kèm (2026-09-16)
+- `src/band-comm/server.js`: `/api/join` giờ khoá tạm theo IP nguồn sau 5 lần
+  sai PIN liên tiếp — 30s → 5 phút → 30 phút tuỳ số lần sai, trả `429` +
+  `Retry-After`, không bỏ qua khoá kể cả gõ đúng PIN lúc đang bị khoá. Dọn
+  entry cũ mỗi nhịp heartbeat. PIN mặc định chỉ 4 số nên trước đây dò được
+  toàn bộ (10.000 khả năng) chỉ bằng vài giây gọi HTTP thô, không có gì chặn.
+- `index.html` sidebar: nút 🔄 cạnh "Mã PIN" trong popup Kết nối — tạo PIN mới
+  ngay lập tức (xác nhận trước), không cần khởi động lại server; hữu ích nếu
+  nghi mã bị dò/lộ.
+- `index.html` sidebar: khung "Hỗ trợ kỹ thuật" đổi từ list tĩnh sang
+  speech-bubble nổi neo dưới nút 🆘 (tail nhọn chỉ lên nút), không còn chiếm
+  chỗ cố định trong popup.
+
 ### feat(ui): viết lại Settings modal — sidebar danh mục + tìm kiếm (2026-09-16)
 - Thay hẳn Settings cũ (list dài cuộn, style "classic Windows" lệch chuẩn UI
   của `index.html` — docs ghi rõ operator window phải "hiện đại, dark-ish,

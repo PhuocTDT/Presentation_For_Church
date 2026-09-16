@@ -413,7 +413,12 @@
   function updateChToggle() {
     var b = $('chToggleBtn'), nb = $('chNew');
     if (!b) return;
-    b.hidden = !(chIds.length || isUploader);
+    // hasUploaderPin = operator đã bật tính năng này — phải hiện nút để CÓ
+    // NGƯỜI bấm vào mà giành quyền phụ trách lần đầu. Trước đây chỉ xét
+    // chIds.length/isUploader nên lúc thư viện còn trống + chưa ai giành
+    // quyền thì nút này không bao giờ hiện — không ai bấm được vào để thấy
+    // ô "Phụ trách ảnh" nằm bên trong, kẹt vòng lặp không lối ra.
+    b.hidden = !(chIds.length || isUploader || hasUploaderPin);
     b.classList.toggle('active', chOpen || isUploader);
     if (nb) nb.hidden = !(chIds.length && chUpdatedAt > (state.chSeenAt || 0) && !chOpen);
   }
