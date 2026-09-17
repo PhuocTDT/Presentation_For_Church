@@ -4,6 +4,29 @@ Tất cả các thay đổi và cập nhật quan trọng của dự án đượ
 
 ## [Unreleased] - Kênh Band LAN (P1 + P2 + P2.5 + P4)
 
+### fix(band): zombie WebSocket connection khiến "người phụ trách ảnh" bị kẹt vĩnh viễn (2026-09-17)
+- Báo lỗi: sau khi fix upload không báo lỗi, debug trực tiếp trên server thật
+  lộ ra nguyên nhân gốc — `POST /api/gallery/claim` trả 409 "Đã có người phụ
+  trách ảnh (...) đang online" dù người đó đã rời từ lâu, kéo theo mọi lần
+  upload đều 403.
+- Nguyên nhân thật: `src/band-comm/ws.js`'s `ping()` trước đây chỉ GỬI frame
+  PING, không hề theo dõi PONG có phản hồi hay không. `isAlive()` chỉ dựa vào
+  sự kiện TCP `'close'/'error'/'end'` — nếu điện thoại rời mạng đột ngột
+  (khoá màn hình lâu, mất sóng, đổi WiFi/4G giữa chừng, app bị kill) mà
+  không có gói FIN/RST nào được gửi, OS có thể giữ socket ở trạng thái
+  "half-open" rất lâu KHÔNG BAO GIỜ phát sự kiện lỗi — server tưởng client đó
+  còn sống mãi mãi. Ảnh hưởng không chỉ upload ảnh mà cả đếm presence
+  ("Đang nối: N người" có thể sai).
+- Fix: `ping()` giờ tự theo dõi — nếu lần ping TRƯỚC chưa được trả lời (bất
+  kỳ dữ liệu nào từ client, không riêng PONG, đều tính là "còn sống") thì
+  coi kết nối đã chết, tự đóng ngay thay vì tiếp tục ping vô thời hạn vào
+  một socket không ai lắng nghe. Trình duyệt tự trả PONG theo chuẩn WebSocket
+  (không cần sửa gì ở `comm/mobile/app.js`).
+- Verify thật: mô phỏng client TCP thật bắt tay WebSocket thật rồi cố ý im
+  lặng không trả PONG — xác nhận bị phát hiện + đóng đúng sau 2 chu kỳ ping
+  (~30s); ca đối chứng (client trả PONG bình thường như trình duyệt thật)
+  xác nhận không bị ảnh hưởng gì — PASS cả 2.
+
 ### feat(band): ảnh hợp âm mirror lên Cloudflare R2, tự xoá sau 4 ngày (2026-09-17)
 - Lý do: band cần xem lại ảnh hợp âm ổn định (tối T6 tập, Chủ nhật mới diễn)
   mà không phụ thuộc Cloudflare Tunnel còn sống lúc đang xem; không cần lưu

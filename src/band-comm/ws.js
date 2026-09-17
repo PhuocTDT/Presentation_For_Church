@@ -62,6 +62,16 @@ function acceptWebSocket(req, socket, handlers = {}) {
   let fragOpcode = 0;
   let fragChunks = [];
   let fragLen = 0;
+  // Trước đây ping() chỉ GỬI frame PING, không theo dõi PONG có về hay
+  // không — nếu client rời mạng đột ngột (khoá màn hình lâu, mất sóng, đổi
+  // WiFi/4G giữa chừng) mà TCP không phát ra 'close'/'error'/'end' ngay
+  // (rất phổ biến — OS có thể giữ socket "half-open" hàng chục phút), isAlive()
+  // trả true MÃI MÃI dù client đã chết từ lâu. Hậu quả thật: "người phụ
+  // trách ảnh" cũ (zombie) chặn người khác giành lại quyền, presence đếm sai
+  // số người đang nối. Trình duyệt tự trả PONG cho PING nhận được (hành vi
+  // chuẩn WebSocket, không cần code gì ở client) — chỉ cần server nhận ra
+  // khi PONG không tới.
+  let awaitingPong = false;
 
   function finish() {
     if (!alive) return;
@@ -77,6 +87,11 @@ function acceptWebSocket(req, socket, handlers = {}) {
   }
   function ping() {
     if (!alive) return;
+    // Lần ping trước chưa được trả lời (đã qua 1 chu kỳ heartbeat đầy đủ mà
+    // không có pong) -> coi như kết nối đã chết, đóng ngay thay vì tiếp tục
+    // ping vô thời hạn vào một socket không ai còn lắng nghe.
+    if (awaitingPong) { finish(); return; }
+    awaitingPong = true;
     try { socket.write(encodeFrame(OP_PING, Buffer.alloc(0))); } catch (e) { finish(); }
   }
   function close(code = 1000) {
@@ -148,6 +163,7 @@ function acceptWebSocket(req, socket, handlers = {}) {
 
   socket.on('data', (chunk) => {
     if (!alive) return;
+    awaitingPong = false; // bất kỳ dữ liệu nào tới (kể cả pong) chứng tỏ kết nối còn sống
     buf = buf.length ? Buffer.concat([buf, chunk]) : chunk;
     if (buf.length > MAX_MESSAGE + 14) { close(1009); return; }
     parse();
