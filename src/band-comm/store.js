@@ -28,7 +28,15 @@ function isSafeProfileId(id) {
 function defaultConfig() {
   return {
     version: 1,
-    room: { name: 'Kênh Band', pin: randomPin(), pinSetAt: Date.now(), hostname: 'worship' },
+    room: {
+      name: 'Kênh Band', pin: randomPin(), pinSetAt: Date.now(), hostname: 'worship',
+      // Đăng nhập tài khoản (band-comm-plan.md §11): mặc định false, không ảnh
+      // hưởng bản cài nào chưa bật. Khi true, /api/login (username+password)
+      // thay cho tên/vai trò tự khai; room.pin trở thành lớp phụ TUỲ CHỌN sau
+      // đăng nhập cá nhân — chỉ áp dụng khi pinRequiredWithAccounts cũng bật.
+      pinRequiredWithAccounts: false
+    },
+    accountsEnabled: false,
     port: DEFAULT_PORT,
     // Địa chỉ công khai band gõ/quét (Cloudflare Tunnel, domain riêng…). Rỗng =
     // chưa cấu hình → sidebar chỉ hiện IP LAN + worship.local như trước.
@@ -60,8 +68,10 @@ function normalizeConfig(raw) {
       // gian. `save()` bên dưới là nơi thật sự stamp giá trị mới khi PIN đổi;
       // ở đây chỉ giữ nguyên field khi load lại config không đổi gì.
       pinSetAt: Number.isFinite(room.pinSetAt) ? room.pinSetAt : (base.room.pinSetAt),
-      hostname: /^[a-z0-9][a-z0-9-]{0,29}$/i.test(String(room.hostname || '')) ? String(room.hostname).toLowerCase() : base.room.hostname
+      hostname: /^[a-z0-9][a-z0-9-]{0,29}$/i.test(String(room.hostname || '')) ? String(room.hostname).toLowerCase() : base.room.hostname,
+      pinRequiredWithAccounts: room.pinRequiredWithAccounts === true
     },
+    accountsEnabled: cfg.accountsEnabled === true,
     port: Number.isInteger(cfg.port) && cfg.port > 0 ? cfg.port : base.port,
     publicUrl: /^https?:\/\/[^\s]+$/i.test(String(cfg.publicUrl || '').trim())
       ? String(cfg.publicUrl).trim().replace(/\/+$/, '')

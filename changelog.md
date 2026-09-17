@@ -4,6 +4,56 @@ Tất cả các thay đổi và cập nhật quan trọng của dự án đượ
 
 ## [Unreleased] - Kênh Band LAN (P1 + P2 + P2.5 + P4)
 
+### feat(band): đăng nhập tài khoản — thay/kèm PIN phòng dùng chung (2026-09-17)
+- Yêu cầu: chỉ dùng PIN phòng thì không đủ an toàn (ai biết PIN cũng tự gõ
+  tên/vai trò bất kỳ) — muốn operator (laptop) là nơi DUY NHẤT tạo tài khoản
+  cho từng thành viên, web chỉ đăng nhập. Đã cân nhắc AWS Cognito, quyết định
+  không dùng — cần Internet cho cả bước đăng nhập lẫn "operator tạo tài
+  khoản qua Admin API", ngược nguyên tắc LAN-first của Kênh Band (chi tiết:
+  `band-comm-plan.md` §11).
+- **Mới `src/band-comm/accounts.js`**: `userData/band-comm-accounts.json`
+  tách riêng khỏi `band-comm.json` (giống lý do tách gallery). Password hash
+  bằng `crypto.scryptSync` (0 dependency) — chỉ chống lộ file trần, KHÔNG
+  chống brute-force offline nếu file lộ + password yếu (ghi rõ trong docs,
+  không để ai hiểu nhầm hash là đủ). Mật khẩu do operator tự đặt lúc tạo,
+  band member không tự đổi được.
+- **`server.js`**: `POST /api/login` (username+password) + `POST
+  /api/join-room` (bước 2 tuỳ chọn — mã PIN phòng, dùng lại nguyên field
+  `room.pin` sẵn có thay vì tạo "mật khẩu phòng" mới) + `GET /api/mode`
+  (public, không lộ roster) cho mobile biết vẽ màn nào. **Không có**
+  `GET/POST /api/accounts` liệt kê danh sách tài khoản — tránh lộ roster qua
+  Cloudflare Tunnel công khai mặc định bật.
+  - `profileId` trong token = `account.id` khi đăng nhập qua tài khoản
+    (không phải field mới) — mọi cơ chế theo-`profileId` đã có (bộ nút cảnh
+    báo, `ownerId` gallery vừa refactor sáng cùng ngày) tự động hoạt động
+    đúng khi 1 người dùng nhiều máy, không cần sửa gallery lần nữa.
+  - `tempToken` (bước 2) là nonce ngẫu nhiên lưu `Map` RAM riêng
+    (`pendingLogins`), KHÔNG đi qua `makeToken()`/`verifyToken()` — fail-
+    closed theo cấu trúc (route khác lỡ dùng nhầm tự 401) thay vì dựa vào
+    quy ước.
+  - Rate-limit brute-force (tái dùng `joinAttempts` đã có) mở rộng khoá theo
+    `accountId` cho `/api/login`, bên cạnh khoá theo IP đã có.
+  - `/api/join` (luồng PIN phòng cũ, vẫn chạy song song — feature-flag
+    `accountsEnabled` mặc định tắt) chặn `profileId` tự khai trùng
+    `accounts[].id` thật, tránh 1 client chiếm quyền của 1 tài khoản mà
+    không cần đăng nhập.
+  - Đổi mật khẩu/khoá/xoá account, hoặc bật/tắt `accountsEnabled`/
+    `room.pinRequiredWithAccounts` → `commServer.rotateSecret()` — mọi
+    token cũ verify-fail ngay, không cần cơ chế "kick" riêng.
+- **`index.html`**: tab "Tài khoản" mới trong Settings → Media & Band —
+  danh sách + thêm/đổi mật khẩu/khoá/xoá, cộng 2 toggle (`accountsEnabled`,
+  `room.pinRequiredWithAccounts`).
+- **`comm/mobile/`**: màn join giờ có 2 chế độ, tự chọn qua `GET api/mode`
+  lúc tải trang — PIN phòng + tên tự gõ (mặc định) hoặc đăng nhập tài
+  khoản (username+password, thêm màn PIN phòng nếu operator bật).
+- Verify: 3 bộ test độc lập, 48/48 PASS — backend (Node, không cần
+  Electron): token expiry/brute-force/tempToken fail-closed/profileId
+  collision/rotateSecret đều test bằng request HTTP thật vào server thật;
+  operator UI (Electron, DOM + IPC thật): tạo/khoá tài khoản qua đúng nút
+  bấm thật; mobile UI (Electron load qua HTTP thật vào server thật): cả 3
+  luồng (PIN phòng cũ, đăng nhập 1 bước, đăng nhập 2 bước) qua đúng
+  input/click thật, không giả lập.
+
 ### refactor(band): bỏ "1 người phụ trách ảnh" — ai đã vào phòng cũng thêm được, chỉ tự xoá ảnh mình đăng (2026-09-17)
 - Yêu cầu: cơ chế cũ (giành quyền qua `room.uploaderPin`, chỉ 1 người online
   giữ quyền tại 1 thời điểm) khiến cả nhóm phụ thuộc vào đúng 1 người cầm

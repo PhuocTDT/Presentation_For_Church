@@ -21,6 +21,14 @@ const { makeEnvelope, newId } = require('./protocol');
 const { acceptWebSocket } = require('./ws');
 const { isSafeProfileId } = require('./store');
 
+// Đăng nhập tài khoản qua bước 2 (mã PIN phòng sau khi login) — nonce ngẫu
+// nhiên, KHÔNG đi qua makeToken()/verifyToken() (band-comm-plan.md §11, điểm
+// 8/D16): vì tempToken không phải chuỗi ký HMAC hợp lệ (không đủ 6 phần cách
+// nhau bằng dấu chấm), mọi route khác tự động 401 nếu lỡ dùng nhầm, ngay tại
+// gate "everything else needs a valid token" — fail-closed theo cấu trúc,
+// không phải vì có route nào tự nhớ kiểm tra 1 cờ.
+const PENDING_LOGIN_MAX_AGE_MS = 5 * 60 * 1000;
+
 const MOBILE_DIR = path.join(__dirname, '..', '..', 'comm', 'mobile');
 const RING_MAX = 120;          // messages replayed to a phone that reconnects
 const HEARTBEAT_MS = 15000;    // WS ping to keep the connection alive through NAT / proxies
@@ -105,12 +113,13 @@ function sendJson(res, code, obj, headers) {
 /**
  * @param {object}   opts
  * @param {object}   opts.store       from ./store createStore()
+ * @param {object}   [opts.accountsStore] from ./accounts createAccountsStore() — đăng nhập tài khoản (band-comm-plan.md §11); bỏ trống = chỉ dùng luồng PIN phòng cũ
  * @param {Function} [opts.onEvent]   (envelope) => void — every non-presence message
  * @param {Function} [opts.onPresence](clientList) => void
  * @param {Function} [opts.getLibraryIndex] () => [{id,title,lyrics}] — for /api/library
  * @param {Function} [opts.onSetlist] (setlist) => void — a phone sent a setlist
  */
-function createCommServer({ store, onEvent, onPresence, getLibraryIndex, onSetlist }) {
+function createCommServer({ store, accountsStore, onEvent, onPresence, getLibraryIndex, onSetlist }) {
   let server = null;
   let running = false;
   let secret = null;
@@ -122,19 +131,45 @@ function createCommServer({ store, onEvent, onPresence, getLibraryIndex, onSetli
   const setlists = [];             // setlist gửi từ điện thoại trong phiên (RAM)
   const receivedSetlistIds = new Set(); // idempotent theo setlist.id
   let cloudPollTimer = null;
+  // accountId -> { accountId, name, role, expiresAt } — bước 1 (/api/login) đã
+  // xác thực xong nhưng còn chờ mã PIN phòng (bước 2, /api/join-room) nếu
+  // room.pinRequiredWithAccounts bật. Xem comment ở PENDING_LOGIN_MAX_AGE_MS.
+  const pendingLogins = new Map(); // tempToken -> { accountId, name, role, expiresAt }
 
-  // Chống dò mã PIN bằng brute force trên /api/join — PIN mặc định chỉ 4 số
-  // (10.000 khả năng), không có gì khác chặn thử liên tục qua HTTP thô. Khoá
-  // tăng dần theo IP nguồn (đơn giản, không cần dependency ngoài); qua
-  // Cloudflare Tunnel mọi request đều tới từ 127.0.0.1 (cloudflared proxy nội
-  // bộ) nên khi đó khoá này thành khoá dùng chung cho toàn bộ traffic ngoài
-  // LAN — chấp nhận được, còn hơn không có gì chặn.
-  const joinAttempts = new Map(); // ip -> { fails, blockUntil, lastAt }
+  // Chống dò mã PIN/mật khẩu bằng brute force — không có gì khác chặn thử
+  // liên tục qua HTTP thô. Khoá tăng dần theo 1 khoá bất kỳ (IP nguồn cho
+  // /api/join & /api/join-room, thêm theo accountId/username cho /api/login
+  // — xem checkBlocked/recordFailure bên dưới); qua Cloudflare Tunnel mọi
+  // request đều tới từ 127.0.0.1 (cloudflared proxy nội bộ) nên khi đó khoá
+  // theo IP thành khoá dùng chung cho toàn bộ traffic ngoài LAN — chấp nhận
+  // được, còn hơn không có gì chặn.
+  const joinAttempts = new Map(); // key -> { fails, blockUntil, lastAt }
   function pinBackoffMs(fails) {
     if (fails < 5) return 0;
     if (fails < 10) return 30 * 1000;
     if (fails < 20) return 5 * 60 * 1000;
     return 30 * 60 * 1000;
+  }
+  // Số giây còn phải đợi nếu `key` đang bị khoá, hoặc 0 nếu không.
+  function checkBlocked(key) {
+    const att = joinAttempts.get(key);
+    const now = Date.now();
+    return (att && att.blockUntil > now) ? Math.ceil((att.blockUntil - now) / 1000) : 0;
+  }
+  function recordFailure(key) {
+    const now = Date.now();
+    const next = joinAttempts.get(key) || { fails: 0, blockUntil: 0, lastAt: now };
+    next.fails += 1;
+    next.lastAt = now;
+    next.blockUntil = now + pinBackoffMs(next.fails);
+    joinAttempts.set(key, next);
+  }
+  function clearAttempts(key) { joinAttempts.delete(key); }
+  function prunePendingLogins() {
+    const now = Date.now();
+    for (const [tok, p] of pendingLogins) {
+      if (p.expiresAt < now) pendingLogins.delete(tok);
+    }
   }
   function pruneJoinAttempts() {
     const now = Date.now();
@@ -313,36 +348,79 @@ function createCommServer({ store, onEvent, onPresence, getLibraryIndex, onSetli
     });
   }
 
+  // Cấp token đầy đủ + response giống hệt /api/join cho 1 { id, name, role }
+  // — dùng chung cho cả /api/login (khi không cần PIN phòng) và
+  // /api/join-room (bước 2, sau khi đã qua PIN phòng).
+  function finishLogin(res, account, cfg) {
+    const clientId = newId('c');
+    // profileId = accountId, KHÔNG phải id ngẫu nhiên riêng — đây là điểm
+    // mấu chốt giải quyết xung đột "1 người 2 máy" giữa gallery ownership
+    // và bộ nút cảnh báo (band-comm-plan.md §11, điểm 1+2): mọi nơi đã dùng
+    // client.profileId làm khoá định danh-theo-người-dùng tự động hoạt động
+    // đúng với tài khoản, không cần sửa gì thêm ở gallery.
+    const profileId = account.id;
+    clients.set(clientId, { clientId, name: account.name, role: account.role, profileId, ws: null, lastSeen: Date.now(), dupMap: new Map() });
+    const restore = cfg.profiles[profileId]
+      ? { profileId, ...cfg.profiles[profileId] }
+      : store.findProfileByName(account.name);
+    setTimeout(pushPresence, 50);
+    return sendJson(res, 200, {
+      token: makeToken(clientId, account.name, account.role, profileId),
+      clientId,
+      // /api/join trả lại name/role vì client tự khai lúc gửi lên (đã biết
+      // sẵn); đăng nhập tài khoản thì client chỉ gửi username/password, nên
+      // phải trả lại name/role thật ở đây để UI hiển thị đúng.
+      name: account.name,
+      role: account.role,
+      room: { name: cfg.room.name },
+      operatorReplies: cfg.operatorReplies,
+      profile: restore || null,
+      gallery: galleryManifest(),
+      cloudRoomId: cfg.cloudRoomId,
+      setlistEnabled: setlistEnabled()
+    });
+  }
+
   async function handle(req, res) {
     const u = new URL(req.url, 'http://localhost');
     const p = u.pathname;
 
     if (req.method === 'GET' && !p.startsWith('/api/')) return serveStatic(res, p);
 
-    // --- join is the only unauthenticated endpoint — rate-limit PIN guesses ---
+    // --- không cần token: đăng nhập (dò được mode), join PIN phòng cũ, đăng
+    // nhập tài khoản (band-comm-plan.md §11) ---
+    if (p === '/api/mode' && req.method === 'GET') {
+      const cfg = store.load();
+      // Không nhạy cảm (không có tên/roster) — chỉ đủ để mobile biết vẽ màn
+      // hình nào, KHÔNG lộ danh sách tài khoản (điểm 3/D17: không có
+      // GET/POST /api/accounts public nào cả).
+      return sendJson(res, 200, { accountsEnabled: !!cfg.accountsEnabled, pinRequiredWithAccounts: !!cfg.room.pinRequiredWithAccounts });
+    }
+
     if (p === '/api/join' && req.method === 'POST') {
       const ip = (req.socket && req.socket.remoteAddress) || 'unknown';
-      const now = Date.now();
-      const att = joinAttempts.get(ip);
-      if (att && att.blockUntil > now) {
-        res.setHeader('Retry-After', String(Math.ceil((att.blockUntil - now) / 1000)));
-        return sendJson(res, 429, { error: 'Thử sai mã PIN quá nhiều lần, vui lòng đợi ' + Math.ceil((att.blockUntil - now) / 1000) + 's rồi thử lại' });
+      const blockedSec = checkBlocked(ip);
+      if (blockedSec > 0) {
+        res.setHeader('Retry-After', String(blockedSec));
+        return sendJson(res, 429, { error: 'Thử sai mã PIN quá nhiều lần, vui lòng đợi ' + blockedSec + 's rồi thử lại' });
       }
       const body = await readJson(req);
       if (!body) return sendJson(res, 400, { error: 'bad json' });
       const cfg = store.load();
       if (String(body.pin || '') !== String(cfg.room.pin)) {
-        const next = att || { fails: 0, blockUntil: 0, lastAt: now };
-        next.fails += 1;
-        next.lastAt = now;
-        next.blockUntil = now + pinBackoffMs(next.fails);
-        joinAttempts.set(ip, next);
+        recordFailure(ip);
         return sendJson(res, 403, { error: 'Sai mã PIN' });
       }
-      joinAttempts.delete(ip);
+      clearAttempts(ip);
       const name = String(body.name || '').trim().slice(0, 40) || 'Ẩn danh';
       const role = ['band', 'leader'].includes(body.role) ? body.role : 'band';
-      const profileId = isSafeProfileId(body.profileId) ? body.profileId : null;
+      // profileId tự khai ở luồng cũ này KHÔNG được trùng id 1 tài khoản thật
+      // — nếu không, 1 client biết/đoán đúng accounts[].id sẽ chiếm quyền
+      // xoá ảnh + bộ nút cảnh báo của account đó mà không cần đăng nhập
+      // (band-comm-plan.md §11, điểm 10/D17). Rủi ro thấp (newId() ngẫu
+      // nhiên) nhưng chặn gần như miễn phí.
+      const claimedProfileId = isSafeProfileId(body.profileId) ? body.profileId : null;
+      const profileId = (claimedProfileId && accountsStore && accountsStore.isAccountId(claimedProfileId)) ? null : claimedProfileId;
       const clientId = newId('c');
       clients.set(clientId, { clientId, name, role, profileId, ws: null, lastSeen: Date.now(), dupMap: new Map() });
       const restore = profileId && cfg.profiles[profileId]
@@ -359,6 +437,64 @@ function createCommServer({ store, onEvent, onPresence, getLibraryIndex, onSetli
         cloudRoomId: cfg.cloudRoomId,
         setlistEnabled: setlistEnabled()
       });
+    }
+
+    if (p === '/api/login' && req.method === 'POST') {
+      const cfg = store.load();
+      if (!cfg.accountsEnabled || !accountsStore) return sendJson(res, 404, { error: 'not found' });
+      const ip = (req.socket && req.socket.remoteAddress) || 'unknown';
+      const body = await readJson(req);
+      if (!body) return sendJson(res, 400, { error: 'bad json' });
+      const username = String(body.username || '').trim().toLowerCase();
+      const ipKey = 'login-ip:' + ip;
+      const acctKey = 'login-acct:' + username;
+      const blockedSec = Math.max(checkBlocked(ipKey), username ? checkBlocked(acctKey) : 0);
+      if (blockedSec > 0) {
+        res.setHeader('Retry-After', String(blockedSec));
+        return sendJson(res, 429, { error: 'Thử sai quá nhiều lần, vui lòng đợi ' + blockedSec + 's rồi thử lại' });
+      }
+      const account = accountsStore.verify(username, body.password);
+      if (!account) {
+        recordFailure(ipKey);
+        if (username) recordFailure(acctKey);
+        // Không phân biệt "sai username" và "sai password" — tránh lộ
+        // username nào tồn tại qua thông báo lỗi.
+        return sendJson(res, 403, { error: 'Sai tên đăng nhập hoặc mật khẩu' });
+      }
+      clearAttempts(ipKey); clearAttempts(acctKey);
+      if (!cfg.room.pinRequiredWithAccounts) return finishLogin(res, account, cfg);
+      const tempToken = crypto.randomBytes(16).toString('hex');
+      pendingLogins.set(tempToken, { accountId: account.id, name: account.name, role: account.role, expiresAt: Date.now() + PENDING_LOGIN_MAX_AGE_MS });
+      return sendJson(res, 200, { needsRoomPin: true, tempToken });
+    }
+
+    if (p === '/api/join-room' && req.method === 'POST') {
+      const cfg = store.load();
+      if (!cfg.accountsEnabled || !cfg.room.pinRequiredWithAccounts || !accountsStore) return sendJson(res, 404, { error: 'not found' });
+      const ip = (req.socket && req.socket.remoteAddress) || 'unknown';
+      const ipKey = 'joinroom-ip:' + ip;
+      const blockedSec = checkBlocked(ipKey);
+      if (blockedSec > 0) {
+        res.setHeader('Retry-After', String(blockedSec));
+        return sendJson(res, 429, { error: 'Thử sai mã PIN quá nhiều lần, vui lòng đợi ' + blockedSec + 's rồi thử lại' });
+      }
+      const body = await readJson(req);
+      if (!body) return sendJson(res, 400, { error: 'bad json' });
+      const tempToken = String(body.tempToken || '');
+      const pending = pendingLogins.get(tempToken);
+      if (!pending || pending.expiresAt < Date.now()) {
+        pendingLogins.delete(tempToken);
+        return sendJson(res, 401, { error: 'Phiên đăng nhập đã hết hạn, vui lòng đăng nhập lại' });
+      }
+      if (String(body.pin || '') !== String(cfg.room.pin)) {
+        recordFailure(ipKey);
+        return sendJson(res, 403, { error: 'Sai mã PIN' });
+      }
+      clearAttempts(ipKey);
+      pendingLogins.delete(tempToken);
+      const acc = accountsStore.findById(pending.accountId);
+      if (!acc || acc.active === false) return sendJson(res, 401, { error: 'Tài khoản không còn hoạt động' });
+      return finishLogin(res, { id: acc.id, name: acc.name, role: acc.role }, cfg);
     }
 
     // --- everything else needs a valid token ---
@@ -655,6 +791,7 @@ function createCommServer({ store, onEvent, onPresence, getLibraryIndex, onSetli
           else if (now - c.lastSeen > PRESENCE_STALE_MS * 2) clients.delete(cid);
         }
         pruneJoinAttempts();
+        prunePendingLogins();
       }, HEARTBEAT_MS);
     };
 
@@ -713,12 +850,24 @@ function createCommServer({ store, onEvent, onPresence, getLibraryIndex, onSetli
     ring.length = 0;
     setlists.length = 0;
     receivedSetlistIds.clear();
+    pendingLogins.clear();
     try { if (server) server.close(); } catch (e) {}
     server = null;
     running = false;
     secret = null;
     boundIp = null;
     port = 0;
+  }
+
+  // Sinh lại secret ký token — mọi token đang tồn tại lập tức verify-fail ở
+  // lần gọi kế tiếp (y hệt hiệu ứng restart server, nhưng không phải đóng
+  // socket/mất trạng thái khác). Gọi khi bật/tắt accountsEnabled hoặc
+  // room.pinRequiredWithAccounts, hoặc khi 1 account bị khoá/xoá/đổi mật
+  // khẩu — client tự bung màn đăng nhập lại qua đúng luồng 401 đã có
+  // (comm/mobile/app.js's scheduleReconnect()), không cần cơ chế "kick"
+  // riêng (band-comm-plan.md §11, điểm 5).
+  function rotateSecret() {
+    if (running) secret = crypto.randomBytes(32);
   }
 
   return {
@@ -733,7 +882,8 @@ function createCommServer({ store, onEvent, onPresence, getLibraryIndex, onSetli
     galleryAdd,
     galleryRemove,
     galleryReorder,
-    announceRoomConfig
+    announceRoomConfig,
+    rotateSecret
   };
 }
 

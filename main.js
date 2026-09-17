@@ -5,6 +5,7 @@ const os = require('os');
 const { pathToFileURL } = require('url');
 const { validateItem, migrateItem } = require('./src/schema');
 const { createStore: createBandCommStore } = require('./src/band-comm/store');
+const { createAccountsStore } = require('./src/band-comm/accounts');
 const { createCommServer, lanIPv4List } = require('./src/band-comm/server');
 const { createMdnsResponder } = require('./src/band-comm/mdns');
 
@@ -63,6 +64,7 @@ let userDataPath, songsFilePath, bibleFilePath, settingsFilePath, defaultMediaFo
 let liveWindow = null;
 let mainWindow = null;
 let bandCommStore = null;
+let bandAccountsStore = null;
 let commServer = null;
 let bandMdns = null;
 let lastBandStartError = null;
@@ -1217,9 +1219,11 @@ function stopBandComm() {
 function initBandComm() {
   if (commServer) return;
   bandCommStore = createBandCommStore(userDataPath, safeWriteSync);
+  bandAccountsStore = createAccountsStore(userDataPath, safeWriteSync);
   bandMdns = createMdnsResponder();
   commServer = createCommServer({
     store: bandCommStore,
+    accountsStore: bandAccountsStore,
     onEvent: (env) => {
       broadcastToRenderers('band-comm-event', env);
       // Nudge the taskbar when a fresh band alert lands and the app is unfocused.
@@ -2189,13 +2193,64 @@ app.whenReady().then(() => {
 
   ipcMain.handle('band-comm-save-config', (e, cfg) => {
     initBandComm();
+    const before = bandCommStore.load();
     const saved = bandCommStore.save(cfg);
     if (commServer && commServer.isRunning()) {
       syncBandTunnel();
       commServer.announceRoomConfig();
+      // Bật/tắt đăng nhập tài khoản hoặc yêu cầu PIN phòng sau đăng nhập đổi
+      // hẳn ai được coi là "đã xác thực hợp lệ" — mọi token cũ (cấp theo mô
+      // hình trước đó) phải hết hiệu lực ngay, không đợi hết hạn 12h
+      // (band-comm-plan.md §11, điểm 5).
+      if (before.accountsEnabled !== saved.accountsEnabled || before.room.pinRequiredWithAccounts !== saved.room.pinRequiredWithAccounts) {
+        commServer.rotateSecret();
+      }
     }
     sendBandStatus();
     return saved;
+  });
+
+  // ---- Đăng nhập tài khoản (band-comm-plan.md §11) — operator (laptop) là
+  // nơi DUY NHẤT tạo/sửa/xoá tài khoản; band member chỉ đăng nhập qua
+  // POST /api/login, không tự đăng ký được (không có endpoint tương ứng).
+  ipcMain.handle('band-accounts-list', () => {
+    initBandComm();
+    return bandAccountsStore.list();
+  });
+
+  ipcMain.handle('band-accounts-create', (e, payload) => {
+    initBandComm();
+    return bandAccountsStore.create(payload || {});
+  });
+
+  ipcMain.handle('band-accounts-update', (e, { id, name, role } = {}) => {
+    initBandComm();
+    return bandAccountsStore.update(id, { name, role });
+  });
+
+  // Đổi mật khẩu / khoá / xoá tài khoản đều kick ngay các phiên hiện tại của
+  // tài khoản đó — đơn giản hoá bằng cách sinh lại secret chung (mọi token
+  // đang tồn tại verify-fail ngay), thay vì theo dõi/đóng riêng từng
+  // WebSocket theo accountId.
+  ipcMain.handle('band-accounts-update-password', (e, { id, password } = {}) => {
+    initBandComm();
+    const result = bandAccountsStore.updatePassword(id, password);
+    if (!result.error && commServer && commServer.isRunning()) commServer.rotateSecret();
+    return result;
+  });
+
+  ipcMain.handle('band-accounts-set-active', (e, { id, active } = {}) => {
+    initBandComm();
+    const result = bandAccountsStore.setActive(id, active);
+    if (!result.error && commServer && commServer.isRunning()) commServer.rotateSecret();
+    return result;
+  });
+
+  ipcMain.handle('band-accounts-remove', (e, id) => {
+    initBandComm();
+    const result = bandAccountsStore.remove(id);
+    if (!result.error && commServer && commServer.isRunning()) commServer.rotateSecret();
+    return result;
   });
 
   // ---- Named Tunnel wizard ("Cài đặt nâng cao" trong sidebar) — tự động hoá

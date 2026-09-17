@@ -1310,6 +1310,25 @@
       #settings-modal .bp-wizard-status.ok { color: #34d399; }
       #settings-modal .bp-wizard-status.err { color: #f87171; }
 
+      /* Tài khoản thành viên (band-comm-plan.md §11) — cùng palette Settings. */
+      #settings-modal .bp-acct-list { display: flex; flex-direction: column; gap: 6px; margin-bottom: 10px; }
+      #settings-modal .bp-acct-empty { font-size: 11.5px; color: var(--stg-text-faint); padding: 6px 0; }
+      #settings-modal .bp-acct-row {
+        display: flex; align-items: center; gap: 8px; padding: 7px 9px;
+        border: 1px solid var(--stg-border-soft); border-radius: 8px; background: var(--stg-surface-2);
+      }
+      #settings-modal .bp-acct-row .nm { flex: 1; min-width: 0; font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      #settings-modal .bp-acct-row .un { color: var(--stg-text-faint); font-weight: 400; }
+      #settings-modal .bp-acct-row .role { font-size: 10px; text-transform: uppercase; letter-spacing: .04em; color: var(--stg-text-faint); margin-left: 4px; }
+      #settings-modal .bp-acct-row .inactive { color: #f87171; font-size: 10.5px; margin-left: 6px; }
+      #settings-modal .bp-acct-row .stg-btn.sm { padding: 4px 9px; font-size: 10.5px; }
+      #settings-modal .bp-acct-row .stg-btn.sm.danger { color: #f87171; border-color: #f8717155; }
+      #settings-modal .bp-acct-add { display: grid; grid-template-columns: 1fr 1fr auto; gap: 6px; align-items: center; }
+      #settings-modal .bp-acct-add input, #settings-modal .bp-acct-add select { grid-column: span 1; }
+      #settings-modal .bp-acct-add #bpAcctPassword { grid-column: span 2; }
+      #settings-modal .bp-acct-add #bpAcctAddBtn { grid-column: span 1; white-space: nowrap; }
+      #settings-modal .bp-acct-status { font-size: 11.5px; margin-top: 6px; color: var(--stg-text-dim); min-height: 14px; }
+
       #bandPanel .bp-error {
         margin: 8px 12px 0; padding: 10px 12px; border-radius: 10px;
         background: #fdecea; border: 1px solid #f0b3ab; color: #7a241c; font-size: .82rem;
@@ -2527,6 +2546,49 @@
                       <div class="bp-wizard-status" id="bpWizCreateStatus"></div>
                     </div>
                   </div>
+                </div>
+              </div>
+
+              <div class="stg-section">
+                <div class="stg-row" data-search="đăng nhập tài khoản account login username password">
+                  <div class="stg-row-text">
+                    <div class="stg-label">Đăng nhập tài khoản</div>
+                    <div class="stg-help">Bật để band/leader đăng nhập bằng tài khoản bạn tạo (username + mật khẩu) thay vì chỉ gõ tên tự do + mã PIN chung.</div>
+                  </div>
+                  <div class="stg-row-control">
+                    <label class="stg-toggle">
+                      <input type="checkbox" id="stgAccountsEnabled">
+                      <span class="stg-track"></span>
+                    </label>
+                  </div>
+                </div>
+                <div class="stg-row" data-search="mã pin phòng sau khi đăng nhập tài khoản">
+                  <div class="stg-row-text">
+                    <div class="stg-label">Yêu cầu thêm mã PIN phòng sau khi đăng nhập</div>
+                    <div class="stg-help">Tuỳ chọn — dùng lại mã PIN phòng ở popup Kết nối làm lớp phụ, đổi được mỗi buổi mà không ảnh hưởng mật khẩu cá nhân của ai.</div>
+                  </div>
+                  <div class="stg-row-control">
+                    <label class="stg-toggle">
+                      <input type="checkbox" id="stgPinRequiredWithAccounts">
+                      <span class="stg-track"></span>
+                    </label>
+                  </div>
+                </div>
+                <div class="stg-plain" data-search="tài khoản thành viên band leader">
+                  <div class="stg-label" style="margin-bottom:6px;">Tài khoản thành viên</div>
+                  <div class="stg-help" style="margin-bottom:8px;">Chỉ bạn tạo/đổi mật khẩu được ở đây — band member không tự đổi mật khẩu.</div>
+                  <div id="bpAcctList" class="bp-acct-list"></div>
+                  <div class="bp-acct-add">
+                    <input id="bpAcctUsername" class="stg-input" placeholder="Tên đăng nhập" spellcheck="false" autocomplete="off">
+                    <input id="bpAcctName" class="stg-input" placeholder="Tên hiển thị" spellcheck="false" autocomplete="off">
+                    <select id="bpAcctRole" class="stg-input">
+                      <option value="band">band</option>
+                      <option value="leader">leader</option>
+                    </select>
+                    <input id="bpAcctPassword" class="stg-input" type="text" placeholder="Mật khẩu (≥6 ký tự)" spellcheck="false" autocomplete="off">
+                    <button class="stg-btn stg-btn-primary" id="bpAcctAddBtn" type="button">+ Thêm thành viên</button>
+                  </div>
+                  <div class="bp-acct-status" id="bpAcctStatus"></div>
                 </div>
               </div>
             </div>
@@ -4424,7 +4486,12 @@
             if (window.electronAPI && window.electronAPI.bandComm) {
                 window.electronAPI.bandComm.getConfig().then(function (cfg) {
                     document.getElementById('bpTunnelName').value = (cfg && cfg.tunnelName) || '';
+                    document.getElementById('stgAccountsEnabled').checked = !!(cfg && cfg.accountsEnabled);
+                    document.getElementById('stgPinRequiredWithAccounts').checked = !!(cfg && cfg.room && cfg.room.pinRequiredWithAccounts);
                 }).catch(function () {});
+                // refreshAcctList() sống trong closure riêng của sidebar Kênh Band —
+                // gọi qua hàm global nhỏ thay vì lộ toàn bộ closure đó ra ngoài.
+                if (window.__refreshAcctList) window.__refreshAcctList();
             }
             document.getElementById('settings-font-family-song').value = globalSettings.fontFamilySong;
             document.getElementById('settings-font-family-bible').value = globalSettings.fontFamilyBible;
@@ -7686,6 +7753,88 @@
       }
       $('bpTunnelName').addEventListener('change', commitTunnelName);
       $('bpTunnelName').addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); $('bpTunnelName').blur(); } });
+
+      // Đăng nhập tài khoản (band-comm-plan.md §11) — operator (laptop) là
+      // nơi DUY NHẤT tạo/sửa/xoá tài khoản; band member chỉ đăng nhập, không
+      // tự đổi mật khẩu được (đã chốt D12).
+      function renderAcctList(accounts) {
+        var list = $('bpAcctList');
+        if (!accounts || !accounts.length) { list.innerHTML = '<div class="bp-acct-empty">Chưa có tài khoản nào.</div>'; return; }
+        list.innerHTML = accounts.map(function (a) {
+          return '<div class="bp-acct-row" data-id="' + escapeHtml(a.id) + '">' +
+            '<div class="nm">' + escapeHtml(a.name) + ' <span class="un">@' + escapeHtml(a.username) + '</span>' +
+            '<span class="role">' + escapeHtml(a.role) + '</span>' +
+            (a.active === false ? '<span class="inactive">Đã khoá</span>' : '') +
+            '</div>' +
+            '<button class="stg-btn sm" type="button" data-act="pw">Đổi mật khẩu</button>' +
+            '<button class="stg-btn sm" type="button" data-act="active">' + (a.active === false ? 'Mở khoá' : 'Khoá') + '</button>' +
+            '<button class="stg-btn sm danger" type="button" data-act="rm">Xoá</button>' +
+            '</div>';
+        }).join('');
+      }
+      function refreshAcctList() {
+        if (!(api.accounts && api.accounts.list)) return;
+        api.accounts.list().then(renderAcctList).catch(function () {});
+      }
+      // openSettings() (scope toàn cục, ngoài IIFE này) gọi lại hàm này mỗi
+      // lần mở Settings để danh sách tài khoản luôn mới.
+      window.__refreshAcctList = refreshAcctList;
+      $('bpAcctList').addEventListener('click', function (e) {
+        var btn = e.target.closest('button[data-act]');
+        if (!btn) return;
+        var row = btn.closest('.bp-acct-row');
+        var id = row && row.getAttribute('data-id');
+        if (!id) return;
+        var act = btn.getAttribute('data-act');
+        if (act === 'pw') {
+          var pw = prompt('Mật khẩu mới cho tài khoản này (từ 6 ký tự):');
+          if (pw == null || !pw.trim()) return;
+          api.accounts.updatePassword({ id: id, password: pw.trim() }).then(function (r) {
+            $('bpAcctStatus').textContent = (r && r.error) ? r.error : 'Đã đổi mật khẩu — phiên đang đăng nhập (nếu có) sẽ phải đăng nhập lại.';
+            if (!(r && r.error)) refreshAcctList();
+          });
+        } else if (act === 'active') {
+          var isLocked = !!row.querySelector('.inactive');
+          if (!isLocked && !confirm('Khoá tài khoản này? Phiên đang đăng nhập (nếu có) sẽ bị đăng xuất ngay.')) return;
+          api.accounts.setActive({ id: id, active: isLocked }).then(function (r) {
+            $('bpAcctStatus').textContent = (r && r.error) ? r.error : '';
+            refreshAcctList();
+          });
+        } else if (act === 'rm') {
+          if (!confirm('Xoá hẳn tài khoản này? Không thể hoàn tác.')) return;
+          api.accounts.remove(id).then(function (r) {
+            $('bpAcctStatus').textContent = (r && r.error) ? r.error : '';
+            refreshAcctList();
+          });
+        }
+      });
+      $('bpAcctAddBtn').addEventListener('click', function () {
+        var payload = {
+          username: $('bpAcctUsername').value,
+          name: $('bpAcctName').value,
+          role: $('bpAcctRole').value,
+          password: $('bpAcctPassword').value
+        };
+        api.accounts.create(payload).then(function (r) {
+          if (r && r.error) { $('bpAcctStatus').textContent = r.error; return; }
+          $('bpAcctStatus').textContent = 'Đã tạo tài khoản "@' + r.account.username + '".';
+          $('bpAcctUsername').value = ''; $('bpAcctName').value = ''; $('bpAcctPassword').value = '';
+          refreshAcctList();
+        });
+      });
+      $('stgAccountsEnabled').addEventListener('change', function () {
+        var checked = $('stgAccountsEnabled').checked;
+        api.getConfig().then(function (cfg) {
+          return api.saveConfig(Object.assign({}, cfg, { accountsEnabled: checked }));
+        }).catch(function () {});
+      });
+      $('stgPinRequiredWithAccounts').addEventListener('change', function () {
+        var checked = $('stgPinRequiredWithAccounts').checked;
+        api.getConfig().then(function (cfg) {
+          var room = Object.assign({}, cfg.room, { pinRequiredWithAccounts: checked });
+          return api.saveConfig(Object.assign({}, cfg, { room: room }));
+        }).catch(function () {});
+      });
 
       // Wizard "domain riêng tự động" — tự động hoá cloudflared tunnel
       // login/create/route dns thay vì gõ tay trong terminal. Không tự động

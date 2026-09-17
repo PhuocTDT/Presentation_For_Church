@@ -40,6 +40,11 @@
   }
 
   /* ---------------- join ---------------- */
+  // 2 chế độ (band-comm-plan.md §11), chọn qua GET api/mode lúc trang tải:
+  //  - mặc định (accountsEnabled=false): tên tự gõ + vai trò tự chọn + PIN phòng (như trước).
+  //  - tài khoản (accountsEnabled=true): đăng nhập username+password do
+  //    người trình chiếu cấp sẵn (không tự đăng ký được) -> nếu operator có
+  //    bật thêm "mã PIN phòng sau đăng nhập" thì có thêm bước 2.
 
   var role = 'band';
   Array.prototype.forEach.call(document.querySelectorAll('.roles button'), function (b) {
@@ -51,10 +56,49 @@
     });
   });
 
+  var accountsEnabled = false;
+  var pendingTempToken = null; // set khi đang ở bước 2 (chờ nhập mã PIN phòng)
+
+  fetch('api/mode').then(function (r) { return r.json(); }).then(function (m) {
+    accountsEnabled = !!(m && m.accountsEnabled);
+    if (accountsEnabled) {
+      $('joinLegacyFields').classList.add('hidden');
+      $('joinAccountFields').classList.remove('hidden');
+      $('joinSub').textContent = 'Đăng nhập bằng tài khoản người trình chiếu đã cấp cho bạn.';
+    }
+  }).catch(function () { /* mất mạng lúc tải trang — cứ để mặc định (mô hình PIN phòng) */ });
+
   $('joinBtn').addEventListener('click', doJoin);
   $('pin').addEventListener('keydown', function (e) { if (e.key === 'Enter') doJoin(); });
+  $('password').addEventListener('keydown', function (e) { if (e.key === 'Enter') doJoin(); });
+  $('roomPin').addEventListener('keydown', function (e) { if (e.key === 'Enter') doJoin(); });
 
   function doJoin() {
+    if (pendingTempToken) return doJoinRoom();
+    if (accountsEnabled) return doLogin();
+    return doLegacyJoin();
+  }
+
+  // Điền state chung + vào màn chính — dùng chung cho cả 3 đường vào kênh
+  // (PIN phòng cũ, đăng nhập tài khoản 1 bước, đăng nhập tài khoản 2 bước).
+  function finalizeJoin(j, fallbackName, fallbackRole) {
+    state.token = j.token;
+    state.clientId = j.clientId;
+    state.name = j.name || fallbackName;
+    state.role = j.role || fallbackRole;
+    state.roomName = (j.room && j.room.name) || 'Kênh Band';
+    state.operatorReplies = j.operatorReplies || [];
+    state.cloudRoomId = j.cloudRoomId || '';
+    $('slToggleBtn').hidden = !j.setlistEnabled;
+    if ((!state.buttons || !state.buttons.length) && j.profile && j.profile.buttons && j.profile.buttons.length) {
+      state.buttons = j.profile.buttons;
+    }
+    saveState();
+    enterMain();
+    if (j.gallery) renderChords(j.gallery);
+  }
+
+  function doLegacyJoin() {
     var name = $('name').value.trim();
     var pin = $('pin').value.trim();
     $('joinErr').textContent = '';
@@ -71,20 +115,73 @@
     }).then(function (res) {
       $('joinBtn').disabled = false;
       if (!res.ok) { $('joinErr').textContent = res.j && res.j.error ? res.j.error : 'Không vào được kênh.'; return; }
-      state.token = res.j.token;
-      state.clientId = res.j.clientId;
-      state.name = name;
-      state.role = role;
-      state.roomName = res.j.room && res.j.room.name || 'Kênh Band';
-      state.operatorReplies = res.j.operatorReplies || [];
-      state.cloudRoomId = res.j.cloudRoomId || '';
-      $('slToggleBtn').hidden = !res.j.setlistEnabled;
-      if ((!state.buttons || !state.buttons.length) && res.j.profile && res.j.profile.buttons && res.j.profile.buttons.length) {
-        state.buttons = res.j.profile.buttons;
+      finalizeJoin(res.j, name, role);
+    }).catch(function () {
+      $('joinBtn').disabled = false;
+      $('joinErr').textContent = 'Không kết nối được máy trình chiếu. Cùng Wi-Fi chưa?';
+    });
+  }
+
+  function doLogin() {
+    var username = $('username').value.trim();
+    var password = $('password').value;
+    $('joinErr').textContent = '';
+    if (!username || !password) { $('joinErr').textContent = 'Nhập tên đăng nhập và mật khẩu.'; return; }
+    $('joinBtn').disabled = true;
+
+    fetch('api/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: username, password: password })
+    }).then(function (r) {
+      return r.json().then(function (j) { return { ok: r.ok, j: j }; });
+    }).then(function (res) {
+      $('joinBtn').disabled = false;
+      if (!res.ok) { $('joinErr').textContent = res.j && res.j.error ? res.j.error : 'Không đăng nhập được.'; return; }
+      if (res.j.needsRoomPin) {
+        pendingTempToken = res.j.tempToken;
+        $('joinAccountFields').classList.add('hidden');
+        $('joinRoomPinFields').classList.remove('hidden');
+        $('joinSub').textContent = 'Nhập thêm mã PIN phòng người trình chiếu đọc cho bạn.';
+        $('roomPin').focus();
+        return;
       }
-      saveState();
-      enterMain();
-      if (res.j.gallery) renderChords(res.j.gallery);
+      finalizeJoin(res.j);
+    }).catch(function () {
+      $('joinBtn').disabled = false;
+      $('joinErr').textContent = 'Không kết nối được máy trình chiếu. Cùng Wi-Fi chưa?';
+    });
+  }
+
+  function doJoinRoom() {
+    var pin = $('roomPin').value.trim();
+    $('joinErr').textContent = '';
+    if (!/^\d{4,8}$/.test(pin)) { $('joinErr').textContent = 'Mã PIN gồm 4–8 chữ số.'; return; }
+    $('joinBtn').disabled = true;
+
+    fetch('api/join-room', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ tempToken: pendingTempToken, pin: pin })
+    }).then(function (r) {
+      return r.json().then(function (j) { return { ok: r.ok, j: j }; });
+    }).then(function (res) {
+      $('joinBtn').disabled = false;
+      if (!res.ok) {
+        $('joinErr').textContent = res.j && res.j.error ? res.j.error : 'Không vào được kênh.';
+        // Phiên đăng nhập (bước 1) đã hết hạn — không còn tempToken nào để
+        // thử tiếp, bung lại về bước 1 thay vì để người dùng bấm mãi vào 1
+        // mã PIN không còn ý nghĩa.
+        if (res.j && res.j.error && res.j.error.indexOf('hết hạn') >= 0) {
+          pendingTempToken = null;
+          $('joinRoomPinFields').classList.add('hidden');
+          $('joinAccountFields').classList.remove('hidden');
+          $('joinSub').textContent = 'Đăng nhập bằng tài khoản người trình chiếu đã cấp cho bạn.';
+        }
+        return;
+      }
+      pendingTempToken = null;
+      finalizeJoin(res.j);
     }).catch(function () {
       $('joinBtn').disabled = false;
       $('joinErr').textContent = 'Không kết nối được máy trình chiếu. Cùng Wi-Fi chưa?';

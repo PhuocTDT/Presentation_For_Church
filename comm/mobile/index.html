@@ -204,23 +204,48 @@
 <div id="join">
   <div>
     <h1>Kênh Band</h1>
-    <p class="sub">Nhập tên và mã PIN người trình chiếu đọc cho bạn.</p>
+    <p class="sub" id="joinSub">Nhập tên và mã PIN người trình chiếu đọc cho bạn.</p>
   </div>
-  <div class="field">
-    <label for="name">Tên của bạn</label>
-    <input id="name" autocomplete="name" placeholder="VD: Minh" maxlength="40">
-  </div>
-  <div class="field">
-    <label>Bạn là</label>
-    <div class="roles">
-      <button type="button" data-role="band" aria-pressed="true">Thành viên band</button>
-      <button type="button" data-role="leader" aria-pressed="false">Người hướng dẫn</button>
+
+  <!-- Chế độ mặc định (không có tài khoản): tên tự gõ + vai trò tự chọn + mã PIN phòng. -->
+  <div id="joinLegacyFields">
+    <div class="field">
+      <label for="name">Tên của bạn</label>
+      <input id="name" autocomplete="name" placeholder="VD: Minh" maxlength="40">
+    </div>
+    <div class="field">
+      <label>Bạn là</label>
+      <div class="roles">
+        <button type="button" data-role="band" aria-pressed="true">Thành viên band</button>
+        <button type="button" data-role="leader" aria-pressed="false">Người hướng dẫn</button>
+      </div>
+    </div>
+    <div class="field">
+      <label for="pin">Mã PIN</label>
+      <input id="pin" inputmode="numeric" pattern="[0-9]*" maxlength="8" placeholder="••••">
     </div>
   </div>
-  <div class="field">
-    <label for="pin">Mã PIN</label>
-    <input id="pin" inputmode="numeric" pattern="[0-9]*" maxlength="8" placeholder="••••">
+
+  <!-- Chế độ tài khoản, bước 1: đăng nhập bằng username+password do người trình chiếu cấp. -->
+  <div id="joinAccountFields" class="hidden">
+    <div class="field">
+      <label for="username">Tên đăng nhập</label>
+      <input id="username" autocomplete="username" placeholder="VD: minh" maxlength="32" autocapitalize="off">
+    </div>
+    <div class="field">
+      <label for="password">Mật khẩu</label>
+      <input id="password" type="password" autocomplete="current-password" placeholder="••••••">
+    </div>
   </div>
+
+  <!-- Chế độ tài khoản, bước 2 (tuỳ operator bật) — chỉ hiện sau khi đăng nhập thành công. -->
+  <div id="joinRoomPinFields" class="hidden">
+    <div class="field">
+      <label for="roomPin">Mã PIN phòng</label>
+      <input id="roomPin" inputmode="numeric" pattern="[0-9]*" maxlength="8" placeholder="••••">
+    </div>
+  </div>
+
   <button id="joinBtn" class="primary">Vào kênh</button>
   <div class="err" id="joinErr"></div>
 </div>

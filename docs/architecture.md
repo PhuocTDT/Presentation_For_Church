@@ -48,6 +48,7 @@
 | `src/band-comm/server.js` | HTTP + WebSocket, PIN/token, presence, ring buffer, gallery, setlist (LAN + poll cloud) |
 | `src/band-comm/ws.js` | WebSocket server tự viết (RFC 6455), 0 dependency |
 | `src/band-comm/store.js` | Đọc/ghi `band-comm.json` + backup hồ sơ nút + `cloudRoomId` |
+| `src/band-comm/accounts.js` | Đăng nhập tài khoản (band-comm-plan.md §11) — `band-comm-accounts.json`, hash password bằng `scryptSync` |
 | `src/band-comm/protocol.js` | Envelope tin nhắn, chuẩn hoá `dedupKey` |
 | `src/band-comm/mdns.js` | mDNS responder cho `<hostname>.local` |
 | `cloud/worker/src/worker.js` | Cloudflare Worker — hộp thư setlist (KV) khi laptop tắt hẳn |

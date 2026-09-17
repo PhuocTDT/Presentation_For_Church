@@ -116,6 +116,16 @@ contextBridge.exposeInMainWorld('electronAPI', {
     onTunnelLoginUrl: (callback) => {
       ipcRenderer.removeAllListeners('band-comm-tunnel-login-url');
       ipcRenderer.on('band-comm-tunnel-login-url', callback);
+    },
+    // Đăng nhập tài khoản (band-comm-plan.md §11) — operator (laptop) là nơi
+    // DUY NHẤT tạo/sửa/xoá tài khoản, xem tab "Tài khoản" trong sidebar.
+    accounts: {
+      list: () => ipcRenderer.invoke('band-accounts-list'),
+      create: (payload) => ipcRenderer.invoke('band-accounts-create', payload),
+      update: (payload) => ipcRenderer.invoke('band-accounts-update', payload),
+      updatePassword: (payload) => ipcRenderer.invoke('band-accounts-update-password', payload),
+      setActive: (payload) => ipcRenderer.invoke('band-accounts-set-active', payload),
+      remove: (id) => ipcRenderer.invoke('band-accounts-remove', id)
     }
   }
 });

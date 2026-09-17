@@ -468,3 +468,104 @@ Gia cố reconnect/replay, timeout presence, "Kiểm tra kết nối" ở màn j
 - **D7 — Giới hạn số người:** chặn mềm ~16 client. *Đề xuất: đồng ý.*
 - **D8 — Live window mirror tin?** Ngoài phạm vi; cần thì +1 IPC + 1 lớp trong `live.html`.
 - **D9 — Gộp cảnh báo:** chuẩn hoá `text` (bỏ dấu/thường/trim) + gộp/tách tay; khớp mờ để v2.
+
+---
+
+## 11. Đăng nhập theo tài khoản (thay/kèm PIN phòng dùng chung) — PROPOSAL, chưa triển khai
+
+*Bản gộp cuối sau 3 vòng review (2026-09-17) — xem "Lịch sử review" ở cuối mục để truy vết từng góp ý; nội dung dưới đây là thiết kế cuối, không lặp lại các bản nháp trung gian.*
+
+### Vì sao
+
+Hiện tại `/api/join` chỉ có 1 lớp gác: **PIN phòng dùng chung**. Ai biết PIN cũng vào được, tự gõ **bất kỳ tên nào** và tự chọn vai trò `band`/`leader` — không có gì đối chiếu người gõ có đúng là người đó không, cũng không gì ngăn 1 người ngoài tự xưng "Trưởng nhóm" để có vai trò cao hơn khi biết PIN. Muốn có: **operator (trên laptop) là nơi DUY NHẤT tạo "tài khoản"** cho từng thành viên; điện thoại/web **chỉ đăng nhập** bằng tài khoản đã được cấp, không tự tạo được.
+
+### Vì sao không dùng AWS Cognito — đề xuất: **không**
+
+Cognito hợp cho ứng dụng **luôn-online**, có 1 danh mục người dùng **tập trung trên cloud**. Kênh Band cố tình **LAN-first** — phone và laptop cùng 1 Wi-Fi là dùng được ngay, không cần Internet ở venue. Áp Cognito vào sẽ phá đúng tính chất đó:
+
+- **Đăng nhập cần Internet:** Cognito xác thực qua gọi API tới endpoint vùng AWS — mất mạng ở venue thì không đăng nhập được dù phone/laptop vẫn chung Wi-Fi nội bộ.
+- **"Tạo tài khoản chỉ qua laptop" cũng cần Internet + AWS credentials:** operator thêm 1 thành viên phải gọi Admin API từ `main.js` — ngược hẳn "chỉ cần mở app, cùng Wi-Fi là xong" đang có.
+- **Phân vùng theo từng nhà thờ:** app phân phối cho nhiều nhà thờ khác nhau; 1 User Pool chung phải tự xây thêm lớp phân vùng, mỗi nhà thờ tự tạo User Pool riêng thì mất "zero-setup".
+- Chi phí không phải vấn đề (free tier đủ rộng) — vấn đề là **kiến trúc lệch mục tiêu**.
+
+→ Tự làm, đúng tinh thần "0 dependency mới" của `src/band-comm/*`, hash bằng `crypto.scryptSync` (built-in Node), lưu local, xác thực hoàn toàn trong LAN. *Cognito chỉ đáng cân nhắc nếu sau này có tính năng THẬT SỰ cần cloud luôn-online (vd. dashboard vận hành từ xa) — ngoài phạm vi hiện tại.*
+
+### Mô hình 2 lớp, theo Zoom — đăng nhập cá nhân tách khỏi mã phòng
+
+| | Đăng nhập cá nhân | Mã PIN phòng (tái dùng `room.pin`) |
+|---|---|---|
+| Xác định | **Ai** đang dùng máy | Có đúng buổi/phòng này không |
+| Ai tạo/đổi | Chỉ operator, trên laptop | Operator, qua sidebar (nút 🔄 đã có) |
+| Vòng đời | Dài hạn — ít đổi | Ngắn hạn — đổi mỗi buổi nếu muốn |
+| Bắt buộc? | **Luôn bắt buộc** | **Tuỳ chọn**, cờ `room.pinRequiredWithAccounts`, mặc định tắt |
+
+Lợi ích: operator đổi PIN phòng cho buổi tuần này mà **không ai mất/phải nhớ lại mật khẩu tài khoản cá nhân**. Nhóm nhỏ tin tưởng nhau thì tắt PIN phòng, chỉ cần đăng nhập cá nhân là đủ; ai cần chặt hơn thì bật.
+
+**Không có ô "mã phòng" riêng như Zoom thật:** ở Zoom 1 tài khoản vào được nhiều phòng do người khác tổ chức nên cần Mã phòng để chọn đúng cuộc họp. App này 1 laptop chỉ chạy đúng 1 phòng — quét QR/gõ đúng `worship.local`/IP đã tự nhiên xác định đúng phòng, không cần thêm 1 ô nhập số. Chỉ **mã PIN phòng** (tái dùng `room.pin` có sẵn, không phải khái niệm mới) là thứ thật sự cần 1 ô nhập, và nó tuỳ chọn.
+
+### Data model
+
+`src/band-comm/accounts.js` (mirror pattern `store.js`) quản lý `userData/band-comm-accounts.json`:
+
+```json
+{ "accounts": [
+  { "id": "acc-xxxx", "username": "minh", "name": "Minh (Guitar)", "role": "band",
+    "passwordHash": "...", "passwordSalt": "...", "active": true, "createdAt": 0, "lastLoginAt": 0 }
+] }
+```
+
+- `passwordHash`/`passwordSalt`: `crypto.scryptSync(password, salt, 64).toString('hex')` (built-in Node, 0 dependency).
+  **Giới hạn thật của lớp hash này (ghi thẳng vào `docs/data-contracts.md`):** scrypt chống lộ file trần (đọc thấy password ngay lập tức) — **không** chống được brute-force offline nếu file lộ VÀ password ngắn/yếu. Lớp phòng thủ thật sự vẫn là rate-limit theo `accountId` ở `/api/login` (xem mục API), không phải việc có hash hay không.
+- `username`: dùng để đăng nhập, không đổi. `name`: tên hiển thị — nếu di trú từ mô hình free-text cũ, đặt khớp tên người đó từng gõ tay để bộ nút cảnh báo cũ tự khớp lại (xem "Di trú").
+- `role`: gắn cứng lúc operator tạo — client không tự chọn.
+- `passwordHash` **do operator tự đặt lúc tạo tài khoản** (đã chốt, xem D12) — không có bước "hệ thống tự sinh mật khẩu tạm", và **band member không tự đổi mật khẩu được** — chỉ operator có quyền đổi qua nút "Đổi mật khẩu" trong tab Tài khoản.
+
+`band-comm.json`: thêm `accountsEnabled: false` và `room.pinRequiredWithAccounts: false`. Không thêm field mật khẩu-phòng riêng — dùng lại `room.pin`.
+
+### API
+
+- **`POST /api/login`** `{ username, password }` — verify qua `accounts.js` (scrypt), lấy `name`/`role` thật từ account (hết giả mạo).
+  - Server luôn tự gán **`profileId = account.id`** khi cấp token (không phải khái niệm mới song song — dùng đúng slot `profileId` sẵn có trong token hiện tại, `makeToken(clientId, account.name, account.role, account.id)`, vẫn 6 phần, không đổi format). Vì `client.profileId` đã là khoá dùng chung cho bộ nút cảnh báo (`store.saveProfile`/`findProfileByName`) VÀ `ownerId` trong gallery, 1 người dùng nhiều máy tự động ra cùng `profileId` — không xung đột quyền xoá ảnh giữa các máy của cùng 1 người.
+  - Nếu `room.pinRequiredWithAccounts=false` (mặc định) → trả token đầy đủ luôn.
+  - Nếu `true` → sinh `tempToken = crypto.randomBytes(16).toString('hex')`, lưu tạm trong `Map pendingLogins` mới (cùng chỗ khai `clients`/`joinAttempts`): `pendingLogins.set(tempToken, { accountId, name, role, expiresAt: Date.now() + 5*60*1000 })`, trả `{ tempToken, needsRoomPin: true }`. **`tempToken` không đi qua `makeToken()`/`verifyToken()`** — vì nó không phải chuỗi ký HMAC hợp lệ (không có đủ 6 phần phân cách bằng dấu chấm), mọi route khác tự động `401` nếu lỡ dùng nhầm, ngay tại gate "everything else needs a valid token" hiện có, không cần sửa gì ở đó. Hạn 5 phút nằm trong chính `pendingLogins.expiresAt`, dọn cùng nhịp `pruneJoinAttempts()` ở heartbeat — không thêm hằng số hạn dùng song song với `TOKEN_MAX_AGE_MS`.
+- **`POST /api/join-room`** `{ tempToken, pin }` (chỉ gọi khi `needsRoomPin`) — tra `pendingLogins.get(tempToken)`, hết hạn/không có → `401`; verify `pin` đúng `room.pin` (dùng lại y hệt check hiện có) → xoá khỏi `pendingLogins`, cấp `makeToken()` thật.
+- **Không có** `GET/POST /api/accounts` — đăng nhập là **form thật** (username + password gõ tay, giống Zoom), không phải chọn tên từ danh sách công khai. Route `/api/join` (PIN phòng, luồng cũ) vẫn giữ nguyên cho D11; chỉ thêm 1 điều kiện: nếu `body.profileId` client tự khai trùng bất kỳ `accounts[].id` nào thật → coi như không hợp lệ (rớt về `null`, server tự sinh id khác) — chặn 1 client ở luồng cũ tự xưng đúng id của 1 account thật để chiếm quyền xoá ảnh/bộ nút của account đó (rủi ro thấp vì `newId()` ngẫu nhiên, nhưng chặn gần như miễn phí).
+- Brute-force (`joinAttempts`, đã có theo IP) mở rộng khoá thêm theo `accountId` ở `/api/login`; `/api/join-room` dùng lại đúng khoá theo IP như PIN hiện tại.
+- Giữ nguyên: HMAC token, hết hạn 12h, ring buffer, reconnect. Chỉ đổi điểm vào.
+
+### UI operator (laptop)
+
+- Tab "Tài khoản" (sidebar, popup Kết nối): danh sách username/tên/vai trò/lần đăng nhập; nút **Đổi mật khẩu** (chỉ operator, band member không tự đổi được) / Khoá / Xoá. Thêm thành viên: operator tự nhập username + tên hiển thị + vai trò + **mật khẩu**.
+- Settings: toggle "Yêu cầu mã PIN phòng sau khi đăng nhập" (`room.pinRequiredWithAccounts`) — dùng lại đúng ô Mã PIN đã có trong sidebar.
+- Bật/tắt `accountsEnabled`, đổi `pinRequiredWithAccounts`, hoặc Khoá/Xoá/Đổi mật khẩu 1 account đang online → server **tự sinh lại `secret`** (y hệt lúc `start()`), khiến mọi token đang tồn tại verify-fail ngay ở lần gọi kế tiếp — client tự bung màn đăng nhập lại qua đúng luồng 401 đã có (`scheduleReconnect()`), không cần cơ chế "kick" riêng.
+
+### UI mobile (phone)
+
+- Màn 1 "Đăng nhập": ô nhập username + password. Bỏ hẳn ô tên tự do + chọn vai trò.
+- Màn 2 "Nhập mã PIN phòng" — chỉ hiện khi server trả `needsRoomPin: true`.
+
+### Di trú
+
+Cờ `accountsEnabled` (mặc định `false`) — tắt = y hệt hiện tại, không ảnh hưởng bản cài chưa muốn đổi. Khi bật: `store.findProfileByName(name)` đã là fallback có sẵn khi tra `cfg.profiles[profileId]` không khớp — nếu operator đặt tên hiển thị account trùng tên người đó từng gõ tay trước đây, bộ nút cảnh báo cũ tự động khớp lại, không cần migration code. Ghi rõ điều kiện này trong hướng dẫn bật tính năng.
+
+1 account đăng nhập nhiều máy cùng lúc: **cho phép, không chặn** — vì `profileId = accountId` dùng chung, nhiều máy cùng account tự nhiên chia sẻ bộ nút + quyền xoá ảnh, hợp lý khi đổi/mượn máy. Không xây cơ chế 1-phiên-1-account.
+
+### Điểm cần bạn quyết
+
+- **D10 — Cognito hay tự làm?** *Đề xuất: tự làm.*
+- **D11 — Giữ PIN phòng chung (mô hình cũ) song song hay thay hẳn?** *Đề xuất: giữ cả 2, feature-flag `accountsEnabled`.*
+- **D12 — Mật khẩu cá nhân: ai đặt, ai đổi được?** ✅ **Đã chốt:** operator tự đặt lúc tạo tài khoản; band member **không** tự đổi được, chỉ operator đổi qua tab Tài khoản.
+- **D13 — `operator` có "tài khoản" không?** *Đề xuất: không — operator vẫn là danh tính cố định `clientId:'operator'`.*
+- **D14 — `room.pinRequiredWithAccounts` mặc định tắt hay bật?** *Đề xuất: tắt.*
+- **D15 — 1 account đăng nhập nhiều máy cùng lúc: cho phép hay chặn?** *Đề xuất: cho phép, không xây cơ chế 1-phiên-1-account.*
+- **D16 — `tempToken`: nonce ngẫu nhiên + `Map` RAM riêng, hay nhét cờ `pending` vào chính token ký HMAC?** *Đề xuất: nonce + Map — fail-closed tự nhiên theo cấu trúc, không đụng format token thật.*
+- **D17 — có cần chặn `profileId` tự khai (luồng cũ) trùng vào `accounts[].id` không?** *Đề xuất: có — chặn gần như miễn phí.*
+
+**Mới:** `src/band-comm/accounts.js`, tab "Tài khoản" trong sidebar, 2 màn đăng nhập trong `comm/mobile/`.
+**Sửa:** `server.js` (`POST /api/login` + `POST /api/join-room` thay 1 phần `/api/join`, `Map pendingLogins`, brute-force theo accountId, secret-rotate on mode-switch, chặn profileId trùng account id), `store.js` (cờ `accountsEnabled`/`room.pinRequiredWithAccounts`), `main.js`/`preload.js` (IPC quản lý account), `comm/mobile/index.html` + `app.js` (2 màn đăng nhập), `docs/data-contracts.md`.
+
+### Lịch sử review (để truy vết, không lặp lại chi tiết — đã gộp hết vào bản trên)
+
+- **Vòng 1:** đề xuất ban đầu (PIN cá nhân 4 số/account, cấu trúc giống bản P4 gallery). Góp ý: PIN quá yếu, nên tách hẳn "đăng nhập cá nhân" khỏi "khoá phòng" kiểu Zoom (username+password thật + PIN phòng tuỳ chọn).
+- **Vòng 2** (dựa trên commit `96f48d0` — refactor gallery bỏ "1 người phụ trách ảnh", đổi quyền xoá theo `profileId`, token 5→6 phần mang `profileId`): 7 điểm kỹ thuật — xung đột `profileId` giữa gallery/account khi 1 người dùng nhiều máy; không nên thêm phần thứ 7 vào token; roster không được public qua tunnel; scrypt trên secret ngắn không phải lớp phòng thủ chính; hành vi khi đổi mode giữa buổi; di trú bộ nút cảnh báo cũ; nhiều máy cùng 1 account. Toàn bộ đã gộp vào thiết kế trên (đặc biệt: `profileId = account.id` giải quyết gọn xung đột gallery/token cùng lúc).
+- **Vòng 3** (review `tempToken`): `tempToken` phải *về bản chất không verify được* như token thật (nonce + `Map pendingLogins`, không phải cờ `pending` gắn vào token ký HMAC) để fail-closed theo cấu trúc chứ không phải theo quy ước; hạn dùng nằm trong `pendingLogins`, không thêm hằng số hạn song song; chặn `profileId` tự khai (luồng cũ) trùng `accounts[].id`. Đã gộp vào mục API/Data model ở trên.
