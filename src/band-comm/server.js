@@ -26,6 +26,15 @@ const RING_MAX = 120;          // messages replayed to a phone that reconnects
 const HEARTBEAT_MS = 15000;    // WS ping to keep the connection alive through NAT / proxies
 const PRESENCE_STALE_MS = 25000;
 const DUP_WINDOW_MS = 5000;    // same button/text from same phone → ignored
+// Session tokens carry their issue time but never expired before — a leaked
+// QR/PIN screenshot, or a phone that left the band, kept working forever
+// (until someone restarts the server, which drops ALL sessions, not just the
+// leaked one). 12h covers a same-day rehearsal+service without re-joining,
+// but a token from a previous day always needs a fresh /api/join afterwards.
+// The mobile client already handles this gracefully — see comm/mobile/app.js
+// scheduleReconnect(): a 401 clears the stored token and bounces to the join
+// screen, no code change needed there.
+const TOKEN_MAX_AGE_MS = 12 * 60 * 60 * 1000;
 
 // Hộp thư setlist khi laptop tắt hẳn (M2, xem cloud/worker). Kéo về lúc
 // server khởi động + định kỳ trong khi chạy, phòng khi phone tự fallback lên
@@ -193,6 +202,8 @@ function createCommServer({ store, onEvent, onPresence, getLibraryIndex, onSetli
     try {
       if (sign(payload) !== sig) return null;
     } catch (e) { return null; } // server stopped, secret gone
+    const issued = Number(parts[1]);
+    if (!Number.isFinite(issued) || Date.now() - issued > TOKEN_MAX_AGE_MS) return null;
     return { clientId: parts[0], name: unb64url(parts[2]) || 'Ẩn danh', role: parts[3] === 'leader' ? 'leader' : 'band' };
   }
 
@@ -594,6 +605,7 @@ function createCommServer({ store, onEvent, onPresence, getLibraryIndex, onSetli
       publicUrl: cfg.publicUrl || '',
       tunnelName: cfg.tunnelName || '',
       pin: cfg.room.pin,
+      pinSetAt: cfg.room.pinSetAt || 0,
       uploaderPin: cfg.room.uploaderPin || '',
       roomName: cfg.room.name,
       clients: presenceList()

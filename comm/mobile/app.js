@@ -505,8 +505,15 @@
     files.forEach(function (f) {
       downscaleChordImg(f, function (dataUrl) {
         fetch('api/gallery/add', { method: 'POST', headers: authHeader(), body: JSON.stringify({ name: f.name, ext: '.jpg', dataB64: dataUrl }) })
-          .then(function (r) { return r.json(); })
-          .then(function (m) { renderChords(m); })
+          .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+          .then(function (res) {
+            // fetch() không coi status lỗi (403/413/500...) là promise reject —
+            // trước đây gọi thẳng renderChords() với body lỗi {error:...}, bị
+            // hiểu nhầm thành gallery rỗng, KHÔNG báo gì cho người dùng biết là
+            // đã thất bại (vd hết quyền phụ trách ảnh giữa chừng).
+            if (res.ok) { renderChords(res.j); }
+            else { toast('band', '', (res.j && res.j.error) || 'Tải ảnh lên không được.'); }
+          })
           .catch(function () { toast('band', '', 'Tải ảnh lên không được.'); });
       });
     });

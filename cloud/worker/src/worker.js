@@ -20,6 +20,24 @@ const MAX_ITEMS = 60;
 // không auth thật) — cap cứng số setlist tồn tại/phòng để 1 roomId bị
 // spam/đoán trúng không thể ghi vô hạn vào KV chung. Cũ nhất bị dọn trước.
 const MAX_SETLISTS_PER_ROOM = 40;
+// Giới hạn tần suất ghi theo roomId — không có auth thật (chỉ roomId làm
+// namespace) nên không có gì chặn 1 roomId gọi POST liên tục ngoài cap tổng ở
+// trên (mà cap đó chỉ chặn LƯU TRỮ phình to, không chặn SỐ REQUEST/giây đốt
+// hết quota Worker request + KV read/write dùng chung cho mọi nhà thờ khác).
+// Đếm bằng KV (get rồi put, không atomic — chấp nhận sai số nhỏ do
+// eventually-consistent, cùng kiểu đánh đổi như MAX_SETLISTS_PER_ROOM ở trên,
+// đủ để chặn lạm dụng thay vì không có gì).
+const RATE_LIMIT_WINDOW_MS = 5 * 60 * 1000; // 5 phút
+const RATE_LIMIT_MAX = 30; // tối đa 30 lượt ghi / roomId / cửa sổ 5 phút
+async function checkRateLimit(env, roomId) {
+  const bucket = Math.floor(Date.now() / RATE_LIMIT_WINDOW_MS);
+  const key = `rl:${roomId}:${bucket}`;
+  const raw = await env.SETLISTS.get(key);
+  const count = raw ? (parseInt(raw, 10) || 0) : 0;
+  if (count >= RATE_LIMIT_MAX) return false;
+  await env.SETLISTS.put(key, String(count + 1), { expirationTtl: Math.ceil(RATE_LIMIT_WINDOW_MS / 1000) + 60 });
+  return true;
+}
 const CORS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
@@ -51,6 +69,7 @@ export default {
       const roomId = body && body.roomId;
       const sl = body && body.setlist;
       if (!isValidRoomId(roomId)) return json({ error: 'roomId không hợp lệ' }, 400);
+      if (!(await checkRateLimit(env, roomId))) return json({ error: 'Quá nhiều yêu cầu, thử lại sau ít phút' }, 429);
       if (!sl || typeof sl.id !== 'string' || !sl.id) return json({ error: 'thiếu setlist.id' }, 400);
       // Chặn sớm mảng khổng lồ trước khi .filter() phải duyệt hết — tránh tốn
       // CPU time (giới hạn theo request) cho payload rác.
@@ -104,6 +123,7 @@ export default {
       const roomId = body && body.roomId;
       const id = body && String(body.id || '').slice(0, 80);
       if (!isValidRoomId(roomId) || !id) return json({ error: 'thiếu roomId/id' }, 400);
+      if (!(await checkRateLimit(env, roomId))) return json({ error: 'Quá nhiều yêu cầu, thử lại sau ít phút' }, 429);
       await env.SETLISTS.put(`ack:${roomId}:${id}`, '1', { expirationTtl: TTL_SECONDS });
       return json({ ok: true });
     }

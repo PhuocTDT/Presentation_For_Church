@@ -4,6 +4,56 @@ Tất cả các thay đổi và cập nhật quan trọng của dự án đượ
 
 ## [Unreleased] - Kênh Band LAN (P1 + P2 + P2.5 + P4)
 
+### fix(band): upload ảnh hợp âm thất bại âm thầm, không báo lỗi (2026-09-17)
+- Báo lỗi: "đã upload nhưng ảnh không hiển thị" — server hoàn toàn bình
+  thường (verify thật: file ghi đúng đĩa, manifest đúng), lỗi chỉ ở client.
+- Nguyên nhân: `comm/mobile/app.js` gọi `fetch('api/gallery/add').then(r =>
+  r.json()).then(renderChords)` — `fetch()` KHÔNG coi status lỗi (403 "không
+  phải người phụ trách", 413 quá dung lượng...) là promise reject, nên khi
+  server từ chối, code cũ vẫn gọi `renderChords({error:...})` — bị hiểu nhầm
+  thành gallery rỗng, không có gì báo cho người dùng biết là đã thất bại.
+- Fix: kiểm tra `r.ok` trước khi render, toast đúng lỗi từ server khi thất bại.
+- Verify thật bằng server thật: upload khi đang là uploader -> 200 + file
+  thật trên đĩa; upload khi KHÔNG phải uploader -> 403 + body `{error}` —
+  đúng chính xác ca mà code cũ nuốt mất.
+
+### feat(security): hardening thêm cho API requests (2026-09-17)
+- **Token phiên tự hết hạn sau 12h** (`TOKEN_MAX_AGE_MS`, `src/band-comm/server.js`
+  `verifyToken()`) — trước đây token sống vô thời hạn tới khi ai đó restart
+  server (restart thì MỌI phone mất, không chỉ 1 token bị lộ). Timestamp
+  `issued` vốn đã nằm trong token, chỉ chưa bị kiểm tra. Phone bị `401` sau
+  12h; `comm/mobile/app.js`'s `scheduleReconnect()` đã tự xử lý đúng case này
+  từ trước (xoá token cũ + bung màn hình nhập PIN), không cần sửa gì thêm
+  phía mobile. Verify bằng test giả lập đồng hồ (mint token với `issued` giả
+  13h trước, xác nhận bị từ chối; 11h trước vẫn được chấp nhận).
+- **Rate-limit Cloudflare Worker theo `roomId`** (`cloud/worker/src/worker.js`):
+  tối đa 30 lượt ghi (`POST /setlist`, `POST /setlist/ack`)/5 phút/phòng, đếm
+  qua KV (`rl:<roomId>:<bucket>`). Worker này dùng chung cho mọi bản cài app
+  (không auth thật, chỉ roomId làm namespace) nên trước đây 1 roomId có thể
+  gọi liên tục không giới hạn, đốt quota request/KV chung của mọi nhà thờ
+  khác. Verify bằng test đếm giả lập: 30 lượt đầu qua, lượt 31+ bị chặn,
+  roomId khác không bị ảnh hưởng.
+- **Nhắc đổi PIN định kỳ**: `store.js` thêm `room.pinSetAt` (stamp lại mỗi khi
+  PIN thật sự đổi giá trị, không đổi khi save các field khác), sidebar hiện
+  dòng nhắc màu vàng cạnh Mã PIN sau 7 ngày dùng cùng 1 mã.
+
+### fix(security): stored XSS qua tiêu đề bài trong setlist Kênh Band (2026-09-16)
+- `/api/setlist` chỉ `String()` + cắt 200 ký tự cho `item.title`, không lọc
+  HTML. Khi `item.id` không khớp bài trong thư viện local,
+  `loadSetlistIntoSchedule()` (`index.html`) dùng thẳng `title` chưa escape
+  để tạo item Schedule mới → `renderSchedule()` ghi vào `div.innerHTML`
+  không qua `escapeHtml()`. Điện thoại đã join (biết PIN, hoặc qua Quick
+  Tunnel công khai) có thể chèn HTML/JS chạy trong renderer chính của
+  operator — có quyền gọi `window.electronAPI` đầy đủ (đọc/ghi file, xoá bài
+  hát, `openExternal`...).
+- Fix 2 lớp: `escapeHtml(item.title)` ở điểm render (`index.html:6069`) + lọc
+  `<`/`>` phía server trong `/api/setlist` (defense-in-depth). Verify bằng
+  test gửi payload `<img onerror>` thật, xác nhận bị strip trước khi tới
+  renderer.
+- Phát hiện qua `/security-review` — 5 agent review song song + chấm điểm
+  tin cậy độc lập cho từng phát hiện, chỉ giữ lại phát hiện ≥8/10; quét
+  hardcoded secrets riêng trên toàn bộ lịch sử git — sạch, không có gì cần fix.
+
 ### fix(band): 4 vấn đề từ code review PR #5 (2026-09-16)
 - **`readJson()` bị treo vĩnh viễn với body quá 12MB** (`src/band-comm/server.js`):
   `req.destroy()` không tham số chỉ phát `'close'`, không phát `'end'`/`'error'`

@@ -28,7 +28,7 @@ function isSafeProfileId(id) {
 function defaultConfig() {
   return {
     version: 1,
-    room: { name: 'Kênh Band', pin: randomPin(), hostname: 'worship', uploaderPin: null },
+    room: { name: 'Kênh Band', pin: randomPin(), pinSetAt: Date.now(), hostname: 'worship', uploaderPin: null },
     port: DEFAULT_PORT,
     // Địa chỉ công khai band gõ/quét (Cloudflare Tunnel, domain riêng…). Rỗng =
     // chưa cấu hình → sidebar chỉ hiện IP LAN + worship.local như trước.
@@ -56,6 +56,10 @@ function normalizeConfig(raw) {
     room: {
       name: String(room.name || base.room.name).trim() || base.room.name,
       pin: /^\d{4,8}$/.test(String(room.pin || '')) ? String(room.pin) : base.room.pin,
+      // Ngày đặt PIN hiện tại — sidebar dùng để nhắc "nên đổi PIN" sau một thời
+      // gian. `save()` bên dưới là nơi thật sự stamp giá trị mới khi PIN đổi;
+      // ở đây chỉ giữ nguyên field khi load lại config không đổi gì.
+      pinSetAt: Number.isFinite(room.pinSetAt) ? room.pinSetAt : (base.room.pinSetAt),
       hostname: /^[a-z0-9][a-z0-9-]{0,29}$/i.test(String(room.hostname || '')) ? String(room.hostname).toLowerCase() : base.room.hostname,
       uploaderPin: /^\d{4,8}$/.test(String(room.uploaderPin || '')) ? String(room.uploaderPin) : null
     },
@@ -119,7 +123,13 @@ function createStore(userDataPath, safeWriteSync) {
   }
 
   function save(next) {
-    cache = normalizeConfig(next);
+    const prevPin = cache && cache.room && cache.room.pin;
+    const normalized = normalizeConfig(next);
+    // A caller changing room.pin (regenerate button, or a hand-edited config)
+    // never knows to set pinSetAt itself — the store is the one place that
+    // can tell "did the PIN actually change", so stamp it here.
+    if (prevPin && normalized.room.pin !== prevPin) normalized.room.pinSetAt = Date.now();
+    cache = normalized;
     safeWriteSync(configPath, cache);
     return cache;
   }
