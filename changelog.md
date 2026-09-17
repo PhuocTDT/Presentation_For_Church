@@ -4,6 +4,37 @@ Tất cả các thay đổi và cập nhật quan trọng của dự án đượ
 
 ## [Unreleased] - Kênh Band LAN (P1 + P2 + P2.5 + P4)
 
+### refactor(band): bỏ "1 người phụ trách ảnh" — ai đã vào phòng cũng thêm được, chỉ tự xoá ảnh mình đăng (2026-09-17)
+- Yêu cầu: cơ chế cũ (giành quyền qua `room.uploaderPin`, chỉ 1 người online
+  giữ quyền tại 1 thời điểm) khiến cả nhóm phụ thuộc vào đúng 1 người cầm
+  điện thoại — người đó thoát app/mất mạng/zombie connection (xem entry
+  ngay dưới) là cả nhóm không ai thêm được ảnh hợp âm nữa.
+- Đổi mô hình: **mọi client đã join phòng hợp lệ (có token) đều thêm ảnh
+  được**. Xoá thì **chỉ được xoá ảnh chính mình đã đăng**, tránh 1 người xoá
+  nhầm/cố ý ảnh người khác — so theo `profileId` (định danh ổn định điện
+  thoại tự sinh 1 lần, đã có sẵn cho tính năng phục hồi bộ nút cảnh báo),
+  không dùng `clientId` (đổi mỗi lần join lại).
+- Xoá hẳn (không giữ code chết): route `POST /api/gallery/claim`, field
+  `room.uploaderPin`, biến `isUploader`/`hasUploaderPin` phía server + mobile
+  + operator sidebar, ô "Mã phụ trách" trong sidebar.
+- Đổi token phiên từ 5 phần sang 6 phần để mang thêm `profileId`
+  (`clientId.issued.<b64url(name)>.role.<b64url(profileId)>.<hmac>`) —
+  `profileId` giờ phải sống sót qua *mọi* lần rebuild client record từ token
+  (WS reconnect, request HTTP sau khi RAM server mất client record), không
+  chỉ lúc `/api/join` như trước.
+- Gallery manifest (`{images:[{id,name}], ...}`) thêm field `ownerId` mỗi
+  ảnh; ảnh operator thêm qua sidebar (IPC) có `ownerId: null` — operator vẫn
+  luôn xoá được mọi ảnh vì IPC gọi thẳng hàm core, không qua check quyền.
+- Mobile: nút "🎼 Hợp âm" và "+ Thêm ảnh" giờ **luôn hiện** cho mọi client
+  (bỏ điều kiện "đã bật quyền phụ trách"); nút "Xoá" trên từng ảnh chỉ hiện
+  khi `ảnh.ownerId === profileId` của chính điện thoại đó.
+- Verify bằng test thật (`node` script gọi server thật qua HTTP/WS, không
+  đoán): (a) 2 client khác `profileId` cùng join, cả 2 đều `POST
+  /api/gallery/add` thành công; (b) client B thử `POST /api/gallery/remove`
+  ảnh của client A → `403`; client A xoá ảnh của chính mình → `200`; (c)
+  disconnect + reconnect WS bằng token cũ, `profileId` vẫn giữ nguyên trong
+  client record (verify qua vẫn xoá được ảnh mình đã đăng trước đó).
+
 ### fix(band): CSP chặn cả upload ảnh lẫn xem qua cloud + fallback setlist cloud (2026-09-17)
 - Báo lỗi kèm ảnh chụp DevTools Console: `Content-Security-Policy` của
   `comm/mobile/index.html` chặn cả `blob:` (dùng để nén ảnh qua canvas trước

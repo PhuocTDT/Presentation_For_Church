@@ -189,22 +189,33 @@ function createCommServer({ store, onEvent, onPresence, getLibraryIndex, onSetli
   const unb64url = (s) => Buffer.from(String(s).replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString('utf8');
   const sign = (payload) => crypto.createHmac('sha256', secret).update(payload).digest('hex').slice(0, 32);
 
-  function makeToken(clientId, name, role) {
-    const payload = `${clientId}.${Date.now()}.${b64url(name)}.${role}`;
+  // profileId đi kèm token (không chỉ name/role) để "chỉ tự xoá ảnh mình
+  // đăng" không bị mất giữa chừng phiên nếu client record bị quét dọn rồi
+  // rebuild lại từ token (mất mạng thoáng qua > PRESENCE_STALE_MS*2, WS bị
+  // coi mất kết nối) — rebuild vẫn phải nhớ đúng profileId, không chỉ
+  // name/role như trước.
+  function makeToken(clientId, name, role, profileId) {
+    const payload = `${clientId}.${Date.now()}.${b64url(name)}.${role}.${b64url(profileId || '')}`;
     return `${payload}.${sign(payload)}`;
   }
 
   function verifyToken(token) {
     const parts = String(token || '').split('.');
-    if (parts.length !== 5) return null;
-    const sig = parts[4];
-    const payload = parts.slice(0, 4).join('.');
+    if (parts.length !== 6) return null;
+    const sig = parts[5];
+    const payload = parts.slice(0, 5).join('.');
     try {
       if (sign(payload) !== sig) return null;
     } catch (e) { return null; } // server stopped, secret gone
     const issued = Number(parts[1]);
     if (!Number.isFinite(issued) || Date.now() - issued > TOKEN_MAX_AGE_MS) return null;
-    return { clientId: parts[0], name: unb64url(parts[2]) || 'Ẩn danh', role: parts[3] === 'leader' ? 'leader' : 'band' };
+    const profileId = unb64url(parts[4]);
+    return {
+      clientId: parts[0],
+      name: unb64url(parts[2]) || 'Ẩn danh',
+      role: parts[3] === 'leader' ? 'leader' : 'band',
+      profileId: isSafeProfileId(profileId) ? profileId : null
+    };
   }
 
   const wsAlive = (c) => !!(c && c.ws && c.ws.isAlive());
@@ -263,7 +274,7 @@ function createCommServer({ store, onEvent, onPresence, getLibraryIndex, onSetli
     const clientId = ident.clientId;
     let client = clients.get(clientId);
     if (!client) {
-      client = { clientId, name: ident.name, role: ident.role, ws: null, lastSeen: Date.now(), dupMap: new Map() };
+      client = { clientId, name: ident.name, role: ident.role, profileId: ident.profileId, ws: null, lastSeen: Date.now(), dupMap: new Map() };
       clients.set(clientId, client);
     }
     client.lastSeen = Date.now();
@@ -331,20 +342,20 @@ function createCommServer({ store, onEvent, onPresence, getLibraryIndex, onSetli
       joinAttempts.delete(ip);
       const name = String(body.name || '').trim().slice(0, 40) || 'Ẩn danh';
       const role = ['band', 'leader'].includes(body.role) ? body.role : 'band';
+      const profileId = isSafeProfileId(body.profileId) ? body.profileId : null;
       const clientId = newId('c');
-      clients.set(clientId, { clientId, name, role, ws: null, isUploader: false, lastSeen: Date.now(), dupMap: new Map() });
-      const restore = isSafeProfileId(body.profileId) && cfg.profiles[body.profileId]
-        ? { profileId: body.profileId, ...cfg.profiles[body.profileId] }
+      clients.set(clientId, { clientId, name, role, profileId, ws: null, lastSeen: Date.now(), dupMap: new Map() });
+      const restore = profileId && cfg.profiles[profileId]
+        ? { profileId, ...cfg.profiles[profileId] }
         : store.findProfileByName(name);
       setTimeout(pushPresence, 50);
       return sendJson(res, 200, {
-        token: makeToken(clientId, name, role),
+        token: makeToken(clientId, name, role, profileId),
         clientId,
         room: { name: cfg.room.name },
         operatorReplies: cfg.operatorReplies,
         profile: restore || null,
         gallery: galleryManifest(),
-        hasUploaderPin: !!cfg.room.uploaderPin,
         cloudRoomId: cfg.cloudRoomId,
         setlistEnabled: setlistEnabled()
       });
@@ -358,7 +369,7 @@ function createCommServer({ store, onEvent, onPresence, getLibraryIndex, onSetli
     let client = clients.get(clientId);
     if (!client) {
       // valid token, but the record was swept / left — rebuild it from the token.
-      client = { clientId, name: ident.name, role: ident.role, ws: null, isUploader: false, lastSeen: Date.now(), dupMap: new Map() };
+      client = { clientId, name: ident.name, role: ident.role, profileId: ident.profileId, ws: null, lastSeen: Date.now(), dupMap: new Map() };
       clients.set(clientId, client);
     }
     client.lastSeen = Date.now();
@@ -423,38 +434,26 @@ function createCommServer({ store, onEvent, onPresence, getLibraryIndex, onSetli
       });
     }
 
-    // ---- chord-sheet gallery (write side — "người phụ trách ảnh" only) ----
-    // Grab the uploader role by proving `room.uploaderPin`. Only one online
-    // uploader at a time; a stale one (offline > PRESENCE_STALE_MS) is displaced.
-    if (p === '/api/gallery/claim' && req.method === 'POST') {
-      const cfg = store.load();
-      if (!cfg.room.uploaderPin) return sendJson(res, 400, { error: 'Chưa đặt mã phụ trách ảnh trên máy chiếu' });
-      const body = await readJson(req);
-      if (String((body && body.pin) || '') !== String(cfg.room.uploaderPin)) {
-        return sendJson(res, 403, { error: 'Sai mã phụ trách ảnh' });
-      }
-      const now = Date.now();
-      const others = [...clients.values()].filter(c => c.isUploader && c.clientId !== clientId);
-      const onlineOther = others.find(c => wsAlive(c) || now - c.lastSeen < PRESENCE_STALE_MS);
-      if (onlineOther) {
-        return sendJson(res, 409, { error: 'Đã có người phụ trách ảnh (' + (onlineOther.name || '?') + ') đang online' });
-      }
-      others.forEach(c => { c.isUploader = false; });
-      client.isUploader = true;
-      return sendJson(res, 200, { ok: true, uploader: true });
-    }
-
+    // ---- chord-sheet gallery (write side) ----
+    // Ai đã join hợp lệ (token) cũng thêm được ảnh — không còn giới hạn "1
+    // người phụ trách" (uploaderPin) như trước, tránh 1 phiên chiếm quyền
+    // (đặc biệt hại nếu phiên đó zombie — xem fix ws.js cùng đợt). Xoá thì
+    // chỉ được xoá ảnh CHÍNH MÌNH đã đăng, so theo profileId (ổn định qua
+    // các lần join lại trên cùng điện thoại — clientId thì đổi mỗi phiên).
     if (p === '/api/gallery/add' && req.method === 'POST') {
-      if (!client.isUploader) return sendJson(res, 403, { error: 'Bạn không phải người phụ trách ảnh' });
       const body = await readJson(req);
       if (!body) return sendJson(res, 400, { error: 'bad json' });
-      return sendJson(res, 200, galleryAdd({ name: body.name, ext: body.ext, dataB64: body.dataB64 }));
+      return sendJson(res, 200, galleryAdd({ name: body.name, ext: body.ext, dataB64: body.dataB64, ownerId: client.profileId }));
     }
 
     if (p === '/api/gallery/remove' && req.method === 'POST') {
-      if (!client.isUploader) return sendJson(res, 403, { error: 'Bạn không phải người phụ trách ảnh' });
       const body = await readJson(req);
-      return sendJson(res, 200, galleryRemove(body && body.id));
+      const item = gallery.images.find(x => x.id === (body && body.id));
+      if (!item) return sendJson(res, 200, galleryManifest()); // đã không còn, coi như xong
+      if (!client.profileId || item.ownerId !== client.profileId) {
+        return sendJson(res, 403, { error: 'Bạn chỉ xoá được ảnh mình đã đăng' });
+      }
+      return sendJson(res, 200, galleryRemove(item.id));
     }
 
     // ---- setlist: điện thoại soạn danh sách bài -> operator nạp vào Schedule ----
@@ -543,21 +542,18 @@ function createCommServer({ store, onEvent, onPresence, getLibraryIndex, onSetli
     return { images: [], updatedAt: 0 };
   })();
   function saveGallery() { gallery.updatedAt = Date.now(); try { fs.writeFileSync(galleryFile, JSON.stringify(gallery)); } catch (e) {} }
-  function galleryManifest() { return { images: gallery.images.map(x => ({ id: x.id, name: x.name })), updatedAt: gallery.updatedAt || 0 }; }
+  function galleryManifest() { return { images: gallery.images.map(x => ({ id: x.id, name: x.name, ownerId: x.ownerId || null })), updatedAt: gallery.updatedAt || 0 }; }
   function announceGallery() { fanout(makeEnvelope({ type: 'gallery', from: OPERATOR, to: 'all', meta: galleryManifest() })); }
 
-  // Phones only learn `hasUploaderPin`/`setlistEnabled` once, from their
-  // /api/join response — if the operator changes room.uploaderPin or
-  // tunnelName (which drives setlistEnabled) AFTER a phone already joined,
-  // that phone's WS reconnect path (POST /api/ping) never re-fetches them, so
-  // it'd be stuck not seeing the chord-upload/setlist UI for the rest of its
-  // (long-lived) session. Push the current values so already-connected
-  // phones can react live, the same way gallery changes already do.
+  // Phones only learn `setlistEnabled` once, from their /api/join response —
+  // nếu operator đổi tunnelName (thứ quyết định setlistEnabled) SAU khi phone
+  // đã join, đường reconnect của WS (POST /api/ping) không tự fetch lại, nên
+  // phone sẽ kẹt không thấy UI setlist suốt phiên (dài) còn lại. Đẩy giá trị
+  // hiện tại để phone đã kết nối phản ứng ngay, giống cách gallery đã làm.
   function announceRoomConfig() {
-    const cfg = store.load();
     fanout(makeEnvelope({
       type: 'room', from: OPERATOR, to: 'all',
-      meta: { hasUploaderPin: !!cfg.room.uploaderPin, setlistEnabled: setlistEnabled() }
+      meta: { setlistEnabled: setlistEnabled() }
     }));
   }
 
@@ -584,7 +580,7 @@ function createCommServer({ store, onEvent, onPresence, getLibraryIndex, onSetli
     }).catch(() => {});
   }
 
-  function galleryAdd({ name = '', ext = '.jpg', dataB64 = '' } = {}) {
+  function galleryAdd({ name = '', ext = '.jpg', dataB64 = '', ownerId = null } = {}) {
     const b64 = String(dataB64 || '').replace(/^data:[^,]*,/, '');
     if (!b64) return galleryManifest();
     const cleanExt = /^\.(jpe?g|png|webp)$/i.test(ext) ? ext.toLowerCase().replace('.jpeg', '.jpg') : '.jpg';
@@ -594,7 +590,7 @@ function createCommServer({ store, onEvent, onPresence, getLibraryIndex, onSetli
     const id = newId('img');
     try { fs.writeFileSync(path.join(store.mediaDir, id + cleanExt), buf); } catch (e) { return galleryManifest(); }
     const cleanName = String(name || 'Hợp âm').slice(0, 80);
-    gallery.images.push({ id, name: cleanName, ext: cleanExt });
+    gallery.images.push({ id, name: cleanName, ext: cleanExt, ownerId: isSafeProfileId(ownerId) ? ownerId : null });
     saveGallery(); announceGallery();
     mirrorGalleryAdd(id, cleanName, cleanExt, b64);
     return galleryManifest();
@@ -632,7 +628,6 @@ function createCommServer({ store, onEvent, onPresence, getLibraryIndex, onSetli
       tunnelName: cfg.tunnelName || '',
       pin: cfg.room.pin,
       pinSetAt: cfg.room.pinSetAt || 0,
-      uploaderPin: cfg.room.uploaderPin || '',
       roomName: cfg.room.name,
       clients: presenceList()
     };

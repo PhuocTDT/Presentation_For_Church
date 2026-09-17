@@ -28,7 +28,7 @@ function isSafeProfileId(id) {
 function defaultConfig() {
   return {
     version: 1,
-    room: { name: 'Kênh Band', pin: randomPin(), pinSetAt: Date.now(), hostname: 'worship', uploaderPin: null },
+    room: { name: 'Kênh Band', pin: randomPin(), pinSetAt: Date.now(), hostname: 'worship' },
     port: DEFAULT_PORT,
     // Địa chỉ công khai band gõ/quét (Cloudflare Tunnel, domain riêng…). Rỗng =
     // chưa cấu hình → sidebar chỉ hiện IP LAN + worship.local như trước.
@@ -60,8 +60,7 @@ function normalizeConfig(raw) {
       // gian. `save()` bên dưới là nơi thật sự stamp giá trị mới khi PIN đổi;
       // ở đây chỉ giữ nguyên field khi load lại config không đổi gì.
       pinSetAt: Number.isFinite(room.pinSetAt) ? room.pinSetAt : (base.room.pinSetAt),
-      hostname: /^[a-z0-9][a-z0-9-]{0,29}$/i.test(String(room.hostname || '')) ? String(room.hostname).toLowerCase() : base.room.hostname,
-      uploaderPin: /^\d{4,8}$/.test(String(room.uploaderPin || '')) ? String(room.uploaderPin) : null
+      hostname: /^[a-z0-9][a-z0-9-]{0,29}$/i.test(String(room.hostname || '')) ? String(room.hostname).toLowerCase() : base.room.hostname
     },
     port: Number.isInteger(cfg.port) && cfg.port > 0 ? cfg.port : base.port,
     publicUrl: /^https?:\/\/[^\s]+$/i.test(String(cfg.publicUrl || '').trim())

@@ -78,7 +78,6 @@
       state.roomName = res.j.room && res.j.room.name || 'Kênh Band';
       state.operatorReplies = res.j.operatorReplies || [];
       state.cloudRoomId = res.j.cloudRoomId || '';
-      hasUploaderPin = !!res.j.hasUploaderPin;
       $('slToggleBtn').hidden = !res.j.setlistEnabled;
       if ((!state.buttons || !state.buttons.length) && res.j.profile && res.j.profile.buttons && res.j.profile.buttons.length) {
         state.buttons = res.j.profile.buttons;
@@ -86,7 +85,6 @@
       saveState();
       enterMain();
       if (res.j.gallery) renderChords(res.j.gallery);
-      reclaimUploader();
     }).catch(function () {
       $('joinBtn').disabled = false;
       $('joinErr').textContent = 'Không kết nối được máy trình chiếu. Cùng Wi-Fi chưa?';
@@ -168,15 +166,11 @@
     if (env.type === 'system') { return; }
     if (env.type === 'gallery') { renderChords(env.meta || {}); return; }
     if (env.type === 'room') {
-      // Operator changed room.uploaderPin / tunnelName AFTER this phone already
-      // joined — hasUploaderPin/setlistEnabled only ever came from /api/join's
-      // response, and reconnect (POST /api/ping) doesn't re-fetch them, so
-      // without this the chord-upload/setlist UI could stay hidden for the
-      // rest of a long-lived session even after the operator turns it on.
-      if (env.meta && typeof env.meta.hasUploaderPin === 'boolean') {
-        hasUploaderPin = env.meta.hasUploaderPin;
-        updateChToggle();
-      }
+      // Operator changed tunnelName (drives setlistEnabled) AFTER this phone
+      // already joined — setlistEnabled only ever came from /api/join's
+      // response, and reconnect (POST /api/ping) doesn't re-fetch it, so
+      // without this the setlist UI could stay hidden for the rest of a
+      // long-lived session even after the operator turns it on.
       if (env.meta && typeof env.meta.setlistEnabled === 'boolean') {
         $('slToggleBtn').hidden = !env.meta.setlistEnabled;
       }
@@ -374,31 +368,28 @@
   /* ---------------- chord-sheet gallery ---------------- */
 
   var chIds = [];
+  var chImgs = [];
   var chUpdatedAt = 0;
   var chOpen = false;           // người xem đã bấm "Xem hợp âm" chưa
-  var hasUploaderPin = false;   // máy chiếu có bật cho điện thoại upload không
-  var isUploader = false;       // client này đã giành quyền phụ trách ảnh
 
   function renderChords(manifest) {
     var imgs = (manifest && manifest.images) || [];
     var ids = imgs.map(function (x) { return x.id; });
     var force = ids.join(',') !== chIds.join(',');
     chIds = ids;
+    chImgs = imgs;
     chUpdatedAt = (manifest && manifest.updatedAt) || chUpdatedAt;
     updateChToggle();
     var sec = $('chords'), track = $('chView'), dots = $('chDots');
-    // Ảnh KHÔNG tự hiện: người xem phải bấm "🎼 Hợp âm". Uploader luôn thấy để
-    // quản lý. Thêm hasUploaderPin: cùng lý do như updateChToggle() ở dưới —
-    // thư viện trống + chưa ai phụ trách thì vẫn phải mở được section này ra
-    // (sau khi bấm nút) để thấy nút "Phụ trách ảnh" mà giành quyền lần đầu,
-    // nếu không thì bấm "🎼 Hợp âm" xong chẳng thấy gì cả.
-    var show = isUploader || (chOpen && (ids.length || hasUploaderPin));
-    if (!show) { sec.classList.add('hidden'); if (force) { track.textContent = ''; dots.textContent = ''; } return; }
+    // Ảnh KHÔNG tự hiện: người xem phải bấm "🎼 Hợp âm" để mở section ra —
+    // luôn cho mở kể cả thư viện trống, vì ai cũng thêm ảnh được nên cần
+    // thấy nút "+ Thêm ảnh" để bắt đầu, không còn khái niệm "chưa bật".
+    if (!chOpen) { sec.classList.add('hidden'); if (force) { track.textContent = ''; dots.textContent = ''; } return; }
     sec.classList.remove('hidden');
-    updateUploaderUI();
     if (!force) return;
     track.textContent = ''; dots.textContent = '';
-    ids.forEach(function (id, i) {
+    imgs.forEach(function (item, i) {
+      var id = item.id;
       var wrap = document.createElement('div');
       wrap.style.cssText = 'flex:0 0 100%;position:relative;scroll-snap-align:center;';
       var im = document.createElement('img');
@@ -419,7 +410,10 @@
       }
       im.style.cssText = 'width:100%;height:auto;max-height:64vh;object-fit:contain;background:#fff;display:block;';
       wrap.appendChild(im);
-      if (isUploader) {
+      // Chỉ chủ ảnh (ownerId === profileId của chính điện thoại này, ổn định
+      // qua các lần join lại) mới thấy nút Xoá — ai cũng thêm được nhưng chỉ
+      // tự xoá ảnh mình đăng, tránh 1 người xoá nhầm/cố ý ảnh người khác.
+      if (item.ownerId && item.ownerId === state.profileId) {
         var rm = document.createElement('button');
         rm.type = 'button'; rm.textContent = 'Xoá';
         rm.style.cssText = 'position:absolute;top:6px;right:6px;background:#c0392f;color:#fff;border:none;border-radius:8px;padding:4px 10px;font-weight:700;';
@@ -435,55 +429,23 @@
     setActiveDot(0);
   }
 
-  function updateUploaderUI() {
-    var mb = $('chManageBtn'), al = $('chAddLabel');
-    if (mb) { mb.hidden = !hasUploaderPin; mb.textContent = isUploader ? 'Đang phụ trách ✓' : 'Phụ trách ảnh'; }
-    if (al) al.hidden = !isUploader;
-  }
-
   function updateChToggle() {
     var b = $('chToggleBtn'), nb = $('chNew');
     if (!b) return;
-    // hasUploaderPin = operator đã bật tính năng này — phải hiện nút để CÓ
-    // NGƯỜI bấm vào mà giành quyền phụ trách lần đầu. Trước đây chỉ xét
-    // chIds.length/isUploader nên lúc thư viện còn trống + chưa ai giành
-    // quyền thì nút này không bao giờ hiện — không ai bấm được vào để thấy
-    // ô "Phụ trách ảnh" nằm bên trong, kẹt vòng lặp không lối ra.
-    b.hidden = !(chIds.length || isUploader || hasUploaderPin);
-    b.classList.toggle('active', chOpen || isUploader);
+    // Luôn hiện: ai cũng thêm ảnh được nên không còn điều kiện "đã có ảnh
+    // hoặc đã bật quyền phụ trách" trước khi cho bấm vào.
+    b.hidden = false;
+    b.classList.toggle('active', chOpen);
     if (nb) nb.hidden = !(chIds.length && chUpdatedAt > (state.chSeenAt || 0) && !chOpen);
   }
 
   $('chToggleBtn') && $('chToggleBtn').addEventListener('click', function () {
     chOpen = !chOpen;
     if (chOpen) { state.chSeenAt = chUpdatedAt || Date.now(); saveState(); }
-    var cur = chIds.slice(); chIds = [];          // ép render lại
-    renderChords({ images: cur.map(function (id) { return { id: id }; }), updatedAt: chUpdatedAt });
+    var cur = chImgs; chIds = [];          // ép render lại
+    renderChords({ images: cur, updatedAt: chUpdatedAt });
     if (chOpen) { var s = $('chords'); if (s && s.scrollIntoView) s.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
   });
-
-  function reclaimUploader() {
-    if (state.uploaderPin) claimUploader(state.uploaderPin, true);
-    else updateUploaderUI();
-  }
-
-  function claimUploader(pin, silent) {
-    fetch('api/gallery/claim', { method: 'POST', headers: authHeader(), body: JSON.stringify({ pin: pin }) })
-      .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
-      .then(function (res) {
-        if (res.ok && res.j && res.j.uploader) {
-          isUploader = true; state.uploaderPin = pin; saveState();
-          var cur = chIds.slice(); chIds = [];   // ép render lại kèm nút Xoá
-          updateUploaderUI(); renderChords({ images: cur.map(function (id) { return { id: id }; }) });
-          if (!silent) toast('op', '', 'Bạn là người phụ trách ảnh hợp âm.');
-        } else {
-          isUploader = false;
-          if (!silent) toast('band', '', (res.j && res.j.error) || 'Không nhận được quyền.');
-          if (res.j && (res.j.error || '').indexOf('Sai') === 0) { state.uploaderPin = null; saveState(); }
-          updateUploaderUI();
-        }
-      }).catch(function () { if (!silent) toast('band', '', 'Không kết nối được máy chiếu.'); });
-  }
 
   function removeChord(id) {
     fetch('api/gallery/remove', { method: 'POST', headers: authHeader(), body: JSON.stringify({ id: id }) })
@@ -506,11 +468,6 @@
     img.src = URL.createObjectURL(file);
   }
 
-  document.getElementById('chManageBtn') && $('chManageBtn').addEventListener('click', function () {
-    if (isUploader) { toast('op', '', 'Bạn đang phụ trách ảnh.'); return; }
-    var pin = prompt('Nhập mã phụ trách ảnh (máy chiếu cấp):');
-    if (pin) claimUploader(pin.replace(/\D/g, ''), false);
-  });
   document.getElementById('chAddInput') && $('chAddInput').addEventListener('change', function (ev) {
     var files = Array.prototype.slice.call(ev.target.files || []);
     ev.target.value = '';
