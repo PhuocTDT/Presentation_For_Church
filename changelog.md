@@ -86,15 +86,20 @@ Tất cả các thay đổi và cập nhật quan trọng của dự án đượ
   `global.fetch` giữa chừng vẫn login được" (chứng minh không gọi mạng khi đã
   cache) + hồi quy 5 case mô hình cục bộ vẫn đúng.
 - **`comm/mobile/`**: `GET /api/mode` thêm `authMode`; màn join thêm
-  `#joinCognitoFields` (tên/vai trò tự khai + email/mật khẩu, gọi thẳng
+  `#joinCognitoFields` (tên tự khai + email/mật khẩu, gọi thẳng
   Worker — KHÔNG qua LAN server) + bước đổi mật khẩu tạm + nút "Yêu cầu qua
   email". Settings → Media & Band thêm chọn "Kiểu tài khoản" — verify thật
   qua Electron + CDP: toggle đúng UI, `saveConfig` round-trip đúng qua IPC.
-- **Còn thiếu, chưa xong**: domain Resend chưa verify (dùng giả định
-  `mail.worship-official.link`, cần xác nhận lại) — tới lúc đó
-  `/request-access` tạo được tài khoản Cognito nhưng không gửi được mật khẩu
-  tạm qua mail. Chưa có refresh-token tự động ở mobile (JWT hết hạn phải
-  đăng nhập lại, cần mạng lúc đó — chấp nhận được cho v1).
+- **Domain Resend đã verify xong** (`mail.worship-official.link`, DNS qua
+  Cloudflare — 2 CNAME + 1 TXT DKIM), `RESEND_API_KEY` đã set trên Worker
+  (`wrangler secret put`). Verify thật đầu-cuối: gọi `/request-access` bằng
+  email thật → `AdminCreateUser` tạo tài khoản Cognito thật (xác nhận qua
+  `admin-get-user`) → theo dõi Worker log trực tiếp (`wrangler tail`) lúc gọi
+  lại, không có lỗi Resend nào — mail mật khẩu tạm gửi thành công. Không còn
+  việc nào treo lại từ đợt build tính năng này.
+- **Đã biết, chưa làm** (không chặn dùng): chưa có refresh-token tự động ở
+  mobile (JWT hết hạn phải đăng nhập lại, cần mạng lúc đó — chấp nhận được
+  cho v1).
 
 ### feat(band): đăng nhập tài khoản — thay/kèm PIN phòng dùng chung (2026-09-17)
 - Yêu cầu: chỉ dùng PIN phòng thì không đủ an toàn (ai biết PIN cũng tự gõ
