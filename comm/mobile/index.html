@@ -48,19 +48,18 @@
     padding:12px 14px; color:var(--ink); outline:none;
   }
   .field input:focus { border-color:var(--op); }
-  #pin { letter-spacing:.4em; text-align:center; font-size:1.25rem; }
-  .roles { display:flex; gap:8px; }
-  .roles button {
-    flex:1; background:#fff; border:1px solid var(--line); border-radius:10px;
-    padding:11px 8px; color:var(--ink-soft);
-  }
-  .roles button[aria-pressed="true"] { background:var(--op-bg); border-color:var(--op); color:var(--op); font-weight:600; }
   .primary {
     background:var(--op); border:none; border-radius:10px; padding:13px;
     font-weight:700; color:#fff; font-size:1rem;
   }
   .primary:disabled { opacity:.5; }
   .err { color:var(--danger); font-size:.85rem; min-height:1.1em; text-align:center; }
+  .info { color:var(--ok); font-size:.85rem; min-height:1.1em; text-align:center; }
+  .linklike {
+    background:none; border:none; color:var(--op); font-size:.85rem;
+    text-decoration:underline; padding:4px; align-self:center;
+  }
+  .linklike:disabled { opacity:.5; }
 
   /* ---------- Main ---------- */
   #main { min-height:100%; display:flex; flex-direction:column; }
@@ -204,25 +203,18 @@
 <div id="join">
   <div>
     <h1>Kênh Band</h1>
-    <p class="sub" id="joinSub">Nhập tên và mã PIN người trình chiếu đọc cho bạn.</p>
+    <p class="sub" id="joinSub">Nhập tên và mật khẩu phòng người trình chiếu đọc cho bạn.</p>
   </div>
 
-  <!-- Chế độ mặc định (không có tài khoản): tên tự gõ + vai trò tự chọn + mã PIN phòng. -->
+  <!-- Chế độ mặc định (không có tài khoản): tên tự gõ + mật khẩu phòng. -->
   <div id="joinLegacyFields">
     <div class="field">
       <label for="name">Tên của bạn</label>
       <input id="name" autocomplete="name" placeholder="VD: Minh" maxlength="40">
     </div>
     <div class="field">
-      <label>Bạn là</label>
-      <div class="roles">
-        <button type="button" data-role="band" aria-pressed="true">Thành viên band</button>
-        <button type="button" data-role="leader" aria-pressed="false">Người hướng dẫn</button>
-      </div>
-    </div>
-    <div class="field">
-      <label for="pin">Mã PIN</label>
-      <input id="pin" inputmode="numeric" pattern="[0-9]*" maxlength="8" placeholder="••••">
+      <label for="roomPassword">Mật khẩu phòng</label>
+      <input id="roomPassword" maxlength="12" placeholder="Mật khẩu phòng" autocapitalize="off" spellcheck="false">
     </div>
   </div>
 
@@ -239,15 +231,44 @@
   </div>
 
   <!-- Chế độ tài khoản, bước 2 (tuỳ operator bật) — chỉ hiện sau khi đăng nhập thành công. -->
-  <div id="joinRoomPinFields" class="hidden">
+  <div id="joinRoomPasswordFields" class="hidden">
     <div class="field">
-      <label for="roomPin">Mã PIN phòng</label>
-      <input id="roomPin" inputmode="numeric" pattern="[0-9]*" maxlength="8" placeholder="••••">
+      <label for="roomPassword2">Mật khẩu phòng</label>
+      <input id="roomPassword2" maxlength="12" placeholder="Mật khẩu phòng" autocapitalize="off" spellcheck="false">
+    </div>
+  </div>
+
+  <!-- authMode='cognito' (cloud/identity-plan.md): 1 tài khoản dùng chung
+       nhiều nhà thờ, đăng nhập qua email — Worker "band-identity" xác thực,
+       KHÔNG gọi qua server này (server chỉ verify chữ ký JWT). -->
+  <div id="joinCognitoFields" class="hidden">
+    <div class="field">
+      <label for="ciName">Tên của bạn</label>
+      <input id="ciName" autocomplete="name" placeholder="VD: Minh" maxlength="40">
+    </div>
+    <div class="field">
+      <label for="ciEmail">Email</label>
+      <input id="ciEmail" type="email" inputmode="email" autocomplete="username" placeholder="ban@email.com" autocapitalize="off">
+    </div>
+    <div class="field">
+      <label for="ciPassword">Mật khẩu</label>
+      <input id="ciPassword" type="password" autocomplete="current-password" placeholder="••••••">
+    </div>
+    <button type="button" id="ciRequestAccessBtn" class="linklike">Chưa có tài khoản? Yêu cầu qua email</button>
+  </div>
+
+  <!-- Cognito bắt buộc đổi mật khẩu tạm ngay lần đăng nhập đầu tiên. -->
+  <div id="joinCognitoNewPasswordFields" class="hidden">
+    <p class="sub">Mật khẩu tạm chỉ dùng được 1 lần — đặt mật khẩu mới cho lần sau.</p>
+    <div class="field">
+      <label for="ciNewPassword">Mật khẩu mới</label>
+      <input id="ciNewPassword" type="password" autocomplete="new-password" placeholder="Tối thiểu 8 ký tự">
     </div>
   </div>
 
   <button id="joinBtn" class="primary">Vào kênh</button>
   <div class="err" id="joinErr"></div>
+  <div class="info" id="joinInfo"></div>
 </div>
 
 <div id="main" class="hidden">

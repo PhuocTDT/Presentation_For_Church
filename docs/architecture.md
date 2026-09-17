@@ -13,6 +13,7 @@
 - `src/band-comm/`: server (HTTP + **WebSocket**, xem `ws.js`) + store + protocol + mDNS + vendor QR encoder cho Kênh Band
 - `comm/mobile/`: web client cho điện thoại band (server tự phục vụ) — cảnh báo/chat, thư viện ảnh hợp âm, soạn setlist
 - `cloud/worker/`: Cloudflare Worker + KV — hộp thư setlist khi laptop tắt hẳn. **Không** đóng gói vào app (không có trong `files` của `electron-builder`), chỉ deploy độc lập bằng `wrangler`
+- `cloud/identity/`: Cloudflare Worker "band-identity" (domain `identity.worship-official.link`) — cầu nối duy nhất tới AWS Cognito (đăng nhập tài khoản trung tâm dùng chung nhiều nhà thờ, `authMode='cognito'`, xem `cloud/identity-plan.md`). Cũng **không** đóng gói vào app, deploy độc lập bằng `wrangler`
 - `main.js` **tự spawn `cloudflared`** (bundle sẵn, `scripts/fetch-cloudflared.js`) ngay khi band-comm start — mặc định Quick Tunnel (`*.trycloudflare.com`, đổi mỗi lần chạy), hoặc Named Tunnel domain cố định nếu đã cấu hình `tunnelName` (qua wizard trong app). `cloud/tunnel/start-tunnel.bat` chỉ còn là cách chạy tunnel thủ công/dự phòng, không phải đường chính
 
 ## Luồng dữ liệu
@@ -27,11 +28,11 @@
 
 1. Mở app → `main.js` **auto-start** comm server + mDNS; kết quả (chạy / lỗi) đẩy vào sidebar `#bandPanel`.
 2. Điện thoại band quét QR (`http://<hostname>.local:<port>`) hoặc gõ IP → tải `comm/mobile/` từ comm server.
-3. `POST /api/join` (name + role + PIN) → token; downstream là **WebSocket** `GET /api/ws?token=&since=` (không dùng SSE — Cloudflare Tunnel buffer streaming HTTP nên phía operator→phone không tới được).
+3. `POST /api/join` (name + mật khẩu phòng) → token; downstream là **WebSocket** `GET /api/ws?token=&since=` (không dùng SSE — Cloudflare Tunnel buffer streaming HTTP nên phía operator→phone không tới được).
 4. Điện thoại gửi lên bằng `fetch` POST; server fan-out qua WebSocket cho các điện thoại khác **và** gọi `onEvent` → `main.js` `webContents.send('band-comm-event', …)` tới sidebar trong `index.html`.
 5. Operator thao tác trong sidebar → `electronAPI.bandComm.*` → `main.js` → `commServer.operator*()` → WebSocket.
 6. Cấu hình + backup hồ sơ nút lưu ở `userData/band-comm.json` (qua `safeWriteSync`), gồm cả `cloudRoomId` (namespace cho hộp thư cloud).
-7. **Ảnh hợp âm**: 1 điện thoại giữ vai "người phụ trách" (`room.uploaderPin`) mới được thêm/xoá ảnh; ảnh không tự hiện, mỗi user bấm "Xem" mới tải.
+7. **Ảnh hợp âm**: bất kỳ client nào đã join hợp lệ đều thêm được, chỉ tự xoá được ảnh chính mình đã đăng (`ownerId` so theo `profileId`); ảnh không tự hiện, mỗi user bấm "Xem" mới tải.
 8. **Setlist**: điện thoại chọn bài từ `GET /api/library`, gửi `POST /api/setlist` → operator thấy thẻ trong sidebar, "Nạp" luôn **thay thế** toàn bộ Schedule. Nếu LAN không gửi được (laptop tắt hẳn), điện thoại fallback gửi thẳng lên Cloudflare Worker (`cloud/worker/`) bằng `cloudRoomId`; server local tự vét hộp thư này lúc `start()` + định kỳ khi đang chạy — xem `docs/data-contracts.md` mục Kênh Band để biết đầy đủ endpoint.
 
 ## File chịu trách nhiệm chính
@@ -45,13 +46,15 @@
 | `edit-song.html` | UI chỉnh bài hát kiểu Windows cổ điển |
 | `index.html` (sidebar `#bandPanel`) | Kênh Band: QR, bảng cảnh báo gộp, feed, soạn tin |
 | `src/schema.js` | Migrate và validate item |
-| `src/band-comm/server.js` | HTTP + WebSocket, PIN/token, presence, ring buffer, gallery, setlist (LAN + poll cloud) |
+| `src/band-comm/server.js` | HTTP + WebSocket, mật khẩu phòng/token, presence, ring buffer, gallery, setlist (LAN + poll cloud) |
 | `src/band-comm/ws.js` | WebSocket server tự viết (RFC 6455), 0 dependency |
 | `src/band-comm/store.js` | Đọc/ghi `band-comm.json` + backup hồ sơ nút + `cloudRoomId` |
-| `src/band-comm/accounts.js` | Đăng nhập tài khoản (band-comm-plan.md §11) — `band-comm-accounts.json`, hash password bằng `scryptSync` |
+| `src/band-comm/accounts.js` | Đăng nhập tài khoản cục bộ (band-comm-plan.md §11) — `band-comm-accounts.json`, hash password bằng `scryptSync` |
+| `src/band-comm/cognito-jwks.js` | Verify JWT Cognito **offline** (`authMode='cognito'`, cloud/identity-plan.md) — cache JWKS ra `userData/cognito-jwks.json`, dùng `jose` |
 | `src/band-comm/protocol.js` | Envelope tin nhắn, chuẩn hoá `dedupKey` |
 | `src/band-comm/mdns.js` | mDNS responder cho `<hostname>.local` |
 | `cloud/worker/src/worker.js` | Cloudflare Worker — hộp thư setlist (KV) khi laptop tắt hẳn |
+| `cloud/identity/src/worker.js` | Cloudflare Worker "band-identity" — cầu nối AWS Cognito (SigV4 qua `aws4fetch`) cho đăng nhập tài khoản trung tâm; gửi mail mời qua Resend |
 
 ## Dữ liệu lưu ở userData
 
@@ -64,7 +67,7 @@
 - `bible-versions/` cho XML Kinh Thánh do người dùng import
 - `bible-cache-<xmlName>.json`
 - `.backup.1/.backup.2/.backup.3` cho dữ liệu đã backup
-- `band-comm.json` — cấu hình Kênh Band (PIN, port, câu trả lời nhanh, backup hồ sơ nút, `cloudRoomId`, `publicUrl`)
+- `band-comm.json` — cấu hình Kênh Band (mật khẩu phòng, port, câu trả lời nhanh, backup hồ sơ nút, `cloudRoomId`, `publicUrl`)
 - `band-comm-media/` — ảnh hợp âm đã upload
 - `band-comm-gallery.json` — manifest ảnh hợp âm (tên, thứ tự)
 

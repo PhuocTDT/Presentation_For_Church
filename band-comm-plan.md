@@ -4,7 +4,7 @@ Kênh liên lạc thời gian thực trong mạng nội bộ giữa **band nhạ
 
 > Trạng thái: **P1 + lõi P2 đã implement** (2026-08-31). UI operator đã chuyển từ cửa sổ riêng → **sidebar trắng trong `index.html`** + menu **Channel** (`Ctrl+Shift+B`) + tab mép trái. Còn lại: auto-start + QR ổn định (bắt buộc, xem dưới), P3, P4 (ảnh — 1 người upload), P5.
 >
-> Lệch so với plan gốc khi code: mobile client gộp CSS vào `comm/mobile/index.html`; token mang sẵn `name`+`role` để phone reload / sập nền tự vào lại; kênh operator là sidebar chứ không phải cửa sổ Electron riêng (`bandchat.html` đã xoá).
+> Lệch so với plan gốc khi code: mobile client gộp CSS vào `comm/mobile/index.html`; token mang sẵn `name` để phone reload / sập nền tự vào lại; kênh operator là sidebar chứ không phải cửa sổ Electron riêng (`bandchat.html` đã xoá). **Cập nhật 2026-09-17: đã bỏ hẳn phân biệt vai trò `band`/`leader`** — xem mục cuối tài liệu.
 
 ## Yêu cầu BẮT BUỘC (chốt 2026-08-31)
 
@@ -40,6 +40,8 @@ Khi band đang chơi và người hướng dẫn đang hát, không ai rảnh ta
 | `band` | điện thoại (trình duyệt) | Gửi cảnh báo bằng 1 ngón tay; xem ảnh hợp âm gần full màn hình |
 | `leader` | điện thoại (trình duyệt) | Chủ yếu **nhận** tin ("chuyển bài sau câu này"); thỉnh thoảng báo "giữ câu này" |
 | `operator` | máy tính (app Electron) | Nhận mọi cảnh báo, trả lời bằng nút nhanh / bàn phím, quản lý PIN + câu trả lời nhanh + thư viện ảnh (**không** quản lý nút của band) |
+
+> **Cập nhật 2026-09-17:** đã bỏ hẳn phân biệt `band`/`leader` — bảng trên là mô tả USAGE PATTERN ban đầu, chưa từng là 1 permission thật (không route/UI nào từng rẽ nhánh theo giá trị này). Mọi client trên điện thoại giờ đối xử như nhau; chỉ còn phân biệt **thiết bị** (điện thoại vs `operator`). Xem mục cuối tài liệu.
 
 ### Coi như "xong" khi
 
@@ -569,3 +571,20 @@ Cờ `accountsEnabled` (mặc định `false`) — tắt = y hệt hiện tại,
 - **Vòng 1:** đề xuất ban đầu (PIN cá nhân 4 số/account, cấu trúc giống bản P4 gallery). Góp ý: PIN quá yếu, nên tách hẳn "đăng nhập cá nhân" khỏi "khoá phòng" kiểu Zoom (username+password thật + PIN phòng tuỳ chọn).
 - **Vòng 2** (dựa trên commit `96f48d0` — refactor gallery bỏ "1 người phụ trách ảnh", đổi quyền xoá theo `profileId`, token 5→6 phần mang `profileId`): 7 điểm kỹ thuật — xung đột `profileId` giữa gallery/account khi 1 người dùng nhiều máy; không nên thêm phần thứ 7 vào token; roster không được public qua tunnel; scrypt trên secret ngắn không phải lớp phòng thủ chính; hành vi khi đổi mode giữa buổi; di trú bộ nút cảnh báo cũ; nhiều máy cùng 1 account. Toàn bộ đã gộp vào thiết kế trên (đặc biệt: `profileId = account.id` giải quyết gọn xung đột gallery/token cùng lúc).
 - **Vòng 3** (review `tempToken`): `tempToken` phải *về bản chất không verify được* như token thật (nonce + `Map pendingLogins`, không phải cờ `pending` gắn vào token ký HMAC) để fail-closed theo cấu trúc chứ không phải theo quy ước; hạn dùng nằm trong `pendingLogins`, không thêm hằng số hạn song song; chặn `profileId` tự khai (luồng cũ) trùng `accounts[].id`. Đã gộp vào mục API/Data model ở trên.
+
+## 12. Bỏ hẳn phân biệt vai trò band/leader (2026-09-17)
+
+Trong lúc duyệt lại form tạo tài khoản ở sidebar, câu hỏi đặt ra: có còn cần phân biệt `band`/`leader` không? Soát toàn bộ codebase (`server.js`, `accounts.js`, `store.js`, `protocol.js`, `comm/mobile/app.js`, `index.html` operator, `cloud/worker/src/worker.js`, `cloud/identity/src/worker.js`) bằng grep + đọc từng điểm dùng `role`: **không route hay UI nào từng rẽ nhánh theo `role === 'leader'`** để cấp quyền hay đổi hành vi khác `band` — field này chỉ được lưu/truyền/hiển thị (badge, presence list) từ lúc P1 tới giờ. `ROLES` export ở `protocol.js` không ai import. Chỗ duy nhất có rẽ nhánh theo role là `role === 'operator'` (lọc echo tin operator khỏi feed, và nháy taskbar khi có alert không phải từ operator) — khác hẳn phạm vi band/leader, đã thay bằng check `clientId === 'operator'` (tương đương, đã có sẵn, không cần field `role`).
+
+**Đã xoá field `role` khỏi toàn bộ hệ thống** (không giữ code chết):
+- Token phiên: 6 phần → **5 phần**, bỏ segment `role` — `clientId.issued.<b64url(name)>.<b64url(profileId)>.<hmac>`. `makeToken()`/`verifyToken()` sửa theo.
+- `server.js`: bỏ `sanitizeJoinRole()`, bỏ `role` khỏi mọi client record, `presenceList()`, `finishLogin()`, `afterIdentityVerified()`, `pendingLogins`, cả 3 luồng (`/api/join` PIN phòng cũ, `/api/login` local account, `/api/login` nhánh `authMode='cognito'`), envelope `from` (alert + setlist), `OPERATOR` const.
+- `accounts.js`: bỏ `role` khỏi schema account, `create()`, `update()`, `publicAccount()`.
+- `store.js`: bỏ `role` khỏi `saveProfile()` (bộ nút cảnh báo không còn gắn role).
+- `protocol.js`: bỏ hẳn `ROLES` export (dead code).
+- `comm/mobile/`: bỏ hẳn UI chọn "Bạn là" (2 nút Thành viên band / Người hướng dẫn) ở **cả 2** màn join còn dùng nó (PIN phòng cũ + Cognito) — `app.js` bỏ biến `role`, mọi tham số `role`/`roleVal` xuyên suốt chuỗi hàm `doLegacyJoin → doCognitoLogin → doCognitoNewPassword → doCognitoFinish → finalizeJoin`.
+- Operator `index.html`: form "Tài khoản thành viên" bỏ dropdown Vai trò (còn 2 field: Tên đăng nhập + Tên hiển thị); bỏ badge vai trò trong danh sách account.
+- `cloud/worker/src/worker.js`: bỏ `role` khỏi `from` khi lưu setlist vào KV.
+- `docs/data-contracts.md`: cập nhật toàn bộ mô tả envelope/token/account schema khớp theo.
+
+**Không đổi:** vai trò `operator` (là danh tính cố định `clientId:'operator'`, không phải giá trị field `role` — vốn đã tách biệt khỏi band/leader trong thiết kế) — D13 vẫn đúng nguyên: operator không có "tài khoản" theo nghĩa §11.

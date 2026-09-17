@@ -103,7 +103,7 @@ export default {
       const clean = {
         id: String(sl.id).slice(0, 80),
         name: String(sl.name || 'Setlist').trim().slice(0, 80) || 'Setlist',
-        from: { name: String((sl.from && sl.from.name) || '').slice(0, 40), role: (sl.from && sl.from.role) || 'band' },
+        from: { name: String((sl.from && sl.from.name) || '').slice(0, 40) },
         ts: Date.now(),
         items
       };

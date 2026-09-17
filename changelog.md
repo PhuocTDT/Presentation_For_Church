@@ -4,6 +4,98 @@ Tất cả các thay đổi và cập nhật quan trọng của dự án đượ
 
 ## [Unreleased] - Kênh Band LAN (P1 + P2 + P2.5 + P4)
 
+### refactor(band): bỏ hẳn phân biệt vai trò band/leader (2026-09-17)
+- Rà lại lúc duyệt form tạo tài khoản: `role` (band/leader) chỉ được lưu/
+  truyền/hiển thị từ lúc P1 tới giờ — không route hay UI nào từng rẽ nhánh
+  theo giá trị này để cấp quyền hay đổi hành vi (grep xác nhận trên
+  `server.js`, `accounts.js`, `store.js`, `protocol.js`, `comm/mobile/app.js`,
+  `index.html`, cả 2 Worker). `ROLES` export ở `protocol.js` không ai import.
+  Chỗ duy nhất có rẽ nhánh theo role là `role === 'operator'` (lọc echo tin +
+  nháy taskbar) — khác hẳn phạm vi band/leader, thay bằng check
+  `clientId === 'operator'` (tương đương, đã sẵn có).
+- Xoá hẳn field `role` khỏi toàn hệ thống: token phiên 6 phần → **5 phần**
+  (bỏ segment role); mọi client record/presence/envelope (`alert`, `text`,
+  setlist `from`); schema account (`accounts.js`); `store.saveProfile()`;
+  UI chọn "Bạn là" ở **cả 2** màn join còn dùng (mật khẩu phòng cũ + Cognito);
+  dropdown Vai trò trong form tạo tài khoản operator.
+- Verify bằng node script gọi server thật (không đoán): 15/15 case PASS —
+  token đúng 5 phần, không response/envelope nào còn field `role`, gallery
+  `ownerId` vẫn hoạt động đúng qua `profileId` (không bị ảnh hưởng). Đã
+  restart app + curl trực tiếp xác nhận behavior thật trên máy đang chạy.
+- Cập nhật `docs/data-contracts.md`, `docs/architecture.md` (2 chỗ còn nhắc
+  `role`/`uploaderPin` cũ đã lỗi thời), `band-comm-plan.md` §1 + §12.
+
+### fix(band): mã PIN phòng (4 số) đổi thành mật khẩu phòng chữ+số (2026-09-17)
+- PIN 4-8 số chỉ tối đa 10.000 khả năng — không đủ chống brute-force nếu
+  không có khoá backoff gánh gần hết việc chặn (lý do y hệt Zoom đổi từ PIN
+  sang passcode chữ+số cho meeting). Đổi `room.pin` → `room.password`, charset
+  chữ hoa/thường + số (bỏ ký tự dễ nhầm `0/O/1/l/I`), mặc định sinh 6 ký tự
+  (~57^6 khả năng), operator vẫn chỉnh tay được 4-12 ký tự.
+- Đổi tên nhất quán xuyên suốt: field `room.pin/pinSetAt/pinRequiredWithAccounts`
+  → `room.password/passwordSetAt/passwordRequiredWithAccounts`; API field
+  `pin` → `password` (`/api/join`, `/api/join-room`); response
+  `needsRoomPin` → `needsRoomPassword`; UI "Mã PIN" → "Mật khẩu phòng"
+  (sidebar, Settings, comm/mobile — cả label lẫn id phần tử liên quan như
+  `#bpPin`→`#bpPassword`, `#roomPin`→`#roomPassword2`).
+- **Tương thích ngược không cần migrate tay**: `store.js` vẫn đọc được
+  `room.pin`/`pinSetAt`/`pinRequiredWithAccounts` của bản cài cũ (chữ số vốn
+  là tập con hợp lệ của chữ+số), tự ghi lại dưới tên field mới ngay lần load
+  đầu tiên sau khi cập nhật.
+- Test thật: 20 case PASS (config mới, config cũ tự nâng cấp + xoá key cũ
+  trên đĩa, validation, luồng `/api/join`/`/api/login`/`/api/join-room` đầy
+  đủ với mật khẩu chữ+số) + verify UI thật qua Electron/CDP (sidebar hiển
+  thị/tạo lại mật khẩu mới, toggle Settings đổi tên đúng lưu được).
+
+### feat(band): đăng nhập tài khoản trung tâm qua Cloudflare + AWS Cognito (2026-09-17)
+- Vấn đề với mô hình cục bộ vừa xong (mục dưới): band member chơi ở nhiều nhà
+  thờ khác nhau phải có tài khoản/mật khẩu riêng cho từng máy — không có 1
+  danh tính dùng chung. Cân nhắc lại lý do trước đó từ chối Cognito (đòi
+  Internet lúc đang họp) — giải quyết được bằng **verify chữ ký JWT OFFLINE
+  bằng JWKS cache**: chỉ bước ĐĂNG NHẬP (có mạng ngoài venue, kiểu Zoom) cần
+  Internet, lúc đang họp trong LAN không phát sinh request mạng nào để verify.
+- Kiến trúc **hybrid, không dồn hết về AWS**: Cloudflare (đã dùng sẵn cho
+  `cloud/worker/`) làm hạ tầng chính — Worker mới `cloud/identity/` (deploy
+  `identity.worship-official.link`) gọi Cognito CHỈ để xác thực (SigV4 qua
+  `aws4fetch`, không Lambda/API Gateway/S3), gửi mail mời qua Resend (không
+  SES — gọi `fetch()` thuần, không cần ký SigV4). Xem `cloud/identity-plan.md`
+  cho toàn bộ lý do/lịch sử quyết định.
+- **Resource thật đã tạo + verify** (không phải mock): Cognito User Pool
+  `worship-band-users` + App Client + IAM user phạm vi hẹp (5 action, đúng 1
+  User Pool) trên AWS; KV namespace `IDENTITY_RL` + Worker `band-identity`
+  trên Cloudflare. AWS access key nằm trong Worker secret
+  (`wrangler secret put`), không có trong bất kỳ file repo nào.
+- **`cloud/identity/src/worker.js`**: `POST /request-access` (tạo user +
+  mật khẩu tạm qua `AdminCreateUser`, gửi mail Resend — luôn trả `{ok:true}`
+  dù email đã tồn tại, tránh lộ roster), `POST /login` (2 dạng body: mật khẩu
+  thường, hoặc `{session, newPassword}` trả lời challenge
+  `NEW_PASSWORD_REQUIRED`), `POST /refresh`. Verify thật bằng Cognito thật:
+  tạo → đổi mật khẩu tạm → nhận JWT → refresh, cả 3 case lỗi (sai mật
+  khẩu/email lạ/email sai định dạng) đều trả lỗi chung chung như nhau.
+- **`src/band-comm/cognito-jwks.js`** (mới, dependency `jose` — dependency
+  đầu tiên của `src/band-comm/`): cache JWKS ra `userData/cognito-jwks.json`,
+  tự refresh 24h/lần khi có mạng, verify offline bằng cache cũ khi mất mạng.
+- **`server.js`**: `store.js` thêm `authMode: 'local'|'cognito'` (mặc định
+  `'local'`, không ảnh hưởng bản cài nào chưa đổi). `POST /api/login` nhánh
+  `cognito` nhận `{idToken, name, role}` thay vì username/password — verify
+  bằng JWKS cache, `profileId = sub` claim (tái dùng nguyên cơ chế `profileId`
+  đã có, không sửa gallery/bộ nút cảnh báo). `POST /api/join-room` giữ
+  nguyên 100% — fix 1 bug lúc code: nhánh cognito không được gọi
+  `accountsStore.findById()` ở bước 2 vì `sub` không tồn tại trong
+  `accounts.js`, phải dùng thẳng name/role đã lưu ở `pendingLogins` từ bước 1.
+  Test thật bằng JWT thật lấy từ Worker: 16 case PASS gồm cả "ngắt hẳn
+  `global.fetch` giữa chừng vẫn login được" (chứng minh không gọi mạng khi đã
+  cache) + hồi quy 5 case mô hình cục bộ vẫn đúng.
+- **`comm/mobile/`**: `GET /api/mode` thêm `authMode`; màn join thêm
+  `#joinCognitoFields` (tên/vai trò tự khai + email/mật khẩu, gọi thẳng
+  Worker — KHÔNG qua LAN server) + bước đổi mật khẩu tạm + nút "Yêu cầu qua
+  email". Settings → Media & Band thêm chọn "Kiểu tài khoản" — verify thật
+  qua Electron + CDP: toggle đúng UI, `saveConfig` round-trip đúng qua IPC.
+- **Còn thiếu, chưa xong**: domain Resend chưa verify (dùng giả định
+  `mail.worship-official.link`, cần xác nhận lại) — tới lúc đó
+  `/request-access` tạo được tài khoản Cognito nhưng không gửi được mật khẩu
+  tạm qua mail. Chưa có refresh-token tự động ở mobile (JWT hết hạn phải
+  đăng nhập lại, cần mạng lúc đó — chấp nhận được cho v1).
+
 ### feat(band): đăng nhập tài khoản — thay/kèm PIN phòng dùng chung (2026-09-17)
 - Yêu cầu: chỉ dùng PIN phòng thì không đủ an toàn (ai biết PIN cũng tự gõ
   tên/vai trò bất kỳ) — muốn operator (laptop) là nơi DUY NHẤT tạo tài khoản

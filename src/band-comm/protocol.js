@@ -6,8 +6,6 @@
 
 const crypto = require('crypto');
 
-const ROLES = ['band', 'leader', 'operator', 'system'];
-
 const MSG_TYPES = [
   'alert',    // a band member tapped one of their buttons / sent free text
   'text',     // operator free text or quick reply
@@ -37,7 +35,7 @@ function normalizeDedupKey(text) {
     .trim();
 }
 
-// Build a wire envelope. `from` = { clientId, name, role }.
+// Build a wire envelope. `from` = { clientId, name }.
 function makeEnvelope({ type, from, to = 'all', text = '', buttonId = null, refId = null, meta = null }) {
   const safeType = MSG_TYPES.includes(type) ? type : 'system';
   const body = String(text || '');
@@ -45,7 +43,7 @@ function makeEnvelope({ type, from, to = 'all', text = '', buttonId = null, refI
     id: newId('m'),
     ts: Date.now(),
     type: safeType,
-    from: from || { clientId: 'server', name: 'Kênh Band', role: 'system' },
+    from: from || { clientId: 'server', name: 'Kênh Band' },
     to: to || 'all',
     refId: refId || null,
     buttonId: buttonId || null,
@@ -55,4 +53,4 @@ function makeEnvelope({ type, from, to = 'all', text = '', buttonId = null, refI
   };
 }
 
-module.exports = { ROLES, MSG_TYPES, newId, normalizeDedupKey, makeEnvelope };
+module.exports = { MSG_TYPES, newId, normalizeDedupKey, makeEnvelope };

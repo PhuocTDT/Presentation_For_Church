@@ -47,7 +47,10 @@
       ],
       "icon": "icon.ico",
       "extraResources": [
-        { "from": "vendor/cloudflared/win/cloudflared.exe", "to": "cloudflared/cloudflared.exe" }
+        {
+          "from": "vendor/cloudflared/win/cloudflared.exe",
+          "to": "cloudflared/cloudflared.exe"
+        }
       ]
     },
     "mac": {
@@ -70,6 +73,7 @@
     "electron-builder": "^26.8.1"
   },
   "dependencies": {
+    "jose": "^6.2.12",
     "mammoth": "^1.12.0"
   }
 }

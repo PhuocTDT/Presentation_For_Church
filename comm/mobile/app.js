@@ -12,6 +12,11 @@
   // Hộp thư setlist trên Cloudflare khi máy chiếu tắt hẳn — chỉ dùng khi gửi
   // LAN thất bại (network error), xem cloud/worker/src/worker.js.
   var CLOUD_API_BASE = 'https://api.worship-official.link';
+  // Đăng nhập tài khoản trung tâm (authMode='cognito', cloud/identity-plan.md)
+  // — Worker "band-identity" là NƠI DUY NHẤT phone nói chuyện để lấy JWT; sau
+  // đó JWT gửi thẳng cho server LAN (server local verify offline, không đi
+  // qua Worker này nữa). Bước này BẮT BUỘC cần mạng (4G/wifi khác venue).
+  var IDENTITY_API_BASE = 'https://identity.worship-official.link';
 
   var state = loadState();
   var ws = null;
@@ -41,51 +46,55 @@
 
   /* ---------------- join ---------------- */
   // 2 chế độ (band-comm-plan.md §11), chọn qua GET api/mode lúc trang tải:
-  //  - mặc định (accountsEnabled=false): tên tự gõ + vai trò tự chọn + PIN phòng (như trước).
+  //  - mặc định (accountsEnabled=false): tên tự gõ + mật khẩu phòng (như trước).
   //  - tài khoản (accountsEnabled=true): đăng nhập username+password do
   //    người trình chiếu cấp sẵn (không tự đăng ký được) -> nếu operator có
-  //    bật thêm "mã PIN phòng sau đăng nhập" thì có thêm bước 2.
-
-  var role = 'band';
-  Array.prototype.forEach.call(document.querySelectorAll('.roles button'), function (b) {
-    b.addEventListener('click', function () {
-      role = b.getAttribute('data-role');
-      document.querySelectorAll('.roles button').forEach(function (x) {
-        x.setAttribute('aria-pressed', String(x === b));
-      });
-    });
-  });
+  //    bật thêm "mật khẩu phòng sau đăng nhập" thì có thêm bước 2.
 
   var accountsEnabled = false;
-  var pendingTempToken = null; // set khi đang ở bước 2 (chờ nhập mã PIN phòng)
+  var authMode = 'local';
+  var pendingTempToken = null; // set khi đang ở bước 2 (chờ nhập mật khẩu phòng)
+  // authMode='cognito' — session/email chờ đổi mật khẩu lần đầu (Cognito
+  // NEW_PASSWORD_REQUIRED) + name đã khai ở bước 1, giữ lại vì field gốc bị
+  // ẩn đi ở bước đổi mật khẩu.
+  var pendingCognito = null; // { session, email, name }
 
   fetch('api/mode').then(function (r) { return r.json(); }).then(function (m) {
     accountsEnabled = !!(m && m.accountsEnabled);
-    if (accountsEnabled) {
+    authMode = (m && m.authMode === 'cognito') ? 'cognito' : 'local';
+    if (accountsEnabled && authMode === 'cognito') {
+      $('joinLegacyFields').classList.add('hidden');
+      $('joinCognitoFields').classList.remove('hidden');
+      $('joinSub').textContent = 'Đăng nhập bằng tài khoản email dùng chung nhiều nhà thờ.';
+    } else if (accountsEnabled) {
       $('joinLegacyFields').classList.add('hidden');
       $('joinAccountFields').classList.remove('hidden');
       $('joinSub').textContent = 'Đăng nhập bằng tài khoản người trình chiếu đã cấp cho bạn.';
     }
-  }).catch(function () { /* mất mạng lúc tải trang — cứ để mặc định (mô hình PIN phòng) */ });
+  }).catch(function () { /* mất mạng lúc tải trang — cứ để mặc định (mô hình mật khẩu phòng) */ });
 
   $('joinBtn').addEventListener('click', doJoin);
-  $('pin').addEventListener('keydown', function (e) { if (e.key === 'Enter') doJoin(); });
+  $('roomPassword').addEventListener('keydown', function (e) { if (e.key === 'Enter') doJoin(); });
   $('password').addEventListener('keydown', function (e) { if (e.key === 'Enter') doJoin(); });
-  $('roomPin').addEventListener('keydown', function (e) { if (e.key === 'Enter') doJoin(); });
+  $('roomPassword2').addEventListener('keydown', function (e) { if (e.key === 'Enter') doJoin(); });
+  $('ciPassword').addEventListener('keydown', function (e) { if (e.key === 'Enter') doJoin(); });
+  $('ciNewPassword').addEventListener('keydown', function (e) { if (e.key === 'Enter') doJoin(); });
+  $('ciRequestAccessBtn').addEventListener('click', doRequestAccess);
 
   function doJoin() {
     if (pendingTempToken) return doJoinRoom();
+    if (pendingCognito) return doCognitoNewPassword();
+    if (accountsEnabled && authMode === 'cognito') return doCognitoLogin();
     if (accountsEnabled) return doLogin();
     return doLegacyJoin();
   }
 
   // Điền state chung + vào màn chính — dùng chung cho cả 3 đường vào kênh
-  // (PIN phòng cũ, đăng nhập tài khoản 1 bước, đăng nhập tài khoản 2 bước).
-  function finalizeJoin(j, fallbackName, fallbackRole) {
+  // (mật khẩu phòng cũ, đăng nhập tài khoản 1 bước, đăng nhập tài khoản 2 bước).
+  function finalizeJoin(j, fallbackName) {
     state.token = j.token;
     state.clientId = j.clientId;
     state.name = j.name || fallbackName;
-    state.role = j.role || fallbackRole;
     state.roomName = (j.room && j.room.name) || 'Kênh Band';
     state.operatorReplies = j.operatorReplies || [];
     state.cloudRoomId = j.cloudRoomId || '';
@@ -100,22 +109,22 @@
 
   function doLegacyJoin() {
     var name = $('name').value.trim();
-    var pin = $('pin').value.trim();
+    var password = $('roomPassword').value.trim();
     $('joinErr').textContent = '';
     if (!name) { $('joinErr').textContent = 'Nhập tên đã.'; return; }
-    if (!/^\d{4,8}$/.test(pin)) { $('joinErr').textContent = 'Mã PIN gồm 4–8 chữ số.'; return; }
+    if (!/^[a-zA-Z0-9]{4,12}$/.test(password)) { $('joinErr').textContent = 'Mật khẩu phòng gồm 4–12 ký tự chữ/số.'; return; }
     $('joinBtn').disabled = true;
 
     fetch('api/join', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name: name, role: role, pin: pin, profileId: state.profileId })
+      body: JSON.stringify({ name: name, password: password, profileId: state.profileId })
     }).then(function (r) {
       return r.json().then(function (j) { return { ok: r.ok, j: j }; });
     }).then(function (res) {
       $('joinBtn').disabled = false;
       if (!res.ok) { $('joinErr').textContent = res.j && res.j.error ? res.j.error : 'Không vào được kênh.'; return; }
-      finalizeJoin(res.j, name, role);
+      finalizeJoin(res.j, name);
     }).catch(function () {
       $('joinBtn').disabled = false;
       $('joinErr').textContent = 'Không kết nối được máy trình chiếu. Cùng Wi-Fi chưa?';
@@ -138,12 +147,12 @@
     }).then(function (res) {
       $('joinBtn').disabled = false;
       if (!res.ok) { $('joinErr').textContent = res.j && res.j.error ? res.j.error : 'Không đăng nhập được.'; return; }
-      if (res.j.needsRoomPin) {
+      if (res.j.needsRoomPassword) {
         pendingTempToken = res.j.tempToken;
         $('joinAccountFields').classList.add('hidden');
-        $('joinRoomPinFields').classList.remove('hidden');
-        $('joinSub').textContent = 'Nhập thêm mã PIN phòng người trình chiếu đọc cho bạn.';
-        $('roomPin').focus();
+        $('joinRoomPasswordFields').classList.remove('hidden');
+        $('joinSub').textContent = 'Nhập thêm mật khẩu phòng người trình chiếu đọc cho bạn.';
+        $('roomPassword2').focus();
         return;
       }
       finalizeJoin(res.j);
@@ -154,15 +163,15 @@
   }
 
   function doJoinRoom() {
-    var pin = $('roomPin').value.trim();
+    var password = $('roomPassword2').value.trim();
     $('joinErr').textContent = '';
-    if (!/^\d{4,8}$/.test(pin)) { $('joinErr').textContent = 'Mã PIN gồm 4–8 chữ số.'; return; }
+    if (!/^[a-zA-Z0-9]{4,12}$/.test(password)) { $('joinErr').textContent = 'Mật khẩu phòng gồm 4–12 ký tự chữ/số.'; return; }
     $('joinBtn').disabled = true;
 
     fetch('api/join-room', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ tempToken: pendingTempToken, pin: pin })
+      body: JSON.stringify({ tempToken: pendingTempToken, password: password })
     }).then(function (r) {
       return r.json().then(function (j) { return { ok: r.ok, j: j }; });
     }).then(function (res) {
@@ -171,10 +180,10 @@
         $('joinErr').textContent = res.j && res.j.error ? res.j.error : 'Không vào được kênh.';
         // Phiên đăng nhập (bước 1) đã hết hạn — không còn tempToken nào để
         // thử tiếp, bung lại về bước 1 thay vì để người dùng bấm mãi vào 1
-        // mã PIN không còn ý nghĩa.
+        // mật khẩu không còn ý nghĩa.
         if (res.j && res.j.error && res.j.error.indexOf('hết hạn') >= 0) {
           pendingTempToken = null;
-          $('joinRoomPinFields').classList.add('hidden');
+          $('joinRoomPasswordFields').classList.add('hidden');
           $('joinAccountFields').classList.remove('hidden');
           $('joinSub').textContent = 'Đăng nhập bằng tài khoản người trình chiếu đã cấp cho bạn.';
         }
@@ -185,6 +194,133 @@
     }).catch(function () {
       $('joinBtn').disabled = false;
       $('joinErr').textContent = 'Không kết nối được máy trình chiếu. Cùng Wi-Fi chưa?';
+    });
+  }
+
+  // authMode='cognito' bước 1: xin JWT từ Worker "band-identity" bằng
+  // email+mật khẩu (KHÔNG gọi server LAN ở bước này — Worker giữ AWS
+  // credentials, server LAN chỉ verify chữ ký JWT offline sau đó).
+  function doCognitoLogin() {
+    var name = $('ciName').value.trim();
+    var email = $('ciEmail').value.trim();
+    var password = $('ciPassword').value;
+    $('joinErr').textContent = ''; $('joinInfo').textContent = '';
+    if (!name) { $('joinErr').textContent = 'Nhập tên đã.'; return; }
+    if (!email || !password) { $('joinErr').textContent = 'Nhập email và mật khẩu.'; return; }
+    $('joinBtn').disabled = true;
+
+    fetch(IDENTITY_API_BASE + '/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: email, password: password })
+    }).then(function (r) {
+      return r.json().then(function (j) { return { ok: r.ok, j: j }; });
+    }).then(function (res) {
+      $('joinBtn').disabled = false;
+      if (!res.ok) { $('joinErr').textContent = (res.j && res.j.error) || 'Không đăng nhập được.'; return; }
+      if (res.j.challenge === 'NEW_PASSWORD_REQUIRED') {
+        pendingCognito = { session: res.j.session, email: email, name: name };
+        $('joinCognitoFields').classList.add('hidden');
+        $('joinCognitoNewPasswordFields').classList.remove('hidden');
+        $('joinSub').textContent = 'Mật khẩu tạm chỉ dùng 1 lần — đặt mật khẩu mới.';
+        $('ciNewPassword').focus();
+        return;
+      }
+      doCognitoFinish(res.j.idToken, name);
+    }).catch(function () {
+      $('joinBtn').disabled = false;
+      $('joinErr').textContent = 'Không kết nối được máy chủ đăng nhập. Cần có mạng (4G/Wi-Fi khác) để đăng nhập lần đầu.';
+    });
+  }
+
+  // Cognito bắt buộc đổi mật khẩu tạm ngay lần đăng nhập đầu.
+  function doCognitoNewPassword() {
+    var newPassword = $('ciNewPassword').value;
+    $('joinErr').textContent = ''; $('joinInfo').textContent = '';
+    if (!newPassword || newPassword.length < 8) { $('joinErr').textContent = 'Mật khẩu mới tối thiểu 8 ký tự.'; return; }
+    $('joinBtn').disabled = true;
+    var pending = pendingCognito;
+
+    fetch(IDENTITY_API_BASE + '/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: pending.email, session: pending.session, newPassword: newPassword })
+    }).then(function (r) {
+      return r.json().then(function (j) { return { ok: r.ok, j: j }; });
+    }).then(function (res) {
+      $('joinBtn').disabled = false;
+      if (!res.ok || !res.j.idToken) {
+        $('joinErr').textContent = (res.j && res.j.error) || 'Không đổi được mật khẩu, vui lòng đăng nhập lại.';
+        pendingCognito = null;
+        $('joinCognitoNewPasswordFields').classList.add('hidden');
+        $('joinCognitoFields').classList.remove('hidden');
+        $('joinSub').textContent = 'Đăng nhập bằng tài khoản email dùng chung nhiều nhà thờ.';
+        return;
+      }
+      pendingCognito = null;
+      doCognitoFinish(res.j.idToken, pending.name);
+    }).catch(function () {
+      $('joinBtn').disabled = false;
+      $('joinErr').textContent = 'Không kết nối được máy chủ đăng nhập. Cần có mạng (4G/Wi-Fi khác) để đăng nhập lần đầu.';
+    });
+  }
+
+  // Bước 2: đưa idToken đã có chữ ký Cognito cho server LAN verify offline —
+  // giống hệt luồng needsRoomPassword/finalizeJoin của đăng nhập tài khoản cục bộ.
+  function doCognitoFinish(idToken, name) {
+    $('joinBtn').disabled = true;
+    fetch('api/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ idToken: idToken, name: name })
+    }).then(function (r) {
+      return r.json().then(function (j) { return { ok: r.ok, j: j }; });
+    }).then(function (res) {
+      $('joinBtn').disabled = false;
+      if (!res.ok) {
+        $('joinErr').textContent = (res.j && res.j.error) || 'Không vào được kênh.';
+        $('joinCognitoNewPasswordFields').classList.add('hidden');
+        $('joinCognitoFields').classList.remove('hidden');
+        return;
+      }
+      if (res.j.needsRoomPassword) {
+        pendingTempToken = res.j.tempToken;
+        $('joinCognitoFields').classList.add('hidden');
+        $('joinCognitoNewPasswordFields').classList.add('hidden');
+        $('joinRoomPasswordFields').classList.remove('hidden');
+        $('joinSub').textContent = 'Nhập thêm mật khẩu phòng người trình chiếu đọc cho bạn.';
+        $('roomPassword2').focus();
+        return;
+      }
+      finalizeJoin(res.j, name);
+    }).catch(function () {
+      $('joinBtn').disabled = false;
+      $('joinErr').textContent = 'Không kết nối được máy trình chiếu. Cùng Wi-Fi chưa?';
+    });
+  }
+
+  // "Chưa có tài khoản?" — Worker tự sinh mật khẩu tạm + gửi qua email (không
+  // tự đăng ký công khai kiểu ai cũng thấy được ai đã có tài khoản: response
+  // luôn {ok:true} dù email đã tồn tại hay chưa, xem cloud/identity/src/worker.js).
+  function doRequestAccess() {
+    var email = $('ciEmail').value.trim();
+    $('joinErr').textContent = ''; $('joinInfo').textContent = '';
+    if (!email) { $('joinErr').textContent = 'Nhập email trước đã.'; return; }
+    $('ciRequestAccessBtn').disabled = true;
+
+    fetch(IDENTITY_API_BASE + '/request-access', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: email })
+    }).then(function (r) {
+      return r.json().then(function (j) { return { ok: r.ok, j: j }; });
+    }).then(function (res) {
+      $('ciRequestAccessBtn').disabled = false;
+      if (!res.ok) { $('joinErr').textContent = (res.j && res.j.error) || 'Không gửi được yêu cầu.'; return; }
+      $('joinInfo').textContent = 'Nếu email hợp lệ, mật khẩu tạm đã được gửi tới hộp thư (kiểm tra cả mục Spam).';
+    }).catch(function () {
+      $('ciRequestAccessBtn').disabled = false;
+      $('joinErr').textContent = 'Không kết nối được máy chủ. Cần có mạng để yêu cầu tài khoản.';
     });
   }
 
@@ -719,7 +855,7 @@
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         roomId: state.cloudRoomId,
-        setlist: { id: payload.id, name: payload.name, from: { name: state.name, role: state.role }, items: payload.items }
+        setlist: { id: payload.id, name: payload.name, from: { name: state.name }, items: payload.items }
       })
     })
       .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
@@ -767,7 +903,6 @@
 
   /* ---------------- boot ---------------- */
   if (state.token && state.clientId) {
-    role = state.role || 'band';
     enterMain();
   }
 })();

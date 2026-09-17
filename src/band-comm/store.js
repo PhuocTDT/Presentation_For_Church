@@ -11,8 +11,18 @@ const crypto = require('crypto');
 const DEFAULT_PORT = 7071;
 const DEFAULT_REPLIES = ['Đã nghe', 'Đợi một chút', 'Đang chỉnh', 'Chuyển sau câu này'];
 
-function randomPin() {
-  return String(crypto.randomInt(0, 10000)).padStart(4, '0');
+// Mã phòng dạng chữ+số thay vì PIN 4 số cũ — cùng lý do Zoom dùng passcode
+// chữ+số cho meeting: range ký tự lớn hơn nhiều (~57 so với 10) nên tự nó đã
+// đủ chống brute-force, không cần thêm allowlist riêng theo từng phòng. Bỏ
+// ký tự dễ nhầm khi đọc/gõ tay (0/O, 1/l/I) — giảm range không đáng kể so
+// với việc tăng từ số-only lên chữ+số.
+const ROOM_PASSWORD_CHARS = 'abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+function randomRoomPassword(len) {
+  const n = len || 6;
+  const bytes = crypto.randomBytes(n);
+  let out = '';
+  for (let i = 0; i < n; i++) out += ROOM_PASSWORD_CHARS[bytes[i] % ROOM_PASSWORD_CHARS.length];
+  return out;
 }
 
 // `profiles` is a plain object keyed by client-supplied profileId, so a key of
@@ -29,14 +39,21 @@ function defaultConfig() {
   return {
     version: 1,
     room: {
-      name: 'Kênh Band', pin: randomPin(), pinSetAt: Date.now(), hostname: 'worship',
+      name: 'Kênh Band', password: randomRoomPassword(), passwordSetAt: Date.now(), hostname: 'worship',
       // Đăng nhập tài khoản (band-comm-plan.md §11): mặc định false, không ảnh
       // hưởng bản cài nào chưa bật. Khi true, /api/login (username+password)
-      // thay cho tên/vai trò tự khai; room.pin trở thành lớp phụ TUỲ CHỌN sau
-      // đăng nhập cá nhân — chỉ áp dụng khi pinRequiredWithAccounts cũng bật.
-      pinRequiredWithAccounts: false
+      // thay cho tên/vai trò tự khai; room.password trở thành lớp phụ TUỲ CHỌN
+      // sau đăng nhập cá nhân — chỉ áp dụng khi passwordRequiredWithAccounts
+      // cũng bật.
+      passwordRequiredWithAccounts: false
     },
     accountsEnabled: false,
+    // 'local': /api/login xác thực bằng band-comm-accounts.json (accounts.js,
+    // tự quản lý riêng từng máy). 'cognito': /api/login nhận idToken đã ký sẵn
+    // từ Cloudflare Worker "band-identity" (cloud/identity-plan.md) — 1 danh
+    // tính dùng chung nhiều nhà thờ, verify offline bằng JWKS cache (không gọi
+    // mạng lúc đang họp). Chỉ có tác dụng khi accountsEnabled=true.
+    authMode: 'local',
     port: DEFAULT_PORT,
     // Địa chỉ công khai band gõ/quét (Cloudflare Tunnel, domain riêng…). Rỗng =
     // chưa cấu hình → sidebar chỉ hiện IP LAN + worship.local như trước.
@@ -63,15 +80,24 @@ function normalizeConfig(raw) {
     version: 1,
     room: {
       name: String(room.name || base.room.name).trim() || base.room.name,
-      pin: /^\d{4,8}$/.test(String(room.pin || '')) ? String(room.pin) : base.room.pin,
-      // Ngày đặt PIN hiện tại — sidebar dùng để nhắc "nên đổi PIN" sau một thời
-      // gian. `save()` bên dưới là nơi thật sự stamp giá trị mới khi PIN đổi;
-      // ở đây chỉ giữ nguyên field khi load lại config không đổi gì.
-      pinSetAt: Number.isFinite(room.pinSetAt) ? room.pinSetAt : (base.room.pinSetAt),
+      // 4-12 ký tự chữ+số — vẫn đọc được `room.pin`/`pinSetAt`/
+      // `pinRequiredWithAccounts` của bản cài cũ (trước khi đổi tên field cho
+      // đúng bản chất — không còn là PIN số 4 chữ số nữa), không cần migrate
+      // tay: chữ số vốn là tập con của chữ+số nên giá trị cũ vẫn hợp lệ nguyên
+      // văn, chỉ đổi TÊN field khi ghi lại.
+      password: /^[a-zA-Z0-9]{4,12}$/.test(String(room.password || room.pin || ''))
+        ? String(room.password || room.pin)
+        : base.room.password,
+      // Ngày đặt mật khẩu hiện tại — sidebar dùng để nhắc "nên đổi mật khẩu"
+      // sau một thời gian. `save()` bên dưới là nơi thật sự stamp giá trị mới
+      // khi mật khẩu đổi; ở đây chỉ giữ nguyên field khi load lại không đổi gì.
+      passwordSetAt: Number.isFinite(room.passwordSetAt) ? room.passwordSetAt
+        : (Number.isFinite(room.pinSetAt) ? room.pinSetAt : base.room.passwordSetAt),
       hostname: /^[a-z0-9][a-z0-9-]{0,29}$/i.test(String(room.hostname || '')) ? String(room.hostname).toLowerCase() : base.room.hostname,
-      pinRequiredWithAccounts: room.pinRequiredWithAccounts === true
+      passwordRequiredWithAccounts: room.passwordRequiredWithAccounts === true || room.pinRequiredWithAccounts === true
     },
     accountsEnabled: cfg.accountsEnabled === true,
+    authMode: cfg.authMode === 'cognito' ? 'cognito' : 'local',
     port: Number.isInteger(cfg.port) && cfg.port > 0 ? cfg.port : base.port,
     publicUrl: /^https?:\/\/[^\s]+$/i.test(String(cfg.publicUrl || '').trim())
       ? String(cfg.publicUrl).trim().replace(/\/+$/, '')
@@ -126,18 +152,21 @@ function createStore(userDataPath, safeWriteSync) {
     }
     cache = normalizeConfig(raw);
     // File mới toàn bộ, hoặc file cũ chưa có cloudRoomId (nâng cấp từ bản trước
-    // M2) — ghi lại ngay để UUID vừa sinh không bị mất, đổi mỗi lần khởi động.
-    if (!raw || raw.cloudRoomId !== cache.cloudRoomId) safeWriteSync(configPath, cache);
+    // M2), hoặc file cũ còn dùng key `room.pin`/`pinSetAt`/`pinRequiredWithAccounts`
+    // (trước khi đổi tên field sang `password`/…) — ghi lại ngay để dọn sạch
+    // key cũ trên đĩa thay vì chờ tới lần save() kế tiếp.
+    const legacyPinKeys = raw && raw.room && raw.room.pin !== undefined;
+    if (!raw || raw.cloudRoomId !== cache.cloudRoomId || legacyPinKeys) safeWriteSync(configPath, cache);
     return cache;
   }
 
   function save(next) {
-    const prevPin = cache && cache.room && cache.room.pin;
+    const prevPassword = cache && cache.room && cache.room.password;
     const normalized = normalizeConfig(next);
-    // A caller changing room.pin (regenerate button, or a hand-edited config)
-    // never knows to set pinSetAt itself — the store is the one place that
-    // can tell "did the PIN actually change", so stamp it here.
-    if (prevPin && normalized.room.pin !== prevPin) normalized.room.pinSetAt = Date.now();
+    // A caller changing room.password (regenerate button, or a hand-edited
+    // config) never knows to set passwordSetAt itself — the store is the one
+    // place that can tell "did the password actually change", so stamp it here.
+    if (prevPassword && normalized.room.password !== prevPassword) normalized.room.passwordSetAt = Date.now();
     cache = normalized;
     safeWriteSync(configPath, cache);
     return cache;
@@ -149,12 +178,11 @@ function createStore(userDataPath, safeWriteSync) {
     return save({ ...cur, ...(partial || {}), profiles: cur.profiles });
   }
 
-  function saveProfile(profileId, { name, role, buttons }) {
+  function saveProfile(profileId, { name, buttons }) {
     if (!isSafeProfileId(profileId)) return null;
     const cur = load();
     const entry = {
       name: String(name || '').trim().slice(0, 40) || 'Ẩn danh',
-      role: ['band', 'leader'].includes(role) ? role : 'band',
       updatedAt: Date.now(),
       buttons: sanitizeButtons(buttons)
     };

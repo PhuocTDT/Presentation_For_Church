@@ -1038,15 +1038,15 @@
       #bandPanel .bp-conn .bp-kv { display: flex; gap: 8px; align-items: baseline; margin-top: 6px; }
       #bandPanel .bp-conn .k { flex: none; width: 62px; color: #8a93a3; font-size: .7rem; text-transform: uppercase; letter-spacing: .05em; }
       #bandPanel .bp-conn .v { font-family: Consolas, ui-monospace, monospace; font-size: .92rem; user-select: text; overflow-wrap: anywhere; }
-      #bandPanel .bp-conn .v.pin { font-size: 1.15rem; font-weight: 700; letter-spacing: .16em; color: #b9740f; }
-      #bandPanel .bp-conn .bp-pin-reload {
+      #bandPanel .bp-conn .v.password { font-size: 1.15rem; font-weight: 700; letter-spacing: .06em; color: #b9740f; }
+      #bandPanel .bp-conn .bp-password-reload {
         margin-left: auto; align-self: center; border: none; background: none; color: #8a93a3;
         font-size: .95rem; line-height: 1; cursor: pointer; padding: 3px 5px; border-radius: 6px; flex: none;
       }
-      #bandPanel .bp-conn .bp-pin-reload:hover { color: #2563a8; background: #eef3fa; }
-      #bandPanel .bp-conn .bp-pin-reload.spin { animation: bpPinSpin .5s linear; }
-      @keyframes bpPinSpin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-      #bandPanel .bp-conn .bp-pin-hint {
+      #bandPanel .bp-conn .bp-password-reload:hover { color: #2563a8; background: #eef3fa; }
+      #bandPanel .bp-conn .bp-password-reload.spin { animation: bpPasswordSpin .5s linear; }
+      @keyframes bpPasswordSpin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+      #bandPanel .bp-conn .bp-password-hint {
         margin-top: 2px; font-size: .72rem; color: #b9740f; background: #fdf3e3;
         border-radius: 6px; padding: 3px 7px;
       }
@@ -1319,14 +1319,17 @@
       }
       #settings-modal .bp-acct-row .nm { flex: 1; min-width: 0; font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
       #settings-modal .bp-acct-row .un { color: var(--stg-text-faint); font-weight: 400; }
-      #settings-modal .bp-acct-row .role { font-size: 10px; text-transform: uppercase; letter-spacing: .04em; color: var(--stg-text-faint); margin-left: 4px; }
       #settings-modal .bp-acct-row .inactive { color: #f87171; font-size: 10.5px; margin-left: 6px; }
       #settings-modal .bp-acct-row .stg-btn.sm { padding: 4px 9px; font-size: 10.5px; }
       #settings-modal .bp-acct-row .stg-btn.sm.danger { color: #f87171; border-color: #f8717155; }
-      #settings-modal .bp-acct-add { display: grid; grid-template-columns: 1fr 1fr auto; gap: 6px; align-items: center; }
-      #settings-modal .bp-acct-add input, #settings-modal .bp-acct-add select { grid-column: span 1; }
-      #settings-modal .bp-acct-add #bpAcctPassword { grid-column: span 2; }
-      #settings-modal .bp-acct-add #bpAcctAddBtn { grid-column: span 1; white-space: nowrap; }
+      /* Form "thêm thành viên" — 2 hàng label+input (cùng pattern .stg-row-text
+         đã dùng ở tab Dữ liệu), không còn grid 1fr/1fr/auto tự wrap lộn xộn.
+         Hàng 2 dùng align-items:flex-end để nút thẳng đáy input mật khẩu (nút
+         không có label phía trên nên top của nó cao hơn input, chỉ đáy khớp). */
+      #settings-modal .bp-acct-add { display: flex; gap: 16px; align-items: flex-start; }
+      #settings-modal .bp-acct-add-row2 { display: flex; gap: 16px; align-items: flex-end; margin-top: 10px; }
+      #settings-modal .bp-acct-add-row2 .stg-row-text { flex: 1; min-width: 0; }
+      #settings-modal .bp-acct-add-row2 #bpAcctAddBtn { white-space: nowrap; }
       #settings-modal .bp-acct-status { font-size: 11.5px; margin-top: 6px; color: var(--stg-text-dim); min-height: 14px; }
 
       #bandPanel .bp-error {
@@ -1381,8 +1384,8 @@
               <div class="host" id="bpHost">—</div>
             </div>
           </div>
-          <div class="bp-kv"><span class="k">Mã PIN</span><span class="v pin" id="bpPin">—</span><button class="bp-pin-reload" id="bpPinReload" type="button" title="Tạo mã PIN mới">🔄</button></div>
-          <div class="bp-pin-hint bp-hidden" id="bpPinHint"></div>
+          <div class="bp-kv"><span class="k">Mật khẩu</span><span class="v password" id="bpPassword">—</span><button class="bp-password-reload" id="bpPasswordReload" type="button" title="Tạo mật khẩu mới">🔄</button></div>
+          <div class="bp-password-hint bp-hidden" id="bpPasswordHint"></div>
           <div class="bp-kv"><span class="k">Đang nối</span><span class="v" id="bpCount">0</span></div>
           <div class="row2">
             <button class="bp-btn" id="bpFw">Mở cổng Firewall (nếu điện thoại không vào được)</button>
@@ -1398,7 +1401,7 @@
       </div>
 
       <div class="bp-feed" id="bpFeed">
-        <div class="bp-empty" id="bpEmpty">Bấm "Bắt đầu" rồi cho band mở địa chỉ + nhập PIN.</div>
+        <div class="bp-empty" id="bpEmpty">Bấm "Bắt đầu" rồi cho band mở địa chỉ + nhập mật khẩu phòng.</div>
       </div>
       <div class="bp-composer">
         <div class="bp-replies" id="bpReplies"></div>
@@ -2553,7 +2556,7 @@
                 <div class="stg-row" data-search="đăng nhập tài khoản account login username password">
                   <div class="stg-row-text">
                     <div class="stg-label">Đăng nhập tài khoản</div>
-                    <div class="stg-help">Bật để band/leader đăng nhập bằng tài khoản bạn tạo (username + mật khẩu) thay vì chỉ gõ tên tự do + mã PIN chung.</div>
+                    <div class="stg-help">Bật để band/leader đăng nhập bằng tài khoản bạn tạo (username + mật khẩu) thay vì chỉ gõ tên tự do + mật khẩu phòng chung.</div>
                   </div>
                   <div class="stg-row-control">
                     <label class="stg-toggle">
@@ -2562,33 +2565,55 @@
                     </label>
                   </div>
                 </div>
-                <div class="stg-row" data-search="mã pin phòng sau khi đăng nhập tài khoản">
+                <div class="stg-row" data-search="mật khẩu pin phòng sau khi đăng nhập tài khoản">
                   <div class="stg-row-text">
-                    <div class="stg-label">Yêu cầu thêm mã PIN phòng sau khi đăng nhập</div>
-                    <div class="stg-help">Tuỳ chọn — dùng lại mã PIN phòng ở popup Kết nối làm lớp phụ, đổi được mỗi buổi mà không ảnh hưởng mật khẩu cá nhân của ai.</div>
+                    <div class="stg-label">Yêu cầu thêm mật khẩu phòng sau khi đăng nhập</div>
+                    <div class="stg-help">Tuỳ chọn — dùng lại mật khẩu phòng ở popup Kết nối làm lớp phụ, đổi được mỗi buổi mà không ảnh hưởng mật khẩu cá nhân của ai.</div>
                   </div>
                   <div class="stg-row-control">
                     <label class="stg-toggle">
-                      <input type="checkbox" id="stgPinRequiredWithAccounts">
+                      <input type="checkbox" id="stgPasswordRequiredWithAccounts">
                       <span class="stg-track"></span>
                     </label>
                   </div>
                 </div>
-                <div class="stg-plain" data-search="tài khoản thành viên band leader">
+                <div class="stg-row" data-search="kiểu đăng nhập cục bộ trung tâm cognito email nhiều nhà thờ">
+                  <div class="stg-row-text">
+                    <div class="stg-label">Kiểu tài khoản</div>
+                    <div class="stg-help">Cục bộ: bạn tự tạo/đổi mật khẩu từng người ở máy này. Trung tâm: band tự đăng nhập bằng email dùng chung được nhiều nhà thờ (không cần bạn tạo tài khoản).</div>
+                  </div>
+                  <div class="stg-row-control">
+                    <select id="stgAuthMode" class="stg-input">
+                      <option value="local">Cục bộ (máy này)</option>
+                      <option value="cognito">Trung tâm (email)</option>
+                    </select>
+                  </div>
+                </div>
+                <div class="stg-plain" id="bpLocalAccountsBlock" data-search="tài khoản thành viên">
                   <div class="stg-label" style="margin-bottom:6px;">Tài khoản thành viên</div>
                   <div class="stg-help" style="margin-bottom:8px;">Chỉ bạn tạo/đổi mật khẩu được ở đây — band member không tự đổi mật khẩu.</div>
                   <div id="bpAcctList" class="bp-acct-list"></div>
                   <div class="bp-acct-add">
-                    <input id="bpAcctUsername" class="stg-input" placeholder="Tên đăng nhập" spellcheck="false" autocomplete="off">
-                    <input id="bpAcctName" class="stg-input" placeholder="Tên hiển thị" spellcheck="false" autocomplete="off">
-                    <select id="bpAcctRole" class="stg-input">
-                      <option value="band">band</option>
-                      <option value="leader">leader</option>
-                    </select>
-                    <input id="bpAcctPassword" class="stg-input" type="text" placeholder="Mật khẩu (≥6 ký tự)" spellcheck="false" autocomplete="off">
+                    <div class="stg-row-text">
+                      <div class="stg-label" style="font-weight:400; font-size:11px; text-transform:uppercase; color:var(--stg-text-faint); margin-bottom:4px;">Tên đăng nhập</div>
+                      <input id="bpAcctUsername" class="stg-input" placeholder="vd: minh" spellcheck="false" autocomplete="off" style="width:100%;">
+                    </div>
+                    <div class="stg-row-text">
+                      <div class="stg-label" style="font-weight:400; font-size:11px; text-transform:uppercase; color:var(--stg-text-faint); margin-bottom:4px;">Tên hiển thị</div>
+                      <input id="bpAcctName" class="stg-input" placeholder="vd: Minh (Guitar)" spellcheck="false" autocomplete="off" style="width:100%;">
+                    </div>
+                  </div>
+                  <div class="bp-acct-add-row2">
+                    <div class="stg-row-text">
+                      <div class="stg-label" style="font-weight:400; font-size:11px; text-transform:uppercase; color:var(--stg-text-faint); margin-bottom:4px;">Mật khẩu tạm</div>
+                      <input id="bpAcctPassword" class="stg-input" type="text" placeholder="≥ 6 ký tự" spellcheck="false" autocomplete="off" style="width:100%;">
+                    </div>
                     <button class="stg-btn stg-btn-primary" id="bpAcctAddBtn" type="button">+ Thêm thành viên</button>
                   </div>
                   <div class="bp-acct-status" id="bpAcctStatus"></div>
+                </div>
+                <div class="stg-plain hidden" id="bpCognitoInfoBlock" data-search="tài khoản trung tâm cognito email">
+                  <div class="stg-help">Band tự bấm "Yêu cầu tài khoản" ngay màn đăng nhập trên điện thoại (nhập email, nhận mật khẩu tạm qua mail) — không có danh sách quản lý ở đây vì tài khoản dùng chung cho mọi nhà thờ, không riêng máy này.</div>
                 </div>
               </div>
             </div>
@@ -2629,7 +2654,7 @@
                   <div class="stg-row" style="border-top:1px solid var(--stg-border-soft); padding-top:11px;">
                     <div class="stg-row-text">
                       <div class="stg-label" style="font-weight:400; font-size:11px; text-transform:uppercase; color:var(--stg-text-faint); margin-bottom:4px;">Phạm vi</div>
-                      <select id="bulk-replace-target" class="stg-input" onchange="syncBulkReplaceFieldOptions()" style="width:100%;">
+                      <select id="bulk-replace-target" class="stg-input" onchange="syncBulkReplaceFieldOptions()" style="width:100%; min-width:0;">
                         <option value="songs">Songs</option>
                         <option value="bible">Bible XML</option>
                         <option value="all">Songs + Bible XML</option>
@@ -2637,7 +2662,7 @@
                     </div>
                     <div class="stg-row-text">
                       <div class="stg-label" style="font-weight:400; font-size:11px; text-transform:uppercase; color:var(--stg-text-faint); margin-bottom:4px;">Phần dữ liệu</div>
-                      <select id="bulk-replace-field" class="stg-input" style="width:100%;">
+                      <select id="bulk-replace-field" class="stg-input" style="width:100%; min-width:0;">
                         <option value="all">Tiêu đề + Lời</option>
                         <option value="title">Chỉ tiêu đề</option>
                         <option value="lyrics">Chỉ lời / nội dung</option>
@@ -2645,7 +2670,7 @@
                     </div>
                     <div class="stg-row-text">
                       <div class="stg-label" style="font-weight:400; font-size:11px; text-transform:uppercase; color:var(--stg-text-faint); margin-bottom:4px;">Hoa/thường</div>
-                      <select id="bulk-replace-case-sensitive" class="stg-input" style="width:100%;">
+                      <select id="bulk-replace-case-sensitive" class="stg-input" style="width:100%; min-width:0;">
                         <option value="off">Không phân biệt</option>
                         <option value="on">Phân biệt</option>
                       </select>
@@ -4487,7 +4512,10 @@
                 window.electronAPI.bandComm.getConfig().then(function (cfg) {
                     document.getElementById('bpTunnelName').value = (cfg && cfg.tunnelName) || '';
                     document.getElementById('stgAccountsEnabled').checked = !!(cfg && cfg.accountsEnabled);
-                    document.getElementById('stgPinRequiredWithAccounts').checked = !!(cfg && cfg.room && cfg.room.pinRequiredWithAccounts);
+                    document.getElementById('stgPasswordRequiredWithAccounts').checked = !!(cfg && cfg.room && cfg.room.passwordRequiredWithAccounts);
+                    var authMode = (cfg && cfg.authMode === 'cognito') ? 'cognito' : 'local';
+                    document.getElementById('stgAuthMode').value = authMode;
+                    if (window.__updateAuthModeUI) window.__updateAuthModeUI(authMode);
                 }).catch(function () {});
                 // refreshAcctList() sống trong closure riêng của sidebar Kênh Band —
                 // gọi qua hàm global nhỏ thay vì lộ toàn bộ closure đó ra ngoài.
@@ -7763,7 +7791,6 @@
         list.innerHTML = accounts.map(function (a) {
           return '<div class="bp-acct-row" data-id="' + escapeHtml(a.id) + '">' +
             '<div class="nm">' + escapeHtml(a.name) + ' <span class="un">@' + escapeHtml(a.username) + '</span>' +
-            '<span class="role">' + escapeHtml(a.role) + '</span>' +
             (a.active === false ? '<span class="inactive">Đã khoá</span>' : '') +
             '</div>' +
             '<button class="stg-btn sm" type="button" data-act="pw">Đổi mật khẩu</button>' +
@@ -7812,7 +7839,6 @@
         var payload = {
           username: $('bpAcctUsername').value,
           name: $('bpAcctName').value,
-          role: $('bpAcctRole').value,
           password: $('bpAcctPassword').value
         };
         api.accounts.create(payload).then(function (r) {
@@ -7828,11 +7854,27 @@
           return api.saveConfig(Object.assign({}, cfg, { accountsEnabled: checked }));
         }).catch(function () {});
       });
-      $('stgPinRequiredWithAccounts').addEventListener('change', function () {
-        var checked = $('stgPinRequiredWithAccounts').checked;
+      $('stgPasswordRequiredWithAccounts').addEventListener('change', function () {
+        var checked = $('stgPasswordRequiredWithAccounts').checked;
         api.getConfig().then(function (cfg) {
-          var room = Object.assign({}, cfg.room, { pinRequiredWithAccounts: checked });
+          var room = Object.assign({}, cfg.room, { passwordRequiredWithAccounts: checked });
           return api.saveConfig(Object.assign({}, cfg, { room: room }));
+        }).catch(function () {});
+      });
+      // 'local' (mặc định, band-comm-plan.md §11) hay 'cognito' (danh tính
+      // trung tâm dùng chung nhiều nhà thờ, cloud/identity-plan.md) — 2 mô
+      // hình loại trừ nhau, chỉ khác NƠI xác thực; luồng mật khẩu phòng phía
+      // trên không đổi gì dù chọn mô hình nào.
+      function updateAuthModeUI(mode) {
+        $('bpLocalAccountsBlock').classList.toggle('hidden', mode === 'cognito');
+        $('bpCognitoInfoBlock').classList.toggle('hidden', mode !== 'cognito');
+      }
+      window.__updateAuthModeUI = updateAuthModeUI;
+      $('stgAuthMode').addEventListener('change', function () {
+        var mode = $('stgAuthMode').value === 'cognito' ? 'cognito' : 'local';
+        updateAuthModeUI(mode);
+        api.getConfig().then(function (cfg) {
+          return api.saveConfig(Object.assign({}, cfg, { authMode: mode }));
         }).catch(function () {});
       });
 
@@ -7936,25 +7978,31 @@
       $('bpSupportZalo').addEventListener('click', function () { openExternalLink('https://zalo.me/84845910084'); });
       $('bpSupportFb').addEventListener('click', function () { openExternalLink('https://www.facebook.com/phuoctdt.260823/'); });
 
-      // Tạo lại mã PIN phòng — không ảnh hưởng máy đã join (token riêng), chỉ
-      // chặn người mới dùng PIN cũ.
-      function genRoomPin() {
-        var buf = new Uint32Array(1);
+      // Tạo lại mật khẩu phòng — không ảnh hưởng máy đã join (token riêng),
+      // chỉ chặn người mới dùng mật khẩu cũ. Chữ+số (bỏ ký tự dễ nhầm
+      // 0/O/1/l/I) thay vì PIN 4 số cũ — cùng charset với randomRoomPassword()
+      // ở src/band-comm/store.js (renderer không require() được module đó,
+      // xem CLAUDE.md, nên khai lại ở đây).
+      function genRoomPassword() {
+        var chars = 'abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+        var buf = new Uint32Array(6);
         (window.crypto || window.msCrypto).getRandomValues(buf);
-        return String(buf[0] % 10000).padStart(4, '0');
+        var out = '';
+        for (var i = 0; i < buf.length; i++) out += chars[buf[i] % chars.length];
+        return out;
       }
-      $('bpPinReload').addEventListener('click', function () {
-        if (!confirm('Tạo mã PIN mới cho phòng? Máy đã kết nối không bị ảnh hưởng, người vào sau phải dùng mã mới.')) return;
+      $('bpPasswordReload').addEventListener('click', function () {
+        if (!confirm('Tạo mật khẩu mới cho phòng? Máy đã kết nối không bị ảnh hưởng, người vào sau phải dùng mật khẩu mới.')) return;
         var btn = this;
         btn.classList.remove('spin'); void btn.offsetWidth; btn.classList.add('spin');
         setTimeout(function () { btn.classList.remove('spin'); }, 500);
         api.getConfig().then(function (cfg) {
-          var room = Object.assign({}, cfg.room, { pin: genRoomPin() });
+          var room = Object.assign({}, cfg.room, { password: genRoomPassword() });
           return api.saveConfig(Object.assign({}, cfg, { room: room }));
         }).then(function (saved) {
-          var pin = (saved && saved.room && saved.room.pin) || '—';
-          $('bpPin').textContent = pin;
-          addFeed('sys', '', 'Đã tạo mã PIN mới: ' + pin);
+          var password = (saved && saved.room && saved.room.password) || '—';
+          $('bpPassword').textContent = password;
+          addFeed('sys', '', 'Đã tạo mật khẩu mới: ' + password);
         }).catch(function () {});
       });
 
@@ -8072,16 +8120,16 @@
 
         $('bpToggle').disabled = false;
         $('bpDetailsToggle').classList.toggle('bp-hidden', !running);
-        $('bpPin').textContent = st.pin || '—';
+        $('bpPassword').textContent = st.password || '—';
         $('bpCount').textContent = (st.clients ? st.clients.length : 0);
 
-        // Nhắc đổi PIN sau 1 thời gian dùng — mã không tự hết hạn, chỉ có nút
-        // 🔄 thủ công, nên dễ quên nếu không ai nhắc.
+        // Nhắc đổi mật khẩu sau 1 thời gian dùng — không tự hết hạn, chỉ có
+        // nút 🔄 thủ công, nên dễ quên nếu không ai nhắc.
         (function () {
-          var hint = $('bpPinHint');
-          var days = st.pinSetAt ? Math.floor((Date.now() - st.pinSetAt) / 86400000) : 0;
+          var hint = $('bpPasswordHint');
+          var days = st.passwordSetAt ? Math.floor((Date.now() - st.passwordSetAt) / 86400000) : 0;
           if (days >= 7) {
-            hint.textContent = 'Mã PIN này đã dùng ' + days + ' ngày — cân nhắc bấm 🔄 để đổi mã mới.';
+            hint.textContent = 'Mật khẩu này đã dùng ' + days + ' ngày — cân nhắc bấm 🔄 để đổi mật khẩu mới.';
             hint.classList.remove('bp-hidden');
           } else {
             hint.classList.add('bp-hidden');
@@ -8213,7 +8261,7 @@
         }
         else if (env.type === 'text') {
           // operator text is echoed back over the WebSocket — already added optimistically.
-          if (env.from && (env.from.clientId === 'operator' || env.from.role === 'operator')) return;
+          if (env.from && env.from.clientId === 'operator') return;
           addFeed('op', env.from.name, env.text);
         }
         else if (env.type === 'gallery') { renderGal(env.meta || {}); }

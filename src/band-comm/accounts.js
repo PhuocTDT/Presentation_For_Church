@@ -54,7 +54,7 @@ function isValidPassword(password) {
 
 // Public shape for the operator UI / roster checks — never includes the hash.
 function publicAccount(a) {
-  return { id: a.id, username: a.username, name: a.name, role: a.role, active: a.active !== false, createdAt: a.createdAt || 0, lastLoginAt: a.lastLoginAt || 0 };
+  return { id: a.id, username: a.username, name: a.name, active: a.active !== false, createdAt: a.createdAt || 0, lastLoginAt: a.lastLoginAt || 0 };
 }
 
 /**
@@ -104,7 +104,7 @@ function createAccountsStore(userDataPath, safeWriteSync) {
     return typeof id === 'string' && load().accounts.some(a => a.id === id);
   }
 
-  function create({ username, name, role, password }) {
+  function create({ username, name, password }) {
     const cur = load();
     const uname = normalizeUsername(username);
     if (!isValidUsername(uname)) return { error: 'Tên đăng nhập không hợp lệ (2-32 ký tự, chữ thường/số/._-, bắt đầu bằng chữ hoặc số).' };
@@ -116,7 +116,6 @@ function createAccountsStore(userDataPath, safeWriteSync) {
       id: newId('acc'),
       username: uname,
       name: displayName,
-      role: role === 'leader' ? 'leader' : 'band',
       passwordHash, passwordSalt,
       active: true,
       createdAt: Date.now(),
@@ -136,11 +135,10 @@ function createAccountsStore(userDataPath, safeWriteSync) {
     return { account: publicAccount(account) };
   }
 
-  function update(id, { name, role } = {}) {
+  function update(id, { name } = {}) {
     const account = findById(id);
     if (!account) return { error: 'Không tìm thấy tài khoản.' };
     if (typeof name === 'string' && name.trim()) account.name = name.trim().slice(0, 40);
-    if (role === 'band' || role === 'leader') account.role = role;
     persist();
     return { account: publicAccount(account) };
   }

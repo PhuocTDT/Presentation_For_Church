@@ -6,6 +6,7 @@ const { pathToFileURL } = require('url');
 const { validateItem, migrateItem } = require('./src/schema');
 const { createStore: createBandCommStore } = require('./src/band-comm/store');
 const { createAccountsStore } = require('./src/band-comm/accounts');
+const { createJwksCache } = require('./src/band-comm/cognito-jwks');
 const { createCommServer, lanIPv4List } = require('./src/band-comm/server');
 const { createMdnsResponder } = require('./src/band-comm/mdns');
 
@@ -65,6 +66,7 @@ let liveWindow = null;
 let mainWindow = null;
 let bandCommStore = null;
 let bandAccountsStore = null;
+let bandJwksCache = null;
 let commServer = null;
 let bandMdns = null;
 let lastBandStartError = null;
@@ -1033,7 +1035,7 @@ function sendBandStatus(extra) {
 function bandSystemLine(text) {
   broadcastToRenderers('band-comm-event', {
     id: 'sys-' + Date.now(), ts: Date.now(), type: 'system',
-    from: { clientId: 'server', name: 'Hệ thống', role: 'system' },
+    from: { clientId: 'server', name: 'Hệ thống' },
     to: 'all', text: String(text || ''), meta: {}
   });
 }
@@ -1220,14 +1222,20 @@ function initBandComm() {
   if (commServer) return;
   bandCommStore = createBandCommStore(userDataPath, safeWriteSync);
   bandAccountsStore = createAccountsStore(userDataPath, safeWriteSync);
+  bandJwksCache = createJwksCache(userDataPath, safeWriteSync);
+  // Best-effort — không chặn app khởi động nếu đang offline lúc mở máy; verify
+  // sau đó dùng cache cũ trên đĩa (nếu có) hoặc báo lỗi rõ ràng nếu máy mới
+  // toàn chưa từng fetch được lần nào (xem cognito-jwks.js).
+  bandJwksCache.init().catch(() => {});
   bandMdns = createMdnsResponder();
   commServer = createCommServer({
     store: bandCommStore,
     accountsStore: bandAccountsStore,
+    jwksCache: bandJwksCache,
     onEvent: (env) => {
       broadcastToRenderers('band-comm-event', env);
       // Nudge the taskbar when a fresh band alert lands and the app is unfocused.
-      if (env.type === 'alert' && env.from && env.from.role !== 'operator') {
+      if (env.type === 'alert' && env.from && env.from.clientId !== 'operator') {
         if (mainWindow && !mainWindow.isDestroyed() && !mainWindow.isFocused()) {
           try { mainWindow.flashFrame(true); } catch (e) {}
         }
@@ -2198,11 +2206,11 @@ app.whenReady().then(() => {
     if (commServer && commServer.isRunning()) {
       syncBandTunnel();
       commServer.announceRoomConfig();
-      // Bật/tắt đăng nhập tài khoản hoặc yêu cầu PIN phòng sau đăng nhập đổi
-      // hẳn ai được coi là "đã xác thực hợp lệ" — mọi token cũ (cấp theo mô
-      // hình trước đó) phải hết hiệu lực ngay, không đợi hết hạn 12h
+      // Bật/tắt đăng nhập tài khoản hoặc yêu cầu mật khẩu phòng sau đăng nhập
+      // đổi hẳn ai được coi là "đã xác thực hợp lệ" — mọi token cũ (cấp theo
+      // mô hình trước đó) phải hết hiệu lực ngay, không đợi hết hạn 12h
       // (band-comm-plan.md §11, điểm 5).
-      if (before.accountsEnabled !== saved.accountsEnabled || before.room.pinRequiredWithAccounts !== saved.room.pinRequiredWithAccounts) {
+      if (before.accountsEnabled !== saved.accountsEnabled || before.room.passwordRequiredWithAccounts !== saved.room.passwordRequiredWithAccounts || before.authMode !== saved.authMode) {
         commServer.rotateSecret();
       }
     }
@@ -2223,9 +2231,9 @@ app.whenReady().then(() => {
     return bandAccountsStore.create(payload || {});
   });
 
-  ipcMain.handle('band-accounts-update', (e, { id, name, role } = {}) => {
+  ipcMain.handle('band-accounts-update', (e, { id, name } = {}) => {
     initBandComm();
-    return bandAccountsStore.update(id, { name, role });
+    return bandAccountsStore.update(id, { name });
   });
 
   // Đổi mật khẩu / khoá / xoá tài khoản đều kick ngay các phiên hiện tại của

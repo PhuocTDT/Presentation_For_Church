@@ -1,0 +1,22 @@
+name = "band-identity"
+main = "src/worker.js"
+compatibility_date = "2026-01-01"
+
+# Không cần workers.dev — Worker chỉ nghe trên domain riêng.
+workers_dev = false
+
+kv_namespaces = [
+  { binding = "IDENTITY_RL", id = "4024fc79a916429a809baa63dc3beaf4" }
+]
+
+# AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY / RESEND_API_KEY: `wrangler secret put`,
+# không để trong file này (xem cloud/identity-plan.md §2).
+[vars]
+AWS_REGION = "ap-southeast-2"
+COGNITO_USER_POOL_ID = "ap-southeast-2_OH1kbdXdE"
+COGNITO_CLIENT_ID = "7revs0o9tj9eqhpqrd03i3daof"
+MAIL_FROM = "Kenh Band <noreply@mail.worship-official.link>"
+
+[[routes]]
+pattern = "identity.worship-official.link"
+custom_domain = true
