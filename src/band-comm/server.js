@@ -561,6 +561,29 @@ function createCommServer({ store, onEvent, onPresence, getLibraryIndex, onSetli
     }));
   }
 
+  // Mirror ảnh sang Cloudflare R2 (Worker route /gallery, xem cloud/worker) để
+  // điện thoại XEM được ổn định, không phụ thuộc tunnel còn sống lúc đang
+  // xem. Fire-and-forget — ảnh vẫn xem được qua local/LAN như cũ nếu mirror
+  // lỗi (mất mạng ngoài, Worker down…), không chặn/làm hỏng luồng chính.
+  function mirrorGalleryAdd(id, name, ext, b64) {
+    const roomId = store.load().cloudRoomId;
+    if (!roomId) return;
+    fetch(`${CLOUD_API_BASE}/gallery`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ roomId, id, name, ext, dataB64: b64 }),
+      signal: AbortSignal.timeout(15000)
+    }).catch(() => {});
+  }
+  function mirrorGalleryRemove(id) {
+    const roomId = store.load().cloudRoomId;
+    if (!roomId) return;
+    fetch(`${CLOUD_API_BASE}/gallery/remove`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ roomId, id }),
+      signal: AbortSignal.timeout(8000)
+    }).catch(() => {});
+  }
+
   function galleryAdd({ name = '', ext = '.jpg', dataB64 = '' } = {}) {
     const b64 = String(dataB64 || '').replace(/^data:[^,]*,/, '');
     if (!b64) return galleryManifest();
@@ -570,8 +593,10 @@ function createCommServer({ store, onEvent, onPresence, getLibraryIndex, onSetli
     if (!buf.length || buf.length > 8 * 1024 * 1024) return galleryManifest();
     const id = newId('img');
     try { fs.writeFileSync(path.join(store.mediaDir, id + cleanExt), buf); } catch (e) { return galleryManifest(); }
-    gallery.images.push({ id, name: String(name || 'Hợp âm').slice(0, 80), ext: cleanExt });
+    const cleanName = String(name || 'Hợp âm').slice(0, 80);
+    gallery.images.push({ id, name: cleanName, ext: cleanExt });
     saveGallery(); announceGallery();
+    mirrorGalleryAdd(id, cleanName, cleanExt, b64);
     return galleryManifest();
   }
   function galleryRemove(id) {
@@ -580,6 +605,7 @@ function createCommServer({ store, onEvent, onPresence, getLibraryIndex, onSetli
     const [rm] = gallery.images.splice(i, 1);
     try { fs.unlinkSync(path.join(store.mediaDir, rm.id + rm.ext)); } catch (e) {}
     saveGallery(); announceGallery();
+    mirrorGalleryRemove(rm.id);
     return galleryManifest();
   }
   function galleryReorder(ids) {

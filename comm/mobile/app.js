@@ -404,7 +404,19 @@
       var im = document.createElement('img');
       im.loading = 'lazy';
       im.alt = 'Hợp âm ' + (i + 1);
-      im.src = 'api/gallery/image/' + encodeURIComponent(id) + '?token=' + encodeURIComponent(state.token || '');
+      // Ưu tiên xem qua Cloudflare (ổn định, không phụ thuộc tunnel còn sống
+      // lúc đang xem) — server local mirror ảnh lên đó ngay lúc upload. Nếu
+      // cloud lỗi (chưa kịp mirror, mất mạng ngoài…) tự rớt về local qua LAN.
+      var localSrc = 'api/gallery/image/' + encodeURIComponent(id) + '?token=' + encodeURIComponent(state.token || '');
+      if (state.cloudRoomId) {
+        im.src = CLOUD_API_BASE + '/gallery/image/' + encodeURIComponent(state.cloudRoomId) + '/' + encodeURIComponent(id);
+        im.addEventListener('error', function onCloudErr() {
+          im.removeEventListener('error', onCloudErr);
+          im.src = localSrc;
+        }, { once: true });
+      } else {
+        im.src = localSrc;
+      }
       im.style.cssText = 'width:100%;height:auto;max-height:64vh;object-fit:contain;background:#fff;display:block;';
       wrap.appendChild(im);
       if (isUploader) {

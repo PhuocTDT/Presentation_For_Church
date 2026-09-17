@@ -4,6 +4,26 @@ Tất cả các thay đổi và cập nhật quan trọng của dự án đượ
 
 ## [Unreleased] - Kênh Band LAN (P1 + P2 + P2.5 + P4)
 
+### feat(band): ảnh hợp âm mirror lên Cloudflare R2, tự xoá sau 4 ngày (2026-09-17)
+- Lý do: band cần xem lại ảnh hợp âm ổn định (tối T6 tập, Chủ nhật mới diễn)
+  mà không phụ thuộc Cloudflare Tunnel còn sống lúc đang xem; không cần lưu
+  dài hạn — 4 ngày là đủ trải hết chu kỳ tập→diễn.
+- `cloud/worker/`: tạo R2 bucket `band-comm-gallery` (bind `GALLERY`), lifecycle
+  rule `expire-4d` tự xoá object sau 4 ngày (đặt trên bucket, không cần code
+  dọn tay). 3 route mới trên Worker: `POST /gallery` (mirror 1 ảnh), `GET
+  /gallery/image/<roomId>/<id>` (phục vụ bytes trực tiếp cho điện thoại),
+  `POST /gallery/remove`. Dùng chung `cloudRoomId`/rate-limit/cap kích thước
+  8MB với các route đã có.
+- `src/band-comm/server.js`: `galleryAdd()`/`galleryRemove()` gọi mirror
+  fire-and-forget ngay sau khi thao tác local thành công — không chặn
+  response, ảnh vẫn dùng được qua LAN nếu mirror lỗi. **Danh sách ảnh nào tồn
+  tại vẫn do local quyết định như cũ** (WS `gallery` envelope), Worker chỉ
+  lưu/phục vụ bytes chứ không phải nguồn sự thật.
+- `comm/mobile/app.js` (`renderChords()`): `<img>` ưu tiên URL cloud, `onerror`
+  tự rớt về URL local nếu cloud lỗi/chưa kịp mirror — không có điểm hỏng đơn.
+- Verify thật đầy đủ: (1) upload/xem/xoá trực tiếp qua Worker+R2 — PASS; (2)
+  toàn chuỗi thật local→mirror→xem qua cloud→xoá→cloud cũng mất theo — PASS.
+
 ### fix(band): upload ảnh hợp âm thất bại âm thầm, không báo lỗi (2026-09-17)
 - Báo lỗi: "đã upload nhưng ảnh không hiển thị" — server hoàn toàn bình
   thường (verify thật: file ghi đúng đĩa, manifest đúng), lỗi chỉ ở client.

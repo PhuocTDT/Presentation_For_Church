@@ -7,6 +7,12 @@ kv_namespaces = [
   { binding = "SETLISTS", id = "65d8f621e90a400c8e2758bc19ff9bb2" }
 ]
 
+# Ảnh hợp âm — tự xoá sau 4 ngày qua lifecycle rule "expire-4d" đặt trên
+# chính bucket (không phải config ở đây), đủ trải từ tối T6 tập tới CN diễn.
+[[r2_buckets]]
+binding = "GALLERY"
+bucket_name = "band-comm-gallery"
+
 # Không cần workers.dev — Worker chỉ nghe trên domain riêng.
 workers_dev = false
 

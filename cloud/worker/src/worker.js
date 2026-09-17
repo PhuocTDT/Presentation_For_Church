@@ -13,6 +13,17 @@
 // KV keys:
 //   sl:<roomId>:<id>   setlist JSON, TTL 7 ngày
 //   ack:<roomId>:<id>  "1" khi laptop đã nhận + operator thấy, TTL 7 ngày
+//
+// R2 (bucket GALLERY) — ảnh hợp âm, mirror từ server local sang để điện
+// thoại XEM được ổn định (không phụ thuộc Cloudflare Tunnel còn sống hay
+// không lúc đang xem). Danh sách ảnh nào tồn tại vẫn do server local quyết
+// định (WS 'gallery' broadcast + /api/join như cũ, không đổi) — Worker ở đây
+// CHỈ lưu/phục vụ bytes, không phải nguồn sự thật cho "ảnh nào đang có". PIN
+// "người phụ trách" vẫn xác thực hoàn toàn ở local, Worker không biết gì về
+// nó — server local đã xác thực xong mới gọi mirror sang đây.
+// Object key: <roomId>/<id> (không có phần mở rộng — content-type lưu trong
+// httpMetadata lúc put). Tự xoá sau 4 ngày qua lifecycle rule "expire-4d" đặt
+// trên bucket (đủ trải từ tối thứ 6 tập tới Chủ nhật diễn, xem wrangler.toml).
 
 const TTL_SECONDS = 7 * 24 * 60 * 60; // 7 ngày
 const MAX_ITEMS = 60;
@@ -54,6 +65,16 @@ function json(obj, status = 200) {
 function isValidRoomId(id) {
   return typeof id === 'string' && /^[a-zA-Z0-9_-]{8,64}$/.test(id);
 }
+
+// id sinh sẵn ở server local (newId('img') trong src/band-comm/protocol.js,
+// dạng "img-<hex>") — Worker chỉ chấp nhận lại đúng khuôn đó, không tự sinh,
+// để 1 ảnh có CHUNG id giữa file local và object R2 (galleryRemove(id) ở
+// local mirror sang đây xoá đúng object).
+function isValidImageId(id) {
+  return typeof id === 'string' && /^[a-zA-Z0-9_-]{1,64}$/.test(id);
+}
+const IMAGE_MIME = { '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.png': 'image/png', '.webp': 'image/webp' };
+const MAX_IMAGE_BYTES = 8 * 1024 * 1024; // khớp cap ở src/band-comm/server.js's galleryAdd()
 
 export default {
   async fetch(req, env) {
@@ -139,6 +160,59 @@ export default {
         if (v) acked.push(id);
       }
       return json({ acked });
+    }
+
+    // ---- POST /gallery { roomId, id, name, ext, dataB64 } -> mirror 1 ảnh
+    // đã upload/xác thực xong ở server local sang R2 để xem ổn định ----
+    if (p === '/gallery' && req.method === 'POST') {
+      let body;
+      try { body = await req.json(); } catch (e) { return json({ error: 'bad json' }, 400); }
+      const roomId = body && body.roomId;
+      const id = body && body.id;
+      if (!isValidRoomId(roomId)) return json({ error: 'roomId không hợp lệ' }, 400);
+      if (!isValidImageId(id)) return json({ error: 'id không hợp lệ' }, 400);
+      if (!(await checkRateLimit(env, roomId))) return json({ error: 'Quá nhiều yêu cầu, thử lại sau ít phút' }, 429);
+      const ext = /^\.(jpe?g|png|webp)$/i.test(String(body.ext || '')) ? String(body.ext).toLowerCase() : '.jpg';
+      const contentType = IMAGE_MIME[ext] || 'image/jpeg';
+      const b64 = String(body.dataB64 || '').replace(/^data:[^,]*,/, '');
+      if (!b64) return json({ error: 'thiếu dataB64' }, 400);
+      let buf;
+      try { buf = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0)); } catch (e) { return json({ error: 'dataB64 không hợp lệ' }, 400); }
+      if (!buf.length || buf.length > MAX_IMAGE_BYTES) return json({ error: 'Ảnh quá lớn' }, 400);
+      await env.GALLERY.put(`${roomId}/${id}`, buf, {
+        httpMetadata: { contentType },
+        customMetadata: { name: String(body.name || 'Hợp âm').slice(0, 80) }
+      });
+      return json({ ok: true, id });
+    }
+
+    // ---- GET /gallery/image/<roomId>/<id> -> bytes ảnh, phục vụ trực tiếp
+    // từ R2 (điện thoại gọi thẳng, không qua server local) ----
+    if (p.indexOf('/gallery/image/') === 0 && req.method === 'GET') {
+      const rest = p.slice('/gallery/image/'.length).split('/');
+      const roomId = rest[0], id = rest[1];
+      if (!isValidRoomId(roomId) || !isValidImageId(id)) return json({ error: 'không hợp lệ' }, 400);
+      const obj = await env.GALLERY.get(`${roomId}/${id}`);
+      if (!obj) return json({ error: 'not found' }, 404);
+      return new Response(obj.body, {
+        headers: {
+          'Content-Type': (obj.httpMetadata && obj.httpMetadata.contentType) || 'image/jpeg',
+          'Cache-Control': 'public, max-age=86400',
+          ...CORS
+        }
+      });
+    }
+
+    // ---- POST /gallery/remove { roomId, id } -> mirror xoá (operator xoá ở
+    // local, hoặc dọn tay trước khi tới hạn 4 ngày) ----
+    if (p === '/gallery/remove' && req.method === 'POST') {
+      let body;
+      try { body = await req.json(); } catch (e) { return json({ error: 'bad json' }, 400); }
+      const roomId = body && body.roomId;
+      const id = body && body.id;
+      if (!isValidRoomId(roomId) || !isValidImageId(id)) return json({ error: 'không hợp lệ' }, 400);
+      await env.GALLERY.delete(`${roomId}/${id}`);
+      return json({ ok: true });
     }
 
     if (p === '/' || p === '/health') return json({ ok: true, service: 'band-comm-relay' });
