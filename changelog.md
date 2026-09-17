@@ -4,6 +4,24 @@ Tất cả các thay đổi và cập nhật quan trọng của dự án đượ
 
 ## [Unreleased] - Kênh Band LAN (P1 + P2 + P2.5 + P4)
 
+### fix(band): CSP chặn cả upload ảnh lẫn xem qua cloud + fallback setlist cloud (2026-09-17)
+- Báo lỗi kèm ảnh chụp DevTools Console: `Content-Security-Policy` của
+  `comm/mobile/index.html` chặn cả `blob:` (dùng để nén ảnh qua canvas trước
+  khi upload — `downscaleChordImg()`) lẫn domain `api.worship-official.link`
+  (ảnh xem qua cloud mới thêm hôm nay).
+- Phát hiện thêm khi rà soát toàn bộ điểm kết nối ra ngoài: `connect-src`
+  cũng thiếu domain đó — `sendSetlistToCloud()` (M2, fallback gửi setlist
+  qua cloud khi LAN lỗi) **nhiều khả năng chưa từng hoạt động trên trình
+  duyệt thật** từ lúc thêm, vì mọi test trước giờ chỉ chạy qua Node script
+  (không bị CSP áp) chứ chưa qua trình duyệt thật có bật CSP.
+- Fix: `img-src` thêm `blob:` + domain Worker; `connect-src` thêm domain
+  Worker. Đã rà lại toàn bộ `fetch()`/`<img src>`/`new Image()`/WebSocket
+  trong `comm/mobile/app.js` để chắc chắn không còn điểm nào khác bị chặn.
+- **Giới hạn công cụ**: không có trình duyệt thật để tự bấm-thử ở môi trường
+  này (không có browser automation) — đã sửa đúng theo phân tích CSP, nhưng
+  cần bạn tự xác nhận lại trên điện thoại + xem DevTools Console không còn
+  dòng đỏ nào về CSP nữa.
+
 ### fix(band): zombie WebSocket connection khiến "người phụ trách ảnh" bị kẹt vĩnh viễn (2026-09-17)
 - Báo lỗi: sau khi fix upload không báo lỗi, debug trực tiếp trên server thật
   lộ ra nguyên nhân gốc — `POST /api/gallery/claim` trả 409 "Đã có người phụ

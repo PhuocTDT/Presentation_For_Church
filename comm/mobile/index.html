@@ -2,7 +2,14 @@
 <html lang="vi">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'unsafe-inline'; connect-src 'self' ws: wss:; img-src 'self' data:; base-uri 'none'">
+<!-- img-src: 'self' data: cho ảnh local; blob: cho downscaleChordImg() (nén
+     ảnh người dùng chọn qua canvas trước khi upload); domain Worker cho ảnh
+     xem qua cloud (renderChords() ưu tiên URL đó, xem app.js CLOUD_API_BASE).
+     connect-src: domain Worker cho fetch() gửi setlist/mirror ảnh khi LAN lỗi
+     (sendSetlistToCloud() — thiếu domain này khiến toàn bộ fallback cloud của
+     M2 bị CSP chặn âm thầm từ trước tới giờ, không lỗi gì hiện trên network
+     tab ngoài Console, dễ bị bỏ sót nếu không mở DevTools). -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'unsafe-inline'; connect-src 'self' ws: wss: https://api.worship-official.link; img-src 'self' data: blob: https://api.worship-official.link; base-uri 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
 <meta name="theme-color" content="#ffffff">
 <title>Kênh Band</title>
