@@ -6,6 +6,7 @@ const { pathToFileURL } = require('url');
 const { validateItem, migrateItem } = require('./src/schema');
 const { createStore: createBandCommStore } = require('./src/band-comm/store');
 const { createAccountsStore } = require('./src/band-comm/accounts');
+const { createOperatorAuthStore } = require('./src/band-comm/operator-auth');
 const { createJwksCache } = require('./src/band-comm/cognito-jwks');
 const { createCommServer, lanIPv4List } = require('./src/band-comm/server');
 const { createMdnsResponder } = require('./src/band-comm/mdns');
@@ -60,13 +61,23 @@ function saveAndBackupSync(filePath, data) {
   return safeWriteSync(filePath, data);
 }
 
+// Worker "band-identity" (cloud/identity/) — nơi DUY NHẤT giữ AWS credentials
+// cho đăng nhập Cognito trung tâm; main process gọi thẳng, không qua comm
+// server local (giống hệt cách comm/mobile/app.js gọi cho band member).
+const IDENTITY_API_BASE = 'https://identity.worship-official.link';
+
 // 2. Global State
 let userDataPath, songsFilePath, bibleFilePath, settingsFilePath, defaultMediaFolderPath, userBibleDataPath, bibleVersionRegistryPath, styleTemplatesPath, customFontsPath, customFontsDir;
 let liveWindow = null;
 let mainWindow = null;
 let bandCommStore = null;
 let bandAccountsStore = null;
+let bandOperatorAuthStore = null;
 let bandJwksCache = null;
+// { session, email } giữa 2 bước đăng nhập Cognito khi mật khẩu tạm còn bắt
+// buộc đổi (NEW_PASSWORD_REQUIRED) — mirror đúng pendingCognito ở
+// comm/mobile/app.js, chỉ khác đây là của chính operator, không phải phone.
+let pendingOperatorCognito = null;
 let commServer = null;
 let bandMdns = null;
 let lastBandStartError = null;
@@ -1222,6 +1233,7 @@ function initBandComm() {
   if (commServer) return;
   bandCommStore = createBandCommStore(userDataPath, safeWriteSync);
   bandAccountsStore = createAccountsStore(userDataPath, safeWriteSync);
+  bandOperatorAuthStore = createOperatorAuthStore(userDataPath, safeWriteSync);
   bandJwksCache = createJwksCache(userDataPath, safeWriteSync);
   // Best-effort — không chặn app khởi động nếu đang offline lúc mở máy; verify
   // sau đó dùng cache cũ trên đĩa (nếu có) hoặc báo lỗi rõ ràng nếu máy mới
@@ -1400,10 +1412,18 @@ app.whenReady().then(() => {
   if (!hasInstanceLock) return; // a rival instance — we're already quitting
   promptUserDataLocationIfNeeded(pendingUserDataPrompt);
   initializeData();
-  // Band Comm: server auto-starts in the background (see band-comm-plan.md B1).
+  // Band Comm: server auto-starts in the background (see band-comm-plan.md B1)
+  // — TRỪ bản cài MỚI cần operator đăng nhập Cognito trước (gate, xem
+  // store.js's `requireOperatorLogin` + operator-auth.js; máy đang dùng Kênh
+  // Band từ trước luôn giữ false, không bị ảnh hưởng). Chưa đăng nhập thì
+  // KHÔNG có server/QR/tunnel nào khởi động cả — sidebar tự hiện màn đăng
+  // nhập khi operator bấm mở Channel (band-operator-auth-status IPC).
   // Result is reported to the operator sidebar via band-comm-status-changed +
   // a system feed line; the sidebar also re-reads state via band-comm-status.
-  startBandComm();
+  initBandComm();
+  if (!bandCommStore.load().requireOperatorLogin || bandOperatorAuthStore.isLoggedIn()) {
+    startBandComm();
+  }
   screen.on('display-added', () => scheduleLiveWindowSync('display-added', true, 250));
   screen.on('display-removed', () => scheduleLiveWindowSync('display-removed', true, 250));
   screen.on('display-metrics-changed', () => scheduleLiveWindowSync('display-metrics-changed', true, 250));
@@ -1902,8 +1922,12 @@ app.whenReady().then(() => {
       
       const idx = items.findIndex(s => s.id === song.id);
       if (idx !== -1) items[idx] = song; else items.push(song);
-      
+
       saveAndBackupSync(filePath, items);
+      // Đồng bộ thư viện lên cloud để trang soạn setlist tĩnh (/composer) tra
+      // cứu được — chỉ khi đụng tới songs.json (không phải Bible), và chỉ khi
+      // band-comm đang chạy. Fire-and-forget, không chặn lưu bài hát.
+      if (filePath === songsFilePath && commServer && commServer.isRunning()) commServer.syncLibraryToCloud();
       return { success: true, item: song, list: items };
     } catch (e) { throw e; }
   });
@@ -1914,6 +1938,7 @@ app.whenReady().then(() => {
       let items = JSON.parse(fs.readFileSync(filePath, 'utf8') || '[]');
       items = items.filter(i => i.id !== data.id);
       saveAndBackupSync(filePath, items);
+      if (filePath === songsFilePath && commServer && commServer.isRunning()) commServer.syncLibraryToCloud();
       return items;
     } catch (e) { throw e; }
   });
@@ -2002,6 +2027,7 @@ app.whenReady().then(() => {
 
         if (mode === 'apply' && changedSongs) {
           saveAndBackupSync(songsFilePath, songs);
+          if (commServer && commServer.isRunning()) commServer.syncLibraryToCloud();
         }
       }
 
@@ -2261,6 +2287,105 @@ app.whenReady().then(() => {
     return result;
   });
 
+  // ---- Đăng nhập CỦA OPERATOR (gate mở Kênh Band cho bản cài mới) ----
+  // Gọi thẳng Worker "band-identity" bằng tài khoản Cognito trung tâm — cùng
+  // tài khoản mà website/ (mục Tải Về) cho phép "Yêu cầu qua email". Khác hẳn
+  // band-accounts-*: đó là operator CẤP tài khoản cho band member; đây là
+  // CHÍNH operator đăng nhập để mở khoá tính năng trên máy của họ.
+  ipcMain.handle('band-operator-auth-status', () => {
+    initBandComm();
+    const cfg = bandCommStore.load();
+    const session = bandOperatorAuthStore.load();
+    return {
+      required: !!cfg.requireOperatorLogin,
+      loggedIn: bandOperatorAuthStore.isLoggedIn(),
+      email: session && session.email || null,
+      running: !!(commServer && commServer.isRunning())
+    };
+  });
+
+  // "Yêu cầu tài khoản" ngay trong app — cùng endpoint website/ (mục Tải Về)
+  // gọi. Không lộ email đã có tài khoản hay chưa (Worker luôn trả {ok:true}).
+  ipcMain.handle('band-operator-request-access', async (e, { email } = {}) => {
+    const emailNorm = String(email || '').trim().toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailNorm)) return { error: 'Email không hợp lệ.' };
+    try {
+      const r = await fetch(`${IDENTITY_API_BASE}/request-access`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: emailNorm }),
+        signal: AbortSignal.timeout(15000)
+      });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) return { error: j.error || 'Không gửi được, thử lại sau.' };
+      return { ok: true };
+    } catch (err) {
+      return { error: 'Không kết nối được máy chủ, kiểm tra mạng rồi thử lại.' };
+    }
+  });
+
+  ipcMain.handle('band-operator-auth-login', async (e, { email, password } = {}) => {
+    initBandComm();
+    const emailNorm = String(email || '').trim().toLowerCase();
+    if (!emailNorm || !password) return { error: 'Nhập email và mật khẩu.' };
+    try {
+      const r = await fetch(`${IDENTITY_API_BASE}/login`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: emailNorm, password }),
+        signal: AbortSignal.timeout(15000)
+      });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) return { error: j.error || 'Đăng nhập không thành công.' };
+      if (j.challenge === 'NEW_PASSWORD_REQUIRED') {
+        pendingOperatorCognito = { session: j.session, email: emailNorm };
+        return { needsNewPassword: true };
+      }
+      bandOperatorAuthStore.save({
+        email: emailNorm, idToken: j.idToken, accessToken: j.accessToken,
+        refreshToken: j.refreshToken, expiresAt: Date.now() + (Number(j.expiresIn) || 3600) * 1000
+      });
+      if (!commServer.isRunning()) await startBandComm();
+      return { ok: true };
+    } catch (err) {
+      return { error: 'Không kết nối được máy chủ đăng nhập. Cần có mạng để đăng nhập.' };
+    }
+  });
+
+  ipcMain.handle('band-operator-auth-new-password', async (e, { newPassword } = {}) => {
+    initBandComm();
+    const pending = pendingOperatorCognito;
+    if (!pending) return { error: 'Phiên đăng nhập đã hết hạn, vui lòng đăng nhập lại.' };
+    if (typeof newPassword !== 'string' || newPassword.length < 8) return { error: 'Mật khẩu mới tối thiểu 8 ký tự.' };
+    try {
+      const r = await fetch(`${IDENTITY_API_BASE}/login`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: pending.email, session: pending.session, newPassword }),
+        signal: AbortSignal.timeout(15000)
+      });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok || !j.idToken) return { error: j.error || 'Không đổi được mật khẩu, vui lòng đăng nhập lại.' };
+      pendingOperatorCognito = null;
+      bandOperatorAuthStore.save({
+        email: pending.email, idToken: j.idToken, accessToken: j.accessToken,
+        refreshToken: j.refreshToken, expiresAt: Date.now() + (Number(j.expiresIn) || 3600) * 1000
+      });
+      if (!commServer.isRunning()) await startBandComm();
+      return { ok: true };
+    } catch (err) {
+      return { error: 'Không kết nối được máy chủ đăng nhập. Cần có mạng để đăng nhập.' };
+    }
+  });
+
+  // Đăng xuất operator — chỉ có ý nghĩa cho bản cài có gate (requireOperatorLogin);
+  // dừng hẳn Kênh Band ngay để trạng thái "đã đăng xuất" là thật, không phải
+  // chỉ xoá session mà server vẫn chạy ngầm.
+  ipcMain.handle('band-operator-auth-logout', () => {
+    initBandComm();
+    bandOperatorAuthStore.clear();
+    if (bandCommStore.load().requireOperatorLogin) stopBandComm();
+    sendBandStatus();
+    return { ok: true };
+  });
+
   // ---- Named Tunnel wizard ("Cài đặt nâng cao" trong sidebar) — tự động hoá
   // đúng quy trình `cloudflared tunnel login/create/route dns` mà trước đó
   // phải gõ tay trong terminal. KHÔNG tự động hoá việc đổi Nameserver domain
@@ -2450,6 +2575,7 @@ app.whenReady().then(() => {
             if (addedCount > 0) {
               saveAndBackupSync(songsFilePath, currentItems);
               console.log(`Imported and saved ${addedCount} songs from JSON array.`);
+              if (commServer && commServer.isRunning()) commServer.syncLibraryToCloud();
             }
             results.push({ type: 'json-array', data: content, imported: true });
           } else {

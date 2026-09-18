@@ -218,6 +218,24 @@ function createCommServer({ store, accountsStore, jwksCache, onEvent, onPresence
     }
   }
 
+  // Đẩy chỉ mục thư viện bài hát (id/tên/lời) lên Worker để trang soạn
+  // setlist tĩnh (/composer, phục vụ từ chính Worker) tra cứu được ngay cả
+  // khi laptop tắt hẳn — không có server local nào phục vụ /api/library lúc
+  // đó. Gọi lúc start() + mỗi lần thư viện đổi (main.js sau save/delete/import
+  // bài hát). Fire-and-forget, giống hệt mirrorGalleryAdd — lỗi mạng không
+  // chặn/ảnh hưởng luồng chính, LAN vẫn hoạt động bình thường nếu cloud lỗi.
+  function syncLibraryToCloud() {
+    const cfg = store.load();
+    const roomId = cfg.cloudRoomId;
+    if (!roomId || typeof getLibraryIndex !== 'function') return;
+    const idx = getLibraryIndex() || [];
+    fetch(`${CLOUD_API_BASE}/library-sync`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ roomId, songs: idx }),
+      signal: AbortSignal.timeout(15000)
+    }).catch(() => {});
+  }
+
   // token = clientId.issued.<b64url(name)>.<b64url(profileId)>.<hmac(payload)>
   // Name + profileId travel inside the token so a phone that was evicted
   // server-side (staleness sweep, brief leave) can be rehydrated on its next
@@ -882,6 +900,7 @@ function createCommServer({ store, accountsStore, jwksCache, onEvent, onPresence
         startHeartbeat();
         pollCloud().catch(() => {});
         cloudPollTimer = setInterval(() => { pollCloud().catch(() => {}); }, CLOUD_POLL_MS);
+        syncLibraryToCloud();
         resolve(getStatus());
       });
     });
@@ -931,7 +950,8 @@ function createCommServer({ store, accountsStore, jwksCache, onEvent, onPresence
     galleryRemove,
     galleryReorder,
     announceRoomConfig,
-    rotateSecret
+    rotateSecret,
+    syncLibraryToCloud
   };
 }
 

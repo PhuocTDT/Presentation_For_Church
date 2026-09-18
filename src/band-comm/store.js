@@ -48,6 +48,12 @@ function defaultConfig() {
       passwordRequiredWithAccounts: false
     },
     accountsEnabled: false,
+    // Gate "phải đăng nhập Cognito trước khi Kênh Band được phép khởi động" —
+    // CHỈ áp dụng cho bản cài MỚI (load() bên dưới tự đặt true đúng 1 lần khi
+    // chưa từng có band-comm.json nào trên đĩa). Máy đang dùng Kênh Band từ
+    // trước (file đã tồn tại) luôn giữ false vĩnh viễn — không breaking change
+    // cho ai đang dùng. Xem operator-auth.js + main.js's app.whenReady().
+    requireOperatorLogin: false,
     // 'local': /api/login xác thực bằng band-comm-accounts.json (accounts.js,
     // tự quản lý riêng từng máy). 'cognito': /api/login nhận idToken đã ký sẵn
     // từ Cloudflare Worker "band-identity" (cloud/identity-plan.md) — 1 danh
@@ -97,6 +103,11 @@ function normalizeConfig(raw) {
       passwordRequiredWithAccounts: room.passwordRequiredWithAccounts === true || room.pinRequiredWithAccounts === true
     },
     accountsEnabled: cfg.accountsEnabled === true,
+    // Chỉ giữ nguyên true nếu ĐÃ có sẵn true trong config load lên — không tự
+    // suy ra gì ở đây. Việc set true cho bản cài mới là việc của load() (nơi
+    // duy nhất biết "file này có tồn tại từ trước hay không"), không phải
+    // normalizeConfig() (hàm này chạy cả trên save() giữa chừng phiên).
+    requireOperatorLogin: cfg.requireOperatorLogin === true,
     authMode: cfg.authMode === 'cognito' ? 'cognito' : 'local',
     port: Number.isInteger(cfg.port) && cfg.port > 0 ? cfg.port : base.port,
     publicUrl: /^https?:\/\/[^\s]+$/i.test(String(cfg.publicUrl || '').trim())
@@ -151,6 +162,12 @@ function createStore(userDataPath, safeWriteSync) {
       console.error('[BandComm] Failed to read band-comm.json, using defaults:', e);
     }
     cache = normalizeConfig(raw);
+    // Chưa từng có band-comm.json nào trên đĩa = bản cài MỚI thật sự (không
+    // phải chỉ thiếu 1 field do nâng cấp) — bật gate đăng nhập operator đúng 1
+    // lần ở đây. Mọi lần load() sau (file đã tồn tại, dù có field này hay
+    // không) đều đi qua nhánh normalizeConfig() ở trên, giữ nguyên giá trị đã
+    // lưu — không bao giờ tự bật lại true cho 1 file cũ.
+    if (!raw) cache.requireOperatorLogin = true;
     // File mới toàn bộ, hoặc file cũ chưa có cloudRoomId (nâng cấp từ bản trước
     // M2), hoặc file cũ còn dùng key `room.pin`/`pinSetAt`/`pinRequiredWithAccounts`
     // (trước khi đổi tên field sang `password`/…) — ghi lại ngay để dọn sạch

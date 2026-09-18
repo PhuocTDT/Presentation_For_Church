@@ -126,6 +126,16 @@ contextBridge.exposeInMainWorld('electronAPI', {
       updatePassword: (payload) => ipcRenderer.invoke('band-accounts-update-password', payload),
       setActive: (payload) => ipcRenderer.invoke('band-accounts-set-active', payload),
       remove: (id) => ipcRenderer.invoke('band-accounts-remove', id)
+    },
+    // Đăng nhập CỦA chính operator — gate mở Kênh Band cho bản cài mới (xem
+    // main.js's app.whenReady()). Khác hẳn `accounts` ở trên (đó là operator
+    // cấp tài khoản cho band member).
+    operatorAuth: {
+      getStatus: () => ipcRenderer.invoke('band-operator-auth-status'),
+      requestAccess: (payload) => ipcRenderer.invoke('band-operator-request-access', payload),
+      login: (payload) => ipcRenderer.invoke('band-operator-auth-login', payload),
+      setNewPassword: (payload) => ipcRenderer.invoke('band-operator-auth-new-password', payload),
+      logout: () => ipcRenderer.invoke('band-operator-auth-logout')
     }
   }
 });

@@ -1012,6 +1012,57 @@
         100% { transform: scale(2); opacity: 0; }
       }
 
+      /* Gate đăng nhập operator (bản cài mới) — mọi selector prefix
+         #bandGateModal, KHÔNG dùng tiền tố "bg-" (đụng Tailwind background
+         utilities dùng khắp trang) — dùng "opgate-" thay thế. */
+      #bandGateModal {
+        position: fixed; inset: 0; z-index: 9500;
+        display: none; align-items: center; justify-content: center;
+        font: 13px/1.5 "Segoe UI", system-ui, sans-serif;
+      }
+      #bandGateModal.open { display: flex; }
+      #bandGateModal .opgate-hidden { display: none !important; }
+      #bandGateModal * { box-sizing: border-box; }
+      #bandGateModal button { font: inherit; cursor: pointer; }
+      #bandGateModal .opgate-backdrop {
+        position: absolute; inset: 0; background: rgba(15, 20, 30, .55);
+      }
+      #bandGateModal .opgate-card {
+        position: relative; width: 420px; max-width: calc(100vw - 32px);
+        max-height: calc(100vh - 32px); overflow-y: auto;
+        background: #ffffff; color: #1e2430; border-radius: 12px;
+        box-shadow: 0 20px 60px rgba(0,0,0,.35); padding: 26px 24px 22px;
+      }
+      #bandGateModal .opgate-close {
+        position: absolute; top: 12px; right: 12px; background: none; border: none;
+        font-size: 1.3rem; color: #94a3b8; line-height: 1; padding: 4px;
+      }
+      #bandGateModal .opgate-close:hover { color: #1e2430; }
+      #bandGateModal h3 { margin: 0 0 8px; font-size: 1.05rem; font-weight: 700; padding-right: 20px; }
+      #bandGateModal .opgate-desc { margin: 0 0 18px; color: #5b6472; font-size: .85rem; }
+      #bandGateModal .opgate-step { margin-bottom: 14px; }
+      #bandGateModal .opgate-step-label { font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: #8a93a3; margin-bottom: 6px; }
+      #bandGateModal .opgate-row { display: flex; gap: 8px; }
+      #bandGateModal input {
+        width: 100%; background: #f8fafc; border: 1px solid #d7dae1; border-radius: 8px;
+        padding: 9px 11px; font-size: .85rem; color: #1e2430; outline: none; margin-bottom: 8px;
+      }
+      #bandGateModal .opgate-row input { margin-bottom: 0; flex: 1; }
+      #bandGateModal input:focus { border-color: #2f8a55; }
+      #bandGateModal .opgate-btn {
+        background: #ffffff; border: 1px solid #d7dae1; border-radius: 8px;
+        padding: 9px 14px; font-size: .85rem; font-weight: 600; color: #5b6472; white-space: nowrap;
+      }
+      #bandGateModal .opgate-btn:hover { border-color: #8a93a3; color: #1e2430; }
+      #bandGateModal .opgate-btn.primary { width: 100%; background: #2f8a55; border-color: #2f8a55; color: #fff; }
+      #bandGateModal .opgate-btn.primary:hover { background: #267048; }
+      #bandGateModal .opgate-btn:disabled { opacity: .6; cursor: not-allowed; }
+      #bandGateModal .opgate-status { font-size: .78rem; margin-top: 6px; min-height: 1.2em; }
+      #bandGateModal .opgate-status.ok { color: #2f8a55; }
+      #bandGateModal .opgate-status.err { color: #c0392f; }
+      #bandGateModal .opgate-divider { display: flex; align-items: center; gap: 10px; margin: 18px 0 14px; color: #8a93a3; font-size: .72rem; text-transform: uppercase; letter-spacing: .04em; }
+      #bandGateModal .opgate-divider::before, #bandGateModal .opgate-divider::after { content: ''; flex: 1; height: 1px; background: #e2e5eb; }
+
       /* Connection info popup — sits above the app content but is still capped
          inside #bandPanel's stacking context, so an app dialog covers it too. */
       #bandPanel .bp-conn {
@@ -1144,6 +1195,15 @@
       }
       #bandPanel .bp-conn .bp-purl input:focus { border-color: #2563a8; outline: none; }
       #bandPanel .bp-conn .bp-wizard-hint-in-conn { font-size: .74rem; color: #8a93a3; margin: -4px 0 10px; }
+      #bandPanel .bp-conn .bp-composer-link { margin-top: 10px; }
+      #bandPanel .bp-conn .bp-composer-link > .k { display: block; color: #8a93a3; font-size: .7rem; text-transform: uppercase; letter-spacing: .05em; margin-bottom: 3px; }
+      #bandPanel .bp-conn .bp-composer-link .row2 { margin-top: 0; flex-wrap: nowrap; }
+      #bandPanel .bp-conn #bpComposerLink {
+        flex: 1 1 auto; min-width: 0; border: 1px solid #d7dae1; border-radius: 8px; padding: 6px 9px;
+        font-family: Consolas, ui-monospace, monospace; font-size: .8rem; color: #1e2430; background: #f8fafc;
+      }
+      #bandPanel .bp-conn #bpComposerLinkCopy { flex: none; }
+      #bandPanel .bp-conn .bp-composer-link-hint { font-size: .74rem; color: #8a93a3; margin-top: 5px; }
 
       /* ===== Settings modal v2 — sidebar + danh mục, màu đồng bộ theo
          Tailwind config của app (primary #5048e5, background-light/dark).
@@ -1346,6 +1406,42 @@
 <body
     class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 h-screen flex flex-col font-display">
 
+    <!-- Gate đăng nhập operator — chỉ bản cài MỚI mới cần (xem main.js's
+         requireOperatorLogin); hiện ra khi bấm nút Kênh Band mà chưa đăng nhập. -->
+    <div id="bandGateModal" role="dialog" aria-modal="true" aria-label="Đăng nhập Kênh Band">
+      <div class="opgate-backdrop" id="opgateBackdrop"></div>
+      <div class="opgate-card">
+        <button class="opgate-close" id="opgateClose" type="button" title="Đóng">&times;</button>
+        <h3>Cần đăng nhập để dùng Kênh Band</h3>
+        <p class="opgate-desc">Kênh Band (kết nối điện thoại ban nhạc qua Wi-Fi) yêu cầu đăng nhập bằng 1 tài khoản miễn phí, dùng chung được cho mọi nhà thờ.</p>
+
+        <div class="opgate-step">
+          <div class="opgate-step-label">Chưa có tài khoản?</div>
+          <div class="opgate-row">
+            <input type="email" id="opgateReqEmail" placeholder="email@gmail.com" autocomplete="email">
+            <button class="opgate-btn" id="opgateReqBtn" type="button">Yêu cầu</button>
+          </div>
+          <div class="opgate-status" id="opgateReqStatus"></div>
+        </div>
+
+        <div class="opgate-divider"><span>Đã có tài khoản</span></div>
+
+        <div class="opgate-step" id="opgateLoginStep">
+          <input type="email" id="opgateLoginEmail" placeholder="Email đăng nhập" autocomplete="email">
+          <input type="password" id="opgateLoginPassword" placeholder="Mật khẩu" autocomplete="current-password">
+          <button class="opgate-btn primary" id="opgateLoginBtn" type="button">Đăng nhập</button>
+          <div class="opgate-status" id="opgateLoginStatus"></div>
+        </div>
+
+        <div class="opgate-step opgate-hidden" id="opgateNewPasswordStep">
+          <p class="opgate-desc">Mật khẩu tạm chỉ dùng 1 lần — đặt mật khẩu mới (tối thiểu 8 ký tự).</p>
+          <input type="password" id="opgateNewPassword" placeholder="Mật khẩu mới" autocomplete="new-password">
+          <button class="opgate-btn primary" id="opgateNewPasswordBtn" type="button">Đặt mật khẩu &amp; Đăng nhập</button>
+          <div class="opgate-status" id="opgateNewPasswordStatus"></div>
+        </div>
+      </div>
+    </div>
+
     <!-- Kênh Band sidebar (toggle: "Channel" menu / Ctrl+Shift+B / edge tab) -->
     <button id="bandPanelTab" type="button" title="Kênh Band (Ctrl+Shift+B)">Kênh Band<span class="nb" id="bandPanelTabCount">0</span></button>
     <aside id="bandPanel" aria-label="Kênh Band">
@@ -1389,6 +1485,14 @@
           <div class="bp-kv"><span class="k">Đang nối</span><span class="v" id="bpCount">0</span></div>
           <div class="row2">
             <button class="bp-btn" id="bpFw">Mở cổng Firewall (nếu điện thoại không vào được)</button>
+          </div>
+          <div class="bp-composer-link">
+            <span class="k">Link soạn setlist (dùng được cả khi tắt máy)</span>
+            <div class="row2">
+              <input id="bpComposerLink" type="text" readonly spellcheck="false">
+              <button class="bp-btn" id="bpComposerLinkCopy" type="button" title="Sao chép link">Sao chép</button>
+            </div>
+            <div class="bp-composer-link-hint">Gửi link này 1 lần cho band (Zalo/Messenger) — họ tự vào soạn + gửi setlist bất cứ lúc nào, kể cả lúc laptop tắt hẳn.</div>
           </div>
           <div class="bp-gal">
             <div class="bp-kv">
@@ -7663,6 +7767,111 @@
         }
     </script>
 
+    <!-- Gate đăng nhập operator — self-contained, độc lập với script sidebar bên
+         dưới. Expose window.__bandGateCheck(onPass) cho openPanel() gọi trước
+         khi mở sidebar thật. Bản cài cũ (không cần gate) / đã đăng nhập rồi thì
+         onPass() chạy ngay, không hiện gì cả. -->
+    <script>
+    (function () {
+      'use strict';
+      var $ = function (id) { return document.getElementById(id); };
+      var api = window.electronAPI && window.electronAPI.bandComm && window.electronAPI.bandComm.operatorAuth;
+      var modal = $('bandGateModal');
+      if (!api || !modal) { window.__bandGateCheck = function (onPass) { if (onPass) onPass(); }; return; }
+
+      var pendingOnPass = null;
+
+      function setStatus(id, text, kind) {
+        var el = $(id);
+        el.textContent = text || '';
+        el.className = 'opgate-status' + (kind ? ' ' + kind : '');
+      }
+      function resetSteps() {
+        $('opgateNewPasswordStep').classList.add('opgate-hidden');
+        $('opgateLoginStep').classList.remove('opgate-hidden');
+        setStatus('opgateReqStatus', ''); setStatus('opgateLoginStatus', ''); setStatus('opgateNewPasswordStatus', '');
+      }
+      function openModal() { modal.classList.add('open'); resetSteps(); }
+      function closeModal() { modal.classList.remove('open'); pendingOnPass = null; }
+
+      $('opgateClose').addEventListener('click', closeModal);
+      $('opgateBackdrop').addEventListener('click', closeModal);
+      document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape' && modal.classList.contains('open')) closeModal();
+      });
+
+      $('opgateReqBtn').addEventListener('click', function () {
+        var email = $('opgateReqEmail').value.trim();
+        if (!email) return;
+        var btn = $('opgateReqBtn');
+        btn.disabled = true; setStatus('opgateReqStatus', '');
+        api.requestAccess({ email: email }).then(function (r) {
+          btn.disabled = false;
+          if (r && r.error) { setStatus('opgateReqStatus', r.error, 'err'); return; }
+          setStatus('opgateReqStatus', 'Nếu email hợp lệ, tài khoản + mật khẩu tạm đã được gửi tới hộp thư (kiểm tra cả Spam).', 'ok');
+          $('opgateReqEmail').value = '';
+        }).catch(function () {
+          btn.disabled = false;
+          setStatus('opgateReqStatus', 'Không kết nối được, thử lại sau.', 'err');
+        });
+      });
+
+      function finishSuccess() {
+        closeModal();
+        var cb = pendingOnPass; pendingOnPass = null;
+        if (cb) cb();
+      }
+
+      function doLogin() {
+        var email = $('opgateLoginEmail').value.trim();
+        var password = $('opgateLoginPassword').value;
+        if (!email || !password) { setStatus('opgateLoginStatus', 'Nhập email và mật khẩu.', 'err'); return; }
+        var btn = $('opgateLoginBtn');
+        btn.disabled = true; setStatus('opgateLoginStatus', '');
+        api.login({ email: email, password: password }).then(function (r) {
+          btn.disabled = false;
+          if (r && r.error) { setStatus('opgateLoginStatus', r.error, 'err'); return; }
+          if (r && r.needsNewPassword) {
+            $('opgateLoginStep').classList.add('opgate-hidden');
+            $('opgateNewPasswordStep').classList.remove('opgate-hidden');
+            $('opgateNewPassword').focus();
+            return;
+          }
+          finishSuccess();
+        }).catch(function () {
+          btn.disabled = false;
+          setStatus('opgateLoginStatus', 'Không kết nối được máy chủ đăng nhập.', 'err');
+        });
+      }
+      $('opgateLoginBtn').addEventListener('click', doLogin);
+      $('opgateLoginPassword').addEventListener('keydown', function (e) { if (e.key === 'Enter') doLogin(); });
+
+      function doNewPassword() {
+        var newPassword = $('opgateNewPassword').value;
+        var btn = $('opgateNewPasswordBtn');
+        btn.disabled = true; setStatus('opgateNewPasswordStatus', '');
+        api.setNewPassword({ newPassword: newPassword }).then(function (r) {
+          btn.disabled = false;
+          if (r && r.error) { setStatus('opgateNewPasswordStatus', r.error, 'err'); return; }
+          finishSuccess();
+        }).catch(function () {
+          btn.disabled = false;
+          setStatus('opgateNewPasswordStatus', 'Không kết nối được máy chủ đăng nhập.', 'err');
+        });
+      }
+      $('opgateNewPasswordBtn').addEventListener('click', doNewPassword);
+      $('opgateNewPassword').addEventListener('keydown', function (e) { if (e.key === 'Enter') doNewPassword(); });
+
+      window.__bandGateCheck = function (onPass) {
+        api.getStatus().then(function (st) {
+          if (!st || !st.required || st.loggedIn) { onPass(); return; }
+          pendingOnPass = onPass;
+          openModal();
+        }).catch(function () { onPass(); }); // fail-open: gate thật (server có chạy hay không) nằm ở main.js
+      };
+    })();
+    </script>
+
     <!-- Kênh Band: QR encoder (vendored, MIT — not an npm dependency) -->
     <script src="src/band-comm/vendor/qrcode-generator.js"></script>
     <!-- Kênh Band sidebar logic — self-contained, talks to main via electronAPI.bandComm -->
@@ -7681,7 +7890,14 @@
         panel.classList.add('open');
         document.body.classList.add('bp-open');
       }
+      // Gate đăng nhập operator (bản cài mới, xem gate script + main.js) — check
+      // trước khi thật sự mở panel; window.__bandGateCheck là no-op nếu không
+      // cần gate (bản cài cũ) hoặc đã đăng nhập rồi, nên đường thường không đổi gì.
       function openPanel() {
+        if (window.__bandGateCheck) { window.__bandGateCheck(reallyOpenPanel); }
+        else { reallyOpenPanel(); }
+      }
+      function reallyOpenPanel() {
         revealPanel();
         tab.classList.remove('has-unread', 'has-alert'); unread = 0;
         api.getStatus().then(applyStatus).catch(function () {});
@@ -8007,6 +8223,37 @@
       });
 
       var FW_LABEL = 'Mở cổng Firewall (nếu điện thoại không vào được)';
+      // Link soạn setlist tĩnh (phục vụ từ chính Worker cloud, /composer?room=)
+      // — hoạt động dù laptop tắt hẳn, xem cloud/worker/src/worker.js. Chỉ cần
+      // đúng cloudRoomId (sinh 1 lần, ổn định), lấy qua getConfig() là đủ,
+      // không cần server đang chạy để hiện link này.
+      function refreshComposerLink() {
+        var input = $('bpComposerLink');
+        if (!input) return;
+        api.getConfig().then(function (cfg) {
+          var roomId = cfg && cfg.cloudRoomId;
+          input.value = roomId ? ('https://api.worship-official.link/composer?room=' + encodeURIComponent(roomId)) : '';
+        }).catch(function () {});
+      }
+      refreshComposerLink();
+      $('bpComposerLinkCopy') && $('bpComposerLinkCopy').addEventListener('click', function () {
+        var input = $('bpComposerLink');
+        var btn = $('bpComposerLinkCopy');
+        if (!input.value) return;
+        var done = function () {
+          var old = btn.textContent;
+          btn.textContent = 'Đã chép ✓';
+          setTimeout(function () { btn.textContent = old; }, 1500);
+        };
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(input.value).then(done).catch(function () {
+            input.select(); try { document.execCommand('copy'); done(); } catch (e) {}
+          });
+        } else {
+          input.select(); try { document.execCommand('copy'); done(); } catch (e) {}
+        }
+      });
+
       $('bpFw').addEventListener('click', function () {
         $('bpFw').disabled = true;
         $('bpFw').textContent = 'Đang xin quyền…';
