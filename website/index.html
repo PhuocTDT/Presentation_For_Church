@@ -1,0 +1,1145 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
+  
+  <!-- Primary Meta Tags -->
+  <title>Presentation For Church - Phần Mềm Trình Chiếu Nhà Thờ & Kênh Band Thông Minh</title>
+  <meta name="title" content="Presentation For Church - Phần Mềm Trình Chiếu Nhà Thờ & Kênh Band Thông Minh">
+  <meta name="description" content="Phần mềm trình chiếu thờ phượng miễn phí, mã nguồn mở, tối ưu cho Hội Thánh Việt Nam. Tích hợp sẵn Kinh Thánh, Thánh Ca, màn hình Live 60fps mượt mà và độc quyền Kênh Band kết nối điện thoại ban nhạc qua Wi-Fi nội bộ.">
+  <meta name="keywords" content="presentation for church, easyworship tieng viet, phan mem trinh chieu nha tho, trinh chieu thanh ca, kinh thanh tieng viet, kenh band nha tho, phan mem trinh chieu mien phi">
+  <meta name="author" content="PhuocTDT">
+  <meta name="theme-color" content="#060911">
+
+  <!-- Open Graph / Facebook -->
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://github.com/PhuocTDT/Presentation_For_Church">
+  <meta property="og:title" content="Presentation For Church - Trình Chiếu Nhà Thờ Đỉnh Cao & Kết Nối Không Dây">
+  <meta property="og:description" content="Giải pháp trình chiếu thờ phượng hiện đại, mượt mà và thấu hiểu Hội Thánh Việt. Miễn phí vĩnh viễn và mã nguồn mở.">
+  <meta property="og:image" content="assets/images/worship-bg-1.jpg">
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/jpeg" href="assets/images/app-icon.jpg">
+
+  <!-- Stylesheet -->
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- Ambient Atmospheric Lighting -->
+  <div class="ambient-glow">
+    <div class="glow-top-left"></div>
+    <div class="glow-mid-right"></div>
+    <div class="glow-bottom-left"></div>
+  </div>
+
+  <!-- Header / Navigation Bar -->
+  <header class="site-nav" id="mainHeader">
+    <div class="nav-container">
+      <a href="#" class="brand-logo" id="navLogo">
+        <div class="brand-icon-wrap">
+          <img src="assets/images/app-icon.jpg" alt="Logo Presentation For Church" width="42" height="42">
+        </div>
+        <div class="brand-text-block">
+          <span class="brand-name">Presentation For Church</span>
+          <span class="brand-tag">Worship Presentation App</span>
+        </div>
+      </a>
+
+      <nav>
+        <ul class="nav-links" id="navLinks">
+          <li><a href="#features" class="nav-item">Tính Năng</a></li>
+          <li><a href="#band-spotlight" class="nav-item">Kênh Band</a></li>
+          <li><a href="#comparison" class="nav-item">So Sánh</a></li>
+          <li><a href="#download" class="nav-item">Tải Về</a></li>
+          <li><a href="#get-account" class="nav-item">Tài Khoản</a></li>
+          <li><a href="#faq" class="nav-item">Hỏi Đáp</a></li>
+        </ul>
+      </nav>
+
+      <div class="nav-actions">
+        <a href="https://github.com/PhuocTDT/Presentation_For_Church" target="_blank" rel="noopener noreferrer" class="btn-github" id="btnGithubNav">
+          <svg viewBox="0 0 24 24"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
+          <span>GitHub</span>
+        </a>
+        <a href="#download" class="btn btn-primary" id="btnNavDownload">
+          <span>Tải Miễn Phí</span>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M19 12l-7 7-7-7"/></svg>
+        </a>
+        <button class="theme-toggle-btn" id="themeToggle" aria-label="Chuyển chế độ Sáng / Tối" title="Chuyển chế độ Sáng / Tối">
+          <svg class="sun-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+          <svg class="moon-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+        </button>
+        <button class="mobile-nav-toggle" id="mobileNavToggle" aria-label="Mở menu điều hướng">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12h18M3 6h18M3 18h18"/></svg>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main>
+
+    <!-- SECTION 1: HERO SECTION -->
+    <section class="hero-section" id="hero">
+      <div class="container">
+        
+        <div class="hero-pill">
+          <span class="pill-tag">v1.1.6 Mới Nhất</span>
+          <span class="pill-text">100% Miễn Phí & Mã Nguồn Mở Cho Hội Thánh</span>
+        </div>
+
+        <h1 class="hero-title">
+          Nâng Tầm Giờ Thờ Phượng Với <br>
+          <span class="gradient-text">Trình Chiếu Đỉnh Cao</span> & <span class="gold-text">Kết Nối Không Dây</span>
+        </h1>
+
+        <p class="hero-desc">
+          Giải pháp trình chiếu chuyên dụng cho nhà thờ được thiết kế tỉ mỉ cho tiếng Việt. 
+          Tích hợp sẵn kho Thánh Ca, Kinh Thánh đa bản dịch, màn hình Live 60fps mượt mà và 
+          <strong>Kênh Band độc quyền</strong> giao tiếp thời gian thực với ban hát qua Wi-Fi.
+        </p>
+
+        <div class="hero-cta-group">
+          <a href="#download" class="btn btn-primary btn-lg" id="btnHeroDownload">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+            <span>Tải Về Cho Máy Tính</span>
+          </a>
+          <a href="#band-spotlight" class="btn btn-secondary btn-lg" id="btnHeroSimulate">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+            <span>Xem Kênh Band Demo</span>
+          </a>
+        </div>
+
+        <!-- Metric Stats Highlights -->
+        <div class="hero-stats">
+          <div class="stat-item">
+            <div class="stat-num gradient-text">0 VNĐ</div>
+            <div class="stat-label">Miễn phí vĩnh viễn</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-num">0.05s</div>
+            <div class="stat-label">Độ trễ phản hồi LAN</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-num">3+</div>
+            <div class="stat-label">Bản dịch Kinh Thánh có sẵn</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-num">100%</div>
+            <div class="stat-label">Hoạt động Offline độc lập</div>
+          </div>
+        </div>
+
+        <!-- High-Fidelity App Mockup Showcase -->
+        <div class="hero-mockup-wrapper" id="heroMockup">
+          <div class="mockup-window">
+            
+            <div class="mockup-titlebar">
+              <div class="mockup-dots">
+                <span class="mockup-dot red"></span>
+                <span class="mockup-dot yellow"></span>
+                <span class="mockup-dot green"></span>
+              </div>
+              <div class="mockup-title">Presentation For Church - [Buổi Thờ Phượng Chúa Nhật]</div>
+              <div class="mockup-actions-badge">
+                <span class="live-dot"></span>
+                <span>LIVE ON DISPLAY 2</span>
+              </div>
+            </div>
+
+            <!-- Top Menu Bar (EasyWorship Style) -->
+            <div class="mockup-menubar">
+              <span>File</span>
+              <span>Edit</span>
+              <span>View</span>
+              <span style="color:var(--primary); font-weight:700;">Channel (Kênh Band)</span>
+            </div>
+
+            <div class="mockup-body" style="position:relative;">
+              <!-- Left Floating Band Tab -->
+              <div class="mockup-band-tab" title="Mở Sidebar Kênh Band">
+                Kênh Band
+              </div>
+
+              <!-- Left Column: Operator Schedule -->
+              <div class="mockup-operator-side" style="padding-left: 18px;">
+                <div class="op-header">
+                  <span>SCHEDULE (LỊCH TRÌNH)</span>
+                  <span class="op-badge">5 Mục</span>
+                </div>
+                <div class="op-schedule-list">
+                  <div class="op-schedule-item">
+                    <span class="item-icon">1</span>
+                    <div>
+                      <div>Chào mừng & Cầu nguyện</div>
+                      <small style="color:var(--text-muted)">Media Background 16:9</small>
+                    </div>
+                  </div>
+                  <div class="op-schedule-item active">
+                    <span class="item-icon">2</span>
+                    <div>
+                      <div>Chúa chính Ngài là Đấng con mãi tôn thờ</div>
+                      <small style="color:var(--primary)">Đang chiếu • Điệp khúc</small>
+                    </div>
+                  </div>
+                  <div class="op-schedule-item">
+                    <span class="item-icon">3</span>
+                    <div>
+                      <div>Lớn Bấy Duy Ngài</div>
+                      <small style="color:var(--text-muted)">4 Đoạn • Tone G</small>
+                    </div>
+                  </div>
+                  <div class="op-schedule-item">
+                    <span class="item-icon">4</span>
+                    <div>
+                      <div>Thi Thiên 100:1-5</div>
+                      <small style="color:var(--text-muted)">Kinh Thánh RVV11</small>
+                    </div>
+                  </div>
+                  <div class="op-schedule-item">
+                    <span class="item-icon">5</span>
+                    <div>
+                      <div>Bài Giảng Luận</div>
+                      <small style="color:var(--text-muted)">Mục sư Quản nhiệm</small>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Right Column: Live Output Display Screen -->
+              <div class="mockup-live-display" style="background-image: url('assets/images/worship-bg-1.jpg'); padding-top: 50px;">
+                <!-- Red Live Window Header Bar -->
+                <div class="mockup-live-header">
+                  <div class="live-badge-left">
+                    <span class="red-dot"></span>
+                    <span>LIVE OUTPUT</span>
+                  </div>
+                  <div class="live-btn-group">
+                    <button class="live-top-btn" type="button">Screen Live</button>
+                    <button class="live-top-btn" type="button">Clear</button>
+                    <button class="live-top-btn active-live" type="button">Live</button>
+                  </div>
+                </div>
+
+                <div class="mockup-live-overlay"></div>
+                <div class="mockup-live-content">
+                  <div class="mockup-song-badge">ĐIỆP KHÚC</div>
+                  <h2 class="mockup-song-title">
+                    Lòng nguyện hát chúc tán Chúa muôn đời<br>
+                    Lời ngợi khen với cả tấm lòng
+                  </h2>
+                  <p class="mockup-song-sub">
+                    Nguyện dâng lên Cha muôn đời con hằng chúc tôn!
+                  </p>
+                </div>
+
+                <div class="mockup-live-controls">
+                  <div class="live-tags">
+                    <span class="live-tag">HDMI 1920x1080</span>
+                    <span class="live-tag">60 FPS Double-Buffer</span>
+                    <span class="live-tag">Auto-Fit Font</span>
+                  </div>
+                  <div>Trình Chiếu Trực Tiếp</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Authentic Bottom Statusbar -->
+            <div class="mockup-statusbar">
+              <span>● System Ready</span>
+              <span>1920×1080 Full HD</span>
+              <span>v1.1.6 Official Release</span>
+            </div>
+
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+
+    <!-- SECTION 2: CORE VALUE PILLARS (4 TRỤ CỘT) -->
+    <section id="pillars">
+      <div class="container">
+        
+        <div class="section-header">
+          <div class="section-badge">
+            <span class="pulse-dot"></span>
+            <span>Giá Trị Khác Biệt</span>
+          </div>
+          <h2>Vì Sao Các Hội Thánh Lựa Chọn Presentation For Church?</h2>
+          <p>
+            Được xây dựng từ chính nhu cầu thực tế của ban âm thanh, nhạc cụ và kỹ thuật nhà thờ, 
+            khắc phục hoàn toàn những hạn chế của PowerPoint và các phần mềm đắt đỏ.
+          </p>
+        </div>
+
+        <div class="pillars-grid">
+          
+          <div class="pillar-card">
+            <div class="pillar-icon-box">🇻🇳</div>
+            <h3>100% Thuần Việt</h3>
+            <p>
+              Tối ưu gõ tiếng Việt hoàn hảo, không bị nhảy chữ hay lỗi font. 
+              Tích hợp sẵn kho bài hát Thánh Ca phong phú và các bản dịch Kinh Thánh Tiếng Việt phổ biến nhất.
+            </p>
+          </div>
+
+          <div class="pillar-card">
+            <div class="pillar-icon-box">⚡</div>
+            <h3>Virtual Canvas 60fps</h3>
+            <p>
+              Trình chiếu hai màn hình độc lập. Hiệu ứng chuyển cảnh Crossfade mượt mà, 
+              không bao giờ bị chớp màn hình đen, tự động co giãn kích thước chữ khi tràn khung.
+            </p>
+          </div>
+
+          <div class="pillar-card">
+            <div class="pillar-icon-box">📱</div>
+            <h3>Kênh Band Độc Bản</h3>
+            <p>
+              Ban nhạc và người chiếu máy tính giao tiếp kín đáo trong giờ thờ phượng chỉ qua 1 chạm trên điện thoại. 
+              Gửi cảnh báo âm thanh, đổi bài hát, xem hợp âm ngay trên mạng Wi-Fi nội bộ.
+            </p>
+          </div>
+
+          <div class="pillar-card">
+            <div class="pillar-icon-box">🔒</div>
+            <h3>Offline & Tự Chủ 100%</h3>
+            <p>
+              Không cần Internet trong giờ thờ phượng, không phụ thuộc máy chủ bên ngoài. 
+              Dữ liệu lưu an toàn trên ổ cứng với cơ chế sao lưu tự động 3 cấp độ.
+            </p>
+          </div>
+
+        </div>
+
+      </div>
+    </section>
+
+
+    <!-- SECTION 3: BENTO GRID FEATURES (TÍNH NĂNG CHUYÊN SÂU) -->
+    <section id="features">
+      <div class="container">
+        
+        <div class="section-header">
+          <div class="section-badge">
+            <span class="pulse-dot"></span>
+            <span>Tính Năng Chuyên Nghiệp</span>
+          </div>
+          <h2>Mọi Công Cụ Ban Kỹ Thuật Cần Trong Một Ứng Dụng</h2>
+          <p>Thiết kế tinh gọn, trực quan, giúp người vận hành thao tác tự tin và chuẩn xác từng giây.</p>
+        </div>
+
+        <div class="bento-grid">
+          
+          <!-- Bento 1: Tra Cứu Kinh Thánh -->
+          <div class="bento-card col-8">
+            <div class="bento-header">
+              <span class="bento-tag">Kinh Thánh Thông Minh</span>
+              <h3>Tra Cứu Nhanh Chóng & Đa Bản Dịch</h3>
+              <p>
+                Gõ tắt tên sách, chương, câu (ví dụ: "Giăng 3:16" hoặc "Thi 23") để nạp ngay lên màn hình. 
+                Hỗ trợ Bản Truyền Thống, Bản Dịch Mới (BDM), Bản Hiệu Đính (RVV11) và cho phép nhập file XML tùy chỉnh.
+              </p>
+            </div>
+            <div class="bento-visual">
+              <div class="bible-mock-box">
+                <!-- Translation Version Tabs -->
+                <div class="bible-version-tabs" id="bibleVersionTabs">
+                  <button class="bible-ver-tab active" type="button" data-ver="rvv11">Bản Hiệu Đính (RVV11)</button>
+                  <button class="bible-ver-tab" type="button" data-ver="btt">Bản Truyền Thống (1925)</button>
+                  <button class="bible-ver-tab" type="button" data-ver="bdm">Bản Dịch Mới (BDM)</button>
+                  <button class="bible-ver-tab" type="button" data-ver="xml" style="border-style:dashed;">+ Nhập XML</button>
+                </div>
+
+                <!-- Search Input Bar -->
+                <div class="bible-search-bar">
+                  <div class="bible-search-left">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+                    <span>Tìm nhanh: <strong id="bibleSearchQuery">Thi Thiên 23:1-3 (RVV11)</strong></span>
+                  </div>
+                  <span class="bible-search-hint">Gõ tắt: "thi 23"</span>
+                </div>
+
+                <!-- Quick Suggested Passages -->
+                <div class="bible-suggestions">
+                  <span class="bible-sug-label">Đoạn kinh văn phổ biến:</span>
+                  <button class="bible-sug-chip" type="button" data-ref="Giăng 3:16" data-text="Vì Đức Chúa Trời yêu thương thế gian, đến nỗi đã ban Con Một của Ngài, hầu cho hễ ai tin Con ấy không bị hư mất mà được sự sống đời đời.">Giăng 3:16</button>
+                  <button class="bible-sug-chip" type="button" data-ref="Thi Thiên 23:1-3" data-text="Đức Giê-hô-va là Đấng chăn giữ tôi; tôi sẽ chẳng thiếu thốn gì. Ngài khiến tôi an nghỉ nơi đồng cỏ xanh tươi, dẫn tôi đến mé nước bình tịnh. Ngài bổ lại linh hồn tôi...">Thi Thiên 23:1-3</button>
+                  <button class="bible-sug-chip" type="button" data-ref="Rô-ma 8:28" data-text="Chúng ta biết rằng mọi sự hiệp lại làm ích cho những kẻ yêu mến Đức Chúa Trời, là những kẻ được gọi theo ý định của Ngài.">Rô-ma 8:28</button>
+                  <button class="bible-sug-chip" type="button" data-ref="Ma-thi-ơ 6:9-13" data-text="Lạy Cha chúng con ở trên trời; Danh Cha được tôn thánh; Nước Cha được đến; Ý Cha được nên, ở đất như ở trời...">Ma-thi-ơ 6:9-13</button>
+                </div>
+
+                <!-- Verse Preview Box -->
+                <div class="bible-verse-result" id="bibleVerseResult">
+                  <div class="verse-ref">
+                    <span id="verseRefTitle">THI THIÊN 23:1-3 • BẢN HIỆU ĐÍNH (RVV11)</span>
+                    <span style="font-size:0.7rem; color:var(--text-faint); font-family:var(--font-mono);">3 CÂU</span>
+                  </div>
+                  <div class="verse-text" id="verseTextContent">
+                    "Đức Giê-hô-va là Đấng chăn giữ tôi; tôi sẽ chẳng thiếu thốn gì. 
+                    Ngài khiến tôi an nghỉ nơi đồng cỏ xanh tươi, dẫn tôi đến mé nước bình tịnh. 
+                    Ngài bổ lại linh hồn tôi, dẫn tôi vào các lối công bình, vì cớ danh Ngài."
+                  </div>
+
+                  <div class="bible-verse-actions">
+                    <span>✓ Sẵn sàng xuất màn hình máy chiếu</span>
+                    <div class="bible-action-btns">
+                      <button class="bible-btn-sm" type="button" id="btnBibleAddToSchedule">+ Đưa Vào Schedule</button>
+                      <button class="bible-btn-sm active-live-btn" type="button" id="btnBibleGoLive">● Chiếu Trực Tiếp</button>
+                    </div>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+          </div>
+
+          <!-- Bento 2: Lịch Trình Thờ Phượng Schedule (Kéo thả thực tế) -->
+          <div class="bento-card col-4">
+            <div class="bento-header">
+              <span class="bento-tag">Lịch Trình Tiện Lợi</span>
+              <h3>Kéo Thả Schedule</h3>
+              <p>
+                Sắp xếp toàn bộ thứ tự buổi lễ chỉ bằng thao tác kéo thả. Lưu và mở lại file lịch trình (.bcsch) cực nhanh.
+              </p>
+            </div>
+            <div class="bento-visual">
+              <div class="schedule-drag-container">
+                <div class="schedule-drag-header">
+                  <span class="auto-drag-badge" id="autoDragBadge">
+                    <span class="pulse-green"></span>
+                    <span>Tự động demo kéo thả</span>
+                  </span>
+                  <span style="font-size:0.75rem; color:var(--text-muted);" id="dragCounterText">4 mục</span>
+                </div>
+                <ul class="schedule-drag-list" id="scheduleDragList">
+                  <li class="schedule-drag-item" draggable="true" data-id="1">
+                    <span class="drag-handle" title="Kéo để đổi vị trí">⋮⋮</span>
+                    <span class="drag-item-num">1</span>
+                    <span class="drag-item-content">🎵 Tôn Vinh Chúa Đoạn 1</span>
+                    <span class="drag-item-tag verse">Verse 1</span>
+                    <span class="virtual-cursor">👆</span>
+                  </li>
+                  <li class="schedule-drag-item" draggable="true" data-id="2">
+                    <span class="drag-handle" title="Kéo để đổi vị trí">⋮⋮</span>
+                    <span class="drag-item-num">2</span>
+                    <span class="drag-item-content">🎵 Điệp Khúc Lặp Lại</span>
+                    <span class="drag-item-tag chorus">Chorus</span>
+                    <span class="virtual-cursor">👆</span>
+                  </li>
+                  <li class="schedule-drag-item" draggable="true" data-id="3">
+                    <span class="drag-handle" title="Kéo để đổi vị trí">⋮⋮</span>
+                    <span class="drag-item-num">3</span>
+                    <span class="drag-item-content">📖 Đọc Lời Chúa Chung</span>
+                    <span class="drag-item-tag bible">Bible</span>
+                    <span class="virtual-cursor">👆</span>
+                  </li>
+                  <li class="schedule-drag-item" draggable="true" data-id="4">
+                    <span class="drag-handle" title="Kéo để đổi vị trí">⋮⋮</span>
+                    <span class="drag-item-num">4</span>
+                    <span class="drag-item-content">🙏 Cầu Nguyện Khai Lễ</span>
+                    <span class="drag-item-tag prayer">Prayer</span>
+                    <span class="virtual-cursor">👆</span>
+                  </li>
+                </ul>
+                <div class="drag-status-bar">
+                  <span class="drag-status-feedback" id="dragStatusFeedback">✓ Đang tự động mô phỏng kéo thả</span>
+                  <span style="font-family:var(--font-mono); font-size:0.68rem; color:var(--text-faint);">.bcsch</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Bento 3: Motion Video & Background Media (10 Media Tự Động Cuộn Qua) -->
+          <div class="bento-card col-6">
+            <div class="bento-header">
+              <span class="bento-tag">Hiệu Ứng Hình Ảnh (10 Media)</span>
+              <h3>Motion Backgrounds & Video Loops</h3>
+              <p>
+                Hỗ trợ lặp video MP4 không giật, ảnh 16:9 độ phân giải cao. Tự động cuộn qua 10 phông nền thờ phượng tiêu biểu (rê chuột để dừng).
+              </p>
+            </div>
+            <div class="bento-visual">
+              <div class="media-scroller-container" id="mediaScroller">
+                <div class="media-scroller-track">
+                  <!-- Set 1 (10 Items) -->
+                  <div class="media-scroll-card" title="Scenic Horizons">
+                    <img src="assets/images/worship-bg-1.jpg" alt="Scenic Horizons">
+                    <div class="media-scroll-overlay">
+                      <span class="media-scroll-title">Scenic Horizons</span>
+                      <span class="media-scroll-badge">HD 1080</span>
+                    </div>
+                  </div>
+                  <div class="media-scroll-card" title="Revival Trails">
+                    <img src="assets/images/worship-bg-2.jpg" alt="Revival Trails">
+                    <div class="media-scroll-overlay">
+                      <span class="media-scroll-title">Revival Trails</span>
+                      <span class="media-scroll-badge">Video</span>
+                    </div>
+                  </div>
+                  <div class="media-scroll-card" title="Autumn Leaves">
+                    <img src="assets/images/worship-bg-3.jpg" alt="Autumn Leaves">
+                    <div class="media-scroll-overlay">
+                      <span class="media-scroll-title">Autumn Leaves</span>
+                      <span class="media-scroll-badge">16:9</span>
+                    </div>
+                  </div>
+                  <div class="media-scroll-card" title="Crystal Cross">
+                    <img src="assets/images/worship-bg-4.jpg" alt="Crystal Cross">
+                    <div class="media-scroll-overlay">
+                      <span class="media-scroll-title">Crystal Cross</span>
+                      <span class="media-scroll-badge">HD 1080</span>
+                    </div>
+                  </div>
+                  <div class="media-scroll-card" title="Coastal Dreams">
+                    <img src="assets/images/worship-bg-5.jpg" alt="Coastal Dreams">
+                    <div class="media-scroll-overlay">
+                      <span class="media-scroll-title">Coastal Dreams</span>
+                      <span class="media-scroll-badge">Motion</span>
+                    </div>
+                  </div>
+                  <div class="media-scroll-card" title="Flatirons Vistas">
+                    <img src="assets/images/worship-bg-6.jpg" alt="Flatirons Vistas">
+                    <div class="media-scroll-overlay">
+                      <span class="media-scroll-title">Flatirons Vistas</span>
+                      <span class="media-scroll-badge">HD 1080</span>
+                    </div>
+                  </div>
+                  <div class="media-scroll-card" title="City Lights">
+                    <img src="assets/images/worship-bg-7.jpg" alt="City Lights">
+                    <div class="media-scroll-overlay">
+                      <span class="media-scroll-title">City Lights</span>
+                      <span class="media-scroll-badge">Video</span>
+                    </div>
+                  </div>
+                  <div class="media-scroll-card" title="Autumn Pathway">
+                    <img src="assets/images/worship-bg-8.jpg" alt="Autumn Pathway">
+                    <div class="media-scroll-overlay">
+                      <span class="media-scroll-title">Autumn Pathway</span>
+                      <span class="media-scroll-badge">16:9</span>
+                    </div>
+                  </div>
+                  <div class="media-scroll-card" title="Festive Scenes">
+                    <img src="assets/images/worship-bg-9.jpg" alt="Festive Scenes">
+                    <div class="media-scroll-overlay">
+                      <span class="media-scroll-title">Festive Scenes</span>
+                      <span class="media-scroll-badge">Christmas</span>
+                    </div>
+                  </div>
+                  <div class="media-scroll-card" title="Chromatic Grunge">
+                    <img src="assets/images/worship-bg-10.jpg" alt="Chromatic Grunge">
+                    <div class="media-scroll-overlay">
+                      <span class="media-scroll-title">Chromatic Grunge</span>
+                      <span class="media-scroll-badge">HD 1080</span>
+                    </div>
+                  </div>
+
+                  <!-- Set 2 (10 Duplicate Items for Seamless Infinite Loop) -->
+                  <div class="media-scroll-card" aria-hidden="true">
+                    <img src="assets/images/worship-bg-1.jpg" alt="Scenic Horizons">
+                    <div class="media-scroll-overlay">
+                      <span class="media-scroll-title">Scenic Horizons</span>
+                      <span class="media-scroll-badge">HD 1080</span>
+                    </div>
+                  </div>
+                  <div class="media-scroll-card" aria-hidden="true">
+                    <img src="assets/images/worship-bg-2.jpg" alt="Revival Trails">
+                    <div class="media-scroll-overlay">
+                      <span class="media-scroll-title">Revival Trails</span>
+                      <span class="media-scroll-badge">Video</span>
+                    </div>
+                  </div>
+                  <div class="media-scroll-card" aria-hidden="true">
+                    <img src="assets/images/worship-bg-3.jpg" alt="Autumn Leaves">
+                    <div class="media-scroll-overlay">
+                      <span class="media-scroll-title">Autumn Leaves</span>
+                      <span class="media-scroll-badge">16:9</span>
+                    </div>
+                  </div>
+                  <div class="media-scroll-card" aria-hidden="true">
+                    <img src="assets/images/worship-bg-4.jpg" alt="Crystal Cross">
+                    <div class="media-scroll-overlay">
+                      <span class="media-scroll-title">Crystal Cross</span>
+                      <span class="media-scroll-badge">HD 1080</span>
+                    </div>
+                  </div>
+                  <div class="media-scroll-card" aria-hidden="true">
+                    <img src="assets/images/worship-bg-5.jpg" alt="Coastal Dreams">
+                    <div class="media-scroll-overlay">
+                      <span class="media-scroll-title">Coastal Dreams</span>
+                      <span class="media-scroll-badge">Motion</span>
+                    </div>
+                  </div>
+                  <div class="media-scroll-card" aria-hidden="true">
+                    <img src="assets/images/worship-bg-6.jpg" alt="Flatirons Vistas">
+                    <div class="media-scroll-overlay">
+                      <span class="media-scroll-title">Flatirons Vistas</span>
+                      <span class="media-scroll-badge">HD 1080</span>
+                    </div>
+                  </div>
+                  <div class="media-scroll-card" aria-hidden="true">
+                    <img src="assets/images/worship-bg-7.jpg" alt="City Lights">
+                    <div class="media-scroll-overlay">
+                      <span class="media-scroll-title">City Lights</span>
+                      <span class="media-scroll-badge">Video</span>
+                    </div>
+                  </div>
+                  <div class="media-scroll-card" aria-hidden="true">
+                    <img src="assets/images/worship-bg-8.jpg" alt="Autumn Pathway">
+                    <div class="media-scroll-overlay">
+                      <span class="media-scroll-title">Autumn Pathway</span>
+                      <span class="media-scroll-badge">16:9</span>
+                    </div>
+                  </div>
+                  <div class="media-scroll-card" aria-hidden="true">
+                    <img src="assets/images/worship-bg-9.jpg" alt="Festive Scenes">
+                    <div class="media-scroll-overlay">
+                      <span class="media-scroll-title">Festive Scenes</span>
+                      <span class="media-scroll-badge">Christmas</span>
+                    </div>
+                  </div>
+                  <div class="media-scroll-card" aria-hidden="true">
+                    <img src="assets/images/worship-bg-10.jpg" alt="Chromatic Grunge">
+                    <div class="media-scroll-overlay">
+                      <span class="media-scroll-title">Chromatic Grunge</span>
+                      <span class="media-scroll-badge">HD 1080</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Bento 4: Quản Lý & Lưu Trữ An Toàn -->
+          <div class="bento-card col-6">
+            <div class="bento-header">
+              <span class="bento-tag">An Tâm Vận Hành</span>
+              <h3>Tự Chọn Vị Trí Dữ Liệu & Auto Backup</h3>
+              <p>
+                Không lo đầy ổ C! Ứng dụng cho phép lưu bài hát, video vào ổ D, E hoặc ổ cứng di động. 
+                Tự động xoay vòng sao lưu 3 bản dự phòng liên tục chống mất dữ liệu.
+              </p>
+            </div>
+            <div class="bento-visual" style="padding: 20px;">
+              <div style="background:rgba(255,255,255,0.03); border:1px solid var(--border-subtle); border-radius:10px; padding:14px; font-family:var(--font-mono); font-size:0.8rem; color:var(--text-secondary);">
+                <div style="color:var(--emerald); margin-bottom:6px;">✓ Tự động phát hiện dung lượng ổ đĩa</div>
+                <div style="color:var(--primary); margin-bottom:6px;">✓ Lưu trữ: D:\WorshipData\userData</div>
+                <div style="color:var(--gold);">✓ Backup xoay vòng: .backup.1 / .backup.2 / .backup.3</div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+    </section>
+
+
+    <!-- SECTION 4: SPOTLIGHT - KÊNH BAND (THE GAME CHANGER SIMULATOR) -->
+    <section id="band-spotlight" class="band-section">
+      <div class="container">
+        
+        <div class="section-header">
+          <div class="section-badge" style="background:rgba(245,158,11,0.1); border-color:rgba(245,158,11,0.3); color:var(--gold);">
+            <span class="pulse-dot" style="background:var(--gold); box-shadow:0 0 10px var(--gold);"></span>
+            <span>Độc Quyền • Tính Năng Đột Phá</span>
+          </div>
+          <h2>Kênh Band: Giao Tiếp Không Dây Thời Gian Thực</h2>
+          <p>
+            Ban nhạc dùng điện thoại quét mã QR là kết nối ngay tới máy vận hành. 
+            Không cần Internet, không cần cài app từ kho ứng dụng. Thử bấm nút trên điện thoại mô phỏng dưới đây để trải nghiệm!
+          </p>
+        </div>
+
+        <!-- Interactive Band Simulator -->
+        <div class="band-simulator-wrapper" id="bandSimulator">
+          
+          <div class="simulator-header-bar">
+            <div class="sim-headline-group">
+              <h3>Mô Phỏng Tương Tác Kênh Band Live</h3>
+              <p>Bấm thử bất kỳ nút cảnh báo nào trên màn hình điện thoại bên trái</p>
+            </div>
+            <div class="sim-status-chip">
+              <span class="live-indicator"></span>
+              <span>LAN WebSocket Kết Nối • ws://worship.local:8080</span>
+            </div>
+          </div>
+
+          <div class="sim-grid">
+            
+            <!-- Left Column: Smartphone Client Mockup -->
+            <div class="phone-mockup-frame">
+              <div class="phone-top-notch"></div>
+              
+              <div class="phone-screen">
+                <div class="phone-app-bar">
+                  <div class="status-row">
+                    <span class="green-dot"></span>
+                    <span>Kênh Band • Phòng Thờ Phượng</span>
+                  </div>
+                  <span style="color:#5b6472; font-size:0.75rem;">3 Đang Online</span>
+                </div>
+
+                <div class="phone-content">
+                  
+                  <div class="phone-tabs">
+                    <button class="phone-tab-btn active" data-tab="alerts" id="tabAlerts">Cảnh Báo</button>
+                    <button class="phone-tab-btn" data-tab="chords" id="tabChords">Hợp Âm</button>
+                    <button class="phone-tab-btn" data-tab="setlist" id="tabSetlist">Setlist</button>
+                  </div>
+
+                  <div class="phone-instruction">
+                    Chạm 1 lần vào nút bên dưới để báo cho người bấm máy chiếu:
+                  </div>
+
+                  <!-- Quick Alert Buttons -->
+                  <div class="phone-buttons-grid" id="phoneButtonsGrid">
+                    <button class="phone-quick-btn" data-msg="🎸 Guitar nhỏ quá, xin tăng âm lượng!">
+                      <span>🎸 Guitar nhỏ quá</span>
+                    </button>
+                    <button class="phone-quick-btn" data-msg="🎤 Mic hát chính bị rè!">
+                      <span>🎤 Mic rè</span>
+                    </button>
+                    <button class="phone-quick-btn" data-msg="🔁 Hát lặp lại Điệp Khúc nhé!">
+                      <span>🔁 Lặp lại ĐK</span>
+                    </button>
+                    <button class="phone-quick-btn" data-msg="🎵 Chuyển bài tiếp theo trong lịch!">
+                      <span>🎵 Chuyển bài</span>
+                    </button>
+                    <button class="phone-quick-btn" data-msg="🔤 Chữ khó đọc quá, đổi nền tối!">
+                      <span>🔤 Chữ khó đọc</span>
+                    </button>
+                    <button class="phone-quick-btn" data-msg="⏱️ Đợi ban hát 30 giây dạo nhạc!">
+                      <span>⏱️ Chờ dạo nhạc</span>
+                    </button>
+                  </div>
+
+                  <!-- Chords Gallery Panel (Toggled via tab) -->
+                  <div id="phoneChordsPanel" style="display:none; text-align:center; padding:10px 0;">
+                    <div style="font-size:0.8rem; font-weight:700; margin-bottom:8px;">HỢP ÂM: CHÚA CHÍNH NGÀI LÀ ĐẤNG...</div>
+                    <div style="background:#f8fafc; border:1px solid #dfe2e7; border-radius:10px; padding:16px; font-family:var(--font-mono); font-size:0.82rem; text-align:left; color:#2563eb;">
+                      [C] Chúa chính Ngài là [G] Đấng con mãi tôn [Am] thờ<br>
+                      [F] Chúa chính Ngài là [G] Vua.<br>
+                      [C] Lòng nguyện hát chúc [G] tán Chúa muôn [Am] đời...
+                    </div>
+                    <small style="color:#64748b; margin-top:8px; display:block;">Vuốt ngang để xem các bài hát tiếp theo</small>
+                  </div>
+
+                  <!-- Setlist Panel (Toggled via tab) -->
+                  <div id="phoneSetlistPanel" style="display:none;">
+                    <div style="font-size:0.8rem; font-weight:700; margin-bottom:8px;">DANH SÁCH BÀI HÁT TỪ XA:</div>
+                    <div style="display:flex; flex-direction:column; gap:6px; font-size:0.82rem;">
+                      <div style="background:#f1f5f9; padding:6px 10px; border-radius:6px;">1. Chúa chính Ngài là Đấng...</div>
+                      <div style="background:#f1f5f9; padding:6px 10px; border-radius:6px;">2. Lớn Bấy Duy Ngài</div>
+                      <div style="background:#f1f5f9; padding:6px 10px; border-radius:6px;">3. Tình Yêu Thương Xót</div>
+                    </div>
+                    <button class="btn btn-primary" id="btnSendSetlistSim" style="width:100%; margin-top:12px; font-size:0.8rem; padding:8px;">Gửi Nạp Vào Lịch Trình</button>
+                  </div>
+
+                </div>
+
+                <div class="phone-toast" id="phoneToast">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
+                  <span id="toastMsg">Đã gửi tới máy vận hành!</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Right Column: Operator Realtime Feed -->
+            <div class="operator-sim-panel">
+              <div class="op-sim-bar">
+                <div class="op-sim-title">
+                  <span>HỘP THƯ KÊNH BAND (MÁY VẬN HÀNH)</span>
+                  <span class="badge-count" id="feedCounter">2</span>
+                </div>
+                <div style="font-size:0.75rem; color:var(--text-muted);">
+                  Sidebar #bandPanel
+                </div>
+              </div>
+
+              <div class="op-sim-feed" id="simFeedList">
+                
+                <!-- Preloaded items -->
+                <div class="op-alert-card urgent">
+                  <div class="alert-main-info">
+                    <div class="alert-meta">
+                      <span class="sender">Guitarist (Phước)</span>
+                      <span>• Vừa xong</span>
+                    </div>
+                    <div class="alert-text-body">🎸 Guitar nhỏ quá, xin tăng âm lượng!</div>
+                  </div>
+                  <button class="alert-ack-btn" onclick="ackAlert(this)">Đã tiếp nhận</button>
+                </div>
+
+                <div class="op-alert-card">
+                  <div class="alert-main-info">
+                    <div class="alert-meta">
+                      <span class="sender">Worship Leader (Hồng)</span>
+                      <span>• 1 phút trước</span>
+                    </div>
+                    <div class="alert-text-body">🔁 Hát lặp lại Điệp Khúc nhé!</div>
+                  </div>
+                  <button class="alert-ack-btn acknowledged">✓ Đã xác nhận</button>
+                </div>
+
+              </div>
+
+              <div class="op-sim-input-row">
+                <input type="text" id="opReplyInput" placeholder="Gõ tin nhắn gửi nhanh về điện thoại ban hát...">
+                <button type="button" id="btnOpSendReply">Gửi Tin</button>
+              </div>
+            </div>
+
+          </div>
+
+        </div>
+
+      </div>
+    </section>
+
+
+    <!-- SECTION 5: COMPARISON MATRIX (BẢNG SO SÁNH) -->
+    <section id="comparison">
+      <div class="container">
+        
+        <div class="section-header">
+          <div class="section-badge">
+            <span class="pulse-dot"></span>
+            <span>Hiệu Quả & Chi Phí</span>
+          </div>
+          <h2>So Sánh Với Các Giải Pháp Khác</h2>
+          <p>Tại sao Hội Thánh không cần phải tốn hàng trăm USD mỗi năm cho các phần mềm thương mại đắt đỏ.</p>
+        </div>
+
+        <div class="table-wrapper">
+          <table class="compare-table">
+            <thead>
+              <tr>
+                <th style="width: 28%;">Tiêu Chí Đánh Giá</th>
+                <th class="highlight-col" style="width: 24%;">Presentation For Church</th>
+                <th style="width: 16%;">EasyWorship</th>
+                <th style="width: 16%;">ProPresenter</th>
+                <th style="width: 16%;">PowerPoint</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>Chi phí bản quyền</strong></td>
+                <td class="highlight-col"><span class="check-yes">Miễn Phí 100%</span></td>
+                <td>Từ $180 - $300 / năm</td>
+                <td>Từ $399 / máy</td>
+                <td>Đi kèm Microsoft 365</td>
+              </tr>
+              <tr>
+                <td><strong>Tối ưu hóa Tiếng Việt</strong></td>
+                <td class="highlight-col"><span class="check-yes">✓ Hoàn hảo (Không lỗi gõ)</span></td>
+                <td><span class="check-limited">Cơ bản</span></td>
+                <td><span class="check-limited">Thỉnh thoảng lỗi font</span></td>
+                <td><span class="check-limited">Cần cài font chuẩn</span></td>
+              </tr>
+              <tr>
+                <td><strong>Kinh Thánh Tiếng Việt tích hợp</strong></td>
+                <td class="highlight-col"><span class="check-yes">✓ Sẵn Bản Truyền Thống, RVV11, BDM</span></td>
+                <td><span class="check-no">Phải mua gói add-on</span></td>
+                <td><span class="check-no">Phải mua bản quyền dịch</span></td>
+                <td><span class="check-no">✕ Thủ công copy/paste</span></td>
+              </tr>
+              <tr>
+                <td><strong>Kênh Band không dây (LAN QR)</strong></td>
+                <td class="highlight-col"><span class="check-yes">✓ Tích hợp sẵn (Độc quyền)</span></td>
+                <td><span class="check-no">✕ Không có</span></td>
+                <td><span class="check-limited">Cần app trả phí riêng</span></td>
+                <td><span class="check-no">✕ Không có</span></td>
+              </tr>
+              <tr>
+                <td><strong>Màn hình Live không giật đen</strong></td>
+                <td class="highlight-col"><span class="check-yes">✓ Crossfade 60fps</span></td>
+                <td><span class="check-yes">✓ Có</span></td>
+                <td><span class="check-yes">✓ Có</span></td>
+                <td><span class="check-no">✕ Dễ lộ màn hình phụ</span></td>
+              </tr>
+              <tr>
+                <td><strong>Tự động co giãn cỡ chữ (Auto-Fit)</strong></td>
+                <td class="highlight-col"><span class="check-yes">✓ Tự động vừa khung</span></td>
+                <td><span class="check-yes">✓ Có</span></td>
+                <td><span class="check-yes">✓ Có</span></td>
+                <td><span class="check-no">✕ Tràn chữ nếu quá dài</span></td>
+              </tr>
+              <tr>
+                <td><strong>Yêu cầu cấu hình máy tính</strong></td>
+                <td class="highlight-col"><span class="check-yes">✓ Nhẹ, Core i3 mượt mà</span></td>
+                <td>Trung bình khá</td>
+                <td>Card đồ họa rời mạnh</td>
+                <td>Nhẹ</td>
+              </tr>
+              <tr>
+                <td><strong>Chạy Offline không cần Internet</strong></td>
+                <td class="highlight-col"><span class="check-yes">✓ 100% Độc lập</span></td>
+                <td><span class="check-yes">✓ Có</span></td>
+                <td><span class="check-yes">✓ Có</span></td>
+                <td><span class="check-yes">✓ Có</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+      </div>
+    </section>
+
+
+    <!-- SECTION 6: DOWNLOAD & QUICK START (KHU VỰC TẢI VỀ) -->
+    <section id="download">
+      <div class="container">
+        
+        <div class="section-header">
+          <div class="section-badge">
+            <span class="pulse-dot"></span>
+            <span>Tải Về & Bắt Đầu Ngay</span>
+          </div>
+          <h2>Sẵn Sàng Cho Buổi Thờ Phượng Tuần Này</h2>
+          <p>Chọn phiên bản phù hợp với hệ điều hành của bạn. Tải về và sử dụng ngay hoàn toàn miễn phí.</p>
+        </div>
+
+        <div class="download-grid">
+          
+          <!-- Windows Installer -->
+          <div class="download-card featured">
+            <div>
+              <div class="download-card-icon">🪟</div>
+              <h3>Windows Cài Đặt (NSIS)</h3>
+              <p>Bản cài đặt tiêu chuẩn, tự động tạo lối tắt trên Desktop và Menu Start. Tương thích Windows 10 & 11.</p>
+              <ul class="download-meta-list">
+                <li><span>✓ Tự động cập nhật đường dẫn</span></li>
+                <li><span>✓ Tích hợp đầy đủ font & thư viện</span></li>
+                <li><span>✓ Định dạng: <code>.Setup.exe</code></span></li>
+              </ul>
+            </div>
+            <a href="https://github.com/PhuocTDT/Presentation_For_Church/releases" target="_blank" rel="noopener noreferrer" class="btn btn-primary" id="btnDownloadWinSetup">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+              <span>Tải Bản Cài Đặt (Win)</span>
+            </a>
+          </div>
+
+          <!-- Windows Portable -->
+          <div class="download-card">
+            <div>
+              <div class="download-card-icon">💼</div>
+              <h3>Windows Portable</h3>
+              <p>Chạy trực tiếp từ USB hoặc thư mục bất kỳ mà không cần quyền Admin. Rất tiện để mang đi nhóm thờ phượng.</p>
+              <ul class="download-meta-list">
+                <li><span>✓ Không cần cài đặt</span></li>
+                <li><span>✓ Cắm USB là chạy ngay</span></li>
+                <li><span>✓ Định dạng: <code>.Portable.exe</code></span></li>
+              </ul>
+            </div>
+            <a href="https://github.com/PhuocTDT/Presentation_For_Church/releases" target="_blank" rel="noopener noreferrer" class="btn btn-secondary" id="btnDownloadWinPort">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+              <span>Tải Bản Portable (Win)</span>
+            </a>
+          </div>
+
+          <!-- macOS DMG -->
+          <div class="download-card">
+            <div>
+              <div class="download-card-icon">🍎</div>
+              <h3>macOS (Apple Silicon & Intel)</h3>
+              <p>Dành riêng cho người dùng MacBook, iMac và Mac Mini. Tương thích macOS Monterey, Ventura, Sonoma.</p>
+              <ul class="download-meta-list">
+                <li><span>✓ Hỗ trợ chip M1/M2/M3 & Intel</span></li>
+                <li><span>✓ Giao diện sắc nét Retina</span></li>
+                <li><span>✓ Định dạng: <code>.dmg</code></span></li>
+              </ul>
+            </div>
+            <a href="https://github.com/PhuocTDT/Presentation_For_Church/releases" target="_blank" rel="noopener noreferrer" class="btn btn-secondary" id="btnDownloadMac">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+              <span>Tải Bản Cho Mac (.dmg)</span>
+            </a>
+          </div>
+
+        </div>
+
+        <!-- 3-Step Quick Start -->
+        <div class="quickstart-box">
+          <h3>Bắt Đầu Dễ Dàng Chỉ Với 3 Bước</h3>
+          <div class="steps-row">
+            <div class="step-card">
+              <div class="step-number">1</div>
+              <h4>Tải Về & Mở Ứng Dụng</h4>
+              <p>Tải bộ cài hoặc file Portable về máy tính và khởi chạy chỉ trong 10 giây.</p>
+            </div>
+            <div class="step-card">
+              <div class="step-number">2</div>
+              <h4>Chọn Bài Hát & Kết Nối</h4>
+              <p>Thêm bài hát vào Schedule hoặc quét mã QR trên điện thoại để mở Kênh Band.</p>
+            </div>
+            <div class="step-card">
+              <div class="step-number">3</div>
+              <h4>Bật Cửa Sổ Live & Chiếu</h4>
+              <p>Bấm Live để đưa chữ lên màn hình máy chiếu HDMI với hình nền chuyển động tuyệt đẹp.</p>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+
+    <!-- SECTION 6.5: NHẬN TÀI KHOẢN KÊNH BAND QUA EMAIL (không bắt buộc) -->
+    <section id="get-account">
+      <div class="container">
+
+        <div class="section-header">
+          <div class="section-badge">
+            <span class="pulse-dot"></span>
+            <span>Không Bắt Buộc</span>
+          </div>
+          <h2>Nhận Sẵn Tài Khoản Kênh Band Qua Email</h2>
+          <p>
+            Để lại email nếu muốn chúng tôi tạo sẵn 1 tài khoản đăng nhập Kênh Band (dùng chung được nhiều nhà thờ),
+            gửi mật khẩu tạm vào hộp thư của bạn. Bỏ qua vẫn tải và dùng app bình thường — chỉ dùng email để gửi tài khoản, không dùng vào việc khác.
+          </p>
+        </div>
+
+        <div class="account-request-card">
+          <div class="account-request-icon">✉️</div>
+          <form class="account-request-form" id="emailAccountForm">
+            <input type="email" id="emailAccountInput" placeholder="ban@gmail.com" required autocomplete="email" maxlength="254">
+            <button type="submit" class="btn btn-primary" id="emailAccountBtn">
+              <span>Gửi Cho Tôi</span>
+            </button>
+          </form>
+          <div class="account-request-status" id="emailAccountStatus" role="status"></div>
+        </div>
+
+      </div>
+    </section>
+
+
+    <!-- SECTION 7: FAQ (CÂU HỎI THƯỜNG GẶP) -->
+    <section id="faq">
+      <div class="container">
+        
+        <div class="section-header">
+          <div class="section-badge">
+            <span class="pulse-dot"></span>
+            <span>Hỏi Đáp Thắc Mắc</span>
+          </div>
+          <h2>Câu Hỏi Thường Gặp</h2>
+          <p>Mọi điều bạn cần biết trước khi triển khai phần mềm cho Hội Thánh của mình.</p>
+        </div>
+
+        <div class="faq-list" id="faqList">
+          
+          <div class="faq-item open">
+            <button class="faq-question">
+              <span>Phần mềm này có thực sự miễn phí vĩnh viễn không?</span>
+              <span class="faq-icon">+</span>
+            </button>
+            <div class="faq-answer">
+              Đúng vậy! Presentation For Church là dự án mã nguồn mở được tạo dựng nhằm phục vụ công việc Chúa và hỗ trợ các Hội Thánh, điểm nhóm vừa và nhỏ tiết kiệm chi phí mua bản quyền phần mềm. Bạn có thể sử dụng hoàn toàn miễn phí cho mọi buổi thờ phượng.
+            </div>
+          </div>
+
+          <div class="faq-item">
+            <button class="faq-question">
+              <span>Hội Thánh không có Internet thì Kênh Band có dùng được không?</span>
+              <span class="faq-icon">+</span>
+            </button>
+            <div class="faq-answer">
+              Hoàn toàn được! Kênh Band chạy trực tiếp trên mạng Wi-Fi nội bộ (LAN). Chỉ cần máy tính vận hành và điện thoại của ban nhạc cùng kết nối vào một cục phát Wi-Fi (ngay cả khi cục phát đó không cắm dây mạng Internet), ứng dụng vẫn quét mã QR và gửi tin nhắn tức thời.
+            </div>
+          </div>
+
+          <div class="faq-item">
+            <button class="faq-question">
+              <span>Làm sao để thêm bài hát mới hoặc các bản dịch Kinh Thánh khác?</span>
+              <span class="faq-icon">+</span>
+            </button>
+            <div class="faq-answer">
+              Ứng dụng có sẵn công cụ biên soạn bài hát (Song Editor) với giao diện trực quan, cho phép bạn nhập lời, chia đoạn (Verse, Chorus) dễ dàng. Về Kinh Thánh, bạn có thể nhập thêm các bản dịch dạng file XML thông qua mục cài đặt Kinh Thánh của ứng dụng.
+            </div>
+          </div>
+
+          <div class="faq-item">
+            <button class="faq-question">
+              <span>Máy tính cấu hình văn phòng bình thường có chạy mượt không?</span>
+              <span class="faq-icon">+</span>
+            </button>
+            <div class="faq-answer">
+              Phần mềm được tối ưu hiệu năng rất tốt trên nền tảng Electron hiện đại. Một chiếc laptop chạy chip Intel Core i3 hoặc Core i5, RAM 4GB - 8GB và card đồ họa tích hợp hoàn toàn có thể xuất màn hình Full HD 60fps mượt mà mà không gặp hiện tượng giật lag.
+            </div>
+          </div>
+
+          <div class="faq-item">
+            <button class="faq-question">
+              <span>Tôi có thể đóng góp tính năng hoặc báo lỗi ở đâu?</span>
+              <span class="faq-icon">+</span>
+            </button>
+            <div class="faq-answer">
+              Bạn có thể tạo Issue hoặc đóng góp Pull Request trực tiếp trên kho mã nguồn GitHub của dự án tại <strong>PhuocTDT/Presentation_For_Church</strong>. Chúng tôi luôn trân trọng mọi ý kiến đóng góp từ các tôi tớ Chúa và các anh em kỹ thuật.
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+    </section>
+
+  </main>
+
+
+  <!-- SECTION 8: FOOTER -->
+  <footer class="site-footer">
+    <div class="container">
+      
+      <div class="footer-top">
+        <div class="footer-brand">
+          <div style="display:flex; align-items:center; gap:10px; margin-bottom:12px;">
+            <img src="assets/images/app-icon.jpg" alt="Logo" width="32" height="32" style="border-radius:8px;">
+            <h4 style="margin:0;">Presentation For Church</h4>
+          </div>
+          <p>
+            Phần mềm trình chiếu thờ phượng hiện đại, mã nguồn mở, phục vụ cộng đồng Cơ Đốc Việt Nam. 
+            Tạ ơn Chúa vì mọi ơn lành Ngài ban.
+          </p>
+        </div>
+
+        <div class="footer-col">
+          <h5>Liên Kết Nhanh</h5>
+          <ul>
+            <li><a href="#hero">Trang Chủ</a></li>
+            <li><a href="#features">Tính Năng</a></li>
+            <li><a href="#band-spotlight">Kênh Band</a></li>
+            <li><a href="#download">Tải Về</a></li>
+            <li><a href="#get-account">Nhận Tài Khoản</a></li>
+          </ul>
+        </div>
+
+        <div class="footer-col">
+          <h5>Dự Án & Nguồn Mở</h5>
+          <ul>
+            <li><a href="https://github.com/PhuocTDT/Presentation_For_Church" target="_blank" rel="noopener noreferrer">Kho Mã Nguồn GitHub</a></li>
+            <li><a href="https://github.com/PhuocTDT/Presentation_For_Church/releases" target="_blank" rel="noopener noreferrer">Phiên Bản Phát Hành</a></li>
+            <li><a href="https://github.com/PhuocTDT/Presentation_For_Church/issues" target="_blank" rel="noopener noreferrer">Báo Lỗi / Đóng Góp</a></li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="footer-bottom">
+        <div>© 2026 Presentation For Church. Phát hành theo Giấy phép Mã nguồn mở.</div>
+        <div style="display:flex; gap:16px;">
+          <span>Phát triển bởi <strong>PhuocTDT</strong> và cộng đồng</span>
+        </div>
+      </div>
+
+    </div>
+  </footer>
+
+  <!-- Script Logic -->
+  <script src="app.js"></script>
+</body>
+</html>
