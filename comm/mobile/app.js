@@ -1,7 +1,11 @@
 /* Kênh Band — mobile client. Vanilla JS, no build, no CDN.
-   Downstream: WebSocket (/api/ws). Upstream: fetch POST.
-   WebSocket (not SSE) because Cloudflare Tunnel buffers streaming HTTP and
-   operator→phone messages would never arrive.
+   GĐ2 (band-comm-plan.md §14): phục vụ từ cloud (Cloudflare Worker
+   MOBILE_ASSETS, path /m/) thay vì LAN server trên máy operator. Downstream:
+   WebSocket thẳng tới Durable Object relay tại
+   CLOUD_API_BASE + '/api/room/<ROOM_CODE>/ws'. Upstream: fetch POST /
+   WS message tới CÙNG base — không còn khái niệm "server LAN" hay path
+   tương đối nữa, ROOM_CODE (ID phòng, gõ/quét lúc join) xác định đúng phòng
+   thay vì domain/IP như LAN cũ.
    No severity anywhere — every incoming message is handled the same way;
    only DIRECTION (band vs operator) changes the colour. */
 
@@ -9,13 +13,12 @@
   'use strict';
 
   var LS_KEY = 'bandcomm.v1';
-  // Hộp thư setlist trên Cloudflare khi máy chiếu tắt hẳn — chỉ dùng khi gửi
-  // LAN thất bại (network error), xem cloud/worker/src/worker.js.
-  var CLOUD_API_BASE = 'https://api.worship-official.link';
+  // Cùng 1 Worker phục vụ CẢ trang này (mount /m/) LẪN toàn bộ API/relay —
+  // xem cloud/worker/src/worker.js + room-relay.js.
+  var CLOUD_API_BASE = 'https://channel.worship-official.link';
   // Đăng nhập tài khoản trung tâm (authMode='cognito', cloud/identity-plan.md)
-  // — Worker "band-identity" là NƠI DUY NHẤT phone nói chuyện để lấy JWT; sau
-  // đó JWT gửi thẳng cho server LAN (server local verify offline, không đi
-  // qua Worker này nữa). Bước này BẮT BUỘC cần mạng (4G/wifi khác venue).
+  // — Worker "band-identity" là NƠI DUY NHẤT phone nói chuyện để lấy JWT;
+  // JWT sau đó gửi cho relay (verify chữ ký, không gọi lại Worker này).
   var IDENTITY_API_BASE = 'https://identity.worship-official.link';
 
   var state = loadState();
@@ -44,8 +47,28 @@
     try { localStorage.setItem(LS_KEY, JSON.stringify(state)); } catch (e) {}
   }
 
+  // ID phòng — biết TRƯỚC khi join (gõ tay hoặc ?room= trong link/QR), khác
+  // hẳn state.cloudRoomId (chỉ biết SAU khi join, dùng cho gallery/setlist
+  // cloud-queue cũ, không đổi). roomUrl()/roomWsBase() dùng CHUNG cho mọi
+  // request/WS sau khi đã xác định đúng phòng.
+  function currentRoomCode() {
+    return (state.roomCode || '').trim().toUpperCase();
+  }
+  function roomUrl(path) {
+    return CLOUD_API_BASE + '/api/room/' + encodeURIComponent(currentRoomCode()) + path;
+  }
+  function roomWsUrl(path) {
+    return CLOUD_API_BASE.replace(/^http/, 'ws') + '/api/room/' + encodeURIComponent(currentRoomCode()) + path;
+  }
+
   /* ---------------- join ---------------- */
-  // 2 chế độ (band-comm-plan.md §11), chọn qua GET api/mode lúc trang tải:
+  // 2 chế độ (band-comm-plan.md §11), chọn qua GET /mode CHO ĐÚNG PHÒNG —
+  // khác hẳn LAN cũ (1 domain = 1 phòng, /mode không cần tham số gì): giờ
+  // nhiều nhà thờ dùng CHUNG 1 domain, phải biết ROOM CODE trước mới hỏi
+  // được /mode của phòng nào. Link/QR operator chia sẻ có sẵn ?room=<code>
+  // (điền sẵn, tự dò mode ngay) — gõ tay ID phòng (không có ?room=) vẫn luôn
+  // hoạt động qua form mặc định (mật khẩu phòng), TỰ chuyển form đúng ngay
+  // khi rời khỏi ô ID phòng (blur) nếu phòng đó thật ra dùng tài khoản.
   //  - mặc định (accountsEnabled=false): tên tự gõ + mật khẩu phòng (như trước).
   //  - tài khoản (accountsEnabled=true): đăng nhập username+password do
   //    người trình chiếu cấp sẵn (không tự đăng ký được) -> nếu operator có
@@ -58,20 +81,88 @@
   // NEW_PASSWORD_REQUIRED) + name đã khai ở bước 1, giữ lại vì field gốc bị
   // ẩn đi ở bước đổi mật khẩu.
   var pendingCognito = null; // { session, email, name }
+  // Tài khoản local bị operator bắt đổi mật khẩu ngay lần đăng nhập đầu
+  // (ô tick lúc tạo/reset tài khoản) — j giữ token đã cấp (đăng nhập coi
+  // như đã xong), currentPassword là mật khẩu vừa gõ ở bước đăng nhập
+  // (đổi mật khẩu cần đúng mật khẩu cũ, xem accounts.js's changeOwnPassword).
+  var pendingMustChange = null; // { j, fallbackName, currentPassword }
+  var pendingAccountPassword = null;
 
-  fetch('api/mode').then(function (r) { return r.json(); }).then(function (m) {
+  var ROOM_CODE_RE = /^[A-Z0-9]{4,10}$/;
+  var currentAuthTab = 'account';
+
+  function setAuthTab(tab) {
+    currentAuthTab = tab;
+    $('joinErr').textContent = '';
+    if (tab === 'account') {
+      if ($('tabAccount')) $('tabAccount').classList.add('active');
+      if ($('tabLegacy')) $('tabLegacy').classList.remove('active');
+      $('joinAccountFields').classList.remove('hidden');
+      $('joinLegacyFields').classList.add('hidden');
+      $('joinCognitoFields').classList.add('hidden');
+      $('joinSub').textContent = 'Đăng nhập bằng tài khoản thành viên ban nhạc + ID phòng.';
+      $('joinBtn').textContent = 'Đăng nhập vào kênh';
+    } else {
+      if ($('tabAccount')) $('tabAccount').classList.remove('active');
+      if ($('tabLegacy')) $('tabLegacy').classList.add('active');
+      $('joinAccountFields').classList.add('hidden');
+      $('joinLegacyFields').classList.remove('hidden');
+      $('joinCognitoFields').classList.add('hidden');
+      $('joinSub').textContent = 'Nhập tên của bạn, ID phòng và mật khẩu phòng người trình chiếu đọc cho bạn.';
+      $('joinBtn').textContent = 'Vào kênh';
+    }
+  }
+
+  if ($('tabAccount')) $('tabAccount').addEventListener('click', function () { setAuthTab('account'); });
+  if ($('tabLegacy')) $('tabLegacy').addEventListener('click', function () { setAuthTab('legacy'); });
+
+  function syncRoomCodeFields(code) {
+    ['roomCode', 'roomCode2', 'roomCode3'].forEach(function (id) {
+      if ($(id) && document.activeElement !== $(id)) $(id).value = code;
+    });
+  }
+  function applyMode(m) {
     accountsEnabled = !!(m && m.accountsEnabled);
     authMode = (m && m.authMode === 'cognito') ? 'cognito' : 'local';
     if (accountsEnabled && authMode === 'cognito') {
       $('joinLegacyFields').classList.add('hidden');
+      $('joinAccountFields').classList.add('hidden');
       $('joinCognitoFields').classList.remove('hidden');
-      $('joinSub').textContent = 'Đăng nhập bằng tài khoản email dùng chung nhiều nhà thờ.';
+      if ($('authTabs')) $('authTabs').classList.add('hidden');
+      $('joinSub').textContent = 'Đăng nhập bằng tài khoản email dùng chung nhiều nhà thờ + ID phòng.';
+      $('joinBtn').textContent = 'Đăng nhập vào kênh';
     } else if (accountsEnabled) {
-      $('joinLegacyFields').classList.add('hidden');
-      $('joinAccountFields').classList.remove('hidden');
-      $('joinSub').textContent = 'Đăng nhập bằng tài khoản người trình chiếu đã cấp cho bạn.';
+      if ($('authTabs')) $('authTabs').classList.remove('hidden');
+      setAuthTab('account');
     }
-  }).catch(function () { /* mất mạng lúc tải trang — cứ để mặc định (mô hình mật khẩu phòng) */ });
+  }
+  function lookupMode(code) {
+    if (!ROOM_CODE_RE.test(code)) return;
+    fetch(CLOUD_API_BASE + '/api/room/' + encodeURIComponent(code) + '/mode')
+      .then(function (r) { return r.json(); })
+      .then(function (m) {
+        if (!m || !m.configured) { return; }
+        $('joinErr').textContent = '';
+        applyMode(m);
+      })
+      .catch(function () { /* mất mạng lúc dò */ });
+  }
+
+  var urlRoomCode = (new URLSearchParams(location.search).get('room') || '').trim().toUpperCase();
+  if (urlRoomCode) { syncRoomCodeFields(urlRoomCode); lookupMode(urlRoomCode); }
+
+  ['roomCode', 'roomCode2', 'roomCode3'].forEach(function (id) {
+    $(id) && $(id).addEventListener('input', function () {
+      var code = this.value.trim().toUpperCase();
+      ['roomCode', 'roomCode2', 'roomCode3'].forEach(function (otherId) {
+        if (otherId !== id && $(otherId)) $(otherId).value = code;
+      });
+    });
+    $(id) && $(id).addEventListener('blur', function () {
+      var code = this.value.trim().toUpperCase();
+      if (code) { syncRoomCodeFields(code); lookupMode(code); }
+    });
+  });
 
   $('joinBtn').addEventListener('click', doJoin);
   $('roomPassword').addEventListener('keydown', function (e) { if (e.key === 'Enter') doJoin(); });
@@ -79,19 +170,39 @@
   $('roomPassword2').addEventListener('keydown', function (e) { if (e.key === 'Enter') doJoin(); });
   $('ciPassword').addEventListener('keydown', function (e) { if (e.key === 'Enter') doJoin(); });
   $('ciNewPassword').addEventListener('keydown', function (e) { if (e.key === 'Enter') doJoin(); });
+  $('ciNewPasswordConfirm').addEventListener('keydown', function (e) { if (e.key === 'Enter') doJoin(); });
+  $('mcNewPassword').addEventListener('keydown', function (e) { if (e.key === 'Enter') doJoin(); });
+  $('mcNewPasswordConfirm').addEventListener('keydown', function (e) { if (e.key === 'Enter') doJoin(); });
   $('ciRequestAccessBtn').addEventListener('click', doRequestAccess);
+  $('ciForgotPasswordBtn').addEventListener('click', doForgotPassword);
+
+  // Nút "mắt" hiện/ẩn mật khẩu — người dùng gõ sai (đặc biệt lúc đặt mật khẩu
+  // mới, ô mật khẩu che kín nên không tự phát hiện gõ nhầm/thiếu ký tự) không
+  // có cách nào tự kiểm tra lại trước khi bấm gửi.
+  Array.prototype.forEach.call(document.querySelectorAll('.pwd-toggle'), function (btn) {
+    btn.addEventListener('click', function () {
+      var input = $(btn.getAttribute('data-target'));
+      if (!input) return;
+      var show = input.type === 'password';
+      input.type = show ? 'text' : 'password';
+      btn.textContent = show ? '🙈' : '👁';
+      btn.setAttribute('aria-label', show ? 'Ẩn mật khẩu' : 'Hiện mật khẩu');
+    });
+  });
 
   function doJoin() {
+    if (pendingMustChange) return doMustChangePassword();
     if (pendingTempToken) return doJoinRoom();
     if (pendingCognito) return doCognitoNewPassword();
     if (accountsEnabled && authMode === 'cognito') return doCognitoLogin();
-    if (accountsEnabled) return doLogin();
+    if (currentAuthTab === 'account') return doLogin();
     return doLegacyJoin();
   }
 
   // Điền state chung + vào màn chính — dùng chung cho cả 3 đường vào kênh
   // (mật khẩu phòng cũ, đăng nhập tài khoản 1 bước, đăng nhập tài khoản 2 bước).
   function finalizeJoin(j, fallbackName) {
+    if (j.mustChangePassword) return showMustChangePassword(j, fallbackName);
     state.token = j.token;
     state.clientId = j.clientId;
     state.name = j.name || fallbackName;
@@ -109,16 +220,19 @@
 
   function doLegacyJoin() {
     var name = $('name').value.trim();
+    var code = $('roomCode').value.trim().toUpperCase();
     var password = $('roomPassword').value.trim();
     $('joinErr').textContent = '';
     if (!name) { $('joinErr').textContent = 'Nhập tên đã.'; return; }
+    if (!/^[A-Z0-9]{4,10}$/.test(code)) { $('joinErr').textContent = 'ID phòng gồm 4–10 ký tự chữ/số.'; return; }
     if (!/^[a-zA-Z0-9]{4,12}$/.test(password)) { $('joinErr').textContent = 'Mật khẩu phòng gồm 4–12 ký tự chữ/số.'; return; }
     $('joinBtn').disabled = true;
+    state.roomCode = code;
 
-    fetch('api/join', {
+    fetch(roomUrl('/join'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name: name, password: password, profileId: state.profileId })
+      body: JSON.stringify({ name: name, code: code, password: password, profileId: state.profileId })
     }).then(function (r) {
       return r.json().then(function (j) { return { ok: r.ok, j: j }; });
     }).then(function (res) {
@@ -134,14 +248,18 @@
   function doLogin() {
     var username = $('username').value.trim();
     var password = $('password').value;
+    var code = $('roomCode2').value.trim().toUpperCase();
     $('joinErr').textContent = '';
     if (!username || !password) { $('joinErr').textContent = 'Nhập tên đăng nhập và mật khẩu.'; return; }
+    if (!/^[A-Z0-9]{4,10}$/.test(code)) { $('joinErr').textContent = 'ID phòng gồm 4–10 ký tự chữ/số.'; return; }
     $('joinBtn').disabled = true;
+    pendingAccountPassword = password;
+    state.roomCode = code;
 
-    fetch('api/login', {
+    fetch(roomUrl('/login'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username: username, password: password })
+      body: JSON.stringify({ username: username, password: password, code: code })
     }).then(function (r) {
       return r.json().then(function (j) { return { ok: r.ok, j: j }; });
     }).then(function (res) {
@@ -168,7 +286,7 @@
     if (!/^[a-zA-Z0-9]{4,12}$/.test(password)) { $('joinErr').textContent = 'Mật khẩu phòng gồm 4–12 ký tự chữ/số.'; return; }
     $('joinBtn').disabled = true;
 
-    fetch('api/join-room', {
+    fetch(roomUrl('/join-room'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ tempToken: pendingTempToken, password: password })
@@ -197,6 +315,50 @@
     });
   }
 
+  // Chuyển sang màn "bắt đổi mật khẩu" — token đăng nhập j.token đã hợp lệ
+  // (dùng luôn để gọi /api/change-password, không cần đăng nhập lại).
+  function showMustChangePassword(j, fallbackName) {
+    pendingMustChange = { j: j, fallbackName: fallbackName, currentPassword: pendingAccountPassword };
+    pendingAccountPassword = null;
+    $('joinLegacyFields').classList.add('hidden');
+    $('joinAccountFields').classList.add('hidden');
+    $('joinRoomPasswordFields').classList.add('hidden');
+    $('joinCognitoFields').classList.add('hidden');
+    $('joinCognitoNewPasswordFields').classList.add('hidden');
+    $('joinMustChangeFields').classList.remove('hidden');
+    $('joinErr').textContent = '';
+    $('joinSub').textContent = 'Đổi mật khẩu trước khi dùng tiếp.';
+    $('mcNewPassword').focus();
+  }
+
+  function doMustChangePassword() {
+    var newPassword = $('mcNewPassword').value;
+    var confirmPassword = $('mcNewPasswordConfirm').value;
+    $('joinErr').textContent = '';
+    if (!newPassword || newPassword.length < 6) { $('joinErr').textContent = 'Mật khẩu mới tối thiểu 6 ký tự.'; return; }
+    if (newPassword !== confirmPassword) { $('joinErr').textContent = 'Mật khẩu nhập lại không khớp.'; return; }
+    $('joinBtn').disabled = true;
+    var pending = pendingMustChange;
+
+    fetch(roomUrl('/change-password?token=' + encodeURIComponent(pending.j.token)), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ currentPassword: pending.currentPassword, newPassword: newPassword })
+    }).then(function (r) {
+      return r.json().then(function (jr) { return { ok: r.ok, j: jr }; });
+    }).then(function (res) {
+      $('joinBtn').disabled = false;
+      if (!res.ok) { $('joinErr').textContent = (res.j && res.j.error) || 'Không đổi được mật khẩu.'; return; }
+      pendingMustChange = null;
+      $('joinMustChangeFields').classList.add('hidden');
+      pending.j.mustChangePassword = false;
+      finalizeJoin(pending.j, pending.fallbackName);
+    }).catch(function () {
+      $('joinBtn').disabled = false;
+      $('joinErr').textContent = 'Không kết nối được máy trình chiếu. Cùng Wi-Fi chưa?';
+    });
+  }
+
   // authMode='cognito' bước 1: xin JWT từ Worker "band-identity" bằng
   // email+mật khẩu (KHÔNG gọi server LAN ở bước này — Worker giữ AWS
   // credentials, server LAN chỉ verify chữ ký JWT offline sau đó).
@@ -204,10 +366,13 @@
     var name = $('ciName').value.trim();
     var email = $('ciEmail').value.trim();
     var password = $('ciPassword').value;
+    var code = $('roomCode3').value.trim().toUpperCase();
     $('joinErr').textContent = ''; $('joinInfo').textContent = '';
     if (!name) { $('joinErr').textContent = 'Nhập tên đã.'; return; }
     if (!email || !password) { $('joinErr').textContent = 'Nhập email và mật khẩu.'; return; }
+    if (!/^[A-Z0-9]{4,10}$/.test(code)) { $('joinErr').textContent = 'ID phòng gồm 4–10 ký tự chữ/số.'; return; }
     $('joinBtn').disabled = true;
+    state.roomCode = code;
 
     fetch(IDENTITY_API_BASE + '/login', {
       method: 'POST',
@@ -236,8 +401,10 @@
   // Cognito bắt buộc đổi mật khẩu tạm ngay lần đăng nhập đầu.
   function doCognitoNewPassword() {
     var newPassword = $('ciNewPassword').value;
+    var confirmPassword = $('ciNewPasswordConfirm').value;
     $('joinErr').textContent = ''; $('joinInfo').textContent = '';
     if (!newPassword || newPassword.length < 8) { $('joinErr').textContent = 'Mật khẩu mới tối thiểu 8 ký tự.'; return; }
+    if (newPassword !== confirmPassword) { $('joinErr').textContent = 'Mật khẩu nhập lại không khớp.'; return; }
     $('joinBtn').disabled = true;
     var pending = pendingCognito;
 
@@ -265,14 +432,17 @@
     });
   }
 
-  // Bước 2: đưa idToken đã có chữ ký Cognito cho server LAN verify offline —
-  // giống hệt luồng needsRoomPassword/finalizeJoin của đăng nhập tài khoản cục bộ.
+  // Bước 2: đưa idToken đã có chữ ký Cognito cho relay verify (chữ ký RS256,
+  // không xác thực lại mật khẩu) — giống hệt luồng needsRoomPassword/
+  // finalizeJoin của đăng nhập tài khoản cục bộ.
   function doCognitoFinish(idToken, name) {
     $('joinBtn').disabled = true;
-    fetch('api/login', {
+    var code = $('roomCode3').value.trim().toUpperCase();
+    state.roomCode = code;
+    fetch(roomUrl('/login'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ idToken: idToken, name: name })
+      body: JSON.stringify({ idToken: idToken, name: name, code: code })
     }).then(function (r) {
       return r.json().then(function (j) { return { ok: r.ok, j: j }; });
     }).then(function (res) {
@@ -324,6 +494,30 @@
     });
   }
 
+  // "Quên mật khẩu?" — cùng nguyên tắc không lộ email tồn tại hay không như
+  // doRequestAccess() ở trên (xem cloud/identity/src/worker.js's /forgot-password).
+  function doForgotPassword() {
+    var email = $('ciEmail').value.trim();
+    $('joinErr').textContent = ''; $('joinInfo').textContent = '';
+    if (!email) { $('joinErr').textContent = 'Nhập email trước đã.'; return; }
+    $('ciForgotPasswordBtn').disabled = true;
+
+    fetch(IDENTITY_API_BASE + '/forgot-password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: email })
+    }).then(function (r) {
+      return r.json().then(function (j) { return { ok: r.ok, j: j }; });
+    }).then(function (res) {
+      $('ciForgotPasswordBtn').disabled = false;
+      if (!res.ok) { $('joinErr').textContent = (res.j && res.j.error) || 'Không gửi được yêu cầu.'; return; }
+      $('joinInfo').textContent = 'Nếu email có tài khoản, mật khẩu tạm mới đã được gửi tới hộp thư (kiểm tra cả mục Spam).';
+    }).catch(function () {
+      $('ciForgotPasswordBtn').disabled = false;
+      $('joinErr').textContent = 'Không kết nối được máy chủ. Cần có mạng để đặt lại mật khẩu.';
+    });
+  }
+
   /* ---------------- main ---------------- */
 
   function enterMain() {
@@ -333,21 +527,31 @@
     renderButtons();
     connect();
     startPing();
+    // Phiên resume qua token đã lưu (bỏ qua finalizeJoin() nên bỏ luôn phần
+    // renderChords(j.gallery) chỉ nằm ở đó) — tự fetch lại gallery ở đây để
+    // nút "🎼 Hợp âm" không bị kẹt ở trạng thái hidden mặc định trong HTML.
+    fetch(roomUrl('/gallery?token=' + encodeURIComponent(state.token || '')))
+      .then(function (r) { return r.json(); })
+      .then(function (manifest) { renderChords(manifest); })
+      .catch(function () {});
   }
 
   function connect() {
     if (ws) { try { ws.onclose = null; ws.close(); } catch (e) {} ws = null; }
     setDot('');
-    var proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
-    var url = proto + '//' + location.host + '/api/ws?token=' + encodeURIComponent(state.token) +
-              (lastId ? '&since=' + encodeURIComponent(lastId) : '');
+    var url = roomWsUrl('/ws?token=' + encodeURIComponent(state.token) +
+              (lastId ? '&since=' + encodeURIComponent(lastId) : ''));
     try { ws = new WebSocket(url); } catch (e) { scheduleReconnect(); return; }
 
     ws.onopen = function () { setDot('on'); reconnDelay = 1000; };
     ws.onmessage = function (e) {
-      var env;
-      try { env = JSON.parse(e.data); } catch (err) { return; }
-      if (env && env.id && env.type !== 'presence') lastId = env.id;
+      var msg;
+      try { msg = JSON.parse(e.data); } catch (err) { return; }
+      if (!msg) return;
+      if (msg.kind === 'pong') return;
+      if (msg.kind !== 'envelope' || !msg.envelope) return;
+      var env = msg.envelope;
+      if (env.id && env.type !== 'presence') lastId = env.id;
       handleEnvelope(env);
     };
     ws.onerror = function () { /* onclose fires right after */ };
@@ -365,7 +569,7 @@
     reconnTimer = setTimeout(function () {
       reconnTimer = null;
       reconnDelay = Math.min(reconnDelay * 2, 10000);
-      fetch('api/ping', { method: 'POST', headers: authHeader(), body: '{}' })
+      fetch(roomUrl('/whoami?token=' + encodeURIComponent(state.token || '')))
         .then(function (r) {
           if (r.status === 401) { state.token = null; saveState(); location.reload(); return; }
           connect();
@@ -374,14 +578,13 @@
     }, reconnDelay);
   }
 
-  function authHeader() {
-    return { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + (state.token || '') };
-  }
-
+  // Giữ kết nối WS sống qua NAT/carrier hay ngắt idle — gửi ping NGAY TRÊN
+  // WEBSOCKET đang mở (không phải HTTP POST riêng như LAN cũ), khớp
+  // kind:'ping' -> kind:'pong' phía room-relay.js.
   function startPing() {
     if (pingTimer) clearInterval(pingTimer);
     pingTimer = setInterval(function () {
-      fetch('api/ping', { method: 'POST', headers: authHeader(), body: '{}' }).catch(function () {});
+      if (ws && ws.readyState === WebSocket.OPEN) { try { ws.send(JSON.stringify({ kind: 'ping' })); } catch (e) {} }
     }, 10000);
   }
 
@@ -399,11 +602,9 @@
     if (env.type === 'system') { return; }
     if (env.type === 'gallery') { renderChords(env.meta || {}); return; }
     if (env.type === 'room') {
-      // Operator changed tunnelName (drives setlistEnabled) AFTER this phone
-      // already joined — setlistEnabled only ever came from /api/join's
-      // response, and reconnect (POST /api/ping) doesn't re-fetch it, so
-      // without this the setlist UI could stay hidden for the rest of a
-      // long-lived session even after the operator turns it on.
+      // Dự phòng — room-relay.js hiện chưa phát loại envelope này (setlistEnabled
+      // luôn true, không còn phụ thuộc Named Tunnel như LAN cũ nên không cần
+      // báo đổi giữa chừng nữa), giữ lại nhánh xử lý phòng khi cần dùng lại sau.
       if (env.meta && typeof env.meta.setlistEnabled === 'boolean') {
         $('slToggleBtn').hidden = !env.meta.setlistEnabled;
       }
@@ -529,17 +730,19 @@
     return el;
   }
 
+  // Gửi qua CHÍNH WebSocket đang mở (không còn HTTP POST /api/message riêng —
+  // room-relay.js nhận alert trực tiếp qua kind:'message' trên WS) — 'sent'
+  // là optimistic (đã đưa được vào socket), phần xác nhận thật đến từ chính
+  // echo envelope quay lại (xem handleEnvelope's markSent()).
   function sendButton(b, el) {
     el.classList.remove('failed');
-    fetch('api/message', {
-      method: 'POST', headers: authHeader(),
-      body: JSON.stringify({ buttonId: b.id, label: b.label })
-    }).then(function (r) {
-      if (!r.ok) throw new Error('http ' + r.status);
+    if (!ws || ws.readyState !== WebSocket.OPEN) { flash(el, 'failed'); return; }
+    try {
+      ws.send(JSON.stringify({ kind: 'message', buttonId: b.id, text: b.label }));
       flash(el, 'sent');
-    }).catch(function () {
+    } catch (e) {
       flash(el, 'failed');
-    });
+    }
   }
 
   function markSent(buttonId, text) {
@@ -592,8 +795,8 @@
   function persistButtons() {
     saveState();
     renderButtons();
-    fetch('api/profile', {
-      method: 'POST', headers: authHeader(),
+    fetch(roomUrl('/profile?token=' + encodeURIComponent(state.token || '')), {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ profileId: state.profileId, buttons: state.buttons })
     }).catch(function () {});
   }
@@ -613,7 +816,7 @@
     chImgs = imgs;
     chUpdatedAt = (manifest && manifest.updatedAt) || chUpdatedAt;
     updateChToggle();
-    var sec = $('chords'), track = $('chView'), dots = $('chDots');
+    var sec = $('chords'), track = $('chTrack') || $('chView'), dots = $('chDots');
     // Ảnh KHÔNG tự hiện: người xem phải bấm "🎼 Hợp âm" để mở section ra —
     // luôn cho mở kể cả thư viện trống, vì ai cũng thêm ảnh được nên cần
     // thấy nút "+ Thêm ảnh" để bắt đầu, không còn khái niệm "chưa bật".
@@ -624,24 +827,13 @@
     imgs.forEach(function (item, i) {
       var id = item.id;
       var wrap = document.createElement('div');
-      wrap.style.cssText = 'flex:0 0 100%;position:relative;scroll-snap-align:center;';
+      wrap.className = 'ch-slide';
       var im = document.createElement('img');
       im.loading = 'lazy';
       im.alt = 'Hợp âm ' + (i + 1);
-      // Ưu tiên xem qua Cloudflare (ổn định, không phụ thuộc tunnel còn sống
-      // lúc đang xem) — server local mirror ảnh lên đó ngay lúc upload. Nếu
-      // cloud lỗi (chưa kịp mirror, mất mạng ngoài…) tự rớt về local qua LAN.
-      var localSrc = 'api/gallery/image/' + encodeURIComponent(id) + '?token=' + encodeURIComponent(state.token || '');
-      if (state.cloudRoomId) {
-        im.src = CLOUD_API_BASE + '/gallery/image/' + encodeURIComponent(state.cloudRoomId) + '/' + encodeURIComponent(id);
-        im.addEventListener('error', function onCloudErr() {
-          im.removeEventListener('error', onCloudErr);
-          im.src = localSrc;
-        }, { once: true });
-      } else {
-        im.src = localSrc;
-      }
-      im.style.cssText = 'width:100%;height:auto;max-height:64vh;object-fit:contain;background:#fff;display:block;';
+      // Ảnh lưu thẳng lên R2 lúc thêm (xem room-relay.js's handleGalleryAdd) —
+      // không còn "server local" nào để rớt về nữa, chỉ 1 nguồn duy nhất.
+      im.src = CLOUD_API_BASE + '/gallery/image/' + encodeURIComponent(state.cloudRoomId) + '/' + encodeURIComponent(id);
       wrap.appendChild(im);
       // Chỉ chủ ảnh (ownerId === profileId của chính điện thoại này, ổn định
       // qua các lần join lại) mới thấy nút Xoá — ai cũng thêm được nhưng chỉ
@@ -649,7 +841,7 @@
       if (item.ownerId && item.ownerId === state.profileId) {
         var rm = document.createElement('button');
         rm.type = 'button'; rm.textContent = 'Xoá';
-        rm.style.cssText = 'position:absolute;top:6px;right:6px;background:#c0392f;color:#fff;border:none;border-radius:8px;padding:4px 10px;font-weight:700;';
+        rm.style.cssText = 'position:absolute;top:6px;right:6px;background:#c0392f;color:#fff;border:none;border-radius:8px;padding:4px 10px;font-weight:700;z-index:2;';
         rm.addEventListener('click', function (e) { e.stopPropagation(); removeChord(id); });
         wrap.appendChild(rm);
       }
@@ -659,6 +851,8 @@
       d.addEventListener('click', function () { goChord(i); });
       dots.appendChild(d);
     });
+    currentChordIdx = 0;
+    updateTrackPosition(false);
     setActiveDot(0);
   }
 
@@ -681,7 +875,9 @@
   });
 
   function removeChord(id) {
-    fetch('api/gallery/remove', { method: 'POST', headers: authHeader(), body: JSON.stringify({ id: id }) })
+    fetch(roomUrl('/gallery/remove?token=' + encodeURIComponent(state.token || '')), {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: id })
+    })
       .then(function (r) { return r.json(); })
       .then(function (m) { renderChords(m); })
       .catch(function () { toast('band', '', 'Xoá không được.'); });
@@ -706,7 +902,9 @@
     ev.target.value = '';
     files.forEach(function (f) {
       downscaleChordImg(f, function (dataUrl) {
-        fetch('api/gallery/add', { method: 'POST', headers: authHeader(), body: JSON.stringify({ name: f.name, ext: '.jpg', dataB64: dataUrl }) })
+        fetch(roomUrl('/gallery/add?token=' + encodeURIComponent(state.token || '')), {
+          method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: f.name, ext: '.jpg', dataB64: dataUrl })
+        })
           .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
           .then(function (res) {
             // fetch() không coi status lỗi (403/413/500...) là promise reject —
@@ -721,27 +919,105 @@
     });
   });
 
-  function goChord(i) {
-    var img = $('chView').children[i];
-    if (img && img.scrollIntoView) {
-      img.scrollIntoView({ block: 'nearest', inline: 'center' });   // instant + snap-aware
-    } else {
-      var v = $('chView');
-      v.scrollLeft = i * (v.clientWidth || v.offsetWidth || 1);
-    }
-    setActiveDot(i);
+  var currentChordIdx = 0;
+
+  function updateTrackPosition(animate) {
+    var track = $('chTrack') || $('chView');
+    if (!track) return;
+    track.style.transition = animate ? 'transform 0.22s cubic-bezier(0.25, 1, 0.5, 1)' : 'none';
+    track.style.transform = 'translate3d(-' + (currentChordIdx * 100) + '%, 0, 0)';
   }
+
+  function goChord(i) {
+    var track = $('chTrack') || $('chView');
+    var total = track ? track.children.length : 0;
+    if (total <= 0) return;
+    currentChordIdx = Math.max(0, Math.min(i, total - 1));
+    updateTrackPosition(true);
+    setActiveDot(currentChordIdx);
+  }
+
   function setActiveDot(i) {
     var ds = $('chDots').children;
     for (var k = 0; k < ds.length; k++) ds[k].classList.toggle('on', k === i);
   }
-  var chScrollTimer = null;
-  $('chView').addEventListener('scroll', function () {
-    clearTimeout(chScrollTimer);
-    chScrollTimer = setTimeout(function () {
-      var v = $('chView');
-      setActiveDot(v.clientWidth ? Math.round(v.scrollLeft / v.clientWidth) : 0);
-    }, 60);
+
+  var chTouchStartX = 0;
+  var chTouchStartY = 0;
+  var chIsHorizontal = null;
+  var chIsDragging = false;
+
+  var chViewEl = $('chView');
+  chViewEl.addEventListener('touchstart', function (e) {
+    if (!e.touches || e.touches.length !== 1) return;
+    var track = $('chTrack') || $('chView');
+    if (!track || track.children.length <= 1) return;
+    chTouchStartX = e.touches[0].clientX;
+    chTouchStartY = e.touches[0].clientY;
+    chIsHorizontal = null;
+    chIsDragging = true;
+    track.style.transition = 'none';
+  }, { passive: true });
+
+  chViewEl.addEventListener('touchmove', function (e) {
+    if (!chIsDragging || !e.touches || !e.touches.length) return;
+    var dx = e.touches[0].clientX - chTouchStartX;
+    var dy = e.touches[0].clientY - chTouchStartY;
+
+    if (chIsHorizontal === null) {
+      if (Math.abs(dx) > 6 || Math.abs(dy) > 6) {
+        chIsHorizontal = Math.abs(dx) >= Math.abs(dy);
+        if (!chIsHorizontal) {
+          chIsDragging = false;
+          return;
+        }
+      } else {
+        return;
+      }
+    }
+
+    if (!chIsHorizontal) return;
+    if (e.cancelable) e.preventDefault();
+
+    var track = $('chTrack') || $('chView');
+    var w = chViewEl.clientWidth || 1;
+    var total = track.children.length;
+    var baseOffset = -currentChordIdx * w;
+
+    // Resistance at edges
+    if ((currentChordIdx === 0 && dx > 0) || (currentChordIdx === total - 1 && dx < 0)) {
+      dx = dx * 0.3;
+    }
+    track.style.transform = 'translate3d(' + (baseOffset + dx) + 'px, 0, 0)';
+  }, { passive: false });
+
+  chViewEl.addEventListener('touchend', function (e) {
+    if (!chIsDragging) return;
+    chIsDragging = false;
+    if (!chIsHorizontal) return;
+    var dx = (e.changedTouches && e.changedTouches.length ? e.changedTouches[0].clientX : 0) - chTouchStartX;
+    var w = chViewEl.clientWidth || 1;
+    var threshold = Math.min(w * 0.15, 45);
+    var track = $('chTrack') || $('chView');
+    var total = track ? track.children.length : 0;
+
+    if (dx < -threshold && currentChordIdx < total - 1) {
+      currentChordIdx++;
+    } else if (dx > threshold && currentChordIdx > 0) {
+      currentChordIdx--;
+    }
+    updateTrackPosition(true);
+    setActiveDot(currentChordIdx);
+  }, { passive: true });
+
+  chViewEl.addEventListener('touchcancel', function () {
+    if (!chIsDragging) return;
+    chIsDragging = false;
+    updateTrackPosition(true);
+  }, { passive: true });
+
+  window.addEventListener('resize', function () {
+    updateTrackPosition(false);
   });
 
   /* ---------------- setlist (soạn danh sách bài gửi máy chiếu) ---------------- */
@@ -750,15 +1026,19 @@
   var slLibLoaded = false;
 
   function fetchLibrary() {
-    // fallback từ cache trước cho nhanh / lúc mạng chờn
-    if (!slSongs.length && state.slLibCache && Array.isArray(state.slLibCache.songs)) slSongs = state.slLibCache.songs;
-    fetch('api/library', { headers: authHeader() })
+    // fallback từ cache trước cho nhanh / lúc mạng chờn (chỉ dùng nếu cache khớp đúng room)
+    if (!slSongs.length && state.slLibCache && state.slLibCache.roomId === state.cloudRoomId && Array.isArray(state.slLibCache.songs)) {
+      slSongs = state.slLibCache.songs;
+    }
+    // /library (Worker-level, không qua DO) — cùng endpoint /composer đã
+    // dùng, KV theo cloudRoomId, độc lập LAN từ trước tới giờ.
+    fetch(CLOUD_API_BASE + '/library?roomId=' + encodeURIComponent(state.cloudRoomId || ''))
       .then(function (r) { return r.json(); })
       .then(function (j) {
         if (j && Array.isArray(j.songs)) {
           slSongs = j.songs;
           slLibLoaded = true;
-          state.slLibCache = { songs: j.songs, ts: Date.now() };
+          state.slLibCache = { roomId: state.cloudRoomId, songs: j.songs, ts: Date.now() };
           saveState();
           renderSlResults($('slSearch').value);
         }
@@ -825,14 +1105,20 @@
       items: d.map(function (x) { return { type: 'song', id: x.id, title: x.title }; })
     };
     $('slSend').disabled = true;
-    fetch('api/setlist', { method: 'POST', headers: authHeader(), body: JSON.stringify(payload) })
+    fetch(roomUrl('/setlist?token=' + encodeURIComponent(state.token || '')), {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
+    })
       .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
       .then(function (res) {
-        if (res.ok && res.j && res.j.ok) { $('slSend').disabled = false; finishSetlistSent(false); }
-        else { $('slSend').disabled = false; toast('band', '', (res.j && res.j.error) || 'Máy chiếu chưa nhận được.'); }
+        $('slSend').disabled = false;
+        if (!res.ok || !res.j || !res.j.ok) { toast('band', '', (res.j && res.j.error) || 'Máy chiếu chưa nhận được.'); return; }
+        // relay luôn trả lời được dù operator đang offline (khác LAN cũ,
+        // network error mới báo "tắt") — res.j.delivered mới là tín hiệu
+        // thật "operator có đang mở app không", quyết định có cần gửi thêm
+        // qua hộp thư cloud hay không.
+        if (res.j.delivered) { finishSetlistSent(false); }
+        else { sendSetlistToCloud(payload); }
       })
-      // Lỗi mạng (không phải lỗi validate) -> máy chiếu có thể đang tắt hẳn ->
-      // thử gửi qua hộp thư cloud để nó lấy về khi mở lại.
       .catch(function () { sendSetlistToCloud(payload); });
   }
 
@@ -892,9 +1178,9 @@
     var v = $('composeInput').value.trim();
     if (!v) return;
     $('composeInput').value = '';
+    if (!ws || ws.readyState !== WebSocket.OPEN) { toast('band', '', 'Chưa gửi được — mất kết nối.'); return; }
     toast('band', '', 'Đã gửi');
-    fetch('api/message', { method: 'POST', headers: authHeader(), body: JSON.stringify({ text: v }) })
-      .catch(function () { toast('band', '', 'Chưa gửi được — thử lại.'); });
+    try { ws.send(JSON.stringify({ kind: 'message', text: v })); } catch (e) { toast('band', '', 'Chưa gửi được — thử lại.'); }
   }
 
   // NOTE: no leave-on-pagehide — phones background constantly and that would log

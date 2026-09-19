@@ -54,7 +54,11 @@ function isValidPassword(password) {
 
 // Public shape for the operator UI / roster checks — never includes the hash.
 function publicAccount(a) {
-  return { id: a.id, username: a.username, name: a.name, active: a.active !== false, createdAt: a.createdAt || 0, lastLoginAt: a.lastLoginAt || 0 };
+  return {
+    id: a.id, username: a.username, name: a.name, active: a.active !== false,
+    createdAt: a.createdAt || 0, lastLoginAt: a.lastLoginAt || 0,
+    mustChangePassword: !!a.mustChangePassword
+  };
 }
 
 /**
@@ -104,7 +108,7 @@ function createAccountsStore(userDataPath, safeWriteSync) {
     return typeof id === 'string' && load().accounts.some(a => a.id === id);
   }
 
-  function create({ username, name, password }) {
+  function create({ username, name, password, mustChangePassword }) {
     const cur = load();
     const uname = normalizeUsername(username);
     if (!isValidUsername(uname)) return { error: 'Tên đăng nhập không hợp lệ (2-32 ký tự, chữ thường/số/._-, bắt đầu bằng chữ hoặc số).' };
@@ -119,18 +123,41 @@ function createAccountsStore(userDataPath, safeWriteSync) {
       passwordHash, passwordSalt,
       active: true,
       createdAt: Date.now(),
-      lastLoginAt: 0
+      lastLoginAt: 0,
+      mustChangePassword: !!mustChangePassword
     };
     cur.accounts.push(account);
     persist();
     return { account: publicAccount(account) };
   }
 
-  function updatePassword(id, password) {
+  // `mustChangePassword` mặc định true khi operator TỰ tay đặt lại mật khẩu
+  // (giống reset mật khẩu bình thường — nên bắt đổi lại) — truyền false rõ
+  // ràng cho luồng band member tự đổi mật khẩu của chính mình (xem
+  // changeOwnPassword), nơi không cần bắt đổi thêm lần nữa ngay sau đó.
+  function updatePassword(id, password, { mustChangePassword = true } = {}) {
     if (!isValidPassword(password)) return { error: `Mật khẩu phải từ ${MIN_PASSWORD_LEN} ký tự.` };
     const account = findById(id);
     if (!account) return { error: 'Không tìm thấy tài khoản.' };
     Object.assign(account, hashPassword(password));
+    account.mustChangePassword = !!mustChangePassword;
+    persist();
+    return { account: publicAccount(account) };
+  }
+
+  // Band member tự đổi mật khẩu của chính mình (bắt buộc sau khi
+  // mustChangePassword=true, hoặc tự nguyện đổi bất cứ lúc nào) — khác
+  // updatePassword() (operator reset hộ): cần đúng mật khẩu CŨ, và luôn xoá
+  // cờ mustChangePassword sau khi đổi thành công.
+  function changeOwnPassword(id, currentPassword, newPassword) {
+    const account = findById(id);
+    if (!account) return { error: 'Không tìm thấy tài khoản.' };
+    if (!verifyPassword(currentPassword, account.passwordHash, account.passwordSalt)) {
+      return { error: 'Mật khẩu hiện tại không đúng.' };
+    }
+    if (!isValidPassword(newPassword)) return { error: `Mật khẩu phải từ ${MIN_PASSWORD_LEN} ký tự.` };
+    Object.assign(account, hashPassword(newPassword));
+    account.mustChangePassword = false;
     persist();
     return { account: publicAccount(account) };
   }
@@ -172,7 +199,7 @@ function createAccountsStore(userDataPath, safeWriteSync) {
     return publicAccount(account);
   }
 
-  return { filePath, load, list, findById, findByUsername, isAccountId, create, update, updatePassword, setActive, remove, verify };
+  return { filePath, load, list, findById, findByUsername, isAccountId, create, update, updatePassword, changeOwnPassword, setActive, remove, verify };
 }
 
 module.exports = { createAccountsStore, isValidUsername, isValidPassword, MIN_PASSWORD_LEN };

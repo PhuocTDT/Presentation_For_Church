@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+<html lang="vi" data-theme="dark">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bảng Quản Lý Kênh Band • Presentation For Church</title>
+  <meta name="description" content="Trung tâm điều hành và quản lý Kênh Band, phòng cố định Zoom-style và tài khoản thành viên ban nhạc.">
+  <link rel="icon" type="image/jpeg" href="assets/images/app-icon.jpg">
+  <link rel="stylesheet" href="portal.css">
+</head>
+
+<body>
+  <!-- Ambient Glow Effects -->
+  <div class="portal-bg-decor" aria-hidden="true">
+    <div class="portal-glow-1"></div>
+    <div class="portal-glow-2"></div>
+  </div>
+
+  <!-- Header / Top Navbar -->
+  <header class="portal-header">
+    <div class="portal-container">
+      <div class="portal-header-inner">
+        <!-- Brand Logo -->
+        <a href="index.html" class="portal-brand">
+          <div class="portal-brand-logo">
+            <img src="assets/images/app-icon.jpg" alt="Logo Presentation For Church" width="38" height="38">
+          </div>
+          <div class="portal-brand-title">
+            Presentation For Church
+            <span>Operator Dashboard</span>
+          </div>
+        </a>
+
+        <!-- Live Server Status Indicator -->
+        <div class="portal-status-pill" id="portalStatusPill">
+          <span class="pulse-dot"></span>
+          <span>Cloud Relay Sẵn Sàng Kết Nối</span>
+        </div>
+
+        <!-- Right Header Actions -->
+        <div class="portal-header-actions">
+          <a href="index.html" class="btn-nav-home" title="Trở về trang chủ">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+              <polyline points="9 22 9 12 15 12 15 22" />
+            </svg>
+            <span>Trang Chủ</span>
+          </a>
+
+          <button type="button" class="btn-theme-toggle" id="themeToggleBtn" aria-label="Chuyển chế độ sáng tối">
+            ☀️
+          </button>
+
+          <div class="portal-profile-chip" id="portalProfileChip">
+            <span class="avatar-badge" id="headerAvatar">OP</span>
+            <div class="profile-chip-text">
+              <span class="profile-chip-name" id="headerOpName"></span>
+              <span class="profile-chip-role" id="headerOpEmail"></span>
+            </div>
+          </div>
+
+          <button type="button" class="btn-logout-header" id="btnHeaderLogout" title="Đăng xuất khỏi cổng quản trị">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+              <polyline points="16 17 21 12 16 7" />
+              <line x1="21" y1="12" x2="9" y2="12" />
+            </svg>
+            <span>Đăng Xuất</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content Container -->
+  <main class="portal-container">
+    <!-- Hero / Welcome Banner -->
+    <section class="portal-hero">
+      <div class="portal-hero-card">
+        <div class="portal-hero-left">
+          <div class="portal-church-pill" id="heroChurchBadge" style="visibility:hidden">
+            📍 <span></span>
+          </div>
+          <h1 class="portal-hero-title">Xin chào, <span id="heroOpName"></span> 👋</h1>
+          <p class="portal-hero-subtitle">
+            Bảng điều khiển tập trung Kênh Band: Quản lý mã phòng cố định (Zoom-style), cấp tài khoản thành viên cho ban
+            hát &amp; nhạc công, và theo dõi đồng bộ theo thời gian thực.
+          </p>
+        </div>
+
+        <div class="portal-hero-stats-quick">
+          <div class="quick-stat-badge">
+            <div class="quick-stat-icon">📡</div>
+            <div class="quick-stat-data">
+              <span>Chế độ kết nối</span>
+              <strong>Cloud Relay P2P</strong>
+            </div>
+          </div>
+          <div class="quick-stat-badge">
+            <div class="quick-stat-icon">🔒</div>
+            <div class="quick-stat-data">
+              <span>Bảo mật</span>
+              <strong>AWS Cognito</strong>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 4 Interactive Metric Cards -->
+    <section class="portal-metrics-grid">
+      <!-- Card 1: Fixed Room ID -->
+      <div class="metric-card">
+        <div class="metric-card-top">
+          <div class="metric-card-icon cyan">📡</div>
+          <span class="metric-badge">Zoom-Style Room</span>
+        </div>
+        <div class="metric-card-main">
+          <h4>Mã Phòng (Room ID)</h4>
+          <div class="metric-value-row">
+            <span class="metric-code-display" id="metricRoomCode">------</span>
+            <button type="button" class="btn-action-sm primary" id="btnCopyRoomCode">Copy Mã</button>
+          </div>
+          <p style="font-size: 0.88rem; color: var(--text-muted); margin-top: 6px;">
+            Tên: <strong id="metricRoomName" style="color: var(--text-primary);">Phòng Kênh Band</strong>
+          </p>
+          <p style="font-size: 0.84rem; color: var(--text-muted); margin-top: 4px; display: flex; align-items: center; gap: 8px;">
+            Pass: <span id="metricRoomPass" style="font-family: var(--font-mono); font-weight: 700; color: var(--text-primary);">••••••</span>
+            <button type="button" class="btn-action-sm" id="btnToggleRoomPass" style="padding: 2px 8px; font-size: 0.75rem;">👁️ Hiện</button>
+          </p>
+        </div>
+        <div class="metric-card-footer">
+          <span style="font-size: 0.82rem; color: var(--text-muted);">Tự động đồng bộ trên App Desktop</span>
+        </div>
+      </div>
+
+      <!-- Card 2: Band Mobile Link -->
+      <div class="metric-card">
+        <div class="metric-card-top">
+          <div class="metric-card-icon indigo">📱</div>
+          <span class="metric-badge">Điện Thoại / Tablet</span>
+        </div>
+        <div class="metric-card-main">
+          <h4>Link Ban Nhạc Tham Gia</h4>
+          <div style="background: var(--portal-canvas); border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); padding: 8px 12px; margin-bottom: 8px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+            <code id="metricBandLink" style="font-size: 0.82rem; color: var(--primary);">https://channel.worship-official.link/m/?room=...</code>
+          </div>
+        </div>
+        <div class="metric-card-footer">
+          <button type="button" class="btn-action-sm primary" id="btnCopyBandLink">📋 Copy Link</button>
+          <a href="#" target="_blank" rel="noopener noreferrer" class="btn-action-sm" id="btnOpenBandLink">🚀 Mở Xem Thử</a>
+          <button type="button" class="btn-action-sm" id="btnShowQrModal">📲 Xem Mã QR</button>
+        </div>
+      </div>
+
+      <!-- Card 3: Remote Composer Link -->
+      <div class="metric-card">
+        <div class="metric-card-top">
+          <div class="metric-card-icon emerald">🎼</div>
+          <span class="metric-badge">Soạn Bài Từ Xa</span>
+        </div>
+        <div class="metric-card-main">
+          <h4>Trình Soạn Setlist Từ Xa</h4>
+          <div style="background: var(--portal-canvas); border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); padding: 8px 12px; margin-bottom: 8px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+            <code id="metricComposerLink" style="font-size: 0.82rem; color: var(--emerald);">https://channel.worship-official.link/composer?room=...</code>
+          </div>
+        </div>
+        <div class="metric-card-footer">
+          <button type="button" class="btn-action-sm primary" id="btnCopyComposerLink">📋 Copy Link</button>
+          <a href="#" target="_blank" rel="noopener noreferrer" class="btn-action-sm" id="btnOpenComposerLink">🎵 Mở Soạn Bài</a>
+        </div>
+      </div>
+
+      <!-- Card 4: Global Band Users -->
+      <div class="metric-card">
+        <div class="metric-card-top">
+          <div class="metric-card-icon gold">👥</div>
+          <span class="metric-badge">Tài Khoản Toàn Cục</span>
+        </div>
+        <div class="metric-card-main">
+          <h4>Thành Viên Ban Nhạc</h4>
+          <div class="metric-value-row">
+            <span class="metric-text-display" id="metricUsersCount">0 thành viên</span>
+          </div>
+          <p style="font-size: 0.82rem; color: var(--text-muted); margin-top: 6px;">
+            Đăng nhập được trên mọi phòng khi có ID phòng &amp; mật khẩu.
+          </p>
+        </div>
+        <div class="metric-card-footer">
+          <button type="button" class="btn-action-sm primary" id="btnOpenAddMemberModal">+ Thêm Thành Viên</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Main Workspace Section -->
+    <section class="portal-workspace">
+      <!-- Tabs Navigation -->
+      <div class="workspace-nav-bar">
+        <button type="button" class="workspace-tab-btn active" data-tab="tabMembers">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+            <circle cx="9" cy="7" r="4" />
+            <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
+            <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+          </svg>
+          <span>Quản Lý Thành Viên Ban Nhạc</span>
+          <span class="tab-badge-count" id="tabUsersCount">0</span>
+        </button>
+
+        <button type="button" class="workspace-tab-btn" data-tab="tabSettings">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="3" />
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
+          </svg>
+          <span>Cấu Hình Phòng &amp; Phản Hồi</span>
+        </button>
+
+        <button type="button" class="workspace-tab-btn" data-tab="tabQrCode">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect width="5" height="5" x="3" y="3" rx="1" />
+            <rect width="5" height="5" x="16" y="3" rx="1" />
+            <rect width="5" height="5" x="3" y="16" rx="1" />
+            <path d="M21 16h-3a2 2 0 0 0-2 2v3" />
+            <path d="M21 21v.01" />
+            <path d="M12 7v3a2 2 0 0 1-2 2H7" />
+            <path d="M3 12h.01" />
+            <path d="M12 3h.01" />
+            <path d="M12 16v.01" />
+            <path d="M16 12h1" />
+            <path d="M21 12v.01" />
+            <path d="M12 21v-1" />
+          </svg>
+          <span>Trình Chiếu Mã QR &amp; Hướng Dẫn</span>
+        </button>
+      </div>
+
+      <!-- TAB 1: MEMBERS MANAGEMENT -->
+      <div class="workspace-tab-panel active" id="tabMembers">
+        <!-- Toolbar -->
+        <div class="members-toolbar">
+          <div class="members-search-box">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="11" cy="11" r="8" />
+              <path d="m21 21-4.3-4.3" />
+            </svg>
+            <input type="text" id="membersSearchInput" placeholder="Tìm theo tên hiển thị, username...">
+          </div>
+
+          <button type="button" class="btn-primary-action" id="btnOpenAddMemberModal2">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <path d="M12 5v14M5 12h14" />
+            </svg>
+            <span>Thêm Thành Viên Mới</span>
+          </button>
+        </div>
+
+        <div class="members-info-banner">
+          <span>💡</span>
+          <span>
+            <strong>Lưu ý:</strong> Tài khoản thành viên ban nhạc là tài khoản dùng chung toàn hệ thống. Thành viên có
+            thể đăng nhập vào bất kỳ phòng Kênh Band nào khi nhập đúng Mã Phòng &amp; Mật khẩu phòng.
+          </span>
+        </div>
+
+        <!-- Members Table -->
+        <div class="members-table-wrap">
+          <table class="members-table">
+            <thead>
+              <tr>
+                <th>Thành Viên</th>
+                <th>Trạng Thái</th>
+                <th>Ngày Tạo</th>
+                <th style="text-align: right;">Thao Tác</th>
+              </tr>
+            </thead>
+            <tbody id="membersTableBody">
+              <!-- Rendered dynamically by JS -->
+            </tbody>
+          </table>
+
+          <!-- Empty State -->
+          <div class="members-empty-state" id="membersEmptyState" style="display: none;">
+            <div class="empty-icon">👥</div>
+            <h5>Chưa Có Thành Viên Nào</h5>
+            <p>Bắt đầu thêm tài khoản cho ca đoàn, nhạc công hoặc trưởng ban nhạc của bạn.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB 2: ROOM & REPLIES SETTINGS -->
+      <div class="workspace-tab-panel" id="tabSettings">
+        <!-- Section A: Room Info -->
+        <div class="settings-section-card">
+          <h3>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+            </svg>
+            <span>Thông Tin Phòng Kênh Band</span>
+          </h3>
+          <p>Cập nhật tên hiển thị và mật khẩu phòng Kênh Band cố định của bạn.</p>
+
+          <div class="settings-form-grid">
+            <div class="form-group">
+              <label class="form-label" for="settingRoomNameInput">Tên Phòng</label>
+              <div class="form-input-wrap">
+                <input type="text" id="settingRoomNameInput" placeholder="Ví dụ: Phước Hạnh Channel" maxlength="60">
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="settingRoomPassInput">Mật Khẩu Phòng (4-12 ký tự)</label>
+              <div class="form-input-wrap">
+                <input type="text" id="settingRoomPassInput" placeholder="Nhập mật khẩu phòng mới" minlength="4" maxlength="12">
+              </div>
+            </div>
+          </div>
+
+          <button type="button" class="btn-primary-action" id="btnSaveRoomSettings">
+            <span>Lưu Thay Đổi Phòng</span>
+          </button>
+        </div>
+
+        <!-- Section B: Fast Replies -->
+        <div class="settings-section-card">
+          <h3>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+            </svg>
+            <span>Phản Hồi Nhanh Của Operator</span>
+          </h3>
+          <p>Các câu trả lời nhanh giúp người chiếu laptop phản hồi tín hiệu từ ban nhạc tức thì với 1 cú click:</p>
+
+          <div class="fast-replies-list">
+            <span class="fast-reply-chip">💬 Đã nghe</span>
+            <span class="fast-reply-chip">💬 Đợi một chút</span>
+            <span class="fast-reply-chip">💬 Đang chỉnh</span>
+            <span class="fast-reply-chip">💬 Chuyển sau câu này</span>
+          </div>
+        </div>
+
+        <!-- Section C: Desktop App Sync Instructions -->
+        <div class="settings-section-card">
+          <h3>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect width="20" height="14" x="2" y="3" rx="2" />
+              <line x1="8" y1="21" x2="16" y2="21" />
+              <line x1="12" y1="17" x2="12" y2="21" />
+            </svg>
+            <span>Đồng Bộ Với Ứng Dụng Desktop (Presentation For Church)</span>
+          </h3>
+          <p>
+            Mở ứng dụng <strong>Presentation For Church</strong> trên laptop nhà thờ -> Vào Menu <strong>File -> Settings -> Kênh Band</strong>.<br>
+            Đăng nhập bằng đúng Email và Mật khẩu Operator của bạn. Ứng dụng sẽ tự động tải phòng cố định này và sẵn sàng truyền hợp âm, bài hát trực tiếp tới điện thoại của ban nhạc!
+          </p>
+        </div>
+      </div>
+
+      <!-- TAB 3: QR CODE & STAGE MODE -->
+      <div class="workspace-tab-panel" id="tabQrCode">
+        <div class="qr-tab-layout">
+          <!-- QR Card Display -->
+          <div class="qr-card-display">
+            <div class="qr-code-canvas-container" id="qrCanvasContainer">
+              <!-- QR Image rendered here -->
+            </div>
+            <h4 style="font-family: var(--font-heading); font-size: 1.3rem; margin-bottom: 4px;" id="qrRoomTitle">
+              Phước Hạnh Channel
+            </h4>
+            <p style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 16px;">
+              Mã phòng: <strong id="qrRoomCodeDisplay" style="font-family: var(--font-mono); color: var(--primary);">------</strong>
+            </p>
+
+            <div class="qr-actions-row">
+              <button type="button" class="btn-primary-action" id="btnFullscreenQr">
+                🖥️ Chiếu Toàn Màn Hình
+              </button>
+              <button type="button" class="btn-action-sm" id="btnDownloadQr">
+                ⬇️ Tải Ảnh QR
+              </button>
+            </div>
+          </div>
+
+          <!-- Connection Guide Steps -->
+          <div class="qr-guide-steps">
+            <div class="guide-step-item">
+              <span class="guide-step-num">1</span>
+              <div class="guide-step-content">
+                <strong>Quét Mã QR hoặc Nhấp Vào Link</strong>
+                <p>Nhạc công hoặc ca đoàn dùng camera điện thoại (hoặc Zalo/trình duyệt) quét mã QR để mở trang Kênh Band ngay lập tức mà không cần cài đặt app.</p>
+              </div>
+            </div>
+
+            <div class="guide-step-item">
+              <span class="guide-step-num">2</span>
+              <div class="guide-step-content">
+                <strong>Nhập Mật Khẩu Phòng</strong>
+                <p>Nhập mật khẩu phòng do Operator cung cấp để tham gia vào phiên trình chiếu trực tiếp của Hội Thánh.</p>
+              </div>
+            </div>
+
+            <div class="guide-step-item">
+              <span class="guide-step-num">3</span>
+              <div class="guide-step-content">
+                <strong>Theo Dõi Lời &amp; Hợp Âm Trực Tiếp</strong>
+                <p>Màn hình điện thoại sẽ tự động nhảy slide đồng bộ theo máy chiếu của nhà thờ, cho phép xem hợp âm và tự chọn tone phù hợp với giọng hát của mình.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- =========================================================================
+       MODAL 1: Thêm Thành Viên Mới
+       ========================================================================= -->
+  <div class="portal-modal-backdrop" id="modalAddMember">
+    <div class="portal-modal-window">
+      <div class="modal-header">
+        <h4>Thêm Thành Viên Ban Nhạc</h4>
+        <button type="button" class="modal-btn-close">&times;</button>
+      </div>
+      <form id="formAddMember">
+        <div class="modal-body">
+          <div class="form-group" style="margin-bottom: 16px;">
+            <label class="form-label" for="inputAddName">Tên Hiển Thị (Ví dụ: An - Trống, Hải - Piano)</label>
+            <div class="form-input-wrap">
+              <input type="text" id="inputAddName" placeholder="Nhập tên hiển thị..." required maxlength="40">
+            </div>
+          </div>
+
+          <div class="form-group" style="margin-bottom: 16px;">
+            <label class="form-label" for="inputAddUsername">Tên Tài Khoản (Username đăng nhập)</label>
+            <div class="form-input-wrap">
+              <input type="text" id="inputAddUsername" placeholder="antrong (chỉ chữ thường, số, dấu . _ -)" required maxlength="32">
+            </div>
+          </div>
+
+          <div class="form-group" style="margin-bottom: 16px;">
+            <label class="form-label" for="inputAddPass">Mật Khẩu (Tối thiểu 6 ký tự)</label>
+            <div class="form-input-wrap">
+              <input type="password" id="inputAddPass" placeholder="••••••••" required minlength="6">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="inputAddPassConfirm">Xác Nhận Mật Khẩu</label>
+            <div class="form-input-wrap">
+              <input type="password" id="inputAddPassConfirm" placeholder="••••••••" required minlength="6">
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn-secondary btn-modal-cancel">Hủy</button>
+          <button type="submit" class="btn-primary-action" id="btnSubmitAddMember">Tạo Tài Khoản</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- =========================================================================
+       MODAL 2: Đổi Mật Khẩu Thành Viên
+       ========================================================================= -->
+  <div class="portal-modal-backdrop" id="modalResetPass">
+    <div class="portal-modal-window">
+      <div class="modal-header">
+        <h4>Đổi Mật Khẩu Thành Viên</h4>
+        <button type="button" class="modal-btn-close">&times;</button>
+      </div>
+      <form id="formResetPass">
+        <div class="modal-body">
+          <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 16px;">
+            Đặt lại mật khẩu cho tài khoản: <strong id="resetPassTargetUser" style="color: var(--primary);">@user</strong>
+          </p>
+
+          <div class="form-group" style="margin-bottom: 16px;">
+            <label class="form-label" for="inputResetPassNew">Mật Khẩu Mới (Tối thiểu 6 ký tự)</label>
+            <div class="form-input-wrap">
+              <input type="password" id="inputResetPassNew" placeholder="••••••••" required minlength="6">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="inputResetPassConfirm">Xác Nhận Mật Khẩu Mới</label>
+            <div class="form-input-wrap">
+              <input type="password" id="inputResetPassConfirm" placeholder="••••••••" required minlength="6">
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn-secondary btn-modal-cancel">Hủy</button>
+          <button type="submit" class="btn-primary-action" id="btnSubmitResetPass">Lưu Mật Khẩu</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- =========================================================================
+       MODAL 3: Trình Chiếu QR Toàn Màn Hình (Stage Mode)
+       ========================================================================= -->
+  <div class="portal-modal-backdrop" id="modalFullscreenQr">
+    <div class="portal-modal-window modal-qr-fullscreen">
+      <div class="modal-header">
+        <h4>Mã QR Kênh Band Cho Hội Thánh</h4>
+        <button type="button" class="modal-btn-close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <h2 style="font-family: var(--font-heading); font-size: 1.8rem; margin-bottom: 8px;" id="fsRoomName">
+          Phòng Kênh Band
+        </h2>
+        <p style="font-size: 1rem; color: var(--text-muted); margin-bottom: 24px;">
+          Quét mã bằng điện thoại để kết nối Kênh Band trực tiếp
+        </p>
+
+        <div class="qr-code-canvas-container" id="fsQrCanvasContainer">
+          <!-- Large QR Image rendered here -->
+        </div>
+
+        <div style="display: flex; gap: 24px; margin-top: 20px; flex-wrap: wrap; justify-content: center;">
+          <div style="background: var(--portal-glass-subtle); border: 1px solid var(--border-subtle); padding: 12px 24px; border-radius: var(--radius-md);">
+            <span style="display: block; font-size: 0.78rem; text-transform: uppercase; color: var(--text-muted); font-weight: 700;">Mã Phòng (Room ID)</span>
+            <strong style="font-family: var(--font-mono); font-size: 1.8rem; color: var(--primary);" id="fsRoomCode">3C25QX</strong>
+          </div>
+          <div style="background: var(--portal-glass-subtle); border: 1px solid var(--border-subtle); padding: 12px 24px; border-radius: var(--radius-md);">
+            <span style="display: block; font-size: 0.78rem; text-transform: uppercase; color: var(--text-muted); font-weight: 700;">Mật Khẩu Phòng</span>
+            <strong style="font-family: var(--font-mono); font-size: 1.8rem; color: var(--text-primary);" id="fsRoomPass">phuochanh</strong>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn-secondary btn-modal-cancel">Đóng</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div class="portal-toast-container" id="portalToastContainer"></div>
+
+  <!-- Controller Script -->
+  <script src="portal.js"></script>
+  <script>
+    // Bind secondary Add Member button in Tab 1 toolbar
+    const btn2 = document.getElementById('btnOpenAddMemberModal2');
+    const modalAdd = document.getElementById('modalAddMember');
+    if (btn2 && modalAdd) {
+      btn2.addEventListener('click', () => {
+        modalAdd.classList.add('active');
+        const inp = document.getElementById('inputAddName');
+        if (inp) inp.focus();
+      });
+    }
+  </script>
+</body>
+
+</html>

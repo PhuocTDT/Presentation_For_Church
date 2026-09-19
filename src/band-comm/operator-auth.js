@@ -1,8 +1,8 @@
 // Band Comm — phiên đăng nhập CỦA OPERATOR (người vận hành laptop), tách hẳn
 // khỏi accounts.js (đó là tài khoản operator CẤP cho band member đăng nhập
-// trên điện thoại). Đây là gate cho chính máy chiếu: bản cài MỚI (xem
-// store.js's `requireOperatorLogin`) phải đăng nhập bằng tài khoản Cognito
-// trung tâm (cloud/identity/) trước khi Kênh Band được phép khởi động.
+// trên điện thoại). Đây là gate cho chính máy chiếu: bắt buộc MỌI bản cài
+// phải đăng nhập bằng tài khoản Cognito trung tâm (cloud/identity/) trước
+// khi Kênh Band được phép khởi động.
 //
 // Chỉ lưu token trên đĩa — không có mật khẩu nào đi qua đây. Refresh token
 // Cognito mặc định sống ~30 ngày, nên operator không phải đăng nhập lại mỗi

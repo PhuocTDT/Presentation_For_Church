@@ -25,6 +25,16 @@ contextBridge.exposeInMainWorld('electronAPI', {
   saveSong: (song) => ipcRenderer.invoke('save-song', song),
   deleteSong: (data) => ipcRenderer.invoke('delete-song', data),
   exportSongsToFile: () => ipcRenderer.invoke('export-songs-to-file'),
+  syncPreviousLibrary: () => ipcRenderer.invoke('scan-and-sync-previous-library'),
+  importLibraryFolder: () => ipcRenderer.invoke('import-library-from-folder'),
+  getDataPathInfo: () => ipcRenderer.invoke('get-data-path-info'),
+  openDataFolder: () => ipcRenderer.invoke('open-data-folder'),
+  changeDataFolder: () => ipcRenderer.invoke('change-data-folder'),
+  reloadDefaultData: () => ipcRenderer.invoke('reload-default-data'),
+  onLibrarySyncNotification: (callback) => {
+    ipcRenderer.removeAllListeners('library-sync-notification');
+    ipcRenderer.on('library-sync-notification', callback);
+  },
   showOpenDialog: () => ipcRenderer.invoke('show-open-dialog'),
   showSaveDialog: (data) => ipcRenderer.invoke('show-save-dialog', data),
   saveScheduleToPath: (filePath, data) => ipcRenderer.invoke('save-schedule-to-path', { filePath, data }),
@@ -133,6 +143,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
     operatorAuth: {
       getStatus: () => ipcRenderer.invoke('band-operator-auth-status'),
       requestAccess: (payload) => ipcRenderer.invoke('band-operator-request-access', payload),
+      forgotPassword: (payload) => ipcRenderer.invoke('band-operator-forgot-password', payload),
       login: (payload) => ipcRenderer.invoke('band-operator-auth-login', payload),
       setNewPassword: (payload) => ipcRenderer.invoke('band-operator-auth-new-password', payload),
       logout: () => ipcRenderer.invoke('band-operator-auth-logout')

@@ -25,6 +25,26 @@ function randomRoomPassword(len) {
   return out;
 }
 
+// ID phòng — ngắn, gõ tay được, IN HOA cho dễ đọc/đọc miệng (khác mật khẩu
+// phòng vốn có cả hoa/thường để tăng entropy). Không phải bí mật — vai trò
+// giống "mã cuộc họp Zoom": xác định ĐÚNG PHÒNG nào (khi Kênh Band chuyển
+// sang relay trung tâm dùng chung 1 domain cho mọi nhà thờ, không còn domain
+// riêng từng nơi để tự nhận diện phòng nữa) — mật khẩu phòng mới là lớp xác
+// thực thật. 6 ký tự, bảng chữ 32 ký tự (bỏ 0/O/1/I/L dễ nhầm) = 32^6 ~ 1 tỷ
+// khả năng, đủ khó đoán mù dù không phải bí mật mạnh.
+const ROOM_CODE_CHARS = '23456789ABCDEFGHJKMNPQRSTUVWXYZ';
+function randomRoomCode(len) {
+  const n = len || 6;
+  const bytes = crypto.randomBytes(n);
+  let out = '';
+  for (let i = 0; i < n; i++) out += ROOM_CODE_CHARS[bytes[i] % ROOM_CODE_CHARS.length];
+  return out;
+}
+
+function randomHex(bytes) {
+  return crypto.randomBytes(bytes).toString('hex');
+}
+
 // `profiles` is a plain object keyed by client-supplied profileId, so a key of
 // "__proto__" (etc.) reaching a bracket assignment would reassign the
 // object's own prototype instead of adding a normal entry. Reject those
@@ -39,7 +59,7 @@ function defaultConfig() {
   return {
     version: 1,
     room: {
-      name: 'Kênh Band', password: randomRoomPassword(), passwordSetAt: Date.now(), hostname: 'worship',
+      name: 'Kênh Band', code: randomRoomCode(), password: randomRoomPassword(), passwordSetAt: Date.now(), hostname: 'worship',
       // Đăng nhập tài khoản (band-comm-plan.md §11): mặc định false, không ảnh
       // hưởng bản cài nào chưa bật. Khi true, /api/login (username+password)
       // thay cho tên/vai trò tự khai; room.password trở thành lớp phụ TUỲ CHỌN
@@ -48,12 +68,6 @@ function defaultConfig() {
       passwordRequiredWithAccounts: false
     },
     accountsEnabled: false,
-    // Gate "phải đăng nhập Cognito trước khi Kênh Band được phép khởi động" —
-    // CHỈ áp dụng cho bản cài MỚI (load() bên dưới tự đặt true đúng 1 lần khi
-    // chưa từng có band-comm.json nào trên đĩa). Máy đang dùng Kênh Band từ
-    // trước (file đã tồn tại) luôn giữ false vĩnh viễn — không breaking change
-    // cho ai đang dùng. Xem operator-auth.js + main.js's app.whenReady().
-    requireOperatorLogin: false,
     // 'local': /api/login xác thực bằng band-comm-accounts.json (accounts.js,
     // tự quản lý riêng từng máy). 'cognito': /api/login nhận idToken đã ký sẵn
     // từ Cloudflare Worker "band-identity" (cloud/identity-plan.md) — 1 danh
@@ -67,6 +81,13 @@ function defaultConfig() {
     // Namespace phòng trên Cloudflare Worker (hộp thư setlist khi laptop tắt
     // hẳn — xem cloud/worker). Sinh 1 lần, ổn định vĩnh viễn cho máy này.
     cloudRoomId: crypto.randomUUID(),
+    // GĐ2 (band-comm-plan.md §14) — bí mật riêng của MÁY OPERATOR để tự xác
+    // thực với Durable Object relay (`POST /admin/config`, `GET /ws?adminSecret=`
+    // ở cloud/worker/src/room-relay.js) — KHÁC HẲN room.password (band member
+    // gõ tay, không phải bí mật mạnh). Không ai khác biết giá trị này nên relay
+    // tin tưởng mọi request kèm đúng secret là chính operator thật, không phải
+    // giả mạo. Sinh 1 lần, không hiện lên UI nào.
+    relayAdminSecret: randomHex(32),
     // Tên Cloudflare Named Tunnel để main.js tự spawn `cloudflared tunnel run
     // <tunnelName>` cùng lúc band-comm start. Rỗng = không tự chạy tunnel (mặc
     // định — máy nào chưa tự thiết lập cloudflared thì không bị ảnh hưởng).
@@ -86,6 +107,10 @@ function normalizeConfig(raw) {
     version: 1,
     room: {
       name: String(room.name || base.room.name).trim() || base.room.name,
+      // Sinh mới cho MỌI bản cài chưa có (kể cả bản cài cũ) — ID phòng cần
+      // thiết ngay cho luồng join hiện tại (validate khớp server) lẫn relay
+      // trung tâm sau này.
+      code: /^[A-Z0-9]{4,10}$/.test(String(room.code || '')) ? String(room.code) : base.room.code,
       // 4-12 ký tự chữ+số — vẫn đọc được `room.pin`/`pinSetAt`/
       // `pinRequiredWithAccounts` của bản cài cũ (trước khi đổi tên field cho
       // đúng bản chất — không còn là PIN số 4 chữ số nữa), không cần migrate
@@ -103,17 +128,13 @@ function normalizeConfig(raw) {
       passwordRequiredWithAccounts: room.passwordRequiredWithAccounts === true || room.pinRequiredWithAccounts === true
     },
     accountsEnabled: cfg.accountsEnabled === true,
-    // Chỉ giữ nguyên true nếu ĐÃ có sẵn true trong config load lên — không tự
-    // suy ra gì ở đây. Việc set true cho bản cài mới là việc của load() (nơi
-    // duy nhất biết "file này có tồn tại từ trước hay không"), không phải
-    // normalizeConfig() (hàm này chạy cả trên save() giữa chừng phiên).
-    requireOperatorLogin: cfg.requireOperatorLogin === true,
     authMode: cfg.authMode === 'cognito' ? 'cognito' : 'local',
     port: Number.isInteger(cfg.port) && cfg.port > 0 ? cfg.port : base.port,
     publicUrl: /^https?:\/\/[^\s]+$/i.test(String(cfg.publicUrl || '').trim())
       ? String(cfg.publicUrl).trim().replace(/\/+$/, '')
       : '',
     cloudRoomId: /^[a-zA-Z0-9_-]{8,64}$/.test(String(cfg.cloudRoomId || '')) ? String(cfg.cloudRoomId) : base.cloudRoomId,
+    relayAdminSecret: /^[a-f0-9]{32,128}$/.test(String(cfg.relayAdminSecret || '')) ? String(cfg.relayAdminSecret) : base.relayAdminSecret,
     tunnelName: /^[a-zA-Z0-9][a-zA-Z0-9_-]{0,63}$/.test(String(cfg.tunnelName || '')) ? String(cfg.tunnelName) : '',
     operatorReplies: Array.isArray(cfg.operatorReplies) && cfg.operatorReplies.length
       ? cfg.operatorReplies
@@ -162,18 +183,15 @@ function createStore(userDataPath, safeWriteSync) {
       console.error('[BandComm] Failed to read band-comm.json, using defaults:', e);
     }
     cache = normalizeConfig(raw);
-    // Chưa từng có band-comm.json nào trên đĩa = bản cài MỚI thật sự (không
-    // phải chỉ thiếu 1 field do nâng cấp) — bật gate đăng nhập operator đúng 1
-    // lần ở đây. Mọi lần load() sau (file đã tồn tại, dù có field này hay
-    // không) đều đi qua nhánh normalizeConfig() ở trên, giữ nguyên giá trị đã
-    // lưu — không bao giờ tự bật lại true cho 1 file cũ.
-    if (!raw) cache.requireOperatorLogin = true;
     // File mới toàn bộ, hoặc file cũ chưa có cloudRoomId (nâng cấp từ bản trước
     // M2), hoặc file cũ còn dùng key `room.pin`/`pinSetAt`/`pinRequiredWithAccounts`
-    // (trước khi đổi tên field sang `password`/…) — ghi lại ngay để dọn sạch
-    // key cũ trên đĩa thay vì chờ tới lần save() kế tiếp.
+    // (trước khi đổi tên field sang `password`/…), hoặc file cũ chưa có
+    // `room.code` (nâng cấp từ trước khi có ID phòng) — ghi lại ngay để dọn
+    // sạch/bổ sung trên đĩa thay vì chờ tới lần save() kế tiếp.
     const legacyPinKeys = raw && raw.room && raw.room.pin !== undefined;
-    if (!raw || raw.cloudRoomId !== cache.cloudRoomId || legacyPinKeys) safeWriteSync(configPath, cache);
+    const missingRoomCode = !raw || !raw.room || !raw.room.code;
+    const missingRelaySecret = !raw || !raw.relayAdminSecret;
+    if (!raw || raw.cloudRoomId !== cache.cloudRoomId || legacyPinKeys || missingRoomCode || missingRelaySecret) safeWriteSync(configPath, cache);
     return cache;
   }
 

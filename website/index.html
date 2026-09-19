@@ -1,14 +1,17 @@
 <!DOCTYPE html>
 <html lang="vi">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
-  
+
   <!-- Primary Meta Tags -->
   <title>Presentation For Church - Phần Mềm Trình Chiếu Nhà Thờ & Kênh Band Thông Minh</title>
   <meta name="title" content="Presentation For Church - Phần Mềm Trình Chiếu Nhà Thờ & Kênh Band Thông Minh">
-  <meta name="description" content="Phần mềm trình chiếu thờ phượng miễn phí, mã nguồn mở, tối ưu cho Hội Thánh Việt Nam. Tích hợp sẵn Kinh Thánh, Thánh Ca, màn hình Live 60fps mượt mà và độc quyền Kênh Band kết nối điện thoại ban nhạc qua Wi-Fi nội bộ.">
-  <meta name="keywords" content="presentation for church, easyworship tieng viet, phan mem trinh chieu nha tho, trinh chieu thanh ca, kinh thanh tieng viet, kenh band nha tho, phan mem trinh chieu mien phi">
+  <meta name="description"
+    content="Phần mềm trình chiếu thờ phượng miễn phí, mã nguồn mở, tối ưu cho Hội Thánh Việt Nam. Tích hợp sẵn Kinh Thánh, Thánh Ca, màn hình Live 60fps mượt mà và độc quyền Kênh Band kết nối điện thoại ban nhạc qua Wi-Fi nội bộ.">
+  <meta name="keywords"
+    content="presentation for church, easyworship tieng viet, phan mem trinh chieu nha tho, trinh chieu thanh ca, kinh thanh tieng viet, kenh band nha tho, phan mem trinh chieu mien phi">
   <meta name="author" content="PhuocTDT">
   <meta name="theme-color" content="#060911">
 
@@ -16,7 +19,8 @@
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://github.com/PhuocTDT/Presentation_For_Church">
   <meta property="og:title" content="Presentation For Church - Trình Chiếu Nhà Thờ Đỉnh Cao & Kết Nối Không Dây">
-  <meta property="og:description" content="Giải pháp trình chiếu thờ phượng hiện đại, mượt mà và thấu hiểu Hội Thánh Việt. Miễn phí vĩnh viễn và mã nguồn mở.">
+  <meta property="og:description"
+    content="Giải pháp trình chiếu thờ phượng hiện đại, mượt mà và thấu hiểu Hội Thánh Việt. Miễn phí vĩnh viễn và mã nguồn mở.">
   <meta property="og:image" content="assets/images/worship-bg-1.jpg">
 
   <!-- Favicon -->
@@ -25,6 +29,7 @@
   <!-- Stylesheet -->
   <link rel="stylesheet" href="style.css">
 </head>
+
 <body>
 
   <!-- Ambient Atmospheric Lighting -->
@@ -52,27 +57,41 @@
           <li><a href="#features" class="nav-item">Tính Năng</a></li>
           <li><a href="#band-spotlight" class="nav-item">Kênh Band</a></li>
           <li><a href="#comparison" class="nav-item">So Sánh</a></li>
-          <li><a href="#download" class="nav-item">Tải Về</a></li>
-          <li><a href="#get-account" class="nav-item">Tài Khoản</a></li>
           <li><a href="#faq" class="nav-item">Hỏi Đáp</a></li>
+          <li><a href="#get-account" class="nav-item" id="navItemLogin">Đăng Nhập</a></li>
         </ul>
       </nav>
 
       <div class="nav-actions">
-        <a href="https://github.com/PhuocTDT/Presentation_For_Church" target="_blank" rel="noopener noreferrer" class="btn-github" id="btnGithubNav">
-          <svg viewBox="0 0 24 24"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
+        <a href="https://github.com/PhuocTDT/Presentation_For_Church" target="_blank" rel="noopener noreferrer"
+          class="btn-github" id="btnGithubNav">
+          <svg viewBox="0 0 24 24">
+            <path
+              d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z" />
+          </svg>
           <span>GitHub</span>
         </a>
         <a href="#download" class="btn btn-primary" id="btnNavDownload">
           <span>Tải Miễn Phí</span>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M19 12l-7 7-7-7"/></svg>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <path d="M12 5v14M19 12l-7 7-7-7" />
+          </svg>
         </a>
-        <button class="theme-toggle-btn" id="themeToggle" aria-label="Chuyển chế độ Sáng / Tối" title="Chuyển chế độ Sáng / Tối">
-          <svg class="sun-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
-          <svg class="moon-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+        <button class="theme-toggle-btn" id="themeToggle" aria-label="Chuyển chế độ Sáng / Tối"
+          title="Chuyển chế độ Sáng / Tối">
+          <svg class="sun-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="5" />
+            <path
+              d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" />
+          </svg>
+          <svg class="moon-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+          </svg>
         </button>
         <button class="mobile-nav-toggle" id="mobileNavToggle" aria-label="Mở menu điều hướng">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12h18M3 6h18M3 18h18"/></svg>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M3 12h18M3 6h18M3 18h18" />
+          </svg>
         </button>
       </div>
     </div>
@@ -84,7 +103,7 @@
     <!-- SECTION 1: HERO SECTION -->
     <section class="hero-section" id="hero">
       <div class="container">
-        
+
         <div class="hero-pill">
           <span class="pill-tag">v3.1.5 Mới Nhất</span>
           <span class="pill-text">100% Miễn Phí & Mã Nguồn Mở Cho Hội Thánh</span>
@@ -96,18 +115,22 @@
         </h1>
 
         <p class="hero-desc">
-          Giải pháp trình chiếu chuyên dụng cho nhà thờ được thiết kế tỉ mỉ cho tiếng Việt. 
-          Tích hợp sẵn kho Thánh Ca, Kinh Thánh đa bản dịch, màn hình Live 60fps mượt mà và 
+          Giải pháp trình chiếu chuyên dụng cho nhà thờ được thiết kế tỉ mỉ cho tiếng Việt.
+          Tích hợp sẵn kho Thánh Ca, Kinh Thánh đa bản dịch, màn hình Live 60fps mượt mà và
           <strong>Kênh Band độc quyền</strong> giao tiếp thời gian thực với ban hát qua Wi-Fi.
         </p>
 
         <div class="hero-cta-group">
           <a href="#download" class="btn btn-primary btn-lg" id="btnHeroDownload">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3" />
+            </svg>
             <span>Tải Về Cho Máy Tính</span>
           </a>
           <a href="#band-spotlight" class="btn btn-secondary btn-lg" id="btnHeroSimulate">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polygon points="5 3 19 12 5 21 5 3" />
+            </svg>
             <span>Xem Kênh Band Demo</span>
           </a>
         </div>
@@ -135,7 +158,7 @@
         <!-- High-Fidelity App Mockup Showcase -->
         <div class="hero-mockup-wrapper" id="heroMockup">
           <div class="mockup-window">
-            
+
             <div class="mockup-titlebar">
               <div class="mockup-dots">
                 <span class="mockup-dot red"></span>
@@ -209,7 +232,8 @@
               </div>
 
               <!-- Right Column: Live Output Display Screen -->
-              <div class="mockup-live-display" style="background-image: url('assets/images/worship-bg-1.jpg'); padding-top: 50px;">
+              <div class="mockup-live-display"
+                style="background-image: url('assets/images/worship-bg-1.jpg'); padding-top: 50px;">
                 <!-- Red Live Window Header Bar -->
                 <div class="mockup-live-header">
                   <div class="live-badge-left">
@@ -263,7 +287,7 @@
     <!-- SECTION 2: CORE VALUE PILLARS (4 TRỤ CỘT) -->
     <section id="pillars">
       <div class="container">
-        
+
         <div class="section-header">
           <div class="section-badge">
             <span class="pulse-dot"></span>
@@ -271,18 +295,18 @@
           </div>
           <h2>Vì Sao Các Hội Thánh Lựa Chọn Presentation For Church?</h2>
           <p>
-            Được xây dựng từ chính nhu cầu thực tế của ban âm thanh, nhạc cụ và kỹ thuật nhà thờ, 
+            Được xây dựng từ chính nhu cầu thực tế của ban âm thanh, nhạc cụ và kỹ thuật nhà thờ,
             khắc phục hoàn toàn những hạn chế của PowerPoint và các phần mềm đắt đỏ.
           </p>
         </div>
 
         <div class="pillars-grid">
-          
+
           <div class="pillar-card">
             <div class="pillar-icon-box">🇻🇳</div>
             <h3>100% Thuần Việt</h3>
             <p>
-              Tối ưu gõ tiếng Việt hoàn hảo, không bị nhảy chữ hay lỗi font. 
+              Tối ưu gõ tiếng Việt hoàn hảo, không bị nhảy chữ hay lỗi font.
               Tích hợp sẵn kho bài hát Thánh Ca phong phú và các bản dịch Kinh Thánh Tiếng Việt phổ biến nhất.
             </p>
           </div>
@@ -291,7 +315,7 @@
             <div class="pillar-icon-box">⚡</div>
             <h3>Virtual Canvas 60fps</h3>
             <p>
-              Trình chiếu hai màn hình độc lập. Hiệu ứng chuyển cảnh Crossfade mượt mà, 
+              Trình chiếu hai màn hình độc lập. Hiệu ứng chuyển cảnh Crossfade mượt mà,
               không bao giờ bị chớp màn hình đen, tự động co giãn kích thước chữ khi tràn khung.
             </p>
           </div>
@@ -300,7 +324,7 @@
             <div class="pillar-icon-box">📱</div>
             <h3>Kênh Band Độc Bản</h3>
             <p>
-              Ban nhạc và người chiếu máy tính giao tiếp kín đáo trong giờ thờ phượng chỉ qua 1 chạm trên điện thoại. 
+              Ban nhạc và người chiếu máy tính giao tiếp kín đáo trong giờ thờ phượng chỉ qua 1 chạm trên điện thoại.
               Gửi cảnh báo âm thanh, đổi bài hát, xem hợp âm ngay trên mạng Wi-Fi nội bộ.
             </p>
           </div>
@@ -309,7 +333,7 @@
             <div class="pillar-icon-box">🔒</div>
             <h3>Offline & Tự Chủ 100%</h3>
             <p>
-              Không cần Internet trong giờ thờ phượng, không phụ thuộc máy chủ bên ngoài. 
+              Không cần Internet trong giờ thờ phượng, không phụ thuộc máy chủ bên ngoài.
               Dữ liệu lưu an toàn trên ổ cứng với cơ chế sao lưu tự động 3 cấp độ.
             </p>
           </div>
@@ -323,7 +347,7 @@
     <!-- SECTION 3: BENTO GRID FEATURES (TÍNH NĂNG CHUYÊN SÂU) -->
     <section id="features">
       <div class="container">
-        
+
         <div class="section-header">
           <div class="section-badge">
             <span class="pulse-dot"></span>
@@ -334,15 +358,15 @@
         </div>
 
         <div class="bento-grid">
-          
+
           <!-- Bento 1: Tra Cứu Kinh Thánh -->
           <div class="bento-card col-8">
             <div class="bento-header">
               <span class="bento-tag">Kinh Thánh Thông Minh</span>
               <h3>Tra Cứu Nhanh Chóng & Đa Bản Dịch</h3>
               <p>
-                Gõ tắt tên sách, chương, câu (ví dụ: "Giăng 3:16" hoặc "Thi 23") để nạp ngay lên màn hình. 
-                Hỗ trợ Bản Truyền Thống, Bản Dịch Mới (BDM), Bản Hiệu Đính (RVV11) và cho phép nhập file XML tùy chỉnh.
+                Gõ tắt tên sách, chương, câu (ví dụ: "Giăng 3:16" hoặc "Thi 23") để nạp ngay lên màn hình.
+                Hỗ trợ Bản Truyền Thống (1925), Bản Dịch Mới (BDM), Bản Hiệu Đính (RVV11) tra cứu tức thì.
               </p>
             </div>
             <div class="bento-visual">
@@ -352,13 +376,15 @@
                   <button class="bible-ver-tab active" type="button" data-ver="rvv11">Bản Hiệu Đính (RVV11)</button>
                   <button class="bible-ver-tab" type="button" data-ver="btt">Bản Truyền Thống (1925)</button>
                   <button class="bible-ver-tab" type="button" data-ver="bdm">Bản Dịch Mới (BDM)</button>
-                  <button class="bible-ver-tab" type="button" data-ver="xml" style="border-style:dashed;">+ Nhập XML</button>
                 </div>
 
                 <!-- Search Input Bar -->
                 <div class="bible-search-bar">
                   <div class="bible-search-left">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <circle cx="11" cy="11" r="8" />
+                      <path d="m21 21-4.3-4.3" />
+                    </svg>
                     <span>Tìm nhanh: <strong id="bibleSearchQuery">Thi Thiên 23:1-3 (RVV11)</strong></span>
                   </div>
                   <span class="bible-search-hint">Gõ tắt: "thi 23"</span>
@@ -367,29 +393,30 @@
                 <!-- Quick Suggested Passages -->
                 <div class="bible-suggestions">
                   <span class="bible-sug-label">Đoạn kinh văn phổ biến:</span>
-                  <button class="bible-sug-chip" type="button" data-ref="Giăng 3:16" data-text="Vì Đức Chúa Trời yêu thương thế gian, đến nỗi đã ban Con Một của Ngài, hầu cho hễ ai tin Con ấy không bị hư mất mà được sự sống đời đời.">Giăng 3:16</button>
-                  <button class="bible-sug-chip" type="button" data-ref="Thi Thiên 23:1-3" data-text="Đức Giê-hô-va là Đấng chăn giữ tôi; tôi sẽ chẳng thiếu thốn gì. Ngài khiến tôi an nghỉ nơi đồng cỏ xanh tươi, dẫn tôi đến mé nước bình tịnh. Ngài bổ lại linh hồn tôi...">Thi Thiên 23:1-3</button>
-                  <button class="bible-sug-chip" type="button" data-ref="Rô-ma 8:28" data-text="Chúng ta biết rằng mọi sự hiệp lại làm ích cho những kẻ yêu mến Đức Chúa Trời, là những kẻ được gọi theo ý định của Ngài.">Rô-ma 8:28</button>
-                  <button class="bible-sug-chip" type="button" data-ref="Ma-thi-ơ 6:9-13" data-text="Lạy Cha chúng con ở trên trời; Danh Cha được tôn thánh; Nước Cha được đến; Ý Cha được nên, ở đất như ở trời...">Ma-thi-ơ 6:9-13</button>
+                  <button class="bible-sug-chip" type="button" data-ref="Giăng 3:16">Giăng 3:16</button>
+                  <button class="bible-sug-chip active" type="button" data-ref="Thi Thiên 23:1-3">Thi Thiên 23:1-3</button>
+                  <button class="bible-sug-chip" type="button" data-ref="Rô-ma 8:28">Rô-ma 8:28</button>
+                  <button class="bible-sug-chip" type="button" data-ref="Ma-thi-ơ 6:9-13">Ma-thi-ơ 6:9-13</button>
                 </div>
 
                 <!-- Verse Preview Box -->
                 <div class="bible-verse-result" id="bibleVerseResult">
                   <div class="verse-ref">
                     <span id="verseRefTitle">THI THIÊN 23:1-3 • BẢN HIỆU ĐÍNH (RVV11)</span>
-                    <span style="font-size:0.7rem; color:var(--text-faint); font-family:var(--font-mono);">3 CÂU</span>
+                    <span id="verseCountLabel" style="font-size:0.7rem; color:var(--text-faint); font-family:var(--font-mono);">3 CÂU</span>
                   </div>
                   <div class="verse-text" id="verseTextContent">
-                    "Đức Giê-hô-va là Đấng chăn giữ tôi; tôi sẽ chẳng thiếu thốn gì. 
-                    Ngài khiến tôi an nghỉ nơi đồng cỏ xanh tươi, dẫn tôi đến mé nước bình tịnh. 
-                    Ngài bổ lại linh hồn tôi, dẫn tôi vào các lối công bình, vì cớ danh Ngài."
+                    "Đức Giê-hô-va là Đấng chăn giữ tôi, tôi sẽ chẳng thiếu thốn gì.
+                    Ngài khiến tôi an nghỉ nơi đồng cỏ xanh tươi, dẫn tôi đến mé nước bình tịnh.
+                    Ngài phục hồi linh hồn tôi, dẫn tôi vào các lối công chính vì cớ danh Ngài."
                   </div>
 
                   <div class="bible-verse-actions">
                     <span>✓ Sẵn sàng xuất màn hình máy chiếu</span>
                     <div class="bible-action-btns">
                       <button class="bible-btn-sm" type="button" id="btnBibleAddToSchedule">+ Đưa Vào Schedule</button>
-                      <button class="bible-btn-sm active-live-btn" type="button" id="btnBibleGoLive">● Chiếu Trực Tiếp</button>
+                      <button class="bible-btn-sm active-live-btn" type="button" id="btnBibleGoLive">● Chiếu Trực
+                        Tiếp</button>
                     </div>
                   </div>
                 </div>
@@ -404,7 +431,8 @@
               <span class="bento-tag">Lịch Trình Tiện Lợi</span>
               <h3>Kéo Thả Schedule</h3>
               <p>
-                Sắp xếp toàn bộ thứ tự buổi lễ chỉ bằng thao tác kéo thả. Lưu và mở lại file lịch trình (.bcsch) cực nhanh.
+                Sắp xếp toàn bộ thứ tự buổi lễ chỉ bằng thao tác kéo thả. Lưu và mở lại file lịch trình (.bcsch) cực
+                nhanh.
               </p>
             </div>
             <div class="bento-visual">
@@ -460,7 +488,8 @@
               <span class="bento-tag">Hiệu Ứng Hình Ảnh (10 Media)</span>
               <h3>Motion Backgrounds & Video Loops</h3>
               <p>
-                Hỗ trợ lặp video MP4 không giật, ảnh 16:9 độ phân giải cao. Tự động cuộn qua 10 phông nền thờ phượng tiêu biểu (rê chuột để dừng).
+                Hỗ trợ lặp video MP4 không giật, ảnh 16:9 độ phân giải cao. Tự động cuộn qua 10 phông nền thờ phượng
+                tiêu biểu (rê chuột để dừng).
               </p>
             </div>
             <div class="bento-visual">
@@ -620,12 +649,13 @@
               <span class="bento-tag">An Tâm Vận Hành</span>
               <h3>Tự Chọn Vị Trí Dữ Liệu & Auto Backup</h3>
               <p>
-                Không lo đầy ổ C! Ứng dụng cho phép lưu bài hát, video vào ổ D, E hoặc ổ cứng di động. 
+                Không lo đầy ổ C! Ứng dụng cho phép lưu bài hát, video vào ổ D, E hoặc ổ cứng di động.
                 Tự động xoay vòng sao lưu 3 bản dự phòng liên tục chống mất dữ liệu.
               </p>
             </div>
             <div class="bento-visual" style="padding: 20px;">
-              <div style="background:rgba(255,255,255,0.03); border:1px solid var(--border-subtle); border-radius:10px; padding:14px; font-family:var(--font-mono); font-size:0.8rem; color:var(--text-secondary);">
+              <div
+                style="background:rgba(255,255,255,0.03); border:1px solid var(--border-subtle); border-radius:10px; padding:14px; font-family:var(--font-mono); font-size:0.8rem; color:var(--text-secondary);">
                 <div style="color:var(--emerald); margin-bottom:6px;">✓ Tự động phát hiện dung lượng ổ đĩa</div>
                 <div style="color:var(--primary); margin-bottom:6px;">✓ Lưu trữ: D:\WorshipData\userData</div>
                 <div style="color:var(--gold);">✓ Backup xoay vòng: .backup.1 / .backup.2 / .backup.3</div>
@@ -642,22 +672,24 @@
     <!-- SECTION 4: SPOTLIGHT - KÊNH BAND (THE GAME CHANGER SIMULATOR) -->
     <section id="band-spotlight" class="band-section">
       <div class="container">
-        
+
         <div class="section-header">
-          <div class="section-badge" style="background:rgba(245,158,11,0.1); border-color:rgba(245,158,11,0.3); color:var(--gold);">
+          <div class="section-badge"
+            style="background:rgba(245,158,11,0.1); border-color:rgba(245,158,11,0.3); color:var(--gold);">
             <span class="pulse-dot" style="background:var(--gold); box-shadow:0 0 10px var(--gold);"></span>
             <span>Độc Quyền • Tính Năng Đột Phá</span>
           </div>
           <h2>Kênh Band: Giao Tiếp Không Dây Thời Gian Thực</h2>
           <p>
-            Ban nhạc dùng điện thoại quét mã QR là kết nối ngay tới máy vận hành. 
-            Không cần Internet, không cần cài app từ kho ứng dụng. Thử bấm nút trên điện thoại mô phỏng dưới đây để trải nghiệm!
+            Ban nhạc dùng điện thoại quét mã QR là kết nối ngay tới máy vận hành.
+            Không cần Internet, không cần cài app từ kho ứng dụng. Thử bấm nút trên điện thoại mô phỏng dưới đây để trải
+            nghiệm!
           </p>
         </div>
 
         <!-- Interactive Band Simulator -->
         <div class="band-simulator-wrapper" id="bandSimulator">
-          
+
           <div class="simulator-header-bar">
             <div class="sim-headline-group">
               <h3>Mô Phỏng Tương Tác Kênh Band Live</h3>
@@ -670,11 +702,11 @@
           </div>
 
           <div class="sim-grid">
-            
+
             <!-- Left Column: Smartphone Client Mockup -->
             <div class="phone-mockup-frame">
               <div class="phone-top-notch"></div>
-              
+
               <div class="phone-screen">
                 <div class="phone-app-bar">
                   <div class="status-row">
@@ -685,7 +717,7 @@
                 </div>
 
                 <div class="phone-content">
-                  
+
                   <div class="phone-tabs">
                     <button class="phone-tab-btn active" data-tab="alerts" id="tabAlerts">Cảnh Báo</button>
                     <button class="phone-tab-btn" data-tab="chords" id="tabChords">Hợp Âm</button>
@@ -720,30 +752,38 @@
 
                   <!-- Chords Gallery Panel (Toggled via tab) -->
                   <div id="phoneChordsPanel" style="display:none; text-align:center; padding:10px 0;">
-                    <div style="font-size:0.8rem; font-weight:700; margin-bottom:8px;">HỢP ÂM: CHÚA CHÍNH NGÀI LÀ ĐẤNG...</div>
-                    <div style="background:#f8fafc; border:1px solid #dfe2e7; border-radius:10px; padding:16px; font-family:var(--font-mono); font-size:0.82rem; text-align:left; color:#2563eb;">
+                    <div style="font-size:0.8rem; font-weight:700; margin-bottom:8px;">HỢP ÂM: CHÚA CHÍNH NGÀI LÀ
+                      ĐẤNG...</div>
+                    <div
+                      style="background:#f8fafc; border:1px solid #dfe2e7; border-radius:10px; padding:16px; font-family:var(--font-mono); font-size:0.82rem; text-align:left; color:#2563eb;">
                       [C] Chúa chính Ngài là [G] Đấng con mãi tôn [Am] thờ<br>
                       [F] Chúa chính Ngài là [G] Vua.<br>
                       [C] Lòng nguyện hát chúc [G] tán Chúa muôn [Am] đời...
                     </div>
-                    <small style="color:#64748b; margin-top:8px; display:block;">Vuốt ngang để xem các bài hát tiếp theo</small>
+                    <small style="color:#64748b; margin-top:8px; display:block;">Vuốt ngang để xem các bài hát tiếp
+                      theo</small>
                   </div>
 
                   <!-- Setlist Panel (Toggled via tab) -->
                   <div id="phoneSetlistPanel" style="display:none;">
                     <div style="font-size:0.8rem; font-weight:700; margin-bottom:8px;">DANH SÁCH BÀI HÁT TỪ XA:</div>
                     <div style="display:flex; flex-direction:column; gap:6px; font-size:0.82rem;">
-                      <div style="background:#f1f5f9; padding:6px 10px; border-radius:6px;">1. Chúa chính Ngài là Đấng...</div>
+                      <div style="background:#f1f5f9; padding:6px 10px; border-radius:6px;">1. Chúa chính Ngài là
+                        Đấng...</div>
                       <div style="background:#f1f5f9; padding:6px 10px; border-radius:6px;">2. Lớn Bấy Duy Ngài</div>
                       <div style="background:#f1f5f9; padding:6px 10px; border-radius:6px;">3. Tình Yêu Thương Xót</div>
                     </div>
-                    <button class="btn btn-primary" id="btnSendSetlistSim" style="width:100%; margin-top:12px; font-size:0.8rem; padding:8px;">Gửi Nạp Vào Lịch Trình</button>
+                    <button class="btn btn-primary" id="btnSendSetlistSim"
+                      style="width:100%; margin-top:12px; font-size:0.8rem; padding:8px;">Gửi Nạp Vào Lịch
+                      Trình</button>
                   </div>
 
                 </div>
 
                 <div class="phone-toast" id="phoneToast">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="3">
+                    <polyline points="20 6 9 17 4 12" />
+                  </svg>
                   <span id="toastMsg">Đã gửi tới máy vận hành!</span>
                 </div>
               </div>
@@ -762,7 +802,7 @@
               </div>
 
               <div class="op-sim-feed" id="simFeedList">
-                
+
                 <!-- Preloaded items -->
                 <div class="op-alert-card urgent">
                   <div class="alert-main-info">
@@ -805,7 +845,7 @@
     <!-- SECTION 5: COMPARISON MATRIX (BẢNG SO SÁNH) -->
     <section id="comparison">
       <div class="container">
-        
+
         <div class="section-header">
           <div class="section-badge">
             <span class="pulse-dot"></span>
@@ -894,7 +934,7 @@
     <!-- SECTION 6: DOWNLOAD & QUICK START (KHU VỰC TẢI VỀ) -->
     <section id="download">
       <div class="container">
-        
+
         <div class="section-header">
           <div class="section-badge">
             <span class="pulse-dot"></span>
@@ -905,21 +945,25 @@
         </div>
 
         <div class="download-grid">
-          
+
           <!-- Windows Installer -->
           <div class="download-card featured">
             <div>
               <div class="download-card-icon">🪟</div>
               <h3>Windows Cài Đặt (NSIS)</h3>
-              <p>Bản cài đặt tiêu chuẩn, tự động tạo lối tắt trên Desktop và Menu Start. Tương thích Windows 10 & 11.</p>
+              <p>Bản cài đặt tiêu chuẩn, tự động tạo lối tắt trên Desktop và Menu Start. Tương thích Windows 10 & 11.
+              </p>
               <ul class="download-meta-list">
                 <li><span>✓ Tự động cập nhật đường dẫn</span></li>
                 <li><span>✓ Tích hợp đầy đủ font & thư viện</span></li>
                 <li><span>✓ Định dạng: <code>.Setup.exe</code></span></li>
               </ul>
             </div>
-            <a href="https://github.com/PhuocTDT/Presentation_For_Church/releases" target="_blank" rel="noopener noreferrer" class="btn btn-primary" id="btnDownloadWinSetup">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+            <a href="https://github.com/PhuocTDT/Presentation_For_Church/releases" target="_blank"
+              rel="noopener noreferrer" class="btn btn-primary" id="btnDownloadWinSetup">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3" />
+              </svg>
               <span>Tải Bản Cài Đặt (Win)</span>
             </a>
           </div>
@@ -929,15 +973,19 @@
             <div>
               <div class="download-card-icon">💼</div>
               <h3>Windows Portable</h3>
-              <p>Chạy trực tiếp từ USB hoặc thư mục bất kỳ mà không cần quyền Admin. Rất tiện để mang đi nhóm thờ phượng.</p>
+              <p>Chạy trực tiếp từ USB hoặc thư mục bất kỳ mà không cần quyền Admin. Rất tiện để mang đi nhóm thờ
+                phượng.</p>
               <ul class="download-meta-list">
                 <li><span>✓ Không cần cài đặt</span></li>
                 <li><span>✓ Cắm USB là chạy ngay</span></li>
                 <li><span>✓ Định dạng: <code>.Portable.exe</code></span></li>
               </ul>
             </div>
-            <a href="https://github.com/PhuocTDT/Presentation_For_Church/releases" target="_blank" rel="noopener noreferrer" class="btn btn-secondary" id="btnDownloadWinPort">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+            <a href="https://github.com/PhuocTDT/Presentation_For_Church/releases" target="_blank"
+              rel="noopener noreferrer" class="btn btn-secondary" id="btnDownloadWinPort">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3" />
+              </svg>
               <span>Tải Bản Portable (Win)</span>
             </a>
           </div>
@@ -954,8 +1002,11 @@
                 <li><span>✓ Định dạng: <code>.dmg</code></span></li>
               </ul>
             </div>
-            <a href="https://github.com/PhuocTDT/Presentation_For_Church/releases" target="_blank" rel="noopener noreferrer" class="btn btn-secondary" id="btnDownloadMac">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+            <a href="https://github.com/PhuocTDT/Presentation_For_Church/releases" target="_blank"
+              rel="noopener noreferrer" class="btn btn-secondary" id="btnDownloadMac">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3" />
+              </svg>
               <span>Tải Bản Cho Mac (.dmg)</span>
             </a>
           </div>
@@ -988,31 +1039,544 @@
     </section>
 
 
-    <!-- SECTION 6.5: NHẬN TÀI KHOẢN KÊNH BAND QUA EMAIL (không bắt buộc) -->
+    <!-- SECTION 6.5: CỔNG OPERATOR & QUẢN LÝ KÊNH BAND -->
     <section id="get-account">
       <div class="container">
 
         <div class="section-header">
           <div class="section-badge">
             <span class="pulse-dot"></span>
-            <span>Không Bắt Buộc</span>
+            <span>Cổng Quản Trị Operator • Kênh Band</span>
           </div>
-          <h2>Nhận Sẵn Tài Khoản Kênh Band Qua Email</h2>
+          <h2>Đăng Nhập &amp; Quản Lý Kênh Band</h2>
           <p>
-            Để lại email nếu muốn chúng tôi tạo sẵn 1 tài khoản đăng nhập Kênh Band (dùng chung được nhiều nhà thờ),
-            gửi mật khẩu tạm vào hộp thư của bạn. Bỏ qua vẫn tải và dùng app bình thường — chỉ dùng email để gửi tài khoản, không dùng vào việc khác.
+            Quản lý phòng Kênh Band cố định (Zoom-style) và phân quyền cho ban nhạc của bạn. Dễ dàng kết nối và tự động
+            đồng bộ trên mọi máy tính.
           </p>
         </div>
 
-        <div class="account-request-card">
-          <div class="account-request-icon">✉️</div>
-          <form class="account-request-form" id="emailAccountForm">
-            <input type="email" id="emailAccountInput" placeholder="ban@gmail.com" required autocomplete="email" maxlength="254">
-            <button type="submit" class="btn btn-primary" id="emailAccountBtn">
-              <span>Gửi Cho Tôi</span>
-            </button>
-          </form>
-          <div class="account-request-status" id="emailAccountStatus" role="status"></div>
+        <div class="account-box-wrapper">
+          <div class="account-glow-ambient" aria-hidden="true"></div>
+
+          <div class="account-grid">
+            <!-- Left Column: Value Proposition & Features -->
+            <div class="account-perks">
+              <div class="account-perks-badge">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                  <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+                </svg>
+                <span>Quyền Lợi Tài Khoản Operator</span>
+              </div>
+              <h3 class="account-perks-title">1 Tài khoản sở hữu 1 phòng cố định duy nhất</h3>
+              <p class="account-perks-sub">Tương tự Zoom Personal Meeting ID — khi đăng nhập trên bất kỳ máy tính nào,
+                phần mềm sẽ tự động kết nối đúng phòng của Hội Thánh bạn.</p>
+
+              <div class="account-features-list">
+                <div class="account-feature-item">
+                  <div class="account-feature-icon cyan">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M9 18V5l12-2v13" />
+                      <circle cx="6" cy="18" r="3" />
+                      <circle cx="18" cy="16" r="3" />
+                    </svg>
+                  </div>
+                  <div class="account-feature-text">
+                    <strong>Đồng Bộ Hợp Âm &amp; Setlist</strong>
+                    <span>Ban nhạc xem hợp âm, tự do đổi tone thời gian thực trên điện thoại hoặc máy tính bảng.</span>
+                  </div>
+                </div>
+
+                <div class="account-feature-item">
+                  <div class="account-feature-icon indigo">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+                      <circle cx="9" cy="7" r="4" />
+                      <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
+                      <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+                    </svg>
+                  </div>
+                  <div class="account-feature-text">
+                    <strong>Tạo User Toàn Cục Cho Ban Nhạc</strong>
+                    <span>User được tạo không bị khóa vào 1 phòng — có thể đăng nhập vào bất kỳ phòng nào khi có ID
+                      &amp; Mật khẩu.</span>
+                  </div>
+                </div>
+
+                <div class="account-feature-item">
+                  <div class="account-feature-icon emerald">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                    </svg>
+                  </div>
+                  <div class="account-feature-text">
+                    <strong>100% Miễn Phí &amp; Bảo Mật</strong>
+                    <span>Bảo mật qua AWS Cognito, không giới hạn buổi lễ, không thu phí, không gửi email quảng
+                      cáo.</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="account-note-card">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="12" r="10" />
+                  <path d="M12 16v-4" />
+                  <path d="M12 8h.01" />
+                </svg>
+                <span>Nếu chỉ trình chiếu lời bài hát &amp; Kinh Thánh thông thường trên máy tính, bạn <strong>không bắt
+                    buộc</strong> phải đăng nhập.</span>
+              </div>
+            </div>
+
+            <!-- Right Column: Multi-State Operator Portal Panel -->
+            <div class="account-card-panel" id="operatorPortalPanel">
+
+              <!-- Tab Switcher (Visible when not logged in) -->
+              <div class="portal-tab-bar" id="portalTabBar">
+                <button type="button" class="portal-tab-btn active" id="portalTabBtnLogin" data-tab="login">Đăng
+                  Nhập</button>
+                <button type="button" class="portal-tab-btn" id="portalTabBtnRegister" data-tab="register">Đăng Ký
+                  Operator</button>
+              </div>
+
+              <!-- Status Notification Container (Prominently placed at the top) -->
+              <div class="account-request-status" id="portalStatus" role="status"></div>
+
+              <!-- VIEW 1: ĐĂNG NHẬP OPERATOR -->
+              <div class="portal-view" id="portalViewLogin">
+                <div class="account-card-header">
+                  <div class="account-card-avatar">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" />
+                      <polyline points="10 17 15 12 10 7" />
+                      <line x1="15" y1="12" x2="3" y2="12" />
+                    </svg>
+                  </div>
+                  <div class="account-card-title-group">
+                    <h4>Đăng Nhập Operator</h4>
+                    <div class="account-status-badge">
+                      <span class="pulse-dot"></span>
+                      <span>Hệ thống trực tuyến</span>
+                    </div>
+                  </div>
+                </div>
+
+                <form class="account-request-form" id="portalLoginForm">
+                  <div class="account-input-group">
+                    <label for="loginEmail" class="account-label">Email đăng nhập</label>
+                    <div class="account-input-wrapper">
+                      <svg class="account-input-icon" width="18" height="18" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2">
+                        <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
+                        <polyline points="22,6 12,13 2,6" />
+                      </svg>
+                      <input type="email" id="loginEmail" placeholder="nhap-email@gmail.com" required
+                        autocomplete="email">
+                    </div>
+                  </div>
+
+                  <div class="account-input-group">
+                    <label for="loginPassword" class="account-label">Mật khẩu</label>
+                    <div class="account-input-wrapper">
+                      <svg class="account-input-icon" width="18" height="18" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2">
+                        <rect width="18" height="11" x="3" y="11" rx="2" ry="2" />
+                        <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                      </svg>
+                      <input type="password" id="loginPassword" placeholder="••••••••" required
+                        autocomplete="current-password">
+                    </div>
+                  </div>
+
+                  <button type="submit" class="btn btn-primary account-submit-btn" id="btnLoginSubmit">
+                    <span>Đăng Nhập Operator</span>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                      stroke-width="2.2">
+                      <path d="M5 12h14M12 5l7 7-7 7" />
+                    </svg>
+                  </button>
+
+                  <div class="portal-login-links">
+                    <button type="button" class="portal-link-btn" id="btnForgotPass">Quên mật khẩu?</button>
+                    <button type="button" class="portal-link-btn" id="btnSwitchToRegister">Chưa có tài khoản? Đăng
+                      ký</button>
+                  </div>
+                </form>
+              </div>
+
+              <!-- VIEW 2: ĐĂNG KÝ TÀI KHOẢN OPERATOR (5 FIELDS) -->
+              <div class="portal-view portal-hidden" id="portalViewRegister">
+                <div class="account-card-header">
+                  <div class="account-card-avatar">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+                      <circle cx="9" cy="7" r="4" />
+                      <line x1="19" y1="8" x2="19" y2="14" />
+                      <line x1="22" y1="11" x2="16" y2="11" />
+                    </svg>
+                  </div>
+                  <div class="account-card-title-group">
+                    <h4>Đăng Ký Tài Khoản Operator</h4>
+                    <span class="account-input-hint">Điền 5 thông tin để tạo tài khoản Kênh Band</span>
+                  </div>
+                </div>
+
+                <form class="account-request-form" id="portalRegisterForm">
+                  <div class="account-input-group">
+                    <label for="regName" class="account-label">Họ và Tên</label>
+                    <div class="account-input-wrapper">
+                      <svg class="account-input-icon" width="18" height="18" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2">
+                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                        <circle cx="12" cy="7" r="4" />
+                      </svg>
+                      <input type="text" id="regName" placeholder="Nguyễn Văn A" required maxlength="60">
+                    </div>
+                  </div>
+
+                  <div class="account-input-row">
+                    <div class="account-input-group">
+                      <label for="regPhone" class="account-label">Số điện thoại</label>
+                      <div class="account-input-wrapper">
+                        <svg class="account-input-icon" width="18" height="18" viewBox="0 0 24 24" fill="none"
+                          stroke="currentColor" stroke-width="2">
+                          <path
+                            d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
+                        </svg>
+                        <input type="tel" id="regPhone" placeholder="0912345678" required maxlength="20">
+                      </div>
+                    </div>
+
+                    <div class="account-input-group">
+                      <label for="regEmail" class="account-label">Email</label>
+                      <div class="account-input-wrapper">
+                        <svg class="account-input-icon" width="18" height="18" viewBox="0 0 24 24" fill="none"
+                          stroke="currentColor" stroke-width="2">
+                          <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
+                          <polyline points="22,6 12,13 2,6" />
+                        </svg>
+                        <input type="email" id="regEmail" placeholder="email@gmail.com" required maxlength="254">
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="account-input-row">
+                    <div class="account-input-group">
+                      <label for="regChurch" class="account-label">Hội Thánh Địa Phương</label>
+                      <div class="account-input-wrapper">
+                        <svg class="account-input-icon" width="18" height="18" viewBox="0 0 24 24" fill="none"
+                          stroke="currentColor" stroke-width="2">
+                          <path d="M18 20V6a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v14" />
+                          <path d="M2 20h20" />
+                          <path d="M14 12v.01" />
+                        </svg>
+                        <input type="text" id="regChurch" placeholder="Tên Hội Thánh..." required maxlength="100">
+                      </div>
+                    </div>
+
+                    <div class="account-input-group">
+                      <label for="regArea" class="account-label">Khu vực (63 Tỉnh / Thành)</label>
+                      <div class="account-input-wrapper">
+                        <svg class="account-input-icon" width="18" height="18" viewBox="0 0 24 24" fill="none"
+                          stroke="currentColor" stroke-width="2">
+                          <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z" />
+                          <circle cx="12" cy="10" r="3" />
+                        </svg>
+                        <select id="regArea" required class="account-select">
+                          <option value="" disabled selected>-- Chọn Tỉnh / Thành --</option>
+                          <option value="An Giang">An Giang</option>
+                          <option value="Bà Rịa - Vũng Tàu">Bà Rịa - Vũng Tàu</option>
+                          <option value="Bắc Giang">Bắc Giang</option>
+                          <option value="Bắc Kạn">Bắc Kạn</option>
+                          <option value="Bạc Liêu">Bạc Liêu</option>
+                          <option value="Bắc Ninh">Bắc Ninh</option>
+                          <option value="Bến Tre">Bến Tre</option>
+                          <option value="Bình Định">Bình Định</option>
+                          <option value="Bình Dương">Bình Dương</option>
+                          <option value="Bình Phước">Bình Phước</option>
+                          <option value="Bình Thuận">Bình Thuận</option>
+                          <option value="Cà Mau">Cà Mau</option>
+                          <option value="Cần Thơ">Cần Thơ</option>
+                          <option value="Cao Bằng">Cao Bằng</option>
+                          <option value="Đà Nẵng">Đà Nẵng</option>
+                          <option value="Đắk Lắk">Đắk Lắk</option>
+                          <option value="Đắk Nông">Đắk Nông</option>
+                          <option value="Điện Biên">Điện Biên</option>
+                          <option value="Đồng Nai">Đồng Nai</option>
+                          <option value="Đồng Tháp">Đồng Tháp</option>
+                          <option value="Gia Lai">Gia Lai</option>
+                          <option value="Hà Giang">Hà Giang</option>
+                          <option value="Hà Nam">Hà Nam</option>
+                          <option value="Hà Nội">Hà Nội</option>
+                          <option value="Hà Tĩnh">Hà Tĩnh</option>
+                          <option value="Hải Dương">Hải Dương</option>
+                          <option value="Hải Phòng">Hải Phòng</option>
+                          <option value="Hậu Giang">Hậu Giang</option>
+                          <option value="Hòa Bình">Hòa Bình</option>
+                          <option value="Hưng Yên">Hưng Yên</option>
+                          <option value="Khánh Hòa">Khánh Hòa</option>
+                          <option value="Kiên Giang">Kiên Giang</option>
+                          <option value="Kon Tum">Kon Tum</option>
+                          <option value="Lai Châu">Lai Châu</option>
+                          <option value="Lâm Đồng">Lâm Đồng</option>
+                          <option value="Lạng Sơn">Lạng Sơn</option>
+                          <option value="Lào Cai">Lào Cai</option>
+                          <option value="Long An">Long An</option>
+                          <option value="Nam Định">Nam Định</option>
+                          <option value="Nghệ An">Nghệ An</option>
+                          <option value="Ninh Bình">Ninh Bình</option>
+                          <option value="Ninh Thuận">Ninh Thuận</option>
+                          <option value="Phú Thọ">Phú Thọ</option>
+                          <option value="Phú Yên">Phú Yên</option>
+                          <option value="Quảng Bình">Quảng Bình</option>
+                          <option value="Quảng Nam">Quảng Nam</option>
+                          <option value="Quảng Ngãi">Quảng Ngãi</option>
+                          <option value="Quảng Ninh">Quảng Ninh</option>
+                          <option value="Quảng Trị">Quảng Trị</option>
+                          <option value="Sóc Trăng">Sóc Trăng</option>
+                          <option value="Sơn La">Sơn La</option>
+                          <option value="Tây Ninh">Tây Ninh</option>
+                          <option value="Thái Bình">Thái Bình</option>
+                          <option value="Thái Nguyên">Thái Nguyên</option>
+                          <option value="Thanh Hóa">Thanh Hóa</option>
+                          <option value="Thừa Thiên Huế">Thừa Thiên Huế</option>
+                          <option value="Tiền Giang">Tiền Giang</option>
+                          <option value="TP Hồ Chí Minh">TP Hồ Chí Minh</option>
+                          <option value="Trà Vinh">Trà Vinh</option>
+                          <option value="Tuyên Quang">Tuyên Quang</option>
+                          <option value="Vĩnh Long">Vĩnh Long</option>
+                          <option value="Vĩnh Phúc">Vĩnh Phúc</option>
+                          <option value="Yên Bái">Yên Bái</option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+
+                  <button type="submit" class="btn btn-primary account-submit-btn" id="btnRegisterSubmit">
+                    <span>Đăng Ký Tài Khoản Operator</span>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                      stroke-width="2.2">
+                      <path d="M5 12h14M12 5l7 7-7 7" />
+                    </svg>
+                  </button>
+
+                  <div class="portal-login-links">
+                    <button type="button" class="portal-link-btn" id="btnSwitchToLogin">Đã có tài khoản? Đăng nhập ngay</button>
+                    <button type="button" class="portal-link-btn" id="btnRegisterForgotPass">Quên mật khẩu?</button>
+                  </div>
+                </form>
+              </div>
+
+              <!-- VIEW 3: ĐỔI MẬT KHẨU LẦN ĐẦU (COGNITO NEW_PASSWORD_REQUIRED) -->
+              <div class="portal-view portal-hidden" id="portalViewNewPassword">
+                <div class="account-card-header">
+                  <div class="account-card-avatar">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                    </svg>
+                  </div>
+                  <div class="account-card-title-group">
+                    <h4>Đổi Mật Khẩu Lần Đầu</h4>
+                    <span class="account-input-hint">Mật khẩu tạm chỉ dùng 1 lần. Hãy đặt mật khẩu mới.</span>
+                  </div>
+                </div>
+
+                <form class="account-request-form" id="portalNewPasswordForm">
+                  <div class="account-input-group">
+                    <label for="newPasswordInput" class="account-label">Mật khẩu mới</label>
+                    <div class="account-input-wrapper">
+                      <svg class="account-input-icon" width="18" height="18" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2">
+                        <rect width="18" height="11" x="3" y="11" rx="2" ry="2" />
+                        <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                      </svg>
+                      <input type="password" id="newPasswordInput" placeholder="Tối thiểu 8 ký tự (hoa, thường, số)"
+                        required minlength="8">
+                    </div>
+                  </div>
+
+                  <div class="account-input-group">
+                    <label for="newPasswordConfirmInput" class="account-label">Xác nhận mật khẩu mới</label>
+                    <div class="account-input-wrapper">
+                      <svg class="account-input-icon" width="18" height="18" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2">
+                        <rect width="18" height="11" x="3" y="11" rx="2" ry="2" />
+                        <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                      </svg>
+                      <input type="password" id="newPasswordConfirmInput" placeholder="Nhập lại mật khẩu mới" required
+                        minlength="8">
+                    </div>
+                  </div>
+
+                  <button type="submit" class="btn btn-primary account-submit-btn" id="btnNewPasswordSubmit">
+                    <span>Đặt Mật Khẩu Mới &amp; Tiếp Tục</span>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                      stroke-width="2.2">
+                      <path d="M5 12h14M12 5l7 7-7 7" />
+                    </svg>
+                  </button>
+                </form>
+              </div>
+
+              <!-- VIEW 4: TẠO PHÒNG CỐ ĐỊNH (1 ACCOUNT = 1 PHÒNG) -->
+              <div class="portal-view portal-hidden" id="portalViewCreateRoom">
+                <div class="account-card-header">
+                  <div class="account-card-avatar">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+                      <polyline points="9 22 9 12 15 12 15 22" />
+                    </svg>
+                  </div>
+                  <div class="account-card-title-group">
+                    <h4>Khởi Tạo Phòng Kênh Band Riêng</h4>
+                    <span class="account-input-hint">1 tài khoản liên kết 1 phòng cố định duy nhất (Zoom-style)</span>
+                  </div>
+                </div>
+
+                <form class="account-request-form" id="portalCreateRoomForm">
+                  <div class="account-input-group">
+                    <label for="createRoomName" class="account-label">Tên phòng Kênh Band</label>
+                    <div class="account-input-wrapper">
+                      <svg class="account-input-icon" width="18" height="18" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2">
+                        <path d="M18 20V6a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v14" />
+                      </svg>
+                      <input type="text" id="createRoomName" placeholder="Ví dụ: Kênh Band HT Bến Tre" required
+                        maxlength="60">
+                    </div>
+                  </div>
+
+                  <div class="account-input-row">
+                    <div class="account-input-group">
+                      <label for="createRoomPassword" class="account-label">Mật khẩu phòng</label>
+                      <div class="account-input-wrapper">
+                        <svg class="account-input-icon" width="18" height="18" viewBox="0 0 24 24" fill="none"
+                          stroke="currentColor" stroke-width="2">
+                          <rect width="18" height="11" x="3" y="11" rx="2" ry="2" />
+                          <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                        </svg>
+                        <input type="password" id="createRoomPassword" placeholder="4-12 ký tự" required minlength="4"
+                          maxlength="12">
+                      </div>
+                    </div>
+
+                    <div class="account-input-group">
+                      <label for="createRoomPasswordConfirm" class="account-label">Xác nhận mật khẩu</label>
+                      <div class="account-input-wrapper">
+                        <svg class="account-input-icon" width="18" height="18" viewBox="0 0 24 24" fill="none"
+                          stroke="currentColor" stroke-width="2">
+                          <rect width="18" height="11" x="3" y="11" rx="2" ry="2" />
+                          <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                        </svg>
+                        <input type="password" id="createRoomPasswordConfirm" placeholder="Nhập lại mật khẩu" required
+                          minlength="4" maxlength="12">
+                      </div>
+                    </div>
+                  </div>
+
+                  <button type="submit" class="btn btn-primary account-submit-btn" id="btnCreateRoomSubmit">
+                    <span>Khởi Tạo Phòng Cố Định Của Bạn</span>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                      stroke-width="2.2">
+                      <path d="M5 12h14M12 5l7 7-7 7" />
+                    </svg>
+                  </button>
+                </form>
+              </div>
+
+              <!-- VIEW 5: DASHBOARD QUẢN TRỊ OPERATOR (KHI ĐÃ CÓ PHÒNG) -->
+              <div class="portal-view portal-hidden" id="portalViewDashboard">
+                <div class="portal-dash-header">
+                  <div class="portal-dash-user">
+                    <span class="portal-dash-avatar" id="dashAvatar">OP</span>
+                    <div>
+                      <h4 id="dashOpName">Tên Operator</h4>
+                      <p id="dashOpChurch">Hội Thánh • Khu vực</p>
+                    </div>
+                  </div>
+                  <button type="button" class="portal-logout-btn" id="btnLogout" title="Đăng Xuất">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                      <polyline points="16 17 21 12 16 7" />
+                      <line x1="21" y1="12" x2="9" y2="12" />
+                    </svg>
+                    <span>Đăng Xuất</span>
+                  </button>
+                </div>
+
+                <!-- Room Quick Status Box -->
+                <div class="portal-room-card" style="margin-bottom: 20px;">
+                  <div class="portal-room-top">
+                    <span class="portal-badge-room">Phòng Cố Định (Zoom-style)</span>
+                    <span class="portal-live-dot">● Sẵn sàng kết nối</span>
+                  </div>
+                  <h3 class="portal-room-title" id="dashRoomName">Tên Phòng</h3>
+
+                  <div class="portal-room-details-grid">
+                    <div class="portal-room-stat">
+                      <span class="stat-label">MÃ PHÒNG (ROOM ID)</span>
+                      <div class="stat-value-group">
+                        <strong class="stat-code" id="dashRoomCode">------</strong>
+                        <button type="button" class="btn-copy-sm" id="btnCopyRoomCode"
+                          title="Sao chép mã phòng">Copy</button>
+                      </div>
+                    </div>
+
+                    <div class="portal-room-stat">
+                      <span class="stat-label">MẬT KHẨU PHÒNG</span>
+                      <div class="stat-value-group">
+                        <span class="stat-pwd" id="dashRoomPassword">••••••</span>
+                        <button type="button" class="btn-copy-sm" id="btnToggleRoomPassword"
+                          title="Hiện/ẩn mật khẩu">👁️</button>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="portal-join-link-bar">
+                    <span class="portal-join-link"
+                      id="dashJoinLink">https://channel.worship-official.link/m/?room=...</span>
+                    <button type="button" class="btn-copy-sm" id="btnCopyJoinLink">Copy Link</button>
+                  </div>
+                </div>
+
+                <!-- Launch Dedicated Dashboard Button -->
+                <div style="text-align: center; margin-top: 16px;">
+                  <a href="portal.html" class="btn btn-primary" id="btnLaunchPortal" style="display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; padding: 14px 20px; font-size: 1.05rem; font-weight: 700; text-decoration: none; border-radius: 12px; box-shadow: 0 4px 20px rgba(56, 189, 248, 0.4);">
+                    <span>Mở Bảng Quản Lý Kênh Band (Trang Riêng)</span>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                      <path d="M5 12h14M12 5l7 7-7 7" />
+                    </svg>
+                  </a>
+                  <p style="font-size: 0.82rem; color: var(--text-muted); margin-top: 10px;">
+                    Quản lý thành viên ban nhạc, tạo tài khoản toàn cục, trình chiếu QR và cài đặt tại trang riêng.
+                  </p>
+                </div>
+              </div>
+
+              <!-- Trust Indicators -->
+              <div class="account-trust-footer">
+                <div class="account-trust-item">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                  </svg>
+                  <span>Bảo mật</span>
+                </div>
+                <div class="account-trust-item">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+                    <polyline points="9 22 9 12 15 12 15 22" />
+                  </svg>
+                  <span>1 Account = 1 Phòng</span>
+                </div>
+                <div class="account-trust-item">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10" />
+                    <path d="m4.93 4.93 14.14 14.14" />
+                  </svg>
+                  <span>Không Spam</span>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
 
       </div>
@@ -1022,7 +1586,7 @@
     <!-- SECTION 7: FAQ (CÂU HỎI THƯỜNG GẶP) -->
     <section id="faq">
       <div class="container">
-        
+
         <div class="section-header">
           <div class="section-badge">
             <span class="pulse-dot"></span>
@@ -1033,14 +1597,16 @@
         </div>
 
         <div class="faq-list" id="faqList">
-          
+
           <div class="faq-item open">
             <button class="faq-question">
               <span>Phần mềm này có thực sự miễn phí vĩnh viễn không?</span>
               <span class="faq-icon">+</span>
             </button>
             <div class="faq-answer">
-              Đúng vậy! Presentation For Church là dự án mã nguồn mở được tạo dựng nhằm phục vụ công việc Chúa và hỗ trợ các Hội Thánh, điểm nhóm vừa và nhỏ tiết kiệm chi phí mua bản quyền phần mềm. Bạn có thể sử dụng hoàn toàn miễn phí cho mọi buổi thờ phượng.
+              Đúng vậy! Presentation For Church là dự án mã nguồn mở được tạo dựng nhằm phục vụ công việc Chúa và hỗ trợ
+              các Hội Thánh, điểm nhóm vừa và nhỏ tiết kiệm chi phí mua bản quyền phần mềm. Bạn có thể sử dụng hoàn toàn
+              miễn phí cho mọi buổi thờ phượng.
             </div>
           </div>
 
@@ -1050,7 +1616,9 @@
               <span class="faq-icon">+</span>
             </button>
             <div class="faq-answer">
-              Hoàn toàn được! Kênh Band chạy trực tiếp trên mạng Wi-Fi nội bộ (LAN). Chỉ cần máy tính vận hành và điện thoại của ban nhạc cùng kết nối vào một cục phát Wi-Fi (ngay cả khi cục phát đó không cắm dây mạng Internet), ứng dụng vẫn quét mã QR và gửi tin nhắn tức thời.
+              Hoàn toàn được! Kênh Band chạy trực tiếp trên mạng Wi-Fi nội bộ (LAN). Chỉ cần máy tính vận hành và điện
+              thoại của ban nhạc cùng kết nối vào một cục phát Wi-Fi (ngay cả khi cục phát đó không cắm dây mạng
+              Internet), ứng dụng vẫn quét mã QR và gửi tin nhắn tức thời.
             </div>
           </div>
 
@@ -1060,7 +1628,9 @@
               <span class="faq-icon">+</span>
             </button>
             <div class="faq-answer">
-              Ứng dụng có sẵn công cụ biên soạn bài hát (Song Editor) với giao diện trực quan, cho phép bạn nhập lời, chia đoạn (Verse, Chorus) dễ dàng. Về Kinh Thánh, bạn có thể nhập thêm các bản dịch dạng file XML thông qua mục cài đặt Kinh Thánh của ứng dụng.
+              Ứng dụng có sẵn công cụ biên soạn bài hát (Song Editor) với giao diện trực quan, cho phép bạn nhập lời,
+              chia đoạn (Verse, Chorus) dễ dàng. Về Kinh Thánh, bạn có thể nhập thêm các bản dịch dạng file XML thông
+              qua mục cài đặt Kinh Thánh của ứng dụng.
             </div>
           </div>
 
@@ -1070,7 +1640,9 @@
               <span class="faq-icon">+</span>
             </button>
             <div class="faq-answer">
-              Phần mềm được tối ưu hiệu năng rất tốt trên nền tảng Electron hiện đại. Một chiếc laptop chạy chip Intel Core i3 hoặc Core i5, RAM 4GB - 8GB và card đồ họa tích hợp hoàn toàn có thể xuất màn hình Full HD 60fps mượt mà mà không gặp hiện tượng giật lag.
+              Phần mềm được tối ưu hiệu năng rất tốt trên nền tảng Electron hiện đại. Một chiếc laptop chạy chip Intel
+              Core i3 hoặc Core i5, RAM 4GB - 8GB và card đồ họa tích hợp hoàn toàn có thể xuất màn hình Full HD 60fps
+              mượt mà mà không gặp hiện tượng giật lag.
             </div>
           </div>
 
@@ -1080,7 +1652,9 @@
               <span class="faq-icon">+</span>
             </button>
             <div class="faq-answer">
-              Bạn có thể tạo Issue hoặc đóng góp Pull Request trực tiếp trên kho mã nguồn GitHub của dự án tại <strong>PhuocTDT/Presentation_For_Church</strong>. Chúng tôi luôn trân trọng mọi ý kiến đóng góp từ các tôi tớ Chúa và các anh em kỹ thuật.
+              Bạn có thể tạo Issue hoặc đóng góp Pull Request trực tiếp trên kho mã nguồn GitHub của dự án tại
+              <strong>PhuocTDT/Presentation_For_Church</strong>. Chúng tôi luôn trân trọng mọi ý kiến đóng góp từ các
+              tôi tớ Chúa và các anh em kỹ thuật.
             </div>
           </div>
 
@@ -1095,7 +1669,7 @@
   <!-- SECTION 8: FOOTER -->
   <footer class="site-footer">
     <div class="container">
-      
+
       <div class="footer-top">
         <div class="footer-brand">
           <div style="display:flex; align-items:center; gap:10px; margin-bottom:12px;">
@@ -1103,7 +1677,7 @@
             <h4 style="margin:0;">Presentation For Church</h4>
           </div>
           <p>
-            Phần mềm trình chiếu thờ phượng hiện đại, mã nguồn mở, phục vụ cộng đồng Cơ Đốc Việt Nam. 
+            Phần mềm trình chiếu thờ phượng hiện đại, mã nguồn mở, phục vụ cộng đồng Cơ Đốc Việt Nam.
             Tạ ơn Chúa vì mọi ơn lành Ngài ban.
           </p>
         </div>
@@ -1122,9 +1696,12 @@
         <div class="footer-col">
           <h5>Dự Án & Nguồn Mở</h5>
           <ul>
-            <li><a href="https://github.com/PhuocTDT/Presentation_For_Church" target="_blank" rel="noopener noreferrer">Kho Mã Nguồn GitHub</a></li>
-            <li><a href="https://github.com/PhuocTDT/Presentation_For_Church/releases" target="_blank" rel="noopener noreferrer">Phiên Bản Phát Hành</a></li>
-            <li><a href="https://github.com/PhuocTDT/Presentation_For_Church/issues" target="_blank" rel="noopener noreferrer">Báo Lỗi / Đóng Góp</a></li>
+            <li><a href="https://github.com/PhuocTDT/Presentation_For_Church" target="_blank"
+                rel="noopener noreferrer">Kho Mã Nguồn GitHub</a></li>
+            <li><a href="https://github.com/PhuocTDT/Presentation_For_Church/releases" target="_blank"
+                rel="noopener noreferrer">Phiên Bản Phát Hành</a></li>
+            <li><a href="https://github.com/PhuocTDT/Presentation_For_Church/issues" target="_blank"
+                rel="noopener noreferrer">Báo Lỗi / Đóng Góp</a></li>
           </ul>
         </div>
       </div>
@@ -1142,4 +1719,5 @@
   <!-- Script Logic -->
   <script src="app.js"></script>
 </body>
+
 </html>

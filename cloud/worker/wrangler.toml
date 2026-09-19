@@ -2,9 +2,15 @@ name = "band-comm-relay"
 main = "src/worker.js"
 compatibility_date = "2026-01-01"
 
-# Điền id sau khi chạy: npx wrangler kv namespace create SETLISTS
+# Không cần workers.dev — Worker chỉ nghe trên domain riêng. Phải đặt TRƯỚC
+# mọi bảng [[...]] bên dưới — TOML gán các dòng `key = value` đứng sau 1
+# [[array-of-tables]] vào ĐÚNG entry vừa mở, không phải cấp cao nhất, nên đặt
+# sai chỗ sẽ lặng lẽ lọt vào bảng khác (đã tái hiện qua wrangler --dry-run).
+workers_dev = false
+
 kv_namespaces = [
-  { binding = "SETLISTS", id = "65d8f621e90a400c8e2758bc19ff9bb2" }
+  { binding = "SETLISTS", id = "65d8f621e90a400c8e2758bc19ff9bb2" },
+  { binding = "GLOBAL_USERS", id = "4024fc79a916429a809baa63dc3beaf4" }
 ]
 
 # Ảnh hợp âm — tự xoá sau 4 ngày qua lifecycle rule "expire-4d" đặt trên
@@ -13,9 +19,33 @@ kv_namespaces = [
 binding = "GALLERY"
 bucket_name = "band-comm-gallery"
 
-# Không cần workers.dev — Worker chỉ nghe trên domain riêng.
-workers_dev = false
+# GĐ2 — Durable Object relay realtime thay LAN server (xem src/room-relay.js).
+# 1 instance/phòng, định danh bằng cloudRoomId qua idFromName().
+[[durable_objects.bindings]]
+name = "ROOMS"
+class_name = "RoomRelay"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["RoomRelay"]
 
 [[routes]]
-pattern = "api.worship-official.link"
+pattern = "channel.worship-official.link"
 custom_domain = true
+
+# Phục vụ comm/mobile/ (trang join của band) dưới prefix /m/… — mount qua
+# BINDING (không dùng directory-mount mặc định của Cloudflare Assets, thứ tự
+# TỰ ĐỘNG serve trước cả khi chạm tới Worker) để worker.js toàn quyền kiểm
+# soát URL mapping (/m -> index.html, /m/app.js -> app.js) mà không phải
+# copy/nested lại thư mục comm/mobile/ — 1 nguồn sự thật duy nhất, dùng
+# CHUNG với LAN server.js's serveStatic() trong lúc còn cả 2 đường (transition).
+# ĐẶT CUỐI FILE — [assets] cũng là 1 table, key=value sau nó cũng bị nuốt y
+# hệt lỗi kv_namespaces gặp phải (đã tái hiện + fix qua wrangler --dry-run).
+[assets]
+directory = "../../comm/mobile"
+binding = "MOBILE_ASSETS"
+# "none" -> trả đúng file khớp path, không tự redirect /index.html <-> / (mặc
+# định "auto-trailing-slash" của Cloudflare Assets redirect theo QUY ƯỚC CỦA
+# NÓ, phá route /m worker.js tự làm — đã tái hiện qua curl thật (307 lặng lẽ
+# trỏ về "/" thay vì "/m"), tắt hẳn để worker.js toàn quyền quyết định URL.
+html_handling = "none"

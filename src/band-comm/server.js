@@ -49,7 +49,7 @@ const TOKEN_MAX_AGE_MS = 12 * 60 * 60 * 1000;
 // Hộp thư setlist khi laptop tắt hẳn (M2, xem cloud/worker). Kéo về lúc
 // server khởi động + định kỳ trong khi chạy, phòng khi phone tự fallback lên
 // cloud vì mất LAN thoáng qua dù laptop vẫn đang mở.
-const CLOUD_API_BASE = 'https://api.worship-official.link';
+const CLOUD_API_BASE = 'https://channel.worship-official.link';
 const CLOUD_POLL_MS = 60000;
 
 const MIME = {
@@ -395,7 +395,10 @@ function createCommServer({ store, accountsStore, jwksCache, onEvent, onPresence
       profile: restore || null,
       gallery: galleryManifest(),
       cloudRoomId: cfg.cloudRoomId,
-      setlistEnabled: setlistEnabled()
+      setlistEnabled: setlistEnabled(),
+      // Chỉ tài khoản local (accounts.js) có khái niệm này — Cognito dùng cơ
+      // chế NEW_PASSWORD_REQUIRED riêng của chính nó, không đi qua đây.
+      mustChangePassword: !!account.mustChangePassword
     });
   }
 
@@ -406,7 +409,7 @@ function createCommServer({ store, accountsStore, jwksCache, onEvent, onPresence
   function afterIdentityVerified(res, account, cfg) {
     if (!cfg.room.passwordRequiredWithAccounts) return finishLogin(res, account, cfg);
     const tempToken = crypto.randomBytes(16).toString('hex');
-    pendingLogins.set(tempToken, { accountId: account.id, name: account.name, expiresAt: Date.now() + PENDING_LOGIN_MAX_AGE_MS });
+    pendingLogins.set(tempToken, { accountId: account.id, name: account.name, mustChangePassword: !!account.mustChangePassword, expiresAt: Date.now() + PENDING_LOGIN_MAX_AGE_MS });
     return sendJson(res, 200, { needsRoomPassword: true, tempToken });
   }
 
@@ -436,6 +439,10 @@ function createCommServer({ store, accountsStore, jwksCache, onEvent, onPresence
       const body = await readJson(req);
       if (!body) return sendJson(res, 400, { error: 'bad json' });
       const cfg = store.load();
+      if (String(body.code || '').trim().toUpperCase() !== cfg.room.code) {
+        recordFailure(ip);
+        return sendJson(res, 403, { error: 'Sai ID phòng' });
+      }
       if (String(body.password || '') !== String(cfg.room.password)) {
         recordFailure(ip);
         return sendJson(res, 403, { error: 'Sai mật khẩu phòng' });
@@ -473,6 +480,12 @@ function createCommServer({ store, accountsStore, jwksCache, onEvent, onPresence
       const ip = (req.socket && req.socket.remoteAddress) || 'unknown';
       const body = await readJson(req);
       if (!body) return sendJson(res, 400, { error: 'bad json' });
+      // ID phòng kiểm tra TRƯỚC danh tính (username/password hay Cognito
+      // idToken) — không nhạy cảm nên không cần rate-limit riêng, chỉ để báo
+      // đúng lỗi "sai ID phòng" thay vì lẫn vào "sai tên đăng nhập/mật khẩu".
+      if (String(body.code || '').trim().toUpperCase() !== cfg.room.code) {
+        return sendJson(res, 403, { error: 'Sai ID phòng' });
+      }
 
       // authMode='cognito' (cloud/identity-plan.md §4): client đã lấy idToken
       // đã ký sẵn từ Cloudflare Worker "band-identity" (đăng nhập Cognito qua
@@ -560,7 +573,7 @@ function createCommServer({ store, accountsStore, jwksCache, onEvent, onPresence
       if (!accountsStore) return sendJson(res, 404, { error: 'not found' });
       const acc = accountsStore.findById(pending.accountId);
       if (!acc || acc.active === false) return sendJson(res, 401, { error: 'Tài khoản không còn hoạt động' });
-      return finishLogin(res, { id: acc.id, name: acc.name }, cfg);
+      return finishLogin(res, { id: acc.id, name: acc.name, mustChangePassword: acc.mustChangePassword }, cfg);
     }
 
     // --- everything else needs a valid token ---
@@ -575,6 +588,20 @@ function createCommServer({ store, accountsStore, jwksCache, onEvent, onPresence
       clients.set(clientId, client);
     }
     client.lastSeen = Date.now();
+
+    // Band member tự đổi mật khẩu — chỉ có ý nghĩa cho tài khoản local
+    // (accounts.js); dùng để tất toán mustChangePassword sau khi
+    // /api/login trả cờ này (đặt bởi operator lúc tạo/reset tài khoản,
+    // điểm 5/band-comm-plan.md §11). client.profileId = account.id vì
+    // finishLogin() gán thẳng như vậy, xem comment ở đó.
+    if (p === '/api/change-password' && req.method === 'POST') {
+      if (!accountsStore) return sendJson(res, 404, { error: 'not found' });
+      const body = await readJson(req);
+      if (!body) return sendJson(res, 400, { error: 'bad json' });
+      const result = accountsStore.changeOwnPassword(client.profileId, body.currentPassword, body.newPassword);
+      if (result.error) return sendJson(res, 400, { error: result.error });
+      return sendJson(res, 200, { ok: true });
+    }
 
     // Downstream is the WebSocket at /api/ws — handled in `handleUpgrade`, not here.
 
@@ -828,6 +855,7 @@ function createCommServer({ store, accountsStore, jwksCache, onEvent, onPresence
       hostUrl: running ? `http://${host}:${port}` : null,
       publicUrl: cfg.publicUrl || '',
       tunnelName: cfg.tunnelName || '',
+      code: cfg.room.code,
       password: cfg.room.password,
       passwordSetAt: cfg.room.passwordSetAt || 0,
       roomName: cfg.room.name,

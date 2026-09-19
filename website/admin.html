@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="vi" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Admin — Worship Official</title>
+  <meta name="description" content="Trang quản trị nội bộ — Worship Official" />
+  <meta name="robots" content="noindex, nofollow" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="admin.css" />
+</head>
+<body>
+
+<!-- ===== LOGIN SCREEN ===== -->
+<div class="admin-login-screen" id="adminLoginScreen">
+  <div class="login-card">
+    <div class="login-logo">
+      <div class="login-logo-icon">⚙️</div>
+      <h1>Admin Console</h1>
+      <p>Worship Official — Quản Trị Hệ Thống</p>
+    </div>
+    <div class="login-form">
+      <label for="adminKeyInput">Admin Key</label>
+      <div class="input-wrap">
+        <input type="password" id="adminKeyInput" placeholder="Nhập admin key..." autocomplete="off" />
+        <button type="button" id="btnToggleKeyVisibility" class="btn-eye">👁️</button>
+      </div>
+      <p class="login-error" id="loginError"></p>
+      <button type="button" class="btn-login" id="btnAdminLogin">Đăng Nhập</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== ADMIN DASHBOARD ===== -->
+<div class="admin-app" id="adminApp" style="display:none">
+
+  <!-- Sidebar (Desktop) -->
+  <aside class="admin-sidebar" id="adminSidebar">
+    <div class="sidebar-header">
+      <div class="sidebar-logo">⚙️</div>
+      <div>
+        <div class="sidebar-title">Admin Console</div>
+        <div class="sidebar-sub">Worship Official</div>
+      </div>
+    </div>
+    <nav class="sidebar-nav">
+      <button class="nav-item active" data-tab="dashboard" id="navDashboard">
+        <span class="nav-icon">📊</span><span class="nav-label">Dashboard</span>
+      </button>
+      <button class="nav-item" data-tab="operators" id="navOperators">
+        <span class="nav-icon">👤</span><span class="nav-label">Operators</span>
+        <span class="nav-badge" id="sidebarOpCount">0</span>
+      </button>
+      <button class="nav-item" data-tab="members" id="navMembers">
+        <span class="nav-icon">👥</span><span class="nav-label">Members</span>
+        <span class="nav-badge" id="sidebarMemberCount">0</span>
+      </button>
+      <button class="nav-item" data-tab="rooms" id="navRooms">
+        <span class="nav-icon">🏠</span><span class="nav-label">Rooms</span>
+      </button>
+    </nav>
+    <div class="sidebar-footer">
+      <button class="btn-change-pass" id="btnChangeAdminPass">🔒 Đổi Mật Khẩu</button>
+      <button class="btn-logout-admin" id="btnAdminLogout">🚪 Đăng Xuất</button>
+    </div>
+  </aside>
+
+  <!-- Main Content -->
+  <main class="admin-main" id="adminMain">
+
+    <!-- Top Bar -->
+    <header class="admin-topbar">
+      <button class="btn-menu-toggle" id="btnMenuToggle" aria-label="Toggle menu">☰</button>
+      <div class="topbar-title" id="topbarTitle">Dashboard</div>
+      <button class="btn-refresh" id="btnRefresh" title="Làm mới dữ liệu">🔄</button>
+    </header>
+
+    <!-- ===== TAB: DASHBOARD ===== -->
+    <section class="tab-panel active" id="tabDashboard">
+      <div class="metrics-row">
+        <div class="metric-card-admin">
+          <div class="metric-icon">👤</div>
+          <div class="metric-data">
+            <span class="metric-value" id="statTotalOps">—</span>
+            <span class="metric-label">Operators</span>
+          </div>
+        </div>
+        <div class="metric-card-admin">
+          <div class="metric-icon">👥</div>
+          <div class="metric-data">
+            <span class="metric-value" id="statTotalMembers">—</span>
+            <span class="metric-label">Members</span>
+          </div>
+        </div>
+        <div class="metric-card-admin">
+          <div class="metric-icon">🏠</div>
+          <div class="metric-data">
+            <span class="metric-value" id="statTotalRooms">—</span>
+            <span class="metric-label">Rooms Active</span>
+          </div>
+        </div>
+        <div class="metric-card-admin">
+          <div class="metric-icon">🗓️</div>
+          <div class="metric-data">
+            <span class="metric-value" id="statNewToday">—</span>
+            <span class="metric-label">Mới hôm nay</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="section-card">
+        <div class="section-header">
+          <h2>Operators mới nhất</h2>
+        </div>
+        <div class="table-wrap">
+          <table class="admin-table" id="dashRecentTable">
+            <thead>
+              <tr>
+                <th>Tên</th><th>Email</th><th>Hội Thánh</th><th>Khu Vực</th><th>Ngày Đăng Ký</th><th>Room</th>
+              </tr>
+            </thead>
+            <tbody id="dashRecentBody">
+              <tr><td colspan="6" class="table-empty">Đang tải...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== TAB: OPERATORS ===== -->
+    <section class="tab-panel" id="tabOperators">
+      <div class="section-card">
+        <div class="section-header">
+          <h2>Danh Sách Operators</h2>
+          <input type="search" class="search-input" id="opSearchInput" placeholder="🔍 Tìm theo tên, email, hội thánh..." />
+        </div>
+        <div class="table-wrap">
+          <table class="admin-table" id="operatorsTable">
+            <thead>
+              <tr>
+                <th>Tên</th><th>Email</th><th>Hội Thánh</th><th>Khu Vực</th><th>Members</th><th>Room</th><th>Ngày ĐK</th><th>Thao Tác</th>
+              </tr>
+            </thead>
+            <tbody id="operatorsBody">
+              <tr><td colspan="8" class="table-empty">Đang tải...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== TAB: MEMBERS ===== -->
+    <section class="tab-panel" id="tabMembers">
+      <div class="section-card">
+        <div class="section-header">
+          <h2>Danh Sách Members</h2>
+          <div class="header-controls">
+            <select class="select-filter" id="memberFilterOp">
+              <option value="">Tất cả Operators</option>
+            </select>
+            <input type="search" class="search-input" id="memberSearchInput" placeholder="🔍 Tìm member..." />
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table class="admin-table" id="membersTable">
+            <thead>
+              <tr>
+                <th>Tên</th><th>Username</th><th>Operator</th><th>Room</th><th>Trạng Thái</th><th>Ngày Tạo</th><th>Thao Tác</th>
+              </tr>
+            </thead>
+            <tbody id="membersBody">
+              <tr><td colspan="7" class="table-empty">Đang tải...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== TAB: ROOMS ===== -->
+    <section class="tab-panel" id="tabRooms">
+      <div class="section-card">
+        <div class="section-header">
+          <h2>Danh Sách Rooms</h2>
+          <input type="search" class="search-input" id="roomSearchInput" placeholder="🔍 Tìm room..." />
+        </div>
+        <div class="table-wrap">
+          <table class="admin-table" id="roomsTable">
+            <thead>
+              <tr>
+                <th>Tên Phòng</th><th>Room Code</th><th>Mật Khẩu</th><th>Operator</th><th>Members</th><th>Thao Tác</th>
+              </tr>
+            </thead>
+            <tbody id="roomsBody">
+              <tr><td colspan="6" class="table-empty">Đang tải...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Bottom Tab Bar (Mobile) -->
+  <nav class="bottom-tab-bar" id="bottomTabBar">
+    <button class="bottom-tab active" data-tab="dashboard">
+      <span>📊</span><span>Dashboard</span>
+    </button>
+    <button class="bottom-tab" data-tab="operators">
+      <span>👤</span><span>Operators</span>
+    </button>
+    <button class="bottom-tab" data-tab="members">
+      <span>👥</span><span>Members</span>
+    </button>
+    <button class="bottom-tab" data-tab="rooms">
+      <span>🏠</span><span>Rooms</span>
+    </button>
+  </nav>
+
+</div>
+
+<!-- ===== DETAIL SLIDE PANEL ===== -->
+<div class="detail-backdrop" id="detailBackdrop"></div>
+<aside class="detail-panel" id="detailPanel">
+  <div class="detail-panel-header">
+    <h3 id="detailPanelTitle">Chi Tiết</h3>
+    <button class="btn-close-panel" id="btnClosePanel">✕</button>
+  </div>
+  <div class="detail-panel-body" id="detailPanelBody">
+    <!-- Filled dynamically -->
+  </div>
+</aside>
+
+<!-- ===== MODAL CONFIRM ===== -->
+<div class="modal-backdrop-admin" id="confirmModal">
+  <div class="modal-admin">
+    <div class="modal-admin-header">
+      <h4 id="confirmTitle">Xác Nhận</h4>
+    </div>
+    <div class="modal-admin-body">
+      <p id="confirmMessage"></p>
+    </div>
+    <div class="modal-admin-footer">
+      <button class="btn-admin-cancel" id="btnConfirmCancel">Huỷ</button>
+      <button class="btn-admin-danger" id="btnConfirmOk">Xác Nhận</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== MODAL EDIT ===== -->
+<div class="modal-backdrop-admin" id="editModal">
+  <div class="modal-admin">
+    <div class="modal-admin-header">
+      <h4 id="editModalTitle">Chỉnh Sửa</h4>
+      <button class="btn-close-modal" id="btnCloseEditModal">✕</button>
+    </div>
+    <div class="modal-admin-body" id="editModalBody">
+    </div>
+    <div class="modal-admin-footer">
+      <button class="btn-admin-cancel" id="btnEditCancel">Huỷ</button>
+      <button class="btn-admin-primary" id="btnEditSave">Lưu</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== MODAL ĐỔI MẬT KHẨU ADMIN ===== -->
+<div class="modal-backdrop-admin" id="changePassModal">
+  <div class="modal-admin">
+    <div class="modal-admin-header">
+      <h4>🔒 Đổi Mật Khẩu Admin</h4>
+      <button class="btn-close-modal" id="btnCloseChangePass">×</button>
+    </div>
+    <div class="modal-admin-body">
+      <div class="edit-form">
+        <div class="edit-form-group">
+          <label>Email tài khoản</label>
+          <input type="email" id="cpEmail" placeholder="admin@worship.com" />
+        </div>
+        <div class="edit-form-group">
+          <label>Mật khẩu hiện tại</label>
+          <div class="input-wrap">
+            <input type="password" id="cpCurrent" placeholder="Nhập mật khẩu hiện tại" />
+            <button type="button" class="btn-eye" onclick="togglePassVis('cpCurrent',this)">👁️</button>
+          </div>
+        </div>
+        <div class="edit-form-group">
+          <label>Mật khẩu mới (ối thiểu 8 ký tự)</label>
+          <div class="input-wrap">
+            <input type="password" id="cpNew" placeholder="Nhập mật khẩu mới" />
+            <button type="button" class="btn-eye" onclick="togglePassVis('cpNew',this)">👁️</button>
+          </div>
+        </div>
+        <div class="edit-form-group">
+          <label>Xác nhận mật khẩu mới</label>
+          <div class="input-wrap">
+            <input type="password" id="cpConfirm" placeholder="Nhập lại mật khẩu mới" />
+            <button type="button" class="btn-eye" onclick="togglePassVis('cpConfirm',this)">👁️</button>
+          </div>
+        </div>
+        <p class="cp-error" id="cpError"></p>
+      </div>
+    </div>
+    <div class="modal-admin-footer">
+      <button class="btn-admin-cancel" id="btnCpCancel">Huỷ</button>
+      <button class="btn-admin-primary" id="btnCpSave">🔒 Đổi Mật Khẩu</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== TOAST ===== -->
+<div class="admin-toast-container" id="adminToastContainer"></div>
+
+<script src="admin.js"></script>
+</body>
+</html>

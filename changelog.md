@@ -4,6 +4,100 @@ Tất cả các thay đổi và cập nhật quan trọng của dự án đượ
 
 ## [Unreleased] - Kênh Band LAN (P1 + P2 + P2.5 + P4)
 
+### chore(band): website hosting + đổi tên domain relay + dọn tunnel cũ (2026-09-19)
+- **`website/` deploy lên Cloudflare Worker (assets-only)** — `cloud/website/wrangler.toml`
+  mới, project `worship-official-website`, custom domain `worship-official.link`
+  (domain gốc). Không dùng Cloudflare Pages: `wrangler pages` đã bị Cloudflare
+  gộp vào Workers ở bản CLI hiện tại, lệnh `pages project create` tự delegate
+  sang Workers rồi lỗi (thiếu entry-point) — chuyển thẳng sang Worker
+  assets-only (`[assets]`, không `main`) cho gọn, cùng kỹ thuật đã dùng cho
+  `/m/`. `website/.assetsignore` loại `serve-website.js` (chỉ là dev server
+  local) khỏi bundle deploy.
+- **Đổi domain relay `api.worship-official.link` → `channel.worship-official.link`**
+  — tên `api` không phản ánh đúng bản chất (đây là điểm vào DÙNG CHUNG cho
+  mọi user/phòng, đã cách ly qua Durable Object theo Room Code, không phải
+  1 API riêng tư). Đổi `pattern` trong `cloud/worker/wrangler.toml` + mọi nơi
+  hardcode domain này: `comm/mobile/app.js` (`CLOUD_API_BASE`), `comm/mobile/index.html`
+  (CSP), `src/band-comm/relay-client.js` (`RELAY_HTTP_BASE_DEFAULT`),
+  `src/band-comm/server.js` (dead code, sửa cho nhất quán), `index.html`
+  (`MOBILE_JOIN_BASE` + link composer), `website/index.html` + `website/app.js`
+  (link join hiển thị), `docs/data-contracts.md`, `SETUP.md`, `band-comm-plan.md`.
+- **Xoá subdomain `blessing.worship-official.link`** — tàn dư kiến trúc Named
+  Tunnel TRƯỚC GĐ2 (`main.js`'s `syncBandTunnel()` không còn nơi nào gọi tới
+  từ khi chuyển sang relay online, xác nhận qua grep — dead code, không xoá
+  hàm khỏi `main.js` trong đợt này). Xoá 3 tunnel mồ côi trên Cloudflare
+  (`blessing-band`, `blessing-church`, `blessing-church-local`, không cái nào
+  có connection) qua `cloudflared tunnel delete -f`, xoá `cloud/tunnel/start-tunnel.bat`
+  (script chạy tunnel này, không còn tác dụng), dọn `config.yml` cục bộ mồ côi.
+  DNS CNAME record `blessing.worship-official.link` cần xoá tay trên dashboard
+  Cloudflare (không có tool xoá raw DNS record từ CLI/wrangler).
+- **Cập nhật `CLAUDE.md`** — phần mô tả Kênh Band vẫn nói "LAN server + luôn
+  tự spawn cloudflared tunnel" dù GĐ2 đã thay hẳn bằng relay online; sửa lại
+  cho khớp thực tế + đổi chỗ trỏ "Typical Change Paths" từ `server.js` (dead)
+  sang `room-relay.js`/`relay-client.js` (code thật đang chạy).
+- Còn treo: deploy thật `cloud/worker` (route mới `channel.`) + `cloud/website`
+  (nội dung join link đã đổi) — cả 2 bị chặn bởi permission classifier
+  "[Production Deploy]", user tự chạy `npx wrangler deploy` trong từng thư mục.
+
+### feat(band): GĐ2 — chuyển Kênh Band từ LAN sang relay online (Durable Object) (2026-09-18)
+- **Quyết định kiến trúc lớn**: bỏ hẳn LAN HTTP+WS server + mDNS + Cloudflare
+  Tunnel cho Kênh Band. App trình chiếu vẫn offline; chỉ Kênh Band chuyển
+  100% online. Cả operator (laptop) lẫn band member (điện thoại) giờ là
+  WebSocket CLIENT nối ra ngoài tới 1 relay trung tâm — không ai host server,
+  không cổng nào mở ra Internet từ máy operator.
+- **`cloud/worker/src/room-relay.js`** (Durable Object mới) — join, WebSocket
+  Hibernation API, chống brute-force, tài khoản local (PBKDF2 qua Web
+  Crypto — Workers không có `scryptSync`), Cognito (verify RS256 tự viết,
+  0 dependency), gallery (lưu thẳng R2, không cache đĩa), profile cá nhân,
+  setlist thời gian thực. `cloud/worker/src/worker.js` route
+  `/api/room/<ROOM_CODE>/…` tới đúng DO — định tuyến bằng CHÍNH Room Code
+  (không phải cloudRoomId UUID, vì điện thoại biết code TRƯỚC khi join).
+- **`comm/mobile/` giờ phục vụ từ cloud** (`/m/`, qua Cloudflare Assets
+  binding) — URL cố định, không đổi theo máy operator nữa.
+- **`comm/mobile/app.js`** rewire toàn bộ networking sang relay: nút cảnh
+  báo/tin nhắn gửi qua WebSocket thay vì `fetch('api/message')`, gallery/
+  profile/setlist qua `roomUrl()`, tự dò `/mode` theo Room Code.
+- **`main.js`** đổi `createCommServer()` (LAN server) →
+  `createRelayClient()` (`src/band-comm/relay-client.js`, mới) — bỏ mDNS,
+  bỏ tự spawn `cloudflared`. `band-accounts-*` IPC đổi sang gọi relay (tài
+  khoản giờ sống trong Durable Object, không còn file cục bộ).
+- Sidebar `index.html`: QR/link giờ chỉ 1 URL relay cố định thay vì IP LAN/
+  host.local/Public URL đa chế độ; bỏ nút "Mở cổng Firewall".
+- **Test thật, không đoán**: 100+ case qua `wrangler dev` + WebSocket thật +
+  **app Electron thật đang chạy** (curl xác nhận `admin/config` tới đúng
+  relay, operator WebSocket thật xuất hiện trong `/presence`, gửi tin nhắn
+  thật từ band member giả tới app thật thành công). Bắt + vá được 1 lỗi bảo
+  mật thật lúc test (band member không có `profileId` xoá được ảnh người
+  khác đăng) và 2 lỗi sẽ làm sidebar crash lúc dọn UI cũ.
+- **Chưa xong**: deploy `cloud/worker/` lên production, test điện thoại
+  thật, dọn hẳn code chết (`mdns.js`, `ws.js`, `server.js`, `accounts.js`,
+  `cognito-jwks.js`, tunnel wizard) — xem `band-comm-plan.md` §14.
+
+### feat(band): Room Code + gate đăng nhập bắt buộc mọi bản cài + mustChangePassword + Quên mật khẩu (2026-09-18)
+- **Room Code** — ID phòng 6 ký tự gõ tay được (`store.js`'s `randomRoomCode()`,
+  bảng chữ bỏ ký tự dễ nhầm), sinh cho mọi bản cài kể cả cũ (persist ngay lần
+  `load()` đầu, không đợi `save()` sau). Không phải bí mật (giống Meeting ID
+  Zoom) — chỉ xác định đúng phòng. Validate ở `/api/join`/`/api/login`
+  TRƯỚC mật khẩu/username, lỗi riêng "Sai ID phòng". Hiện trong sidebar
+  operator (`#bpRoomCode`) và cả 3 form join mobile.
+- **Gate đăng nhập operator bắt buộc MỌI bản cài** — bỏ hẳn field
+  `requireOperatorLogin` (trước đây chỉ bản cài mới có diện miễn trừ cho máy
+  cũ, khiến user không thấy form đăng nhập trên máy họ).
+- **`mustChangePassword`** — operator tick lúc tạo tài khoản, hoặc bật mặc
+  định mỗi lần tự reset mật khẩu 1 account. Band member bị chặn vào phòng,
+  bắt đổi mật khẩu qua `POST /api/change-password` mới (endpoint) trước khi
+  dùng tiếp — ngoại lệ hẹp duy nhất cho nguyên tắc "band member không tự đổi
+  mật khẩu" (chỉ dùng được khi đang thực hiện đúng yêu cầu operator đặt ra).
+- **Quên mật khẩu** (tài khoản trung tâm Cognito) — `cloud/identity/src/worker.js`'s
+  `POST /forgot-password`, tái dùng `AdminSetUserPassword(Permanent:false)` +
+  `sendAccessEmail()` có sẵn, giữ nguyên nguyên tắc không lộ email tồn tại.
+  Có ở cả màn đăng nhập Cognito mobile lẫn gate đăng nhập operator.
+- Verify bằng node script gọi server thật (không đoán): 20/20 case PASS —
+  Room Code sinh/persist đúng cho cả config mới lẫn config cũ nâng cấp,
+  mustChangePassword set/clear đúng qua toàn bộ vòng đời (tạo → login →
+  đổi mật khẩu → login lại), validate code đúng thứ tự ưu tiên lỗi.
+- Cập nhật `docs/data-contracts.md`, `band-comm-plan.md` §13.
+
 ### refactor(band): bỏ hẳn phân biệt vai trò band/leader (2026-09-17)
 - Rà lại lúc duyệt form tạo tài khoản: `role` (band/leader) chỉ được lưu/
   truyền/hiển thị từ lúc P1 tới giờ — không route hay UI nào từng rẽ nhánh

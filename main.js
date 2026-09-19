@@ -5,11 +5,9 @@ const os = require('os');
 const { pathToFileURL } = require('url');
 const { validateItem, migrateItem } = require('./src/schema');
 const { createStore: createBandCommStore } = require('./src/band-comm/store');
-const { createAccountsStore } = require('./src/band-comm/accounts');
-const { createOperatorAuthStore } = require('./src/band-comm/operator-auth');
-const { createJwksCache } = require('./src/band-comm/cognito-jwks');
-const { createCommServer, lanIPv4List } = require('./src/band-comm/server');
-const { createMdnsResponder } = require('./src/band-comm/mdns');
+const { createRelayClient } = require('./src/band-comm/relay-client');
+const { autoSyncPreviousVersionsLibrary, importLibraryFromCustomPath } = require('./src/library-sync');
+let pendingLibrarySyncNotification = null;
 
 // CPU Usage helper
 let lastCpuUsage = { idle: 0, total: 0 };
@@ -61,6 +59,32 @@ function saveAndBackupSync(filePath, data) {
   return safeWriteSync(filePath, data);
 }
 
+// Phân biệt môi trường dev (chạy bằng electron . / npm start) và production (bản cài đặt .exe)
+// để cho phép mở song song cả 2 bản mà không bị ProcessSingleton tranh chấp lockfile / userData.
+if (!app.isPackaged) {
+  app.name = 'easyworship-app-dev';
+  const devUserData = path.join(app.getPath('appData'), 'easyworship-app-dev');
+  app.setPath('userData', devUserData);
+
+  try {
+    fs.mkdirSync(devUserData, { recursive: true });
+    safeWriteSync(path.join(devUserData, 'datadir.json'), { path: devUserData });
+    const prodUserData = path.join(app.getPath('appData'), 'easyworship-app');
+    if (fs.existsSync(prodUserData) && !fs.existsSync(path.join(devUserData, 'songs.json'))) {
+      const filesToCopy = ['songs.json', 'bible.json', 'settings.json', 'style-templates.json', 'bible-versions.json', 'band-comm.json'];
+      for (const file of filesToCopy) {
+        const src = path.join(prodUserData, file);
+        const dest = path.join(devUserData, file);
+        if (fs.existsSync(src) && !fs.existsSync(dest)) {
+          fs.copyFileSync(src, dest);
+        }
+      }
+    }
+  } catch (e) {
+    console.warn('[Dev] Không thể khởi tạo dev userData:', e);
+  }
+}
+
 // Worker "band-identity" (cloud/identity/) — nơi DUY NHẤT giữ AWS credentials
 // cho đăng nhập Cognito trung tâm; main process gọi thẳng, không qua comm
 // server local (giống hệt cách comm/mobile/app.js gọi cho band member).
@@ -71,20 +95,29 @@ let userDataPath, songsFilePath, bibleFilePath, settingsFilePath, defaultMediaFo
 let liveWindow = null;
 let mainWindow = null;
 let bandCommStore = null;
-let bandAccountsStore = null;
 let bandOperatorAuthStore = null;
-let bandJwksCache = null;
 // { session, email } giữa 2 bước đăng nhập Cognito khi mật khẩu tạm còn bắt
 // buộc đổi (NEW_PASSWORD_REQUIRED) — mirror đúng pendingCognito ở
 // comm/mobile/app.js, chỉ khác đây là của chính operator, không phải phone.
 let pendingOperatorCognito = null;
-let commServer = null;
-let bandMdns = null;
+let commServer = null; // GĐ2: instance createRelayClient() (src/band-comm/relay-client.js), không phải LAN server nữa — tên biến giữ nguyên để không phải đổi hàng trăm chỗ gọi commServer.*
 let lastBandStartError = null;
 let bandTunnelProc = null;   // child cloudflared, null nếu không chạy
 let bandTunnelMode = null;   // 'named:<tên>' hoặc 'quick' — mode mà bandTunnelProc đang chạy
 let globalSettings = {};
 let liveWindowTargetDisplayId = null;
+
+function getBundledDataDirs() {
+  const dirs = [];
+  if (process.resourcesPath) {
+    const resData = path.join(process.resourcesPath, 'data');
+    if (fs.existsSync(resData)) dirs.push(resData);
+  }
+  const dirData = path.join(__dirname, 'data');
+  if (fs.existsSync(dirData)) dirs.push(dirData);
+  return [...new Set(dirs)];
+}
+
 const bundledBibleDataPath = path.join(__dirname, 'data');
 const defaultBibleXmlName = 'Bible_Vietnamese_Version_1925.xml';
 const bibleMigrationMarkerPath = () => path.join(userBibleDataPath || userDataPath || app.getPath('userData'), '.bible-versions-migrated');
@@ -357,7 +390,12 @@ function normalizeBibleFileName(fileName) {
 }
 
 function getBibleDataDirs() {
-  return [userBibleDataPath, bundledBibleDataPath].filter(Boolean);
+  const dirs = [];
+  if (userBibleDataPath && fs.existsSync(userBibleDataPath)) {
+    dirs.push(userBibleDataPath);
+  }
+  dirs.push(...getBundledDataDirs());
+  return [...new Set(dirs.filter(Boolean))];
 }
 
 function loadBibleVersionRegistrySync() {
@@ -802,33 +840,89 @@ function scheduleLiveWindowSync(reason = 'screen-change', force = false, delay =
   }, delay);
 }
 
-function migrateBundledBibleVersionsToUserData() {
-  if (!userBibleDataPath || !fs.existsSync(userBibleDataPath) || !fs.existsSync(bundledBibleDataPath)) return;
-  const markerPath = bibleMigrationMarkerPath();
-
-  try {
-    if (fs.existsSync(markerPath)) return;
-  } catch (e) {
-    // If we cannot read the marker, fall through and try migration best-effort.
-  }
-
-  try {
-    const bundledFiles = fs.readdirSync(bundledBibleDataPath).filter(file => file.toLowerCase().endsWith('.xml'));
-    for (const file of bundledFiles) {
-      const source = path.join(bundledBibleDataPath, file);
-      const target = path.join(userBibleDataPath, normalizeBibleFileName(file));
-      if (!fs.existsSync(target) && fs.existsSync(source) && fs.statSync(source).isFile()) {
-        fs.copyFileSync(source, target);
+function loadBundledSongsSync() {
+  const dirs = getBundledDataDirs();
+  for (const dir of dirs) {
+    const bundledSongs = path.join(dir, 'songs.json');
+    if (fs.existsSync(bundledSongs)) {
+      try {
+        const content = fs.readFileSync(bundledSongs, 'utf8');
+        const parsed = JSON.parse(content);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return { content, parsed, dir };
+        }
+      } catch (e) {
+        console.error('[Songs] Failed to parse bundled songs from:', bundledSongs, e);
       }
     }
+  }
+  return null;
+}
+
+function migrateBundledBibleVersionsToUserData(force = false) {
+  if (!userBibleDataPath) return 0;
+  try {
+    if (!fs.existsSync(userBibleDataPath)) {
+      fs.mkdirSync(userBibleDataPath, { recursive: true });
+    }
+  } catch (e) {
+    console.error('[Bible] Cannot create userBibleDataPath:', e);
+    return 0;
+  }
+
+  const markerPath = bibleMigrationMarkerPath();
+  if (!force) {
+    try {
+      if (fs.existsSync(markerPath)) {
+        const existingXmls = fs.readdirSync(userBibleDataPath).filter(f => f.toLowerCase().endsWith('.xml'));
+        if (existingXmls.length > 0) return 0;
+      }
+    } catch (e) {}
+  }
+
+  const bundledDirs = getBundledDataDirs();
+  let copiedCount = 0;
+
+  for (const dir of bundledDirs) {
+    try {
+      const bundledFiles = fs.readdirSync(dir).filter(file => file.toLowerCase().endsWith('.xml'));
+      for (const file of bundledFiles) {
+        const source = path.join(dir, file);
+        const target = path.join(userBibleDataPath, normalizeBibleFileName(file));
+        let shouldCopy = force || !fs.existsSync(target);
+        if (!shouldCopy) {
+          try {
+            const stat = fs.statSync(target);
+            if (stat.size === 0) shouldCopy = true;
+          } catch (e) {
+            shouldCopy = true;
+          }
+        }
+        if (shouldCopy && fs.existsSync(source)) {
+          try {
+            const xmlData = fs.readFileSync(source);
+            fs.writeFileSync(target, xmlData);
+            copiedCount++;
+            console.log(`[Bible] Migrated XML Bible: ${file} -> ${target}`);
+          } catch (copyErr) {
+            console.error(`[Bible] Failed to copy ${file}:`, copyErr);
+          }
+        }
+      }
+    } catch (e) {
+      console.error('[Bible] Error reading bundled Bible dir:', dir, e);
+    }
+  }
+
+  try {
     fs.writeFileSync(markerPath, JSON.stringify({
       migratedAt: new Date().toISOString(),
-      source: bundledBibleDataPath,
-      destination: userBibleDataPath
+      copiedCount,
+      userBibleDataPath
     }, null, 2), 'utf8');
-  } catch (e) {
-    console.error('[Bible] Failed to migrate bundled versions to userData:', e);
-  }
+  } catch (e) {}
+
+  return copiedCount;
 }
 
 function isVideo(fileName) {
@@ -889,13 +983,52 @@ function initializeData() {
   ensureJsonFile(customFontsPath, { fonts: [] });
   migrateBundledBibleVersionsToUserData();
   
+  let needSeedSongs = false;
   if (!fs.existsSync(songsFilePath)) {
-    const bundledSongs = path.join(__dirname, 'data', 'songs.json');
-    if (fs.existsSync(bundledSongs)) {
-      fs.copyFileSync(bundledSongs, songsFilePath);
+    needSeedSongs = true;
+  } else {
+    try {
+      const existing = JSON.parse(fs.readFileSync(songsFilePath, 'utf8'));
+      if (!Array.isArray(existing) || existing.length === 0) {
+        needSeedSongs = true;
+      }
+    } catch (e) {
+      needSeedSongs = true;
+    }
+  }
+
+  if (needSeedSongs) {
+    const bundled = loadBundledSongsSync();
+    if (bundled) {
+      try {
+        fs.writeFileSync(songsFilePath, bundled.content, 'utf8');
+        console.log(`[Songs] Initialized ${bundled.parsed.length} default songs into userData from ${bundled.dir}`);
+      } catch (e) {
+        console.error('[Songs] Failed to write default songs:', e);
+        safeWriteSync(songsFilePath, bundled.parsed);
+      }
     } else {
       safeWriteSync(songsFilePath, []);
     }
+  }
+
+  // Tự động quét và đồng bộ thư viện bài hát từ các phiên bản cũ đã cài đặt trên máy tính
+  try {
+    const syncRes = autoSyncPreviousVersionsLibrary({
+      currentUserDataPath: userDataPath,
+      appDataRoot: app.getPath('appData'),
+      localAppDataRoot: process.env.LOCALAPPDATA,
+      exeDir: path.dirname(app.getPath('exe')),
+      saveAndBackupSync,
+      safeWriteSync,
+      migrateItem
+    });
+    if (syncRes && (syncRes.addedCount > 0 || syncRes.updatedCount > 0)) {
+      pendingLibrarySyncNotification = syncRes;
+      console.log(`[LibrarySync] Đã tự động đồng bộ: thêm ${syncRes.addedCount} bài mới, cập nhật ${syncRes.updatedCount} bài từ bản cũ.`);
+    }
+  } catch (syncErr) {
+    console.warn('[LibrarySync] Không thể tự động đồng bộ bản cũ:', syncErr);
   }
   
   if (!fs.existsSync(bibleFilePath)) safeWriteSync(bibleFilePath, []);
@@ -1059,24 +1192,16 @@ function bandStartupHint(err) {
   return 'Bấm Thử lại. Nếu vẫn lỗi, chép nội dung lỗi bên dưới để kiểm tra.';
 }
 
-// Start (or restart) the comm server + mDNS, and report success/failure to the
-// operator sidebar. Used both by auto-start on launch and the "Thử lại" button.
+// Start (or restart) kết nối tới relay, báo kết quả lên sidebar. Dùng cả lúc
+// auto-start khi mở app lẫn khi bấm "Thử lại". GĐ2: không còn mDNS/tunnel —
+// relay-client.js tự nối ra ngoài, không có gì để announce/tunnel cả.
 async function startBandComm() {
   initBandComm();
   try {
     const st = await commServer.start();
-    if (bandMdns) {
-      bandMdns.stop();
-      const ips = lanIPv4List();
-      bandMdns.start(bandCommStore.load().room.hostname, () => {
-        const list = lanIPv4List();
-        return list[0] ? list[0].address : (ips[0] ? ips[0].address : null);
-      });
-    }
     lastBandStartError = null;
     sendBandStatus({ error: null });
-    bandSystemLine(`Kênh đã sẵn sàng · ${st.hostUrl || st.url || ''}`);
-    syncBandTunnel();
+    bandSystemLine(`Kênh đã sẵn sàng · phòng "${st.roomName || ''}"`);
     return commServer.getStatus();
   } catch (err) {
     const detail = {
@@ -1218,32 +1343,68 @@ function syncBandTunnel() {
 }
 
 function stopBandTunnel() {
-  if (bandTunnelProc) { try { bandTunnelProc.kill(); } catch (e) {} }
+  if (bandTunnelProc) {
+    try {
+      const pid = bandTunnelProc.pid;
+      bandTunnelProc.kill();
+      if (process.platform === 'win32' && pid) {
+        try {
+          const { execSync } = require('child_process');
+          execSync(`taskkill /pid ${pid} /T /F`, { stdio: 'ignore' });
+        } catch (e) {}
+      }
+    } catch (e) {}
+  }
   bandTunnelProc = null;
   bandTunnelMode = null;
 }
 
+let isShuttingDown = false;
+function cleanupAndExit() {
+  if (isShuttingDown) return;
+  isShuttingDown = true;
+  console.log('[App] Dọn dẹp và tắt tiến trình hoàn toàn...');
+  try {
+    flushLiveWindowBounds();
+  } catch (e) {}
+  if (liveWindowSyncTimer) {
+    try { clearTimeout(liveWindowSyncTimer); } catch (e) {}
+    liveWindowSyncTimer = null;
+  }
+  try {
+    stopBandTunnel();
+  } catch (e) {}
+  try {
+    stopBandComm();
+  } catch (e) {}
+  if (liveWindow && !liveWindow.isDestroyed()) {
+    try { liveWindow.destroy(); } catch (e) {}
+    liveWindow = null;
+  }
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    try { mainWindow.destroy(); } catch (e) {}
+    mainWindow = null;
+  }
+  for (const w of BrowserWindow.getAllWindows()) {
+    try {
+      if (!w.isDestroyed()) w.destroy();
+    } catch (e) {}
+  }
+  app.exit(0);
+}
+
 function stopBandComm() {
-  if (bandMdns) bandMdns.stop();
-  if (commServer) commServer.stop();
-  stopBandTunnel();
+  if (commServer) {
+    try { commServer.stop(); } catch (e) {}
+  }
 }
 
 function initBandComm() {
   if (commServer) return;
   bandCommStore = createBandCommStore(userDataPath, safeWriteSync);
-  bandAccountsStore = createAccountsStore(userDataPath, safeWriteSync);
   bandOperatorAuthStore = createOperatorAuthStore(userDataPath, safeWriteSync);
-  bandJwksCache = createJwksCache(userDataPath, safeWriteSync);
-  // Best-effort — không chặn app khởi động nếu đang offline lúc mở máy; verify
-  // sau đó dùng cache cũ trên đĩa (nếu có) hoặc báo lỗi rõ ràng nếu máy mới
-  // toàn chưa từng fetch được lần nào (xem cognito-jwks.js).
-  bandJwksCache.init().catch(() => {});
-  bandMdns = createMdnsResponder();
-  commServer = createCommServer({
+  commServer = createRelayClient({
     store: bandCommStore,
-    accountsStore: bandAccountsStore,
-    jwksCache: bandJwksCache,
     onEvent: (env) => {
       broadcastToRenderers('band-comm-event', env);
       // Nudge the taskbar when a fresh band alert lands and the app is unfocused.
@@ -1285,6 +1446,13 @@ function createWindow() {
   });
 
   mainWindow = win;
+  if (!app.isPackaged) {
+    win.setTitle('Presentation For Church [DEV]');
+    win.on('page-title-updated', (e, title) => {
+      e.preventDefault();
+      win.setTitle(`${title} [DEV]`);
+    });
+  }
   win.loadFile('index.html');
   setupMenu(win);
 
@@ -1295,19 +1463,32 @@ function createWindow() {
       mainWindow.webContents.send('open-schedule-file', scheduleToOpen);
       scheduleToOpen = null;
     }
+    if (pendingLibrarySyncNotification && !win.isDestroyed()) {
+      win.webContents.send('library-sync-notification', pendingLibrarySyncNotification);
+      pendingLibrarySyncNotification = null;
+    }
   });
 
   // The operator window is the app itself. Closing it must shut everything
   // down — including the Screen Live window on the projector — so the user
   // never has to kill a stray process from Task Manager.
   win.on('closed', () => {
-    mainWindow = null;
-    if (liveWindow && !liveWindow.isDestroyed()) {
-      liveWindow.destroy();
+    if (mainWindow === win) {
+      const remaining = BrowserWindow.getAllWindows().filter(w => w !== liveWindow && w !== win && !w.isDestroyed());
+      mainWindow = remaining.length > 0 ? remaining[0] : null;
     }
-    stopBandComm();
-    app.quit();
+    const openWindows = BrowserWindow.getAllWindows().filter(w => w !== liveWindow && !w.isDestroyed());
+    if (openWindows.length === 0) {
+      cleanupAndExit();
+    }
   });
+}
+
+function sendMenuAction(win, action) {
+  const targetWin = BrowserWindow.getFocusedWindow() || win || mainWindow;
+  if (targetWin && !targetWin.isDestroyed()) {
+    targetWin.webContents.send('menu-action', action);
+  }
 }
 
 function setupMenu(win) {
@@ -1315,20 +1496,24 @@ function setupMenu(win) {
     {
       label: 'File',
       submenu: [
-        { label: 'New Schedule', click: () => win.webContents.send('menu-action', 'new-schedule') },
-        { label: 'New Song', click: () => win.webContents.send('menu-action', 'new-song') },
-        { label: 'Save Schedule', accelerator: 'CmdOrCtrl+S', click: () => win.webContents.send('menu-action', 'save-schedule') },
-        { label: 'Import File', accelerator: 'CmdOrCtrl+O', click: () => win.webContents.send('menu-action', 'import-file') },
-        { label: 'Open Schedule', click: () => win.webContents.send('menu-action', 'open-schedule') },
+        { label: 'Cửa sổ mới (New Window)', accelerator: 'CmdOrCtrl+Shift+N', click: () => createWindow() },
         { type: 'separator' },
-        { label: 'Import Media', click: () => win.webContents.send('menu-action', 'import-media') },
-        { label: 'Add To Schedule', accelerator: 'CmdOrCtrl+Shift+A', click: () => win.webContents.send('menu-action', 'add-selected-to-schedule') },
-        { label: 'Screen Live', accelerator: 'CmdOrCtrl+L', click: () => win.webContents.send('menu-action', 'toggle-live-window') },
-        { label: 'Clear Live', accelerator: 'CmdOrCtrl+H', click: () => win.webContents.send('menu-action', 'clear-live') },
+        { label: 'New Schedule', click: () => sendMenuAction(win, 'new-schedule') },
+        { label: 'New Song', click: () => sendMenuAction(win, 'new-song') },
+        { label: 'Save Schedule', accelerator: 'CmdOrCtrl+S', click: () => sendMenuAction(win, 'save-schedule') },
+        { label: 'Import File', accelerator: 'CmdOrCtrl+O', click: () => sendMenuAction(win, 'import-file') },
+        { label: 'Đồng bộ thư viện từ bản cũ...', click: () => sendMenuAction(win, 'sync-previous-library') },
+        { label: 'Sao lưu thư viện ra file...', click: () => sendMenuAction(win, 'export-songs') },
+        { label: 'Open Schedule', click: () => sendMenuAction(win, 'open-schedule') },
         { type: 'separator' },
-        { label: 'Settings', accelerator: 'CmdOrCtrl+Shift+P', click: () => win.webContents.send('menu-action', 'open-settings') },
+        { label: 'Import Media', click: () => sendMenuAction(win, 'import-media') },
+        { label: 'Add To Schedule', accelerator: 'CmdOrCtrl+Shift+A', click: () => sendMenuAction(win, 'add-selected-to-schedule') },
+        { label: 'Screen Live', accelerator: 'CmdOrCtrl+L', click: () => sendMenuAction(win, 'toggle-live-window') },
+        { label: 'Clear Live', accelerator: 'CmdOrCtrl+H', click: () => sendMenuAction(win, 'clear-live') },
         { type: 'separator' },
-        { role: 'quit' }
+        { label: 'Settings', accelerator: 'CmdOrCtrl+Shift+P', click: () => sendMenuAction(win, 'open-settings') },
+        { type: 'separator' },
+        { label: 'Thoát ứng dụng (Quit)', accelerator: 'CmdOrCtrl+Q', click: () => cleanupAndExit() }
       ]
     },
     {
@@ -1342,7 +1527,10 @@ function setupMenu(win) {
     {
       label: 'Channel',
       submenu: [
-        { label: 'Kênh Band (sidebar)', accelerator: 'CmdOrCtrl+Shift+B', click: () => win.webContents.send('band-comm-toggle-panel') }
+        { label: 'Kênh Band (sidebar)', accelerator: 'CmdOrCtrl+Shift+B', click: () => {
+          const targetWin = BrowserWindow.getFocusedWindow() || win || mainWindow;
+          if (targetWin && !targetWin.isDestroyed()) targetWin.webContents.send('band-comm-toggle-panel');
+        } }
       ]
     }
   ];
@@ -1388,6 +1576,31 @@ function deliverSchedulePath(p) {
   }
 }
 
+// Hỗ trợ chế độ multi-instance nếu người dùng muốn mở nhiều bản chạy song song:
+// Ví dụ: "Presentation For Church.exe" --multi-instance hoặc --instance=2
+let instanceId = null;
+for (const arg of process.argv) {
+  if (typeof arg === 'string') {
+    if (arg === '--multi-instance' || arg === '--new-instance') {
+      instanceId = '2';
+    } else if (arg.startsWith('--instance=')) {
+      instanceId = arg.split('=')[1] || '2';
+    }
+  }
+}
+
+if (instanceId) {
+  const multiAppName = `${app.name || 'easyworship-app'}-instance-${instanceId}`;
+  app.name = multiAppName;
+  const multiUserData = path.join(app.getPath('appData'), multiAppName);
+  try { fs.mkdirSync(multiUserData, { recursive: true }); } catch (e) {}
+  app.setPath('userData', multiUserData);
+}
+
+// Chạy redirect userData từ datadir.json TRƯỚC requestSingleInstanceLock
+// để Chromium lockfile nằm đúng vào thư mục dữ liệu thực tế.
+const pendingUserDataPrompt = (!instanceId && app.isPackaged) ? applyStoredUserDataLocation() : null;
+
 // Single instance: a second launch (e.g. double-clicking another .bcsch) must
 // reuse this window, not spin up a rival process that fights over userData /
 // the comm-server port.
@@ -1396,9 +1609,12 @@ if (!hasInstanceLock) {
   app.quit();
 } else {
   app.on('second-instance', (_e, argv) => {
-    if (mainWindow) {
+    if (mainWindow && !mainWindow.isDestroyed()) {
       if (mainWindow.isMinimized()) mainWindow.restore();
+      mainWindow.show();
       mainWindow.focus();
+    } else {
+      createWindow();
     }
     deliverSchedulePath(findSchedulePathInArgv(argv));
   });
@@ -1406,22 +1622,20 @@ if (!hasInstanceLock) {
   deliverSchedulePath(findSchedulePathInArgv(process.argv));
 }
 
-const pendingUserDataPrompt = applyStoredUserDataLocation();
 bootstrapGpuAccelerationPreference();
 app.whenReady().then(() => {
   if (!hasInstanceLock) return; // a rival instance — we're already quitting
   promptUserDataLocationIfNeeded(pendingUserDataPrompt);
   initializeData();
   // Band Comm: server auto-starts in the background (see band-comm-plan.md B1)
-  // — TRỪ bản cài MỚI cần operator đăng nhập Cognito trước (gate, xem
-  // store.js's `requireOperatorLogin` + operator-auth.js; máy đang dùng Kênh
-  // Band từ trước luôn giữ false, không bị ảnh hưởng). Chưa đăng nhập thì
-  // KHÔNG có server/QR/tunnel nào khởi động cả — sidebar tự hiện màn đăng
-  // nhập khi operator bấm mở Channel (band-operator-auth-status IPC).
+  // — TRỪ khi chưa đăng nhập operator (gate bắt buộc cho MỌI bản cài, xem
+  // operator-auth.js). Chưa đăng nhập thì KHÔNG có server/QR/tunnel nào khởi
+  // động cả — sidebar tự hiện màn đăng nhập khi operator bấm mở Channel
+  // (band-operator-auth-status IPC).
   // Result is reported to the operator sidebar via band-comm-status-changed +
   // a system feed line; the sidebar also re-reads state via band-comm-status.
   initBandComm();
-  if (!bandCommStore.load().requireOperatorLogin || bandOperatorAuthStore.isLoggedIn()) {
+  if (bandOperatorAuthStore.isLoggedIn()) {
     startBandComm();
   }
   screen.on('display-added', () => scheduleLiveWindowSync('display-added', true, 250));
@@ -1925,9 +2139,8 @@ app.whenReady().then(() => {
 
       saveAndBackupSync(filePath, items);
       // Đồng bộ thư viện lên cloud để trang soạn setlist tĩnh (/composer) tra
-      // cứu được — chỉ khi đụng tới songs.json (không phải Bible), và chỉ khi
-      // band-comm đang chạy. Fire-and-forget, không chặn lưu bài hát.
-      if (filePath === songsFilePath && commServer && commServer.isRunning()) commServer.syncLibraryToCloud();
+      // cứu được — chỉ khi đụng tới songs.json (không phải Bible). Fire-and-forget.
+      if (filePath === songsFilePath && commServer) commServer.syncLibraryToCloud();
       return { success: true, item: song, list: items };
     } catch (e) { throw e; }
   });
@@ -1938,7 +2151,7 @@ app.whenReady().then(() => {
       let items = JSON.parse(fs.readFileSync(filePath, 'utf8') || '[]');
       items = items.filter(i => i.id !== data.id);
       saveAndBackupSync(filePath, items);
-      if (filePath === songsFilePath && commServer && commServer.isRunning()) commServer.syncLibraryToCloud();
+      if (filePath === songsFilePath && commServer) commServer.syncLibraryToCloud();
       return items;
     } catch (e) { throw e; }
   });
@@ -1957,6 +2170,201 @@ app.whenReady().then(() => {
     } catch (e) {
       console.error('Failed to export songs:', e);
       return { error: e.message || 'Export failed' };
+    }
+  });
+
+  ipcMain.handle('scan-and-sync-previous-library', async () => {
+    try {
+      const res = autoSyncPreviousVersionsLibrary({
+        currentUserDataPath: userDataPath,
+        appDataRoot: app.getPath('appData'),
+        localAppDataRoot: process.env.LOCALAPPDATA,
+        exeDir: path.dirname(app.getPath('exe')),
+        saveAndBackupSync,
+        safeWriteSync,
+        migrateItem
+      });
+      if (res.addedCount > 0 && commServer) {
+        commServer.syncLibraryToCloud();
+      }
+      return res;
+    } catch (e) {
+      console.error('scan-and-sync-previous-library error:', e);
+      return { success: false, error: e.message || 'Lỗi khi quét thư viện cũ' };
+    }
+  });
+
+  ipcMain.handle('import-library-from-folder', async () => {
+    try {
+      const r = await dialog.showOpenDialog({
+        title: 'Chọn thư mục dữ liệu hoặc file songs.json từ phiên bản cũ',
+        properties: ['openDirectory', 'openFile'],
+        filters: [{ name: 'Dữ liệu bài hát', extensions: ['json'] }]
+      });
+      if (r.canceled || !r.filePaths || r.filePaths.length === 0) return { canceled: true };
+      const selectedPath = r.filePaths[0];
+      const res = importLibraryFromCustomPath(selectedPath, userDataPath, saveAndBackupSync, migrateItem);
+      if (res.success && res.addedCount > 0 && commServer) {
+        commServer.syncLibraryToCloud();
+      }
+      return res;
+    } catch (e) {
+      console.error('import-library-from-folder error:', e);
+      return { success: false, error: e.message || 'Lỗi khi nhập thư mục' };
+    }
+  });
+
+  ipcMain.handle('get-data-path-info', async () => {
+    let songsCount = 0;
+    let bibleCount = 0;
+    try {
+      if (fs.existsSync(songsFilePath)) {
+        const data = JSON.parse(fs.readFileSync(songsFilePath, 'utf8'));
+        if (Array.isArray(data)) songsCount = data.length;
+      }
+    } catch (e) {}
+
+    try {
+      const list = listBibleXmlFiles();
+      bibleCount = list.length;
+    } catch (e) {}
+
+    return {
+      userDataPath,
+      songsFilePath,
+      userBibleDataPath,
+      songsCount,
+      bibleCount,
+      mediaPath: getMediaFolderPath()
+    };
+  });
+
+  ipcMain.handle('open-data-folder', async () => {
+    if (userDataPath && fs.existsSync(userDataPath)) {
+      await shell.openPath(userDataPath);
+      return { success: true };
+    }
+    return { success: false, error: 'Thư mục không tồn tại' };
+  });
+
+  ipcMain.handle('change-data-folder', async () => {
+    const result = await dialog.showOpenDialog(mainWindow, {
+      title: 'Chọn thư mục lưu trữ dữ liệu mới cho phần mềm',
+      properties: ['openDirectory', 'createDirectory'],
+      buttonLabel: 'Chọn thư mục này'
+    });
+
+    if (result.canceled || !result.filePaths || !result.filePaths[0]) {
+      return { canceled: true };
+    }
+
+    const selectedBase = result.filePaths[0];
+    const target = path.join(selectedBase, 'PresentationForChurch-Data');
+    
+    try {
+      fs.mkdirSync(target, { recursive: true });
+      const probe = path.join(target, '.write-test');
+      fs.writeFileSync(probe, 'ok');
+      fs.unlinkSync(probe);
+
+      const oldUserDataPath = userDataPath;
+      const defaultUserData = app.getPath('appData') ? path.join(app.getPath('appData'), app.name || 'easyworship-app') : app.getPath('userData');
+      const markerPath = path.join(defaultUserData, 'datadir.json');
+
+      // Copy existing data from old folder to new folder if target does not have them
+      const filesToCopy = ['songs.json', 'bible.json', 'settings.json', 'style-templates.json', 'bible-versions.json', 'band-comm.json', 'custom-fonts.json'];
+      for (const f of filesToCopy) {
+        const src = path.join(oldUserDataPath, f);
+        const dst = path.join(target, f);
+        if (fs.existsSync(src) && !fs.existsSync(dst)) {
+          try { fs.copyFileSync(src, dst); } catch (e) {}
+        }
+      }
+      // Copy bible-versions directory
+      const oldBibles = path.join(oldUserDataPath, 'bible-versions');
+      const newBibles = path.join(target, 'bible-versions');
+      if (fs.existsSync(oldBibles)) {
+        if (!fs.existsSync(newBibles)) fs.mkdirSync(newBibles, { recursive: true });
+        const bFiles = fs.readdirSync(oldBibles);
+        for (const bf of bFiles) {
+          const bSrc = path.join(oldBibles, bf);
+          const bDst = path.join(newBibles, bf);
+          if (fs.existsSync(bSrc) && !fs.existsSync(bDst)) {
+            try { fs.copyFileSync(bSrc, bDst); } catch (e) {}
+          }
+        }
+      }
+
+      // Save marker
+      try { fs.mkdirSync(defaultUserData, { recursive: true }); } catch (e) {}
+      safeWriteSync(markerPath, { path: target });
+      
+      // Update active paths in main process
+      app.setPath('userData', target);
+      initializeData();
+
+      return { success: true, newPath: target };
+    } catch (err) {
+      console.error('Failed to change data folder:', err);
+      return { success: false, error: err.message || String(err) };
+    }
+  });
+
+  ipcMain.handle('reload-default-data', async () => {
+    try {
+      // 1. Force re-copy bundled songs
+      const bundled = loadBundledSongsSync();
+      let songsReloaded = 0;
+      if (bundled) {
+        let currentSongs = [];
+        try {
+          if (fs.existsSync(songsFilePath)) {
+            currentSongs = JSON.parse(fs.readFileSync(songsFilePath, 'utf8'));
+            if (!Array.isArray(currentSongs)) currentSongs = [];
+          }
+        } catch (e) {
+          currentSongs = [];
+        }
+
+        if (currentSongs.length === 0) {
+          fs.writeFileSync(songsFilePath, bundled.content, 'utf8');
+          songsReloaded = bundled.parsed.length;
+        } else {
+          const existingTitles = new Set(currentSongs.map(s => String(s.title || '').trim().toLowerCase()));
+          let added = 0;
+          for (const s of bundled.parsed) {
+            const t = String(s.title || '').trim().toLowerCase();
+            if (t && !existingTitles.has(t)) {
+              currentSongs.push(s);
+              existingTitles.add(t);
+              added++;
+            }
+          }
+          if (added > 0) {
+            saveAndBackupSync(songsFilePath, currentSongs);
+          }
+          songsReloaded = currentSongs.length;
+        }
+      }
+
+      // 2. Force re-copy bundled Bible XML files
+      const biblesCopied = migrateBundledBibleVersionsToUserData(true);
+
+      // 3. Clear bible caches
+      const bFiles = listBibleXmlFiles();
+      for (const b of bFiles) {
+        removeBibleVersionCache(b.fileName);
+      }
+
+      return {
+        success: true,
+        songsCount: songsReloaded,
+        biblesCopied,
+        totalBibles: bFiles.length
+      };
+    } catch (err) {
+      console.error('Failed to reload default data:', err);
+      return { success: false, error: err.message || String(err) };
     }
   });
 
@@ -2027,7 +2435,7 @@ app.whenReady().then(() => {
 
         if (mode === 'apply' && changedSongs) {
           saveAndBackupSync(songsFilePath, songs);
-          if (commServer && commServer.isRunning()) commServer.syncLibraryToCloud();
+          if (commServer) commServer.syncLibraryToCloud();
         }
       }
 
@@ -2225,20 +2633,16 @@ app.whenReady().then(() => {
     return bandCommStore.load();
   });
 
-  ipcMain.handle('band-comm-save-config', (e, cfg) => {
+  ipcMain.handle('band-comm-save-config', async (e, cfg) => {
     initBandComm();
-    const before = bandCommStore.load();
     const saved = bandCommStore.save(cfg);
+    // GĐ2: MỌI thay đổi config (tên/code/password/accountsEnabled/…) đều cần
+    // đẩy lại lên relay — không chỉ 3 cờ auth như trước (LAN cũ chỉ cần
+    // rotateSecret cục bộ cho việc đó; giờ commServer.rotateSecret() = gọi
+    // lại /admin/config trên relay, tác dụng phụ ĐÚNG Ý: relay luôn khớp
+    // band-comm.json mới nhất VÀ tự rotate secret nếu password đổi).
     if (commServer && commServer.isRunning()) {
-      syncBandTunnel();
-      commServer.announceRoomConfig();
-      // Bật/tắt đăng nhập tài khoản hoặc yêu cầu mật khẩu phòng sau đăng nhập
-      // đổi hẳn ai được coi là "đã xác thực hợp lệ" — mọi token cũ (cấp theo
-      // mô hình trước đó) phải hết hiệu lực ngay, không đợi hết hạn 12h
-      // (band-comm-plan.md §11, điểm 5).
-      if (before.accountsEnabled !== saved.accountsEnabled || before.room.passwordRequiredWithAccounts !== saved.room.passwordRequiredWithAccounts || before.authMode !== saved.authMode) {
-        commServer.rotateSecret();
-      }
+      try { await commServer.rotateSecret(); } catch (err) { console.error('[BandComm] sync config lên relay thất bại:', err); }
     }
     sendBandStatus();
     return saved;
@@ -2247,57 +2651,60 @@ app.whenReady().then(() => {
   // ---- Đăng nhập tài khoản (band-comm-plan.md §11) — operator (laptop) là
   // nơi DUY NHẤT tạo/sửa/xoá tài khoản; band member chỉ đăng nhập qua
   // POST /api/login, không tự đăng ký được (không có endpoint tương ứng).
+  // GĐ2: tài khoản giờ sống TRONG Durable Object (không phải
+  // band-comm-accounts.json cục bộ nữa) — mọi thao tác gọi qua
+  // commServer.accountsX() (relay-client.js), cần band-comm đang chạy
+  // (đã nối relay) để có adminSecret hợp lệ gửi kèm.
   ipcMain.handle('band-accounts-list', () => {
     initBandComm();
-    return bandAccountsStore.list();
+    return commServer.isRunning() ? commServer.accountsList() : [];
   });
 
   ipcMain.handle('band-accounts-create', (e, payload) => {
     initBandComm();
-    return bandAccountsStore.create(payload || {});
+    if (!commServer.isRunning()) return { error: 'Kênh Band chưa kết nối — thử lại sau.' };
+    return commServer.accountsCreate(payload || {});
   });
 
   ipcMain.handle('band-accounts-update', (e, { id, name } = {}) => {
     initBandComm();
-    return bandAccountsStore.update(id, { name });
+    if (!commServer.isRunning()) return { error: 'Kênh Band chưa kết nối — thử lại sau.' };
+    return commServer.accountsUpdate({ id, name });
   });
 
   // Đổi mật khẩu / khoá / xoá tài khoản đều kick ngay các phiên hiện tại của
-  // tài khoản đó — đơn giản hoá bằng cách sinh lại secret chung (mọi token
-  // đang tồn tại verify-fail ngay), thay vì theo dõi/đóng riêng từng
-  // WebSocket theo accountId.
-  ipcMain.handle('band-accounts-update-password', (e, { id, password } = {}) => {
+  // tài khoản đó — relay (room-relay.js's handleAdminAccounts) tự
+  // rotateSecret() phía nó khi xử lý 3 thao tác này, không cần main.js gọi
+  // thêm gì nữa (khác LAN cũ, nơi main.js phải tự gọi commServer.rotateSecret()
+  // sau khi sửa file cục bộ).
+  ipcMain.handle('band-accounts-update-password', (e, { id, password, mustChangePassword } = {}) => {
     initBandComm();
-    const result = bandAccountsStore.updatePassword(id, password);
-    if (!result.error && commServer && commServer.isRunning()) commServer.rotateSecret();
-    return result;
+    if (!commServer.isRunning()) return { error: 'Kênh Band chưa kết nối — thử lại sau.' };
+    return commServer.accountsUpdatePassword({ id, password, mustChangePassword });
   });
 
   ipcMain.handle('band-accounts-set-active', (e, { id, active } = {}) => {
     initBandComm();
-    const result = bandAccountsStore.setActive(id, active);
-    if (!result.error && commServer && commServer.isRunning()) commServer.rotateSecret();
-    return result;
+    if (!commServer.isRunning()) return { error: 'Kênh Band chưa kết nối — thử lại sau.' };
+    return commServer.accountsSetActive({ id, active });
   });
 
   ipcMain.handle('band-accounts-remove', (e, id) => {
     initBandComm();
-    const result = bandAccountsStore.remove(id);
-    if (!result.error && commServer && commServer.isRunning()) commServer.rotateSecret();
-    return result;
+    if (!commServer.isRunning()) return { error: 'Kênh Band chưa kết nối — thử lại sau.' };
+    return commServer.accountsRemove(id);
   });
 
-  // ---- Đăng nhập CỦA OPERATOR (gate mở Kênh Band cho bản cài mới) ----
+  // ---- Đăng nhập CỦA OPERATOR (gate mở Kênh Band, bắt buộc mọi bản cài) ----
   // Gọi thẳng Worker "band-identity" bằng tài khoản Cognito trung tâm — cùng
   // tài khoản mà website/ (mục Tải Về) cho phép "Yêu cầu qua email". Khác hẳn
   // band-accounts-*: đó là operator CẤP tài khoản cho band member; đây là
   // CHÍNH operator đăng nhập để mở khoá tính năng trên máy của họ.
   ipcMain.handle('band-operator-auth-status', () => {
     initBandComm();
-    const cfg = bandCommStore.load();
     const session = bandOperatorAuthStore.load();
     return {
-      required: !!cfg.requireOperatorLogin,
+      required: true,
       loggedIn: bandOperatorAuthStore.isLoggedIn(),
       email: session && session.email || null,
       running: !!(commServer && commServer.isRunning())
@@ -2311,6 +2718,25 @@ app.whenReady().then(() => {
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailNorm)) return { error: 'Email không hợp lệ.' };
     try {
       const r = await fetch(`${IDENTITY_API_BASE}/request-access`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: emailNorm }),
+        signal: AbortSignal.timeout(15000)
+      });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) return { error: j.error || 'Không gửi được, thử lại sau.' };
+      return { ok: true };
+    } catch (err) {
+      return { error: 'Không kết nối được máy chủ, kiểm tra mạng rồi thử lại.' };
+    }
+  });
+
+  // "Quên mật khẩu?" của chính operator — cùng nguyên tắc không lộ email tồn
+  // tại hay không (Worker luôn trả {ok:true}, xem /forgot-password).
+  ipcMain.handle('band-operator-forgot-password', async (e, { email } = {}) => {
+    const emailNorm = String(email || '').trim().toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailNorm)) return { error: 'Email không hợp lệ.' };
+    try {
+      const r = await fetch(`${IDENTITY_API_BASE}/forgot-password`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: emailNorm }),
         signal: AbortSignal.timeout(15000)
@@ -2343,8 +2769,20 @@ app.whenReady().then(() => {
         email: emailNorm, idToken: j.idToken, accessToken: j.accessToken,
         refreshToken: j.refreshToken, expiresAt: Date.now() + (Number(j.expiresIn) || 3600) * 1000
       });
+      if (j.room && j.room.code) {
+        const curCfg = bandCommStore.load();
+        bandCommStore.save({
+          ...curCfg,
+          room: {
+            ...curCfg.room,
+            code: j.room.code,
+            name: j.room.name || curCfg.room.name,
+            password: j.room.password || curCfg.room.password
+          }
+        });
+      }
       if (!commServer.isRunning()) await startBandComm();
-      return { ok: true };
+      return { ok: true, room: j.room };
     } catch (err) {
       return { error: 'Không kết nối được máy chủ đăng nhập. Cần có mạng để đăng nhập.' };
     }
@@ -2368,20 +2806,31 @@ app.whenReady().then(() => {
         email: pending.email, idToken: j.idToken, accessToken: j.accessToken,
         refreshToken: j.refreshToken, expiresAt: Date.now() + (Number(j.expiresIn) || 3600) * 1000
       });
+      if (j.room && j.room.code) {
+        const curCfg = bandCommStore.load();
+        bandCommStore.save({
+          ...curCfg,
+          room: {
+            ...curCfg.room,
+            code: j.room.code,
+            name: j.room.name || curCfg.room.name,
+            password: j.room.password || curCfg.room.password
+          }
+        });
+      }
       if (!commServer.isRunning()) await startBandComm();
-      return { ok: true };
+      return { ok: true, room: j.room };
     } catch (err) {
       return { error: 'Không kết nối được máy chủ đăng nhập. Cần có mạng để đăng nhập.' };
     }
   });
 
-  // Đăng xuất operator — chỉ có ý nghĩa cho bản cài có gate (requireOperatorLogin);
-  // dừng hẳn Kênh Band ngay để trạng thái "đã đăng xuất" là thật, không phải
-  // chỉ xoá session mà server vẫn chạy ngầm.
+  // Đăng xuất operator — dừng hẳn Kênh Band ngay để trạng thái "đã đăng xuất"
+  // là thật, không phải chỉ xoá session mà server vẫn chạy ngầm.
   ipcMain.handle('band-operator-auth-logout', () => {
     initBandComm();
     bandOperatorAuthStore.clear();
-    if (bandCommStore.load().requireOperatorLogin) stopBandComm();
+    stopBandComm();
     sendBandStatus();
     return { ok: true };
   });
@@ -2486,10 +2935,10 @@ app.whenReady().then(() => {
     initBandComm();
     const cur = bandCommStore.load();
     const saved = bandCommStore.save({ ...cur, tunnelName: name, publicUrl: `https://${domain}` });
-    if (commServer && commServer.isRunning()) {
-      syncBandTunnel();
-      commServer.announceRoomConfig(); // tunnelName changed -> setlistEnabled changed too
-    }
+    // GĐ2: wizard Named Tunnel này thuộc kiến trúc LAN cũ — relay-client.js
+    // không host gì cục bộ nên không có tunnel nào để trỏ tới nữa. Vẫn lưu
+    // lại `tunnelName`/`publicUrl` (vô hại, không đọc ở đâu nữa) để không vỡ
+    // response shape; xoá hẳn UI + IPC này thuộc bước dọn code chết sau cùng.
     sendBandStatus();
     return { ok: true, tunnelName: name, publicUrl: saved.publicUrl };
   });
@@ -2575,7 +3024,7 @@ app.whenReady().then(() => {
             if (addedCount > 0) {
               saveAndBackupSync(songsFilePath, currentItems);
               console.log(`Imported and saved ${addedCount} songs from JSON array.`);
-              if (commServer && commServer.isRunning()) commServer.syncLibraryToCloud();
+              if (commServer) commServer.syncLibraryToCloud();
             }
             results.push({ type: 'json-array', data: content, imported: true });
           } else {
@@ -2594,18 +3043,10 @@ app.whenReady().then(() => {
 });
 
 
-app.on('window-all-closed', () => { if (process.platform !== 'darwin') app.quit(); });
+app.on('window-all-closed', () => {
+  cleanupAndExit();
+});
+
 app.on('before-quit', () => {
-  flushLiveWindowBounds();
-  if (liveWindowSyncTimer) {
-    clearTimeout(liveWindowSyncTimer);
-    liveWindowSyncTimer = null;
-  }
-  stopBandComm();
-  if (liveWindow && !liveWindow.isDestroyed()) {
-    liveWindow.destroy();
-  }
-  if (mainWindow && !mainWindow.isDestroyed()) {
-    mainWindow.destroy();
-  }
+  cleanupAndExit();
 });

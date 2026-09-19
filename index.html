@@ -832,8 +832,10 @@
         }
 
 
-        font-size: 11px;
-        cursor: pointer;
+        .size-dropdown-item {
+            padding: 2px 8px;
+            font-size: 11px;
+            cursor: pointer;
         }
 
         .size-dropdown-item:hover {
@@ -1028,39 +1030,47 @@
         position: absolute; inset: 0; background: rgba(15, 20, 30, .55);
       }
       #bandGateModal .opgate-card {
-        position: relative; width: 420px; max-width: calc(100vw - 32px);
+        position: relative; width: 320px; max-width: calc(100vw - 32px);
         max-height: calc(100vh - 32px); overflow-y: auto;
-        background: #ffffff; color: #1e2430; border-radius: 12px;
-        box-shadow: 0 20px 60px rgba(0,0,0,.35); padding: 26px 24px 22px;
+        background: #ffffff; color: #1e2430; border-radius: 10px;
+        box-shadow: 0 20px 60px rgba(0,0,0,.35); padding: 18px 16px 14px;
       }
       #bandGateModal .opgate-close {
-        position: absolute; top: 12px; right: 12px; background: none; border: none;
-        font-size: 1.3rem; color: #94a3b8; line-height: 1; padding: 4px;
+        position: absolute; top: 8px; right: 8px; background: none; border: none;
+        font-size: 1.1rem; color: #94a3b8; line-height: 1; padding: 4px;
       }
       #bandGateModal .opgate-close:hover { color: #1e2430; }
-      #bandGateModal h3 { margin: 0 0 8px; font-size: 1.05rem; font-weight: 700; padding-right: 20px; }
-      #bandGateModal .opgate-desc { margin: 0 0 18px; color: #5b6472; font-size: .85rem; }
-      #bandGateModal .opgate-step { margin-bottom: 14px; }
-      #bandGateModal .opgate-step-label { font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: #8a93a3; margin-bottom: 6px; }
-      #bandGateModal .opgate-row { display: flex; gap: 8px; }
+      #bandGateModal h3 { margin: 0 0 6px; font-size: .92rem; font-weight: 700; padding-right: 18px; }
+      #bandGateModal .opgate-desc { margin: 0 0 12px; color: #5b6472; font-size: .76rem; }
+      #bandGateModal .opgate-step { margin-bottom: 10px; }
+      #bandGateModal .opgate-step-label { font-size: .66rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: #8a93a3; margin-bottom: 4px; }
+      #bandGateModal .opgate-row { display: flex; gap: 6px; }
       #bandGateModal input {
-        width: 100%; background: #f8fafc; border: 1px solid #d7dae1; border-radius: 8px;
-        padding: 9px 11px; font-size: .85rem; color: #1e2430; outline: none; margin-bottom: 8px;
+        width: 100%; background: #f8fafc; border: 1px solid #d7dae1; border-radius: 7px;
+        padding: 7px 9px; font-size: .78rem; color: #1e2430; outline: none; margin-bottom: 6px;
       }
       #bandGateModal .opgate-row input { margin-bottom: 0; flex: 1; }
       #bandGateModal input:focus { border-color: #2f8a55; }
       #bandGateModal .opgate-btn {
-        background: #ffffff; border: 1px solid #d7dae1; border-radius: 8px;
-        padding: 9px 14px; font-size: .85rem; font-weight: 600; color: #5b6472; white-space: nowrap;
+        background: #ffffff; border: 1px solid #d7dae1; border-radius: 7px;
+        padding: 7px 12px; font-size: .78rem; font-weight: 600; color: #5b6472; white-space: nowrap;
       }
       #bandGateModal .opgate-btn:hover { border-color: #8a93a3; color: #1e2430; }
       #bandGateModal .opgate-btn.primary { width: 100%; background: #2f8a55; border-color: #2f8a55; color: #fff; }
       #bandGateModal .opgate-btn.primary:hover { background: #267048; }
       #bandGateModal .opgate-btn:disabled { opacity: .6; cursor: not-allowed; }
-      #bandGateModal .opgate-status { font-size: .78rem; margin-top: 6px; min-height: 1.2em; }
+      #bandGateModal .opgate-links {
+        display: flex; justify-content: space-between; align-items: center; margin-top: 6px; gap: 8px;
+      }
+      #bandGateModal .opgate-linklike {
+        background: none; border: none; padding: 2px 0; font-size: .72rem; font-weight: 600;
+        color: #5b6472; text-decoration: underline; cursor: pointer; display: inline-block;
+      }
+      #bandGateModal .opgate-linklike:hover { color: #1e2430; }
+      #bandGateModal .opgate-status { font-size: .72rem; margin-top: 5px; min-height: 1.2em; }
       #bandGateModal .opgate-status.ok { color: #2f8a55; }
       #bandGateModal .opgate-status.err { color: #c0392f; }
-      #bandGateModal .opgate-divider { display: flex; align-items: center; gap: 10px; margin: 18px 0 14px; color: #8a93a3; font-size: .72rem; text-transform: uppercase; letter-spacing: .04em; }
+      #bandGateModal .opgate-divider { display: flex; align-items: center; gap: 8px; margin: 12px 0 10px; color: #8a93a3; font-size: .66rem; text-transform: uppercase; letter-spacing: .04em; }
       #bandGateModal .opgate-divider::before, #bandGateModal .opgate-divider::after { content: ''; flex: 1; height: 1px; background: #e2e5eb; }
 
       /* Connection info popup — sits above the app content but is still capped
@@ -1196,7 +1206,7 @@
       #bandPanel .bp-conn .bp-purl input:focus { border-color: #2563a8; outline: none; }
       #bandPanel .bp-conn .bp-wizard-hint-in-conn { font-size: .74rem; color: #8a93a3; margin: -4px 0 10px; }
       #bandPanel .bp-conn .bp-composer-link { margin-top: 10px; }
-      #bandPanel .bp-conn .bp-composer-link > .k { display: block; color: #8a93a3; font-size: .7rem; text-transform: uppercase; letter-spacing: .05em; margin-bottom: 3px; }
+      #bandPanel .bp-conn .bp-composer-link > .k { display: block; width: auto; color: #8a93a3; font-size: .7rem; text-transform: uppercase; letter-spacing: .05em; margin-bottom: 3px; }
       #bandPanel .bp-conn .bp-composer-link .row2 { margin-top: 0; flex-wrap: nowrap; }
       #bandPanel .bp-conn #bpComposerLink {
         flex: 1 1 auto; min-width: 0; border: 1px solid #d7dae1; border-radius: 8px; padding: 6px 9px;
@@ -1211,6 +1221,7 @@
          JS set (đồng bộ globalSettings.theme — KHÔNG dùng prefers-color-scheme
          vì app đã có công tắc theme riêng, không theo hệ điều hành). ===== */
       #settings-modal {
+        z-index: 99999 !important;
         --stg-accent: #5048e5; --stg-accent-dim: #423bc4; --stg-accent-soft: rgba(80,72,229,.16);
         --stg-accent-contrast: #ffffff; --stg-danger: #dc4c4c;
         --stg-bg: #121121; --stg-surface: #1a1830; --stg-surface-2: #221f3d; --stg-surface-3: #2b2749;
@@ -1406,8 +1417,8 @@
 <body
     class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 h-screen flex flex-col font-display">
 
-    <!-- Gate đăng nhập operator — chỉ bản cài MỚI mới cần (xem main.js's
-         requireOperatorLogin); hiện ra khi bấm nút Kênh Band mà chưa đăng nhập. -->
+    <!-- Gate đăng nhập operator — bắt buộc mọi bản cài (xem
+         band-operator-auth-status IPC); hiện ra khi bấm nút Kênh Band mà chưa đăng nhập. -->
     <div id="bandGateModal" role="dialog" aria-modal="true" aria-label="Đăng nhập Kênh Band">
       <div class="opgate-backdrop" id="opgateBackdrop"></div>
       <div class="opgate-card">
@@ -1415,21 +1426,14 @@
         <h3>Cần đăng nhập để dùng Kênh Band</h3>
         <p class="opgate-desc">Kênh Band (kết nối điện thoại ban nhạc qua Wi-Fi) yêu cầu đăng nhập bằng 1 tài khoản miễn phí, dùng chung được cho mọi nhà thờ.</p>
 
-        <div class="opgate-step">
-          <div class="opgate-step-label">Chưa có tài khoản?</div>
-          <div class="opgate-row">
-            <input type="email" id="opgateReqEmail" placeholder="email@gmail.com" autocomplete="email">
-            <button class="opgate-btn" id="opgateReqBtn" type="button">Yêu cầu</button>
-          </div>
-          <div class="opgate-status" id="opgateReqStatus"></div>
-        </div>
-
-        <div class="opgate-divider"><span>Đã có tài khoản</span></div>
-
         <div class="opgate-step" id="opgateLoginStep">
           <input type="email" id="opgateLoginEmail" placeholder="Email đăng nhập" autocomplete="email">
           <input type="password" id="opgateLoginPassword" placeholder="Mật khẩu" autocomplete="current-password">
           <button class="opgate-btn primary" id="opgateLoginBtn" type="button">Đăng nhập</button>
+          <div class="opgate-links">
+            <button class="opgate-linklike" id="opgateForgotBtn" type="button">Quên mật khẩu?</button>
+            <button class="opgate-linklike" id="opgateRegisterBtn" type="button">Chưa có tài khoản?</button>
+          </div>
           <div class="opgate-status" id="opgateLoginStatus"></div>
         </div>
 
@@ -1468,24 +1472,16 @@
               <button class="bp-btn" id="bpSupportFb">📘 Facebook</button>
             </div>
           </div>
-          <div class="bp-purl">
-            <label for="bpPublicUrl">Public URL (Cloudflare Tunnel / domain)</label>
-            <input id="bpPublicUrl" type="url" spellcheck="false" autocomplete="off"
-                   placeholder="Dán URL cloud để band vào từ 4G — trống = chỉ LAN">
-          </div>
-          <div class="bp-wizard-hint-in-conn">Cấu hình domain riêng (Named Tunnel) đã chuyển sang <b>File → Cài đặt</b>.</div>
           <div class="qrwrap">
             <img id="bpQr" alt="Mã QR kết nối">
             <div class="u">
               <div class="host" id="bpHost">—</div>
             </div>
           </div>
+          <div class="bp-kv"><span class="k">ID phòng</span><span class="v password" id="bpRoomCode">—</span></div>
           <div class="bp-kv"><span class="k">Mật khẩu</span><span class="v password" id="bpPassword">—</span><button class="bp-password-reload" id="bpPasswordReload" type="button" title="Tạo mật khẩu mới">🔄</button></div>
           <div class="bp-password-hint bp-hidden" id="bpPasswordHint"></div>
           <div class="bp-kv"><span class="k">Đang nối</span><span class="v" id="bpCount">0</span></div>
-          <div class="row2">
-            <button class="bp-btn" id="bpFw">Mở cổng Firewall (nếu điện thoại không vào được)</button>
-          </div>
           <div class="bp-composer-link">
             <span class="k">Link soạn setlist (dùng được cả khi tắt máy)</span>
             <div class="row2">
@@ -1674,6 +1670,10 @@
                         <input id="library-search"
                             class="w-full min-w-0 pl-5 pr-2 py-0 bg-white border-none rounded text-[10px] text-slate-900 placeholder-slate-400 focus:ring-1 focus:ring-primary/30 h-6"
                             placeholder="Search..." type="text" oninput="filterLibrary()"
+                            onfocus="this.select()"
+                            onmousedown="if(document.activeElement !== this){ this._selAll = true; }"
+                            onmouseup="if(this._selAll){ this._selAll = false; this.select(); }"
+                            onblur="this._selAll = false;"
                             onkeydown="if((event.ctrlKey || event.metaKey) && event.key === 'a') { this.select(); event.preventDefault(); }" />
                     </div>
                     <div class="lib-actions flex items-center gap-1 shrink-0">
@@ -2338,7 +2338,7 @@
                     </div>
                     <div class="border-t border-slate-100 pt-3">
                         <label class="block text-[10px] font-bold text-slate-500 uppercase mb-2">Preview</label>
-                        <div
+                        <div id="style-template-preview-box"
                             class="w-full aspect-video bg-black rounded-md border border-slate-200 overflow-hidden relative">
                             <div class="absolute inset-0 overflow-hidden">
                                 <div id="style-template-preview-canvas"
@@ -2559,12 +2559,22 @@
                   </div>
                 </div>
                 <div class="stg-row" data-search="căn lề mặc định">
-                  <div class="stg-row-text"><div class="stg-label">Căn lề mặc định</div></div>
+                  <div class="stg-row-text"><div class="stg-label">Căn lề ngang mặc định</div></div>
                   <div class="stg-row-control">
                     <select id="settings-text-align" class="stg-input">
                       <option value="left">Trái</option>
                       <option value="center" selected>Giữa</option>
                       <option value="right">Phải</option>
+                    </select>
+                  </div>
+                </div>
+                <div class="stg-row" data-search="căn lề dọc mặc định vertical align">
+                  <div class="stg-row-text"><div class="stg-label">Căn lề dọc mặc định</div></div>
+                  <div class="stg-row-control">
+                    <select id="settings-vertical-align" class="stg-input">
+                      <option value="top">Trên (Top)</option>
+                      <option value="middle" selected>Giữa (Middle)</option>
+                      <option value="bottom">Dưới (Bottom)</option>
                     </select>
                   </div>
                 </div>
@@ -2625,33 +2635,32 @@
               </div>
 
               <div class="stg-section">
-                <div class="stg-plain" data-search="kênh band cloudflare tunnel domain">
-                  <div class="stg-label">Kênh Band — Tên Cloudflare Named Tunnel</div>
-                  <div class="stg-help">Tự chạy cùng app khi có giá trị. Cần để bật tính năng Setlist (soạn từ xa).</div>
-                  <div class="stg-path-row" style="margin-bottom:10px;">
-                    <input type="text" id="bpTunnelName" class="stg-input" spellcheck="false" autocomplete="off"
-                           placeholder="VD: blessing-church — trống = dùng Quick Tunnel (URL đổi mỗi lần chạy)">
+                <div class="stg-section-label">Kênh Band &amp; Setlist (Cloud Relay)</div>
+                <div class="stg-row" data-search="kênh band mã phòng room code id">
+                  <div class="stg-row-text">
+                    <div class="stg-label">Mã phòng Kênh Band</div>
+                    <div class="stg-help">Định danh phòng riêng của nhà thờ trên hệ thống Cloud Relay.</div>
                   </div>
-                  <button class="stg-btn" id="bpWizOpenBtn" type="button">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-                    Thiết lập domain riêng tự động
-                  </button>
-                  <div class="bp-wizard hidden" id="bpWizard">
-                    <div id="bpWizStep1">
-                      <p class="bp-wizard-p">Domain phải <b>đã trỏ Nameserver sang Cloudflare</b> trước — làm ở nơi bạn mua domain (bước này app không tự làm thay được). Xong bước đó rồi mới đăng nhập ở đây.</p>
-                      <button class="stg-btn" id="bpWizLoginBtn" type="button">1. Đăng nhập Cloudflare</button>
-                      <div class="bp-wizard-status" id="bpWizLoginStatus"></div>
-                    </div>
-                    <div id="bpWizStep2" class="hidden">
-                      <div class="stg-plain" style="margin-bottom:8px;">
-                        <div class="stg-label" style="margin-bottom:6px;">Tên tunnel (đặt tuỳ ý)</div>
-                        <input id="bpWizName" type="text" class="stg-input" spellcheck="false" autocomplete="off" placeholder="vd: my-church-band" style="margin-bottom:8px;">
-                        <div class="stg-label" style="margin-bottom:6px;">Domain / subdomain sẽ dùng</div>
-                        <input id="bpWizDomain" type="text" class="stg-input" spellcheck="false" autocomplete="off" placeholder="vd: band.mychurch.org">
-                      </div>
-                      <button class="stg-btn stg-btn-primary" id="bpWizCreateBtn" type="button">Tạo &amp; Kết nối</button>
-                      <div class="bp-wizard-status" id="bpWizCreateStatus"></div>
-                    </div>
+                  <div class="stg-row-control">
+                    <input type="text" id="stgBandRoomCode" class="stg-input" style="font-weight:700; text-align:center; width:120px; letter-spacing:1px;" readonly value="—">
+                  </div>
+                </div>
+
+                <div class="stg-plain" data-search="kênh band link kết nối mobile điện thoại">
+                  <div class="stg-label">Link kết nối cho Band (Điện thoại / Máy tính bảng)</div>
+                  <div class="stg-help" style="margin-bottom:6px;">Gửi link này cho ban nhạc để xem bài hát, hợp âm và nhắn tin trực tiếp trên trình duyệt điện thoại.</div>
+                  <div class="stg-path-row" style="margin-bottom:12px;">
+                    <input type="text" id="stgBandMobileLink" class="stg-input" readonly spellcheck="false">
+                    <button class="stg-btn" type="button" onclick="copyBandSettingLink('stgBandMobileLink', this)">Sao chép</button>
+                  </div>
+                </div>
+
+                <div class="stg-plain" data-search="setlist soạn từ xa composer link">
+                  <div class="stg-label">Link Soạn Setlist từ xa</div>
+                  <div class="stg-help" style="margin-bottom:6px;">Dùng được mọi lúc (kể cả khi laptop tắt). Setlist và bài hát mới tự động đồng bộ về máy này.</div>
+                  <div class="stg-path-row">
+                    <input type="text" id="stgBandComposerLink" class="stg-input" readonly spellcheck="false">
+                    <button class="stg-btn" type="button" onclick="copyBandSettingLink('stgBandComposerLink', this)">Sao chép</button>
                   </div>
                 </div>
               </div>
@@ -2714,6 +2723,10 @@
                     </div>
                     <button class="stg-btn stg-btn-primary" id="bpAcctAddBtn" type="button">+ Thêm thành viên</button>
                   </div>
+                  <label class="bp-acct-mustchange" style="display:flex; align-items:center; gap:6px; margin-top:8px; font-size:12px; color:var(--stg-text-faint); cursor:pointer;">
+                    <input type="checkbox" id="bpAcctMustChange">
+                    Bắt đổi mật khẩu sau lần đăng nhập đầu
+                  </label>
                   <div class="bp-acct-status" id="bpAcctStatus"></div>
                 </div>
                 <div class="stg-plain hidden" id="bpCognitoInfoBlock" data-search="tài khoản trung tâm cognito email">
@@ -2740,9 +2753,41 @@
             <!-- DỮ LIỆU -->
             <div class="stg-pane" id="stg-pane-dulieu">
               <h2 class="stg-pane-title">Dữ liệu</h2>
-              <p class="stg-pane-desc">Công cụ bảo trì dữ liệu Songs và Bible đã lưu.</p>
+              <p class="stg-pane-desc">Quản lý thư mục lưu trữ, nạp lại dữ liệu gốc và bảo trì Songs &amp; Bible.</p>
               <div class="stg-section">
-                <div class="stg-plain" data-search="tìm kiếm thay thế dữ liệu lỗi chính tả">
+                <!-- Vị trí lưu trữ dữ liệu -->
+                <div class="stg-plain" data-search="vị trí lưu trữ dữ liệu thư mục data folder songs bible nạp lại mặc định gốc">
+                  <div class="stg-label" style="display: flex; align-items: center; justify-content: space-between;">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                      <span style="font-size: 15px;">📁</span>
+                      <span>Vị trí lưu trữ dữ liệu ứng dụng</span>
+                    </div>
+                    <span id="stg-data-stats-badge" style="font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 9999px; background: rgba(59, 130, 246, 0.15); color: #3b82f6;">Đang kiểm tra...</span>
+                  </div>
+                  <div class="stg-help" style="margin-top: 4px;">
+                    Thư mục chứa toàn bộ bài hát, các bản dịch Kinh Thánh XML, mẫu định dạng và cấu hình.
+                  </div>
+                  <div style="margin-top: 10px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                    <input type="text" id="stg-user-data-path" class="stg-input" readonly style="flex: 1; min-width: 260px; background: var(--stg-bg-card); cursor: text; font-family: monospace; font-size: 12px;" placeholder="Đang tải đường dẫn...">
+                    <button class="stg-btn" type="button" onclick="handleOpenDataFolder()" title="Mở thư mục này trong Windows Explorer">
+                      📂 Mở thư mục
+                    </button>
+                    <button class="stg-btn" type="button" onclick="handleChangeDataFolder()" title="Đổi thư mục lưu trữ sang ổ đĩa khác">
+                      📁 Đổi thư mục...
+                    </button>
+                  </div>
+                  <div style="margin-top: 12px; padding-top: 10px; border-top: 1px dashed var(--stg-border-soft); display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
+                    <div class="stg-help" style="margin: 0; font-size: 12px;">
+                      Nếu thư viện bài hát hoặc Kinh Thánh chưa tải đầy đủ sau khi cài đặt/cập nhật:
+                    </div>
+                    <button class="stg-btn stg-btn-primary" type="button" onclick="handleReloadDefaultData()" style="background: linear-gradient(135deg, #4f46e5, #3b82f6); border: none;">
+                      🔄 Nạp lại Dữ liệu gốc (Kinh Thánh &amp; Bài hát)
+                    </button>
+                  </div>
+                  <div id="stg-data-reload-status" class="stg-help" style="margin-top: 8px; font-weight: 600; display: none; padding: 6px 10px; border-radius: 6px;"></div>
+                </div>
+
+                <div class="stg-plain" style="margin-top: 18px; border-top: 1px solid var(--stg-border-soft); padding-top: 16px;" data-search="tìm kiếm thay thế dữ liệu lỗi chính tả">
                   <div class="stg-label">Tìm kiếm &amp; thay thế dữ liệu</div>
                   <div class="stg-help">Sửa hàng loạt lỗi chính tả trong Songs và các bản dịch Bible XML đã lưu.</div>
                   <div class="stg-row" style="border:none; padding-top:8px;">
@@ -2785,6 +2830,29 @@
                     <button class="stg-btn" type="button" onclick="previewBulkReplace()">Preview</button>
                     <button class="stg-btn stg-btn-primary" type="button" onclick="applyBulkReplace()">Replace All</button>
                   </div>
+                </div>
+
+                <!-- Đồng bộ Thư viện từ bản cũ khi cập nhật -->
+                <div class="stg-plain" style="margin-top: 18px; border-top: 1px solid var(--stg-border-soft); padding-top: 16px;" data-search="đồng bộ thư viện bài hát bản cũ cập nhật backup khôi phục">
+                  <div class="stg-label" style="display: flex; align-items: center; gap: 8px;">
+                    <span style="font-size: 15px;">🔄</span>
+                    <span>Đồng bộ &amp; Khôi phục Thư viện bài hát (Khi cập nhật hoặc cài lại app)</span>
+                  </div>
+                  <div class="stg-help" style="margin-top: 4px; line-height: 1.5;">
+                    Tự động tìm kiếm các thư mục dữ liệu từ phiên bản cũ (EasyWorship App / Presentation For Church các bản trước) trên máy tính và gộp vào thư viện hiện tại, bảo toàn 100% bài hát, hợp âm và định dạng của bạn.
+                  </div>
+                  <div style="margin-top: 14px; display: flex; gap: 10px; flex-wrap: wrap;">
+                    <button class="stg-btn stg-btn-primary" type="button" onclick="handleScanAndSyncPreviousLibrary()">
+                      🔄 Tự động quét &amp; Đồng bộ bản cũ
+                    </button>
+                    <button class="stg-btn" type="button" onclick="handleImportLibraryFolder()">
+                      📂 Chọn thư mục dữ liệu cũ...
+                    </button>
+                    <button class="stg-btn" type="button" onclick="handleExportLibraryBackup()">
+                      💾 Sao lưu thư viện ra file...
+                    </button>
+                  </div>
+                  <div id="library-sync-status-msg" class="stg-help" style="margin-top: 10px; font-weight: 600; display: none; padding: 8px 12px; border-radius: 6px; background: rgba(56, 189, 248, 0.1); border: 1px solid rgba(56, 189, 248, 0.25);"></div>
                 </div>
               </div>
             </div>
@@ -3192,7 +3260,8 @@
             styleEditorDirty = false;
             updateStyleEditorApplyButtons();
             document.getElementById('style-template-manager-modal').style.display = 'flex';
-            setTimeout(() => scaleVirtualCanvas('style-template-preview-canvas', 'style-template-manager-modal'), 0);
+            requestAnimationFrame(() => scaleVirtualCanvas('style-template-preview-canvas', 'style-template-preview-box'));
+            setTimeout(() => scaleVirtualCanvas('style-template-preview-canvas', 'style-template-preview-box'), 50);
         }
 
         function closeStyleTemplateManager(force = false) {
@@ -3876,7 +3945,7 @@
             if (!previewEl) return;
             applySelectedFontToControl(document.getElementById('style-template-font-family'));
             applyStyleToElement(previewEl, collectStyleTemplateForm().style);
-            scaleVirtualCanvas('style-template-preview-canvas', 'style-template-manager-modal');
+            scaleVirtualCanvas('style-template-preview-canvas', 'style-template-preview-box');
         }
 
         async function loadStyleTemplates() {
@@ -4307,6 +4376,178 @@
             }
         }
 
+        async function reloadSongsList() {
+            try {
+                songLibrary = await window.electronAPI.loadSongs();
+                renderLibrary();
+            } catch (e) {
+                console.error('Failed to reload songs:', e);
+            }
+        }
+
+        async function handleScanAndSyncPreviousLibrary() {
+            const statusMsg = document.getElementById('library-sync-status-msg');
+            if (statusMsg) {
+                statusMsg.style.display = 'block';
+                statusMsg.style.color = '#38bdf8';
+                statusMsg.textContent = 'Đang quét toàn bộ máy tính để tìm thư viện bài hát từ các phiên bản cũ...';
+            }
+            try {
+                const res = await window.electronAPI.syncPreviousLibrary();
+                if (res && res.success) {
+                    const added = res.addedCount || 0;
+                    const updated = res.updatedCount || 0;
+                    const total = res.totalSongs || 0;
+                    let msg = '';
+                    if (added > 0 || updated > 0) {
+                        msg = `✓ Đã đồng bộ thành công: thêm ${added} bài hát mới, cập nhật ${updated} bài từ phiên bản cũ. Tổng số bài: ${total}.`;
+                        await reloadSongsList();
+                    } else {
+                        msg = `✓ Thư viện đã đầy đủ và mới nhất (${total} bài). Không có bài hát nào bị thiếu từ các phiên bản cũ.`;
+                    }
+                    if (statusMsg) {
+                        statusMsg.style.color = '#10b981';
+                        statusMsg.textContent = msg;
+                    }
+                    alert(msg);
+                } else {
+                    const err = (res && res.error) || 'Không thể quét thư viện bài hát cũ.';
+                    if (statusMsg) {
+                        statusMsg.style.color = '#f43f5e';
+                        statusMsg.textContent = err;
+                    }
+                    alert(err);
+                }
+            } catch (e) {
+                console.error('handleScanAndSyncPreviousLibrary error:', e);
+                if (statusMsg) {
+                    statusMsg.style.color = '#f43f5e';
+                    statusMsg.textContent = 'Lỗi: ' + (e.message || e);
+                }
+                alert('Lỗi: ' + (e.message || e));
+            }
+        }
+
+        async function handleImportLibraryFolder() {
+            try {
+                const res = await window.electronAPI.importLibraryFolder();
+                if (!res || res.canceled) return;
+                if (res.success) {
+                    const msg = `✓ Đã nhập thành công ${res.addedCount} bài mới, cập nhật ${res.updatedCount} bài! Tổng thư viện: ${res.totalSongs} bài.`;
+                    await reloadSongsList();
+                    alert(msg);
+                } else {
+                    alert('Lỗi: ' + (res.error || 'Không thể nhập thư mục đã chọn.'));
+                }
+            } catch (e) {
+                alert('Lỗi khi nhập thư mục: ' + (e.message || e));
+            }
+        }
+
+        async function handleExportLibraryBackup() {
+            try {
+                const res = await window.electronAPI.exportSongsToFile();
+                if (res && res.filePath) {
+                    alert(`✓ Đã sao lưu thành công ${res.count} bài hát ra file:\n${res.filePath}`);
+                }
+            } catch (e) {
+                alert('Lỗi khi sao lưu: ' + (e.message || e));
+            }
+        }
+
+        async function refreshDataPathInfoUI() {
+            try {
+                if (!window.electronAPI || !window.electronAPI.getDataPathInfo) return;
+                const info = await window.electronAPI.getDataPathInfo();
+                if (info) {
+                    const pathEl = document.getElementById('stg-user-data-path');
+                    if (pathEl) pathEl.value = info.userDataPath || '';
+                    const badgeEl = document.getElementById('stg-data-stats-badge');
+                    if (badgeEl) {
+                        badgeEl.textContent = `🎵 ${info.songsCount || 0} bài hát | 📖 ${info.bibleCount || 0} bản dịch`;
+                    }
+                }
+            } catch (e) {
+                console.error('Failed to load data path info:', e);
+            }
+        }
+
+        async function handleOpenDataFolder() {
+            try {
+                if (window.electronAPI && window.electronAPI.openDataFolder) {
+                    const res = await window.electronAPI.openDataFolder();
+                    if (res && !res.success) {
+                        alert('Không thể mở thư mục: ' + (res.error || 'Lỗi không xác định'));
+                    }
+                }
+            } catch (e) {
+                alert('Lỗi: ' + (e.message || e));
+            }
+        }
+
+        async function handleChangeDataFolder() {
+            try {
+                if (!window.electronAPI || !window.electronAPI.changeDataFolder) return;
+                const res = await window.electronAPI.changeDataFolder();
+                if (!res || res.canceled) return;
+                if (res.success) {
+                    alert(`✓ Đã đổi thư mục dữ liệu thành công sang:\n${res.newPath}\nToàn bộ dữ liệu hiện tại đã được sao chép sang vị trí mới.`);
+                    await refreshDataPathInfoUI();
+                    await reloadSongsList();
+                    if (typeof loadBibleVersions === 'function') await loadBibleVersions();
+                } else {
+                    alert('Lỗi khi đổi thư mục: ' + (res.error || 'Không rõ nguyên nhân'));
+                }
+            } catch (e) {
+                alert('Lỗi: ' + (e.message || e));
+            }
+        }
+
+        async function handleReloadDefaultData() {
+            const statusEl = document.getElementById('stg-data-reload-status');
+            if (statusEl) {
+                statusEl.style.display = 'block';
+                statusEl.style.color = '#38bdf8';
+                statusEl.style.background = 'rgba(56, 189, 248, 0.1)';
+                statusEl.textContent = 'Đang nạp lại dữ liệu gốc (bài hát và các bản dịch Kinh Thánh)...';
+            }
+            try {
+                if (!window.electronAPI || !window.electronAPI.reloadDefaultData) {
+                    throw new Error('API không khả dụng');
+                }
+                const res = await window.electronAPI.reloadDefaultData();
+                if (res && res.success) {
+                    const msg = `✓ Đã nạp lại dữ liệu gốc thành công: ${res.songsCount} bài hát, ${res.totalBibles} bản dịch Kinh Thánh sẵn sàng!`;
+                    if (statusEl) {
+                        statusEl.style.color = '#10b981';
+                        statusEl.style.background = 'rgba(16, 185, 129, 0.1)';
+                        statusEl.textContent = msg;
+                    }
+                    await reloadSongsList();
+                    if (typeof loadBibleVersions === 'function') await loadBibleVersions();
+                    if (typeof loadBibleVersionManagerList === 'function') await loadBibleVersionManagerList();
+                    await refreshDataPathInfoUI();
+                    alert(msg);
+                } else {
+                    const err = (res && res.error) || 'Không thể nạp dữ liệu gốc.';
+                    if (statusEl) {
+                        statusEl.style.color = '#f43f5e';
+                        statusEl.style.background = 'rgba(244, 63, 94, 0.1)';
+                        statusEl.textContent = err;
+                    }
+                    alert('Lỗi: ' + err);
+                }
+            } catch (e) {
+                console.error('handleReloadDefaultData error:', e);
+                if (statusEl) {
+                    statusEl.style.color = '#f43f5e';
+                    statusEl.style.background = 'rgba(244, 63, 94, 0.1)';
+                    statusEl.textContent = 'Lỗi: ' + (e.message || e);
+                }
+                alert('Lỗi: ' + (e.message || e));
+            }
+        }
+
         // --- Initialization ---
         window.addEventListener('DOMContentLoaded', async () => {
             await loadSettings();
@@ -4315,6 +4556,7 @@
             await loadStyleTemplates();
             loadLibrary();
             loadBibleVersions();
+            refreshDataPathInfoUI();
             loadMedia();
             setTimeout(loadSystemFonts, 0);
             setTimeout(syncMonitorVisibility, 0);
@@ -4326,6 +4568,19 @@
             window.electronAPI.onLiveRefreshCustomFonts(async () => {
                 await loadCustomFonts();
             });
+
+            if (window.electronAPI && window.electronAPI.onLibrarySyncNotification) {
+                window.electronAPI.onLibrarySyncNotification((event, syncData) => {
+                    if (syncData && (syncData.addedCount > 0 || syncData.updatedCount > 0)) {
+                        reloadSongsList();
+                        const banner = document.createElement('div');
+                        banner.style.cssText = 'position:fixed;bottom:24px;left:24px;background:#0f172a;color:#38bdf8;padding:12px 20px;border-radius:10px;border:1px solid rgba(56,189,248,0.4);box-shadow:0 8px 30px rgba(0,0,0,0.5);z-index:99999;font-size:13px;font-weight:600;display:flex;align-items:center;gap:10px;animation:fadeIn 0.3s ease;';
+                        banner.innerHTML = `<span>🔄</span><span>✓ Đã tự động đồng bộ ${syncData.addedCount} bài hát từ phiên bản cũ trên máy của bạn!</span><button style="background:none;border:none;color:#94a3b8;cursor:pointer;font-size:16px;margin-left:8px;" onclick="this.parentElement.remove()">✕</button>`;
+                        document.body.appendChild(banner);
+                        setTimeout(() => { if (banner.parentElement) banner.remove(); }, 7000);
+                    }
+                });
+            }
 
             // Schedule container: drop media to add as standalone item
             const scheduleContainer = document.getElementById('schedule-container');
@@ -4341,6 +4596,33 @@
                     addMediaToSchedule(mediaItem);
                 } catch (err) { console.error('Schedule drop error:', err); }
             });
+
+            // Tự động bôi đen toàn bộ chữ trong thanh tìm kiếm Library (Songs/Bible) khi click chuột lại
+            const libSearchEl = document.getElementById('library-search');
+            if (libSearchEl) {
+                let shouldSelectAll = false;
+                libSearchEl.addEventListener('mousedown', () => {
+                    if (document.activeElement !== libSearchEl) {
+                        shouldSelectAll = true;
+                    }
+                });
+                libSearchEl.addEventListener('focus', () => {
+                    setTimeout(() => {
+                        if (document.activeElement === libSearchEl && libSearchEl.value) {
+                            libSearchEl.select();
+                        }
+                    }, 0);
+                });
+                libSearchEl.addEventListener('mouseup', () => {
+                    if (shouldSelectAll) {
+                        shouldSelectAll = false;
+                        if (libSearchEl.value) libSearchEl.select();
+                    }
+                });
+                libSearchEl.addEventListener('blur', () => {
+                    shouldSelectAll = false;
+                });
+            }
         });
 
         // resize handler moved and debounced below
@@ -4600,48 +4882,129 @@
             if (toggle) toggle.checked = !isLight;
         }
 
+        let settingsOpenTheme = null;
+
+        function copyBandSettingLink(inputId, btn) {
+            const input = document.getElementById(inputId);
+            if (!input || !input.value) return;
+            const finish = () => {
+                const oldText = btn.textContent;
+                btn.textContent = 'Đã chép!';
+                setTimeout(() => { btn.textContent = oldText; }, 1800);
+            };
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(input.value).then(finish).catch(() => {
+                    input.select();
+                    document.execCommand('copy');
+                    finish();
+                });
+            } else {
+                input.select();
+                document.execCommand('copy');
+                finish();
+            }
+        }
+
         function openSettings() {
             const modal = document.getElementById('settings-modal');
-            ensureSelectHasOption(document.getElementById('settings-font-family-song'), globalSettings.fontFamilySong);
-            ensureSelectHasOption(document.getElementById('settings-font-family-bible'), globalSettings.fontFamilyBible);
-            applyStgTheme();
-            document.getElementById('settings-gpu-acceleration').checked = globalSettings.gpuAcceleration !== false;
-            document.getElementById('settings-allow-single-display-live').value = globalSettings.allowSingleDisplayLiveWindow === false ? 'off' : 'on';
-            document.getElementById('settings-show-next-verse').value = globalSettings.showNextVerse === false ? 'off' : 'on';
-            document.getElementById('settings-auto-fit-text').checked = globalSettings.autoFitText !== false;
-            document.getElementById('settings-media-path').value = globalSettings.mediaPath || '';
-            // Kênh Band: Named Tunnel — refresh phòng khi Settings mở trước khi
-            // band-comm kịp phát status đầu tiên (ví dụ mở app xong bấm liền).
-            if (window.electronAPI && window.electronAPI.bandComm) {
-                window.electronAPI.bandComm.getConfig().then(function (cfg) {
-                    document.getElementById('bpTunnelName').value = (cfg && cfg.tunnelName) || '';
-                    document.getElementById('stgAccountsEnabled').checked = !!(cfg && cfg.accountsEnabled);
-                    document.getElementById('stgPasswordRequiredWithAccounts').checked = !!(cfg && cfg.room && cfg.room.passwordRequiredWithAccounts);
-                    var authMode = (cfg && cfg.authMode === 'cognito') ? 'cognito' : 'local';
-                    document.getElementById('stgAuthMode').value = authMode;
-                    if (window.__updateAuthModeUI) window.__updateAuthModeUI(authMode);
-                }).catch(function () {});
-                // refreshAcctList() sống trong closure riêng của sidebar Kênh Band —
-                // gọi qua hàm global nhỏ thay vì lộ toàn bộ closure đó ra ngoài.
-                if (window.__refreshAcctList) window.__refreshAcctList();
-            }
-            document.getElementById('settings-font-family-song').value = globalSettings.fontFamilySong;
-            document.getElementById('settings-font-family-bible').value = globalSettings.fontFamilyBible;
-            document.getElementById('settings-font-size').value = parseInt(globalSettings.fontSize);
-            document.getElementById('settings-font-color').value = globalSettings.color;
-            document.getElementById('settings-text-align').value = globalSettings.textAlign;
-            document.getElementById('settings-text-stroke-width').value = Number(globalSettings.textStrokeWidth || 0);
-            document.getElementById('settings-text-stroke-color').value = globalSettings.textStrokeColor || '#000000';
-            document.getElementById('settings-margin-top').value = Number(globalSettings.textMargin?.top || 0);
-            document.getElementById('settings-margin-right').value = Number(globalSettings.textMargin?.right || 0);
-            document.getElementById('settings-margin-bottom').value = Number(globalSettings.textMargin?.bottom || 0);
-            document.getElementById('settings-margin-left').value = Number(globalSettings.textMargin?.left || 0);
-            document.getElementById('settings-padding-top').value = Number(globalSettings.textPadding?.top || 0);
-            document.getElementById('settings-padding-right').value = Number(globalSettings.textPadding?.right || 0);
-            document.getElementById('settings-padding-bottom').value = Number(globalSettings.textPadding?.bottom || 0);
-            document.getElementById('settings-padding-left').value = Number(globalSettings.textPadding?.left || 0);
-
+            if (!modal) return;
+            
+            // Hiện modal ngay lập tức để người dùng thấy giao diện phản hồi
             modal.style.display = 'flex';
+
+            try {
+                settingsOpenTheme = globalSettings.theme;
+                ensureSelectHasOption(document.getElementById('settings-font-family-song'), globalSettings.fontFamilySong);
+                ensureSelectHasOption(document.getElementById('settings-font-family-bible'), globalSettings.fontFamilyBible);
+                applyStgTheme();
+
+                const gpuEl = document.getElementById('settings-gpu-acceleration');
+                if (gpuEl) gpuEl.checked = globalSettings.gpuAcceleration !== false;
+
+                const singleDispEl = document.getElementById('settings-allow-single-display-live');
+                if (singleDispEl) singleDispEl.value = globalSettings.allowSingleDisplayLiveWindow === false ? 'off' : 'on';
+
+                const nextVerseEl = document.getElementById('settings-show-next-verse');
+                if (nextVerseEl) nextVerseEl.value = globalSettings.showNextVerse === false ? 'off' : 'on';
+
+                const autoFitEl = document.getElementById('settings-auto-fit-text');
+                if (autoFitEl) autoFitEl.checked = globalSettings.autoFitText !== false;
+
+                const mediaPathEl = document.getElementById('settings-media-path');
+                if (mediaPathEl) mediaPathEl.value = globalSettings.mediaPath || '';
+
+                // Kênh Band & Setlist: hiển thị Room ID và các link kết nối Cloud Relay
+                if (window.electronAPI && window.electronAPI.bandComm) {
+                    window.electronAPI.bandComm.getConfig().then(function (cfg) {
+                        var roomCode = (cfg && cfg.room && cfg.room.code) || '';
+                        var elCode = document.getElementById('stgBandRoomCode');
+                        if (elCode) elCode.value = roomCode || '—';
+                        var elMobile = document.getElementById('stgBandMobileLink');
+                        if (elMobile) elMobile.value = roomCode ? ('https://channel.worship-official.link/m/?room=' + encodeURIComponent(roomCode)) : 'https://channel.worship-official.link/m/';
+                        var elComposer = document.getElementById('stgBandComposerLink');
+                        if (elComposer) elComposer.value = roomCode ? ('https://channel.worship-official.link/composer?room=' + encodeURIComponent(roomCode)) : '';
+
+                        var acctEnabledEl = document.getElementById('stgAccountsEnabled');
+                        if (acctEnabledEl) acctEnabledEl.checked = !!(cfg && cfg.accountsEnabled);
+
+                        var pwReqEl = document.getElementById('stgPasswordRequiredWithAccounts');
+                        if (pwReqEl) pwReqEl.checked = !!(cfg && cfg.room && cfg.room.passwordRequiredWithAccounts);
+
+                        var authMode = (cfg && cfg.authMode === 'cognito') ? 'cognito' : 'local';
+                        var authModeEl = document.getElementById('stgAuthMode');
+                        if (authModeEl) authModeEl.value = authMode;
+                        if (window.__updateAuthModeUI) window.__updateAuthModeUI(authMode);
+                    }).catch(function () {});
+
+                    if (window.__refreshAcctList) window.__refreshAcctList();
+                }
+
+                const fontSongEl = document.getElementById('settings-font-family-song');
+                if (fontSongEl && globalSettings.fontFamilySong) fontSongEl.value = globalSettings.fontFamilySong;
+
+                const fontBibleEl = document.getElementById('settings-font-family-bible');
+                if (fontBibleEl && globalSettings.fontFamilyBible) fontBibleEl.value = globalSettings.fontFamilyBible;
+
+                const fontSizeEl = document.getElementById('settings-font-size');
+                if (fontSizeEl) fontSizeEl.value = parseInt(globalSettings.fontSize) || 80;
+
+                const fontColorEl = document.getElementById('settings-font-color');
+                if (fontColorEl) fontColorEl.value = globalSettings.color || '#ffffff';
+
+                const textAlignEl = document.getElementById('settings-text-align');
+                if (textAlignEl) textAlignEl.value = globalSettings.textAlign || 'center';
+
+                const vertAlignEl = document.getElementById('settings-vertical-align');
+                if (vertAlignEl) vertAlignEl.value = globalSettings.verticalAlign || 'middle';
+
+                const strokeWidthEl = document.getElementById('settings-text-stroke-width');
+                if (strokeWidthEl) strokeWidthEl.value = Number(globalSettings.textStrokeWidth ?? 5);
+
+                const strokeColorEl = document.getElementById('settings-text-stroke-color');
+                if (strokeColorEl) strokeColorEl.value = globalSettings.textStrokeColor || '#000000';
+
+                const mTop = document.getElementById('settings-margin-top');
+                if (mTop) mTop.value = Number(globalSettings.textMargin?.top || 0);
+                const mRight = document.getElementById('settings-margin-right');
+                if (mRight) mRight.value = Number(globalSettings.textMargin?.right || 0);
+                const mBottom = document.getElementById('settings-margin-bottom');
+                if (mBottom) mBottom.value = Number(globalSettings.textMargin?.bottom || 0);
+                const mLeft = document.getElementById('settings-margin-left');
+                if (mLeft) mLeft.value = Number(globalSettings.textMargin?.left || 0);
+
+                const pTop = document.getElementById('settings-padding-top');
+                if (pTop) pTop.value = Number(globalSettings.textPadding?.top || 0);
+                const pRight = document.getElementById('settings-padding-right');
+                if (pRight) pRight.value = Number(globalSettings.textPadding?.right || 0);
+                const pBottom = document.getElementById('settings-padding-bottom');
+                if (pBottom) pBottom.value = Number(globalSettings.textPadding?.bottom || 0);
+                const pLeft = document.getElementById('settings-padding-left');
+                if (pLeft) pLeft.value = Number(globalSettings.textPadding?.left || 0);
+
+                refreshDataPathInfoUI();
+            } catch (err) {
+                console.error('[Settings] Lỗi khi điền thông tin cài đặt:', err);
+            }
         }
 
         async function selectMediaFolder() {
@@ -4651,7 +5014,12 @@
             }
         }
 
-        function closeSettings() {
+        function closeSettings(canceled = true) {
+            if (canceled && settingsOpenTheme && globalSettings.theme !== settingsOpenTheme) {
+                globalSettings.theme = settingsOpenTheme;
+                applyStgTheme();
+                applySettings();
+            }
             document.getElementById('settings-modal').style.display = 'none';
         }
 
@@ -4706,9 +5074,7 @@
                 const value = Number(document.getElementById(id).value);
                 return Number.isFinite(value) ? value : 0;
             };
-            // globalSettings.theme đã được cập nhật trực tiếp lúc bấm nút toggle
-            // trong header (xem stgThemeToggle) — áp dụng ngay lúc đó, không
-            // chờ tới khi bấm Lưu, nên không đọc lại ở đây.
+            
             globalSettings.gpuAcceleration = document.getElementById('settings-gpu-acceleration').checked;
             globalSettings.allowSingleDisplayLiveWindow = document.getElementById('settings-allow-single-display-live').value === 'on';
             globalSettings.showNextVerse = document.getElementById('settings-show-next-verse').value === 'on';
@@ -4719,6 +5085,10 @@
             globalSettings.fontSize = document.getElementById('settings-font-size').value + 'px';
             globalSettings.color = document.getElementById('settings-font-color').value;
             globalSettings.textAlign = document.getElementById('settings-text-align').value;
+            const vertAlignEl = document.getElementById('settings-vertical-align');
+            if (vertAlignEl) {
+                globalSettings.verticalAlign = vertAlignEl.value || 'middle';
+            }
             globalSettings.textStrokeWidth = toNumber('settings-text-stroke-width');
             globalSettings.textStrokeColor = document.getElementById('settings-text-stroke-color').value;
             globalSettings.textMargin = {
@@ -4735,6 +5105,7 @@
             };
 
             await window.electronAPI.saveSettings(globalSettings);
+            settingsOpenTheme = globalSettings.theme;
             rebuildShortcutActionMap();
 
             if (oldMediaPath !== globalSettings.mediaPath) {
@@ -4742,7 +5113,7 @@
             }
 
             applySettings();
-            closeSettings();
+            closeSettings(false);
         }
 
         async function openBibleSelector(fileName = null) {
@@ -4886,6 +5257,8 @@
                 loadBibleVersions(); // Refresh versions
             }
             filterLibrary();
+            const searchInput = document.getElementById('library-search');
+            if (searchInput && searchInput.value) searchInput.select();
         }
 
         // --- Resizer Logic ---
@@ -7374,7 +7747,7 @@
             syncShortcutRowFromDom(kind, index);
         }
 
-        function saveShortcutsModal() {
+        async function saveShortcutsModal() {
             const defaultRowsCount = (globalSettings.defaultShortcutRows || []).length;
             const defaultRows = Array.from({ length: defaultRowsCount }, (_, i) => i).map(i => {
                 const key1 = (getShortcutDomField('default', i, 'key1')?.value || '').trim();
@@ -7393,6 +7766,7 @@
             }).filter(row => row.action || row.key1 || row.key2 || row.key3);
             globalSettings.defaultShortcutRows = defaultRows;
             globalSettings.customShortcuts = custom;
+            await window.electronAPI.saveSettings(globalSettings);
             rebuildShortcutActionMap();
             closeShortcutsModal();
         }
@@ -7407,6 +7781,8 @@
                 case 'open-schedule': openSchedule(); break;
                 case 'close-schedule': schedule = []; currentScheduleIndex = -1; currentLiveScheduleIndex = -1; currentScheduleFilePath = null; updateWindowTitleForSchedule(); renderSchedule(); break;
                 case 'open-settings': openSettings(); break;
+                case 'sync-previous-library': handleScanAndSyncPreviousLibrary(); break;
+                case 'export-songs': handleExportLibraryBackup(); break;
                 case 'toggle-live-window': await toggleLiveWindow(); break;
                 case 'close-live-window':
                     if (isLiveWindowOpen) {
@@ -7643,8 +8019,11 @@
         function scaleAllCanvases() {
             scaleVirtualCanvas('preview-virtual-canvas', 'preview-output-box');
             scaleVirtualCanvas('media-monitor-virtual-canvas', 'media-monitor-output-box');
-            if (document.getElementById('song-editor-modal').style.display === 'flex') {
+            if (document.getElementById('song-editor-modal') && document.getElementById('song-editor-modal').style.display === 'flex') {
                 scaleVirtualCanvas('editor-virtual-canvas', 'editor-preview-box');
+            }
+            if (document.getElementById('style-template-manager-modal') && document.getElementById('style-template-manager-modal').style.display === 'flex') {
+                scaleVirtualCanvas('style-template-preview-canvas', 'style-template-preview-box');
             }
         }
 
@@ -7783,13 +8162,14 @@
 
       function setStatus(id, text, kind) {
         var el = $(id);
+        if (!el) return;
         el.textContent = text || '';
         el.className = 'opgate-status' + (kind ? ' ' + kind : '');
       }
       function resetSteps() {
         $('opgateNewPasswordStep').classList.add('opgate-hidden');
         $('opgateLoginStep').classList.remove('opgate-hidden');
-        setStatus('opgateReqStatus', ''); setStatus('opgateLoginStatus', ''); setStatus('opgateNewPasswordStatus', '');
+        setStatus('opgateLoginStatus', ''); setStatus('opgateNewPasswordStatus', '');
       }
       function openModal() { modal.classList.add('open'); resetSteps(); }
       function closeModal() { modal.classList.remove('open'); pendingOnPass = null; }
@@ -7800,21 +8180,18 @@
         if (e.key === 'Escape' && modal.classList.contains('open')) closeModal();
       });
 
-      $('opgateReqBtn').addEventListener('click', function () {
-        var email = $('opgateReqEmail').value.trim();
-        if (!email) return;
-        var btn = $('opgateReqBtn');
-        btn.disabled = true; setStatus('opgateReqStatus', '');
-        api.requestAccess({ email: email }).then(function (r) {
-          btn.disabled = false;
-          if (r && r.error) { setStatus('opgateReqStatus', r.error, 'err'); return; }
-          setStatus('opgateReqStatus', 'Nếu email hợp lệ, tài khoản + mật khẩu tạm đã được gửi tới hộp thư (kiểm tra cả Spam).', 'ok');
-          $('opgateReqEmail').value = '';
-        }).catch(function () {
-          btn.disabled = false;
-          setStatus('opgateReqStatus', 'Không kết nối được, thử lại sau.', 'err');
+      // "Chưa có tài khoản?" — mở website đăng ký tài khoản
+      var REGISTER_URL = 'https://worship-official.link/#get-account';
+      var regBtn = $('opgateRegisterBtn');
+      if (regBtn) {
+        regBtn.addEventListener('click', function () {
+          if (window.electronAPI && window.electronAPI.openExternal) {
+            window.electronAPI.openExternal(REGISTER_URL);
+          } else {
+            window.open(REGISTER_URL, '_blank');
+          }
         });
-      });
+      }
 
       function finishSuccess() {
         closeModal();
@@ -7845,6 +8222,23 @@
       }
       $('opgateLoginBtn').addEventListener('click', doLogin);
       $('opgateLoginPassword').addEventListener('keydown', function (e) { if (e.key === 'Enter') doLogin(); });
+
+      // "Quên mật khẩu?" — cùng nguyên tắc không lộ email tồn tại hay không
+      // như opgateReqBtn ở trên (xem /forgot-password).
+      $('opgateForgotBtn').addEventListener('click', function () {
+        var email = $('opgateLoginEmail').value.trim();
+        if (!email) { setStatus('opgateLoginStatus', 'Nhập email trước đã.', 'err'); return; }
+        var btn = $('opgateForgotBtn');
+        btn.disabled = true; setStatus('opgateLoginStatus', '');
+        api.forgotPassword({ email: email }).then(function (r) {
+          btn.disabled = false;
+          if (r && r.error) { setStatus('opgateLoginStatus', r.error, 'err'); return; }
+          setStatus('opgateLoginStatus', 'Nếu email có tài khoản, mật khẩu tạm mới đã được gửi tới hộp thư (kiểm tra cả Spam).', 'ok');
+        }).catch(function () {
+          btn.disabled = false;
+          setStatus('opgateLoginStatus', 'Không kết nối được, thử lại sau.', 'err');
+        });
+      });
 
       function doNewPassword() {
         var newPassword = $('opgateNewPassword').value;
@@ -7943,18 +8337,15 @@
         if (e.key === 'Escape' && panel.classList.contains('open') && panel.contains(document.activeElement)) closePanel();
       });
 
-      // QR mode: 'public' = Public URL (Cloudflare Tunnel / domain — mọi mạng),
-      // 'ip' = IP LAN (mọi điện thoại nếu cùng WiFi), 'host' = worship.local (mDNS).
-      // Mặc định về 'public' khi đã cấu hình publicUrl, ngược lại 'ip'.
-      var qrMode = 'ip';
-      var qrModeUserSet = false;      // true khi operator tự bấm đổi mode
-      var ipUrl = '', hostUrl = '', publicUrl = '';
-
-      function qrModes() { return publicUrl ? ['public', 'ip', 'host'] : ['ip', 'host']; }
-      function urlForMode(m) {
-        if (m === 'public') return publicUrl;
-        if (m === 'host') return hostUrl;
-        return ipUrl;
+      // GĐ2: chỉ còn 1 URL duy nhất — trang join cố định trên cloud
+      // (comm/mobile/ phục vụ từ cloud/worker, xem worker.js's route /m/…),
+      // kèm ID phòng qua ?room=. Không còn IP LAN/worship.local/Public URL
+      // rời rạc như LAN cũ (band-comm-plan.md §14) — mọi mạng (WiFi hội thánh
+      // lẫn 4G) đều vào được CÙNG 1 link.
+      var MOBILE_JOIN_BASE = 'https://channel.worship-official.link/m/';
+      var currentRoomCode = '';
+      function mobileJoinUrl(code) {
+        return code ? MOBILE_JOIN_BASE + '?room=' + encodeURIComponent(code) : '';
       }
 
       function doToggle() {
@@ -7964,39 +8355,25 @@
       }
       $('bpToggle').addEventListener('click', doToggle);
 
-      // Public URL: dán vào -> lưu band-comm.json -> QR chuyển sang dùng nó.
-      function commitPublicUrl() {
-        var val = $('bpPublicUrl').value.trim().replace(/\/+$/, '');
-        if (val && !/^https?:\/\//i.test(val)) val = 'https://' + val;
-        if (val === publicUrl) return;
-        api.getConfig().then(function (cfg) {
-          return api.saveConfig(Object.assign({}, cfg, { publicUrl: val }));
-        }).then(function (saved) {
-          publicUrl = (saved && saved.publicUrl) || '';
-          $('bpPublicUrl').value = publicUrl;
-          if (publicUrl) { qrMode = 'public'; qrModeUserSet = true; }
-          else if (qrMode === 'public') { qrMode = 'ip'; }
-          refreshQr();
-        }).catch(function () {});
-      }
-      $('bpPublicUrl').addEventListener('change', commitPublicUrl);
-      $('bpPublicUrl').addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); $('bpPublicUrl').blur(); } });
-
       // Tên Named Tunnel: lưu vào band-comm.json -> main.js tự spawn/dừng
       // `cloudflared tunnel run <tên>` song song với app (đổi tên = tự restart).
       var tunnelName = '';
       function commitTunnelName() {
-        var val = $('bpTunnelName').value.trim();
+        var el = $('bpTunnelName');
+        if (!el) return;
+        var val = el.value.trim();
         if (val === tunnelName) return;
         api.getConfig().then(function (cfg) {
           return api.saveConfig(Object.assign({}, cfg, { tunnelName: val }));
         }).then(function (saved) {
           tunnelName = (saved && saved.tunnelName) || '';
-          $('bpTunnelName').value = tunnelName;
+          if ($('bpTunnelName')) $('bpTunnelName').value = tunnelName;
         }).catch(function () {});
       }
-      $('bpTunnelName').addEventListener('change', commitTunnelName);
-      $('bpTunnelName').addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); $('bpTunnelName').blur(); } });
+      if ($('bpTunnelName')) {
+        $('bpTunnelName').addEventListener('change', commitTunnelName);
+        $('bpTunnelName').addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); $('bpTunnelName').blur(); } });
+      }
 
       // Đăng nhập tài khoản (band-comm-plan.md §11) — operator (laptop) là
       // nơi DUY NHẤT tạo/sửa/xoá tài khoản; band member chỉ đăng nhập, không
@@ -8009,58 +8386,66 @@
             '<div class="nm">' + escapeHtml(a.name) + ' <span class="un">@' + escapeHtml(a.username) + '</span>' +
             (a.active === false ? '<span class="inactive">Đã khoá</span>' : '') +
             '</div>' +
-            '<button class="stg-btn sm" type="button" data-act="pw">Đổi mật khẩu</button>' +
-            '<button class="stg-btn sm" type="button" data-act="active">' + (a.active === false ? 'Mở khoá' : 'Khoá') + '</button>' +
-            '<button class="stg-btn sm danger" type="button" data-act="rm">Xoá</button>' +
+            '<div class="acts">' +
+            '<button class="bp-btn edit" data-act="edit">Sửa tên</button>' +
+            '<button class="bp-btn pw" data-act="pw">Đổi MK</button>' +
+            '<button class="bp-btn toggle" data-act="toggle">' + (a.active === false ? 'Mở khoá' : 'Khoá') + '</button>' +
+            '<button class="bp-btn del" data-act="del">Xoá</button>' +
+            '</div>' +
             '</div>';
         }).join('');
       }
       function refreshAcctList() {
-        if (!(api.accounts && api.accounts.list)) return;
-        api.accounts.list().then(renderAcctList).catch(function () {});
+        api.accountsList().then(function (list) {
+          renderAcctList(Array.isArray(list) ? list : []);
+        }).catch(function () {});
       }
-      // openSettings() (scope toàn cục, ngoài IIFE này) gọi lại hàm này mỗi
-      // lần mở Settings để danh sách tài khoản luôn mới.
       window.__refreshAcctList = refreshAcctList;
       $('bpAcctList').addEventListener('click', function (e) {
         var btn = e.target.closest('button[data-act]');
         if (!btn) return;
         var row = btn.closest('.bp-acct-row');
-        var id = row && row.getAttribute('data-id');
+        var id = row && row.dataset.id;
         if (!id) return;
-        var act = btn.getAttribute('data-act');
-        if (act === 'pw') {
-          var pw = prompt('Mật khẩu mới cho tài khoản này (từ 6 ký tự):');
-          if (pw == null || !pw.trim()) return;
-          api.accounts.updatePassword({ id: id, password: pw.trim() }).then(function (r) {
-            $('bpAcctStatus').textContent = (r && r.error) ? r.error : 'Đã đổi mật khẩu — phiên đang đăng nhập (nếu có) sẽ phải đăng nhập lại.';
-            if (!(r && r.error)) refreshAcctList();
+        var act = btn.dataset.act;
+        if (act === 'edit') {
+          var curName = row.querySelector('.nm').childNodes[0].textContent.trim();
+          var newName = prompt('Tên hiển thị mới:', curName);
+          if (!newName || newName === curName) return;
+          api.accountsUpdate({ id: id, name: newName }).then(function () { refreshAcctList(); });
+        } else if (act === 'pw') {
+          var newPw = prompt('Mật khẩu mới (≥ 6 ký tự):');
+          if (!newPw) return;
+          if (newPw.length < 6) { alert('Mật khẩu tối thiểu 6 ký tự.'); return; }
+          var must = confirm('Bắt người này đổi mật khẩu sau lần đăng nhập tới?');
+          api.accountsUpdatePassword({ id: id, password: newPw, mustChangePassword: must }).then(function () {
+            alert('Đã đổi mật khẩu. Nếu đang đăng nhập, máy người này sẽ bị ngắt kết nối và phải đăng nhập lại bằng mật khẩu mới.');
+            refreshAcctList();
           });
-        } else if (act === 'active') {
+        } else if (act === 'toggle') {
           var isLocked = !!row.querySelector('.inactive');
-          if (!isLocked && !confirm('Khoá tài khoản này? Phiên đang đăng nhập (nếu có) sẽ bị đăng xuất ngay.')) return;
-          api.accounts.setActive({ id: id, active: isLocked }).then(function (r) {
-            $('bpAcctStatus').textContent = (r && r.error) ? r.error : '';
-            refreshAcctList();
-          });
-        } else if (act === 'rm') {
-          if (!confirm('Xoá hẳn tài khoản này? Không thể hoàn tác.')) return;
-          api.accounts.remove(id).then(function (r) {
-            $('bpAcctStatus').textContent = (r && r.error) ? r.error : '';
-            refreshAcctList();
-          });
+          var wantActive = isLocked;
+          api.accountsSetActive({ id: id, active: wantActive }).then(function () { refreshAcctList(); });
+        } else if (act === 'del') {
+          if (!confirm('Xoá tài khoản này? Người này sẽ bị ngắt kết nối ngay lập tức.')) return;
+          api.accountsDelete({ id: id }).then(function () { refreshAcctList(); });
         }
       });
       $('bpAcctAddBtn').addEventListener('click', function () {
-        var payload = {
-          username: $('bpAcctUsername').value,
-          name: $('bpAcctName').value,
-          password: $('bpAcctPassword').value
-        };
-        api.accounts.create(payload).then(function (r) {
-          if (r && r.error) { $('bpAcctStatus').textContent = r.error; return; }
-          $('bpAcctStatus').textContent = 'Đã tạo tài khoản "@' + r.account.username + '".';
+        var u = $('bpAcctUsername').value.trim();
+        var n = $('bpAcctName').value.trim();
+        var p = $('bpAcctPassword').value;
+        var mc = $('bpAcctMustChange').checked;
+        var st = $('bpAcctStatus');
+        st.textContent = '';
+        if (!u || !n || !p) { st.textContent = 'Điền đủ username, tên hiển thị và mật khẩu.'; st.className = 'bp-acct-status err'; return; }
+        if (p.length < 6) { st.textContent = 'Mật khẩu tối thiểu 6 ký tự.'; st.className = 'bp-acct-status err'; return; }
+        api.accountsCreate({ username: u, name: n, password: p, mustChangePassword: mc }).then(function (r) {
+          if (r && r.error) { st.textContent = r.error; st.className = 'bp-acct-status err'; return; }
+          st.textContent = 'Đã thêm ' + n + '.'; st.className = 'bp-acct-status ok';
+          setTimeout(function () { st.textContent = ''; }, 2500);
           $('bpAcctUsername').value = ''; $('bpAcctName').value = ''; $('bpAcctPassword').value = '';
+          $('bpAcctMustChange').checked = false;
           refreshAcctList();
         });
       });
@@ -8082,8 +8467,8 @@
       // hình loại trừ nhau, chỉ khác NƠI xác thực; luồng mật khẩu phòng phía
       // trên không đổi gì dù chọn mô hình nào.
       function updateAuthModeUI(mode) {
-        $('bpLocalAccountsBlock').classList.toggle('hidden', mode === 'cognito');
-        $('bpCognitoInfoBlock').classList.toggle('hidden', mode !== 'cognito');
+        if ($('bpLocalAccountsBlock')) $('bpLocalAccountsBlock').classList.toggle('hidden', mode === 'cognito');
+        if ($('bpCognitoInfoBlock')) $('bpCognitoInfoBlock').classList.toggle('hidden', mode !== 'cognito');
       }
       window.__updateAuthModeUI = updateAuthModeUI;
       $('stgAuthMode').addEventListener('change', function () {
@@ -8094,82 +8479,75 @@
         }).catch(function () {});
       });
 
-      // Wizard "domain riêng tự động" — tự động hoá cloudflared tunnel
-      // login/create/route dns thay vì gõ tay trong terminal. Không tự động
-      // hoá việc đổi Nameserver domain (luôn phải làm thủ công ở nơi mua
-      // domain trước khi dùng wizard này).
-      $('bpWizOpenBtn').addEventListener('click', function () {
-        var show = $('bpWizard').classList.contains('hidden');
-        $('bpWizard').classList.toggle('hidden', !show);
-        if (show) {
-          $('bpWizLoginStatus').textContent = '';
-          $('bpWizLoginStatus').className = 'bp-wizard-status';
-          api.tunnelCheckLogin().then(function (r) {
-            var loggedIn = r && r.loggedIn;
-            $('bpWizStep1').classList.toggle('hidden', loggedIn);
-            $('bpWizStep2').classList.toggle('hidden', !loggedIn);
-          }).catch(function () {});
-        }
-      });
-      api.onTunnelLoginUrl(function (_e, url) {
-        var st = $('bpWizLoginStatus');
-        st.textContent = 'Đang chờ xác nhận trong trình duyệt… Nếu trình duyệt không tự mở, vào link: ' + url;
-        st.className = 'bp-wizard-status';
-      });
-      $('bpWizLoginBtn').addEventListener('click', function () {
-        $('bpWizLoginBtn').disabled = true;
-        var st = $('bpWizLoginStatus');
-        st.textContent = 'Đang mở trình duyệt để đăng nhập Cloudflare…';
-        st.className = 'bp-wizard-status';
-        api.tunnelLogin().then(function (r) {
-          $('bpWizLoginBtn').disabled = false;
-          if (r && r.ok) {
-            st.textContent = '✅ Đăng nhập thành công.';
-            st.className = 'bp-wizard-status ok';
-            $('bpWizStep1').classList.add('hidden');
-            $('bpWizStep2').classList.remove('hidden');
-          } else {
-            st.textContent = '❌ ' + ((r && r.error) || 'Đăng nhập thất bại.');
-            st.className = 'bp-wizard-status err';
+      // Wizard "domain riêng tự động" — an toàn nếu element tồn tại
+      if ($('bpWizOpenBtn')) {
+        $('bpWizOpenBtn').addEventListener('click', function () {
+          var show = $('bpWizard') && $('bpWizard').classList.contains('hidden');
+          if ($('bpWizard')) $('bpWizard').classList.toggle('hidden', !show);
+          if (show && $('bpWizLoginStatus')) {
+            $('bpWizLoginStatus').textContent = '';
+            $('bpWizLoginStatus').className = 'bp-wizard-status';
+            api.tunnelCheckLogin().then(function (r) {
+              var loggedIn = r && r.loggedIn;
+              if ($('bpWizStep1')) $('bpWizStep1').classList.toggle('hidden', loggedIn);
+              if ($('bpWizStep2')) $('bpWizStep2').classList.toggle('hidden', !loggedIn);
+            }).catch(function () {});
           }
-        }).catch(function (err) {
-          $('bpWizLoginBtn').disabled = false;
-          st.textContent = '❌ ' + (err && err.message || err);
-          st.className = 'bp-wizard-status err';
         });
-      });
-      $('bpWizCreateBtn').addEventListener('click', function () {
-        var name = $('bpWizName').value.trim();
-        var domain = $('bpWizDomain').value.trim();
-        var st = $('bpWizCreateStatus');
-        if (!name || !domain) {
-          st.textContent = 'Nhập đủ tên tunnel và domain.';
-          st.className = 'bp-wizard-status err';
-          return;
-        }
-        $('bpWizCreateBtn').disabled = true;
-        st.textContent = 'Đang tạo tunnel + trỏ DNS + kết nối… (vài giây)';
-        st.className = 'bp-wizard-status';
-        api.tunnelCreate({ name: name, domain: domain }).then(function (r) {
-          $('bpWizCreateBtn').disabled = false;
-          if (r && r.ok) {
-            st.textContent = '✅ Đã kết nối: ' + r.publicUrl;
-            st.className = 'bp-wizard-status ok';
-            tunnelName = r.tunnelName || name;
-            $('bpTunnelName').value = tunnelName;
-            publicUrl = r.publicUrl || '';
-            $('bpPublicUrl').value = publicUrl;
-            if (publicUrl) { qrMode = 'public'; qrModeUserSet = true; refreshQr(); }
-          } else {
-            st.textContent = '❌ ' + ((r && r.error) || 'Thất bại.');
-            st.className = 'bp-wizard-status err';
+      }
+      if ($('bpWizLoginBtn')) {
+        api.onTunnelLoginUrl(function (_e, url) {
+          var st = $('bpWizLoginStatus');
+          if (st) {
+            st.textContent = 'Đang chờ xác nhận trong trình duyệt… Nếu trình duyệt không tự mở, vào link: ' + url;
+            st.className = 'bp-wizard-status';
           }
-        }).catch(function (err) {
-          $('bpWizCreateBtn').disabled = false;
-          st.textContent = '❌ ' + (err && err.message || err);
-          st.className = 'bp-wizard-status err';
         });
-      });
+        $('bpWizLoginBtn').addEventListener('click', function () {
+          $('bpWizLoginBtn').disabled = true;
+          var st = $('bpWizLoginStatus');
+          if (st) { st.textContent = 'Đang mở trình duyệt để đăng nhập Cloudflare…'; st.className = 'bp-wizard-status'; }
+          api.tunnelLogin().then(function (r) {
+            $('bpWizLoginBtn').disabled = false;
+            if (r && r.ok) {
+              if (st) { st.textContent = '✅ Đăng nhập thành công.'; st.className = 'bp-wizard-status ok'; }
+              if ($('bpWizStep1')) $('bpWizStep1').classList.add('hidden');
+              if ($('bpWizStep2')) $('bpWizStep2').classList.remove('hidden');
+            } else {
+              if (st) { st.textContent = '❌ ' + ((r && r.error) || 'Đăng nhập thất bại.'); st.className = 'bp-wizard-status err'; }
+            }
+          }).catch(function (err) {
+            $('bpWizLoginBtn').disabled = false;
+            if (st) { st.textContent = '❌ ' + (err && err.message || err); st.className = 'bp-wizard-status err'; }
+          });
+        });
+      }
+      if ($('bpWizCreateBtn')) {
+        $('bpWizCreateBtn').addEventListener('click', function () {
+          var name = $('bpWizName') ? $('bpWizName').value.trim() : '';
+          var domain = $('bpWizDomain') ? $('bpWizDomain').value.trim() : '';
+          var st = $('bpWizCreateStatus');
+          if (!name || !domain) {
+            if (st) { st.textContent = 'Nhập đủ tên tunnel và domain.'; st.className = 'bp-wizard-status err'; }
+            return;
+          }
+          $('bpWizCreateBtn').disabled = true;
+          if (st) { st.textContent = 'Đang tạo tunnel + trỏ DNS + kết nối… (vài giây)'; st.className = 'bp-wizard-status'; }
+          api.tunnelCreate({ name: name, domain: domain }).then(function (r) {
+            $('bpWizCreateBtn').disabled = false;
+            if (r && r.ok) {
+              if (st) { st.textContent = '✅ Đã tạo tunnel.'; st.className = 'bp-wizard-status ok'; }
+              tunnelName = r.tunnelName || name;
+              if ($('bpTunnelName')) $('bpTunnelName').value = tunnelName;
+            } else {
+              if (st) { st.textContent = '❌ ' + ((r && r.error) || 'Thất bại.'); st.className = 'bp-wizard-status err'; }
+            }
+          }).catch(function (err) {
+            $('bpWizCreateBtn').disabled = false;
+            if (st) { st.textContent = '❌ ' + (err && err.message || err); st.className = 'bp-wizard-status err'; }
+          });
+        });
+      }
 
       // Hỗ trợ kỹ thuật: chỉ hiện 3 kênh liên hệ, người dùng tự chọn —
       // không tự động hoá gì thêm, mình chỉ hỗ trợ khi họ chủ động liên hệ.
@@ -8222,7 +8600,6 @@
         }).catch(function () {});
       });
 
-      var FW_LABEL = 'Mở cổng Firewall (nếu điện thoại không vào được)';
       // Link soạn setlist tĩnh (phục vụ từ chính Worker cloud, /composer?room=)
       // — hoạt động dù laptop tắt hẳn, xem cloud/worker/src/worker.js. Chỉ cần
       // đúng cloudRoomId (sinh 1 lần, ổn định), lấy qua getConfig() là đủ,
@@ -8232,7 +8609,7 @@
         if (!input) return;
         api.getConfig().then(function (cfg) {
           var roomId = cfg && cfg.cloudRoomId;
-          input.value = roomId ? ('https://api.worship-official.link/composer?room=' + encodeURIComponent(roomId)) : '';
+          input.value = roomId ? ('https://channel.worship-official.link/composer?room=' + encodeURIComponent(roomId)) : '';
         }).catch(function () {});
       }
       refreshComposerLink();
@@ -8252,21 +8629,6 @@
         } else {
           input.select(); try { document.execCommand('copy'); done(); } catch (e) {}
         }
-      });
-
-      $('bpFw').addEventListener('click', function () {
-        $('bpFw').disabled = true;
-        $('bpFw').textContent = 'Đang xin quyền…';
-        api.openFirewall().then(function (r) {
-          $('bpFw').disabled = false;
-          $('bpFw').textContent = FW_LABEL;
-          addFeed('sys', '', r && r.ok
-            ? 'Đã mở cổng Firewall cho app. Thử lại trên điện thoại.'
-            : 'Firewall: ' + ((r && r.error) || 'không thành công'));
-        }).catch(function () {
-          $('bpFw').disabled = false;
-          $('bpFw').textContent = FW_LABEL;
-        });
       });
 
       // ---- chord-sheet gallery (operator uploads; phones show below buttons) ----
@@ -8317,11 +8679,9 @@
       });
 
       function refreshQr() {
-        var ms = qrModes();
-        if (ms.indexOf(qrMode) < 0) qrMode = ms[0];
-        var primary = urlForMode(qrMode) || ipUrl || hostUrl || publicUrl;
-        renderQr(primary);
-        $('bpHost').textContent = primary || '—';
+        var url = mobileJoinUrl(currentRoomCode);
+        renderQr(url);
+        $('bpHost').textContent = url || '—';
       }
 
       function renderQr(url) {
@@ -8367,6 +8727,7 @@
 
         $('bpToggle').disabled = false;
         $('bpDetailsToggle').classList.toggle('bp-hidden', !running);
+        $('bpRoomCode').textContent = st.code || '—';
         $('bpPassword').textContent = st.password || '—';
         $('bpCount').textContent = (st.clients ? st.clients.length : 0);
 
@@ -8383,21 +8744,13 @@
           }
         })();
 
-        // Public URL từ band-comm.json (có kể cả khi kênh chưa chạy).
-        if (typeof st.publicUrl === 'string') {
-          publicUrl = st.publicUrl;
-          if (document.activeElement !== $('bpPublicUrl')) $('bpPublicUrl').value = publicUrl;
-          if (!qrModeUserSet && publicUrl) qrMode = 'public';
-          if (!publicUrl && qrMode === 'public') qrMode = 'ip';
-        }
-        if (typeof st.tunnelName === 'string') {
+        if (typeof st.tunnelName === 'string' && $('bpTunnelName')) {
           tunnelName = st.tunnelName;
           if (document.activeElement !== $('bpTunnelName')) $('bpTunnelName').value = tunnelName;
         }
 
+        currentRoomCode = st.code || '';
         if (running) {
-          hostUrl = st.hostUrl || (st.host && st.port ? 'http://' + st.host + ':' + st.port : '');
-          ipUrl = st.url || (st.ip && st.port ? 'http://' + st.ip + ':' + st.port : '') || ipUrl;
           refreshQr();
           $('bpEmpty').classList.add('bp-hidden');
           readyShown = true;

@@ -1,0 +1,16 @@
+name = "worship-official-website"
+compatibility_date = "2026-01-01"
+
+# Trang landing tĩnh (website/) — chỉ HTML/CSS/JS + ảnh, không có logic
+# server, form "Nhận tài khoản qua email" gọi thẳng CORS sang
+# identity.worship-official.link (xem website/app.js). Vì vậy KHÔNG cần
+# main.js/Worker script — assets-only deploy, Cloudflare tự phục vụ file
+# tĩnh trực tiếp, không qua nổi 1 dòng code nào.
+workers_dev = false
+
+[assets]
+directory = "../../website"
+
+[[routes]]
+pattern = "worship-official.link"
+custom_domain = true

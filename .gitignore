@@ -9,6 +9,10 @@ out/
 # không commit vào git, ~50-90MB/platform.
 vendor/cloudflared/
 
+# Local state của `wrangler dev` (Durable Object/KV/R2 giả lập trên đĩa) —
+# xem cloud/*/wrangler.toml.
+.wrangler/
+
 # Ghi chú vận hành/hỗ trợ cá nhân — không public.
 SETUP.md
 task.md

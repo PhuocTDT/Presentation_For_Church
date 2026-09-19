@@ -335,7 +335,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const targetRect = targetItem.getBoundingClientRect();
     const distanceY = targetRect.top - sourceRect.top;
 
-    // Pha 1: Nhấc bổng dứt khoát (Lift-up - 130ms)
+    // Pha 1: Nhấc bổng mượt mà (Lift-up - 180ms)
     sourceItem.classList.add('auto-lifting');
     if (autoDragBadge) {
       autoDragBadge.style.borderColor = 'rgba(56, 189, 248, 0.6)';
@@ -348,23 +348,23 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
       }
 
-      // Pha 2: Trượt dứt khoát đến đích (Glide - 280ms)
-      sourceItem.style.transition = 'transform 0.28s cubic-bezier(0.2, 0.9, 0.25, 1)';
+      // Pha 2: Trượt mượt mà đến đích (Glide - 520ms) - Giảm tốc độ kéo thả để người xem nhìn rõ
+      sourceItem.style.transition = 'transform 0.52s cubic-bezier(0.25, 1, 0.5, 1)';
       sourceItem.style.transform = `translateY(${distanceY}px) scale(1.035) rotate(-1deg)`;
 
-      // Các mục ở giữa trượt nhường chỗ dứt khoát
+      // Các mục ở giữa trượt nhường chỗ mượt mà
       const step = move.from < move.to ? 1 : -1;
       const shiftY = (sourceRect.height + 8) * (move.from < move.to ? -1 : 1);
 
       for (let i = move.from + step; move.from < move.to ? i <= move.to : i >= move.to; i += step) {
         const itemToShift = items[i];
         if (itemToShift && itemToShift !== sourceItem) {
-          itemToShift.style.transition = 'transform 0.28s cubic-bezier(0.2, 0.9, 0.25, 1)';
+          itemToShift.style.transition = 'transform 0.52s cubic-bezier(0.25, 1, 0.5, 1)';
           itemToShift.style.transform = `translateY(${shiftY}px)`;
         }
       }
 
-      // Pha 3: Thả khớp vị trí dứt khoát (Snap Drop & Reorder - 290ms)
+      // Pha 3: Thả khớp vị trí (Snap Drop & Reorder - 540ms)
       setTimeout(() => {
         // Reset transforms
         items.forEach(el => {
@@ -386,12 +386,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Hiệu ứng drop sắc nét
         sourceItem.classList.add('just-dropped');
-        setTimeout(() => sourceItem.classList.remove('just-dropped'), 450);
+        setTimeout(() => sourceItem.classList.remove('just-dropped'), 400);
 
         const content = sourceItem.querySelector('.drag-item-content');
         const title = content ? content.textContent.trim() : 'Mục';
         if (dragStatusFeedback) {
-          dragStatusFeedback.innerHTML = `✓ Kéo thả dứt khoát <strong>[${move.label}]</strong>: <em>${escapeHtml(title)}</em>`;
+          dragStatusFeedback.innerHTML = `✓ Kéo thả mượt mà <strong>[${move.label}]</strong>: <em>${escapeHtml(title)}</em>`;
         }
 
         if (autoDragBadge) {
@@ -399,22 +399,22 @@ document.addEventListener('DOMContentLoaded', () => {
           autoDragBadge.style.color = 'var(--emerald)';
         }
 
-        // Lên lịch lượt tiếp theo với chu kỳ ngắn, năng động (2.5 giây)
-        scheduleNextAutoDrag(2500);
-      }, 290);
+        // Giảm thời gian nghỉ giữa 2 lần kéo thả lại (1.2 giây thay vì 2.5 giây)
+        scheduleNextAutoDrag(1200);
+      }, 540);
 
-    }, 130);
+    }, 180);
   }
 
-  function scheduleNextAutoDrag(delay = 2500) {
+  function scheduleNextAutoDrag(delay = 1200) {
     clearTimeout(autoDragTimer);
     if (!isUserInteracting) {
       autoDragTimer = setTimeout(runAutoDragStep, delay);
     }
   }
 
-  // Khởi động auto drag sau 1.2 giây
-  scheduleNextAutoDrag(1200);
+  // Khởi động auto drag sớm sau 800ms
+  scheduleNextAutoDrag(800);
 
   // Tạm dừng auto demo khi người dùng rê chuột vào
   if (dragList) {
@@ -435,7 +435,7 @@ document.addEventListener('DOMContentLoaded', () => {
         autoDragBadge.style.color = 'var(--emerald)';
         autoDragBadge.style.borderColor = 'rgba(16, 185, 129, 0.25)';
       }
-      scheduleNextAutoDrag(3000);
+      scheduleNextAutoDrag(1400);
     });
 
     // Kéo thả thủ công
@@ -525,46 +525,95 @@ document.addEventListener('DOMContentLoaded', () => {
   const bibleSugChips = document.querySelectorAll('.bible-sug-chip');
   const verseRefTitle = document.getElementById('verseRefTitle');
   const verseTextContent = document.getElementById('verseTextContent');
+  const verseCountLabel = document.getElementById('verseCountLabel');
   const btnBibleAddToSchedule = document.getElementById('btnBibleAddToSchedule');
   const btnBibleGoLive = document.getElementById('btnBibleGoLive');
 
-  let currentBibleVer = 'BẢN HIỆU ĐÍNH (RVV11)';
+  const BIBLE_VERSIONS = {
+    rvv11: { name: 'BẢN HIỆU ĐÍNH (RVV11)', short: 'RVV11' },
+    btt: { name: 'BẢN TRUYỀN THỐNG (1925)', short: '1925' },
+    bdm: { name: 'BẢN DỊCH MỚI (BDM)', short: 'BDM' }
+  };
+
+  const BIBLE_DATABASE = {
+    'Thi Thiên 23:1-3': {
+      count: '3 CÂU',
+      rvv11: 'Đức Giê-hô-va là Đấng chăn giữ tôi, tôi sẽ chẳng thiếu thốn gì. Ngài khiến tôi an nghỉ nơi đồng cỏ xanh tươi, dẫn tôi đến mé nước bình tịnh. Ngài phục hồi linh hồn tôi, dẫn tôi vào các lối công chính vì cớ danh Ngài.',
+      btt: 'Đức Giê-hô-va là Đấng chăn giữ tôi: tôi sẽ chẳng thiếu thốn gì. Ngài khiến tôi an nghỉ nơi đồng cỏ xanh tươi, Dẫn tôi đến mé nước bình tịnh. Ngài bổ lại linh hồn tôi, Dẫn tôi vào các lối công bình, vì cớ danh Ngài.',
+      bdm: 'CHÚA là Đấng chăn giữ tôi, tôi sẽ không thiếu thốn gì. Ngài giúp tôi an nghỉ nơi đồng cỏ xanh tươi, dẫn tôi đến bên bờ suối yên tịnh. Ngài phục hồi linh hồn tôi, dẫn tôi vào đường lối công bình vì cớ danh Ngài.'
+    },
+    'Giăng 3:16': {
+      count: '1 CÂU',
+      rvv11: 'Vì Đức Chúa Trời yêu thương thế gian đến nỗi đã ban Con Một của Ngài, để ai tin Con ấy không bị hư mất mà được sự sống đời đời.',
+      btt: 'Vì Đức Chúa Trời yêu thương thế gian, đến nỗi đã ban Con một của Ngài, hầu cho hễ ai tin Con ấy không bị hư mất mà được sự sống đời đời.',
+      bdm: 'Vì Đức Chúa Trời yêu thương nhân loại, đến nỗi đã ban Con Một của Ngài, để ai tin nhận Đấng ấy sẽ không bị hư mất nhưng được sự sống vĩnh phúc.'
+    },
+    'Rô-ma 8:28': {
+      count: '1 CÂU',
+      rvv11: 'Chúng ta biết rằng mọi sự hiệp lại làm ích cho những ai yêu mến Đức Chúa Trời, tức là cho những người được kêu gọi theo mục đích của Ngài.',
+      btt: 'Vả, chúng ta biết rằng mọi sự hiệp lại làm ích cho kẻ yêu mến Đức Chúa Trời, tức là cho kẻ được gọi theo ý muốn Ngài đã định.',
+      bdm: 'Chúng ta biết rằng mọi sự hiệp lại làm ích cho những người yêu kính Đức Chúa Trời, tức là những người được kêu gọi theo mục đích của Ngài.'
+    },
+    'Ma-thi-ơ 6:9-13': {
+      count: '5 CÂU',
+      rvv11: 'Lạy Cha chúng con ở trên trời, Danh Cha được thánh; Vương quốc Cha được đến, Ý Cha được nên, ở đất như ở trời. Xin cho chúng con hôm nay thức ăn đủ dùng; Xin tha tội lỗi cho chúng con, như chúng con cũng tha kẻ có lỗi với chúng con; Xin đừng để chúng con bị cám dỗ, nhưng cứu chúng con khỏi điều ác.',
+      btt: 'Lạy Cha chúng tôi ở trên trời; Danh Cha được thánh; Nước Cha được đến; Ý Cha được nên, ở đất như trời! Xin cho chúng tôi hôm nay đồ ăn đủ ngày; Xin tha tội lỗi cho chúng tôi, như chúng tôi cũng tha kẻ phạm tội nghịch cùng chúng tôi; Xin chớ để chúng tôi bị cám dỗ, mà cứu chúng tôi khỏi điều ác!',
+      bdm: 'Lạy Cha chúng con ở trên trời, Danh Cha được tôn thánh, Nước Cha được đến, Ý Cha được nên, ở đất như ở trời. Xin cho chúng con hôm nay thức ăn đủ ngày. Xin tha tội cho chúng con, như chính chúng con cũng tha kẻ mắc tội với chúng con. Xin đừng để chúng con sa vào chước cám dỗ nhưng cứu chúng con khỏi Kẻ Ác.'
+    }
+  };
+
+  let currentBibleVerKey = 'rvv11';
   let currentBibleRef = 'Thi Thiên 23:1-3';
+
+  function renderBibleVerse(animate = true) {
+    const data = BIBLE_DATABASE[currentBibleRef] || BIBLE_DATABASE['Thi Thiên 23:1-3'];
+    const ver = BIBLE_VERSIONS[currentBibleVerKey] || BIBLE_VERSIONS.rvv11;
+    const text = data[currentBibleVerKey] || data.rvv11;
+
+    if (bibleSearchQuery) {
+      bibleSearchQuery.textContent = `${currentBibleRef} (${ver.short})`;
+    }
+    if (verseRefTitle) {
+      verseRefTitle.textContent = `${currentBibleRef.toUpperCase()} • ${ver.name}`;
+    }
+    if (verseCountLabel) {
+      verseCountLabel.textContent = data.count;
+    }
+    if (verseTextContent) {
+      if (animate) {
+        verseTextContent.style.opacity = '0.3';
+        verseTextContent.style.transform = 'translateY(3px)';
+        setTimeout(() => {
+          verseTextContent.textContent = `"${text}"`;
+          verseTextContent.style.transition = 'opacity 0.2s ease, transform 0.2s ease';
+          verseTextContent.style.opacity = '1';
+          verseTextContent.style.transform = 'translateY(0)';
+        }, 80);
+      } else {
+        verseTextContent.textContent = `"${text}"`;
+      }
+    }
+  }
 
   bibleVerTabs.forEach(tab => {
     tab.addEventListener('click', () => {
-      if (tab.getAttribute('data-ver') === 'xml') {
-        alert('Tính năng nhập XML: Bạn có thể nhập file XML bản dịch Kinh Thánh bất kỳ vào phần mềm Presentation For Church qua mục Cài Đặt.');
-        return;
-      }
+      const verKey = tab.getAttribute('data-ver');
+      if (!BIBLE_VERSIONS[verKey]) return;
       bibleVerTabs.forEach(t => t.classList.remove('active'));
       tab.classList.add('active');
-      currentBibleVer = tab.textContent.toUpperCase();
-      const verShort = tab.textContent.includes('(') ? tab.textContent.split('(')[1].replace(')', '') : 'RVV11';
-      if (bibleSearchQuery) {
-        bibleSearchQuery.textContent = `${currentBibleRef} (${verShort})`;
-      }
-      if (verseRefTitle) {
-        verseRefTitle.textContent = `${currentBibleRef.toUpperCase()} • ${currentBibleVer}`;
-      }
+      currentBibleVerKey = verKey;
+      renderBibleVerse(true);
     });
   });
 
   bibleSugChips.forEach(chip => {
     chip.addEventListener('click', () => {
       const ref = chip.getAttribute('data-ref');
-      const text = chip.getAttribute('data-text');
-      currentBibleRef = ref;
-      const activeTab = document.querySelector('.bible-ver-tab.active');
-      const verShort = activeTab && activeTab.textContent.includes('(') ? activeTab.textContent.split('(')[1].replace(')', '') : 'RVV11';
-      if (bibleSearchQuery) {
-        bibleSearchQuery.textContent = `${ref} (${verShort})`;
-      }
-      if (verseRefTitle) {
-        verseRefTitle.textContent = `${ref.toUpperCase()} • ${currentBibleVer}`;
-      }
-      if (verseTextContent) {
-        verseTextContent.textContent = `"${text}"`;
+      if (ref && BIBLE_DATABASE[ref]) {
+        currentBibleRef = ref;
+        bibleSugChips.forEach(c => c.classList.remove('active'));
+        chip.classList.add('active');
+        renderBibleVerse(true);
       }
     });
   });
@@ -611,55 +660,757 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   /* ========================================================================
-     9. Optional: request a Kênh Band account by email (standalone section,
-        #get-account — kế bên FAQ, xem SECTION 6.5 trong index.html)
+     9. Operator Portal & Kênh Band Management (#get-account / #auth-portal)
      ======================================================================== */
   const IDENTITY_API_BASE = 'https://identity.worship-official.link';
-  const emailAccountForm = document.getElementById('emailAccountForm');
-  const emailAccountInput = document.getElementById('emailAccountInput');
-  const emailAccountBtn = document.getElementById('emailAccountBtn');
-  const emailAccountStatus = document.getElementById('emailAccountStatus');
+  const OP_SESSION_KEY = 'kenhband_operator_session';
 
-  if (emailAccountForm) {
-    emailAccountForm.addEventListener('submit', (e) => {
-      e.preventDefault();
-      const email = (emailAccountInput.value || '').trim();
-      emailAccountStatus.textContent = '';
-      emailAccountStatus.className = 'account-request-status';
-      if (!email) return;
+  // Tabs & Views
+  const portalTabBar = document.getElementById('portalTabBar');
+  const portalTabBtnLogin = document.getElementById('portalTabBtnLogin') || document.getElementById('tabBtnLogin');
+  const portalTabBtnRegister = document.getElementById('portalTabBtnRegister') || document.getElementById('tabBtnRegister');
+  const portalViewLogin = document.getElementById('portalViewLogin');
+  const portalViewRegister = document.getElementById('portalViewRegister');
+  const portalViewNewPassword = document.getElementById('portalViewNewPassword');
+  const portalViewCreateRoom = document.getElementById('portalViewCreateRoom');
+  const portalViewDashboard = document.getElementById('portalViewDashboard');
+  const portalStatus = document.getElementById('portalStatus');
 
-      emailAccountBtn.disabled = true;
-      const btnText = emailAccountBtn.querySelector('span');
-      const originalText = btnText ? btnText.textContent : '';
-      if (btnText) btnText.textContent = 'Đang gửi...';
+  // Forms & Buttons
+  const portalLoginForm = document.getElementById('portalLoginForm');
+  const loginEmail = document.getElementById('loginEmail');
+  const loginPassword = document.getElementById('loginPassword');
+  const btnLoginSubmit = document.getElementById('btnLoginSubmit');
+  const btnForgotPass = document.getElementById('btnForgotPass');
+  const btnRegisterForgotPass = document.getElementById('btnRegisterForgotPass');
+  const btnSwitchToRegister = document.getElementById('btnSwitchToRegister');
+  const btnSwitchToLogin = document.getElementById('btnSwitchToLogin');
 
-      fetch(`${IDENTITY_API_BASE}/request-access`, {
+  const portalRegisterForm = document.getElementById('portalRegisterForm');
+  const regName = document.getElementById('regName');
+  const regPhone = document.getElementById('regPhone');
+  const regEmail = document.getElementById('regEmail');
+  const regChurch = document.getElementById('regChurch');
+  const regArea = document.getElementById('regArea');
+  const btnRegisterSubmit = document.getElementById('btnRegisterSubmit');
+
+  const portalNewPasswordForm = document.getElementById('portalNewPasswordForm');
+  const newPasswordInput = document.getElementById('newPasswordInput');
+  const newPasswordConfirmInput = document.getElementById('newPasswordConfirmInput');
+  const btnNewPasswordSubmit = document.getElementById('btnNewPasswordSubmit');
+
+  const portalCreateRoomForm = document.getElementById('portalCreateRoomForm');
+  const createRoomName = document.getElementById('createRoomName');
+  const createRoomPassword = document.getElementById('createRoomPassword');
+  const createRoomPasswordConfirm = document.getElementById('createRoomPasswordConfirm');
+  const btnCreateRoomSubmit = document.getElementById('btnCreateRoomSubmit');
+
+  // Dashboard Elements
+  const dashAvatar = document.getElementById('dashAvatar');
+  const dashOpName = document.getElementById('dashOpName');
+  const dashOpChurch = document.getElementById('dashOpChurch');
+  const btnLogout = document.getElementById('btnLogout');
+  const dashRoomName = document.getElementById('dashRoomName');
+  const dashRoomCode = document.getElementById('dashRoomCode');
+  const dashRoomPassword = document.getElementById('dashRoomPassword');
+  const btnCopyRoomCode = document.getElementById('btnCopyRoomCode');
+  const btnToggleRoomPassword = document.getElementById('btnToggleRoomPassword');
+  const dashJoinLink = document.getElementById('dashJoinLink');
+  const btnCopyJoinLink = document.getElementById('btnCopyJoinLink');
+
+  // User Management Elements
+  const dashUsersCount = document.getElementById('dashUsersCount');
+  const formCreateUser = document.getElementById('formCreateUser');
+  const newUserName = document.getElementById('newUserName');
+  const newUserUsername = document.getElementById('newUserUsername');
+  const newUserPassword = document.getElementById('newUserPassword');
+  const newUserPasswordConfirm = document.getElementById('newUserPasswordConfirm');
+  const btnCreateUserSubmit = document.getElementById('btnCreateUserSubmit');
+  const dashUsersList = document.getElementById('dashUsersList');
+
+  // In-memory Auth State
+  let pendingNewPasswordAuth = null; // { email, session }
+  let currentSession = null;
+  let isPasswordMasked = true;
+
+  function showPortalStatus(msg, type = 'ok', duration = 7000, isHtml = false) {
+    if (!portalStatus) return;
+    if (isHtml) {
+      portalStatus.innerHTML = msg;
+    } else {
+      portalStatus.textContent = msg;
+    }
+    portalStatus.className = `account-request-status ${type}`;
+    if (duration > 0) {
+      setTimeout(() => {
+        if (portalStatus.innerHTML === msg || portalStatus.textContent === msg) {
+          portalStatus.textContent = '';
+          portalStatus.className = 'account-request-status';
+        }
+      }, duration);
+    }
+  }
+
+  function clearPortalStatus() {
+    if (!portalStatus) return;
+    portalStatus.textContent = '';
+    portalStatus.className = 'account-request-status';
+  }
+
+  function setView(viewName) {
+    clearPortalStatus();
+    const views = [
+      portalViewLogin,
+      portalViewRegister,
+      portalViewNewPassword,
+      portalViewCreateRoom,
+      portalViewDashboard
+    ];
+    views.forEach(v => v && v.classList.add('portal-hidden'));
+
+    if (portalTabBar) {
+      if (viewName === 'login' || viewName === 'register') {
+        portalTabBar.style.display = 'flex';
+        const activeLoginBtn = document.getElementById('portalTabBtnLogin') || document.getElementById('tabBtnLogin');
+        const activeRegBtn = document.getElementById('portalTabBtnRegister') || document.getElementById('tabBtnRegister');
+        if (activeLoginBtn) activeLoginBtn.classList.toggle('active', viewName === 'login');
+        if (activeRegBtn) activeRegBtn.classList.toggle('active', viewName === 'register');
+      } else {
+        portalTabBar.style.display = 'none';
+      }
+    }
+
+    if (viewName === 'login' && portalViewLogin) portalViewLogin.classList.remove('portal-hidden');
+    if (viewName === 'register' && portalViewRegister) portalViewRegister.classList.remove('portal-hidden');
+    if (viewName === 'newPassword' && portalViewNewPassword) portalViewNewPassword.classList.remove('portal-hidden');
+    if (viewName === 'createRoom' && portalViewCreateRoom) portalViewCreateRoom.classList.remove('portal-hidden');
+    if (viewName === 'dashboard' && portalViewDashboard) portalViewDashboard.classList.remove('portal-hidden');
+  }
+
+  // Delegated Tab Switching on container + direct button events
+  if (portalTabBar) {
+    portalTabBar.addEventListener('click', (e) => {
+      const btn = e.target.closest('.portal-tab-btn');
+      if (!btn) return;
+      const tab = btn.getAttribute('data-tab') || (btn.id.toLowerCase().includes('register') ? 'register' : 'login');
+      setView(tab);
+    });
+  }
+
+  const loginBtnDirect = document.getElementById('portalTabBtnLogin') || document.getElementById('tabBtnLogin');
+  if (loginBtnDirect) {
+    loginBtnDirect.addEventListener('click', () => setView('login'));
+  }
+  const regBtnDirect = document.getElementById('portalTabBtnRegister') || document.getElementById('tabBtnRegister');
+  if (regBtnDirect) {
+    regBtnDirect.addEventListener('click', () => setView('register'));
+  }
+  if (btnSwitchToRegister) {
+    btnSwitchToRegister.addEventListener('click', () => setView('register'));
+  }
+  if (btnSwitchToLogin) {
+    btnSwitchToLogin.addEventListener('click', () => setView('login'));
+  }
+
+  async function triggerForgotPassword(targetEmail) {
+    const email = (targetEmail || (loginEmail && loginEmail.value) || '').trim().toLowerCase() || prompt('Nhập địa chỉ email tài khoản Operator của bạn:');
+    if (!email) return;
+    setView('login');
+    if (loginEmail) loginEmail.value = email;
+    showPortalStatus('Đang gửi yêu cầu cấp lại mật khẩu tạm...', 'ok', 4000);
+    try {
+      const res = await fetch(`${IDENTITY_API_BASE}/forgot-password`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email })
-      })
-        .then((r) => r.json().then((j) => ({ ok: r.ok, j })))
-        .then((res) => {
-          emailAccountBtn.disabled = false;
-          if (btnText) btnText.textContent = originalText;
-          if (!res.ok) {
-            emailAccountStatus.textContent = (res.j && res.j.error) || 'Không gửi được, thử lại sau.';
-            emailAccountStatus.className = 'account-request-status err';
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        showPortalStatus(data.error || 'Không thể gửi yêu cầu cấp lại mật khẩu. Thử lại sau.', 'err');
+        return;
+      }
+      showPortalStatus('✓ Mật khẩu tạm mới đã được cấp và gửi tới email của bạn. Vui lòng kiểm tra hộp thư (cả mục Thư rác / Spam) để đăng nhập và đổi mật khẩu.', 'ok', 14000);
+    } catch (err) {
+      showPortalStatus('Không thể kết nối máy chủ xác thực.', 'err');
+    }
+  }
+
+  if (btnForgotPass) {
+    btnForgotPass.addEventListener('click', () => triggerForgotPassword());
+  }
+  if (btnRegisterForgotPass) {
+    btnRegisterForgotPass.addEventListener('click', () => {
+      const currentEmail = (regEmail && regEmail.value || '').trim();
+      triggerForgotPassword(currentEmail);
+    });
+  }
+
+  // 1. REGISTER OPERATOR (5 FIELDS)
+  if (portalRegisterForm) {
+    portalRegisterForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      clearPortalStatus();
+
+      const name = (regName && regName.value || '').trim();
+      const phone = (regPhone && regPhone.value || '').trim();
+      const email = (regEmail && regEmail.value || '').trim().toLowerCase();
+      const church = (regChurch && regChurch.value || '').trim();
+      const area = (regArea && regArea.value || '').trim();
+
+      if (!name || !phone || !email || !church || !area) {
+        showPortalStatus('Vui lòng điền đầy đủ cả 5 thông tin đăng ký.', 'err');
+        return;
+      }
+
+      btnRegisterSubmit.disabled = true;
+      const btnSpan = btnRegisterSubmit.querySelector('span');
+      const originalText = btnSpan ? btnSpan.textContent : '';
+      if (btnSpan) btnSpan.textContent = 'Đang khởi tạo tài khoản...';
+
+      try {
+        const res = await fetch(`${IDENTITY_API_BASE}/operator/register`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, phone, email, church, area })
+        });
+        const data = await res.json().catch(() => ({}));
+
+        btnRegisterSubmit.disabled = false;
+        if (btnSpan) btnSpan.textContent = originalText;
+
+        if (!res.ok || !data.ok) {
+          const isUserAlreadyExists = data.exists || res.status === 409 || (data.error && (data.error.includes('đã tồn tại') || data.error.includes('đã được')));
+          if (isUserAlreadyExists) {
+            const errorHtml = `
+              <div style="line-height: 1.5;">
+                <div>⚠️ <strong>Tài khoản với email này đã tồn tại trên hệ thống.</strong></div>
+                <div style="font-size: 0.88rem; margin: 6px 0;">Nếu quên mật khẩu, hãy nhấp bên dưới để nhận mật khẩu tạm mới hoặc đăng nhập:</div>
+                <div style="margin-top: 8px; display: flex; gap: 8px; flex-wrap: wrap;">
+                  <button type="button" id="btnStatusForgotAction" style="background: var(--gold); color: #000; border: none; padding: 6px 12px; border-radius: 4px; font-weight: 700; cursor: pointer; font-size: 0.82rem; display: inline-flex; align-items: center; gap: 4px;">
+                    🔑 Quên Mật Khẩu (Cấp Mới)
+                  </button>
+                  <button type="button" id="btnStatusLoginAction" style="background: rgba(255,255,255,0.12); color: #fff; border: 1px solid rgba(255,255,255,0.25); padding: 6px 12px; border-radius: 4px; font-weight: 600; cursor: pointer; font-size: 0.82rem;">
+                    ➡️ Đăng Nhập Ngay
+                  </button>
+                </div>
+              </div>
+            `;
+            showPortalStatus(errorHtml, 'err', 0, true);
+
+            const btnStatusForgot = document.getElementById('btnStatusForgotAction');
+            if (btnStatusForgot) {
+              btnStatusForgot.addEventListener('click', () => {
+                triggerForgotPassword(email);
+              });
+            }
+            const btnStatusLogin = document.getElementById('btnStatusLoginAction');
+            if (btnStatusLogin) {
+              btnStatusLogin.addEventListener('click', () => {
+                setView('login');
+                if (loginEmail) loginEmail.value = email;
+                if (loginPassword) loginPassword.focus();
+              });
+            }
             return;
           }
-          // Server luôn trả {ok:true} dù email đã có tài khoản hay chưa —
-          // tránh lộ danh sách email đã đăng ký, xem worker.js.
-          emailAccountStatus.textContent = 'Nếu email hợp lệ, tài khoản + mật khẩu tạm đã được gửi tới hộp thư của bạn (kiểm tra cả mục Spam).';
-          emailAccountStatus.className = 'account-request-status ok';
-          emailAccountForm.reset();
-        })
-        .catch(() => {
-          emailAccountBtn.disabled = false;
-          if (btnText) btnText.textContent = originalText;
-          emailAccountStatus.textContent = 'Không kết nối được máy chủ, kiểm tra mạng rồi thử lại.';
-          emailAccountStatus.className = 'account-request-status err';
-        });
+
+          showPortalStatus(data.error || 'Đăng ký không thành công. Vui lòng kiểm tra lại thông tin.', 'err');
+          return;
+        }
+
+        // Registration successful
+        portalRegisterForm.reset();
+        if (loginEmail) loginEmail.value = email;
+        setView('login');
+        const alertMsg = data.message || (data.isExisting
+          ? 'ℹ️ Email này đã từng được đăng ký trong hệ thống. Một mật khẩu tạm mới vừa được cấp và gửi tới hộp thư của bạn (vui lòng kiểm tra cả mục Thư rác / Spam) để bạn đăng nhập.'
+          : '🎉 Đăng ký thành công! Mật khẩu tạm đã được gửi tới email của bạn. Vui lòng kiểm tra hộp thư (cả mục Thư rác / Spam) để đăng nhập và đổi mật khẩu.');
+        showPortalStatus(alertMsg, 'ok', 14000);
+      } catch (err) {
+        btnRegisterSubmit.disabled = false;
+        if (btnSpan) btnSpan.textContent = originalText;
+        showPortalStatus('Không thể kết nối máy chủ xác thực. Vui lòng kiểm tra kết nối mạng.', 'err');
+      }
     });
+  }
+
+  // 2. LOGIN OPERATOR
+  if (portalLoginForm) {
+    portalLoginForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      clearPortalStatus();
+
+      const email = (loginEmail && loginEmail.value || '').trim().toLowerCase();
+      const password = (loginPassword && loginPassword.value || '');
+
+      if (!email || !password) {
+        showPortalStatus('Vui lòng nhập email và mật khẩu.', 'err');
+        return;
+      }
+
+      btnLoginSubmit.disabled = true;
+      const btnSpan = btnLoginSubmit.querySelector('span');
+      const originalText = btnSpan ? btnSpan.textContent : '';
+      if (btnSpan) btnSpan.textContent = 'Đang đăng nhập...';
+
+      try {
+        const res = await fetch(`${IDENTITY_API_BASE}/operator/login`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password })
+        });
+        const data = await res.json().catch(() => ({}));
+
+        btnLoginSubmit.disabled = false;
+        if (btnSpan) btnSpan.textContent = originalText;
+
+        if (!res.ok) {
+          showPortalStatus(data.error || 'Email hoặc mật khẩu không chính xác.', 'err');
+          return;
+        }
+
+        // Handle Cognito Challenge: NEW_PASSWORD_REQUIRED
+        if (data.challenge === 'NEW_PASSWORD_REQUIRED') {
+          pendingNewPasswordAuth = { email, session: data.session };
+          setView('newPassword');
+          showPortalStatus('Đây là lần đăng nhập đầu tiên. Vui lòng đặt mật khẩu mới (tối thiểu 8 ký tự).', 'ok', 8000);
+          return;
+        }
+
+        if (!data.idToken) {
+          showPortalStatus(data.error || 'Đăng nhập thất bại, vui lòng thử lại.', 'err');
+          return;
+        }
+
+        // Login Success
+        currentSession = {
+          email,
+          idToken: data.idToken,
+          accessToken: data.accessToken,
+          refreshToken: data.refreshToken,
+          operator: data.operator || { email, name: email.split('@')[0] },
+          room: data.room || null
+        };
+        saveSession(currentSession);
+
+        if (!currentSession.room || !currentSession.room.code) {
+          setView('createRoom');
+          showPortalStatus('Bạn chưa có phòng Kênh Band cố định. Hãy tạo phòng ngay bên dưới.', 'ok', 6000);
+        } else {
+          showPortalStatus('✓ Đăng nhập thành công! Đang chuyển hướng sang Bảng Quản Lý Kênh Band...', 'ok', 3000);
+          setTimeout(() => {
+            window.location.href = 'portal.html';
+          }, 350);
+        }
+      } catch (err) {
+        btnLoginSubmit.disabled = false;
+        if (btnSpan) btnSpan.textContent = originalText;
+        showPortalStatus('Không thể kết nối máy chủ xác thực. Kiểm tra mạng rồi thử lại.', 'err');
+      }
+    });
+  }
+
+  // 3. FIRST-TIME PASSWORD CHANGE
+  if (portalNewPasswordForm) {
+    portalNewPasswordForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      clearPortalStatus();
+
+      if (!pendingNewPasswordAuth || !pendingNewPasswordAuth.session) {
+        showPortalStatus('Phiên đổi mật khẩu đã hết hạn, vui lòng đăng nhập lại.', 'err');
+        setView('login');
+        return;
+      }
+
+      const newPass = (newPasswordInput && newPasswordInput.value || '');
+      const confirmPass = (newPasswordConfirmInput && newPasswordConfirmInput.value || '');
+
+      if (newPass.length < 8) {
+        showPortalStatus('Mật khẩu mới phải có tối thiểu 8 ký tự.', 'err');
+        return;
+      }
+      if (newPass !== confirmPass) {
+        showPortalStatus('Xác nhận mật khẩu mới không khớp.', 'err');
+        return;
+      }
+
+      btnNewPasswordSubmit.disabled = true;
+      const btnSpan = btnNewPasswordSubmit.querySelector('span');
+      const originalText = btnSpan ? btnSpan.textContent : '';
+      if (btnSpan) btnSpan.textContent = 'Đang lưu mật khẩu mới...';
+
+      try {
+        const res = await fetch(`${IDENTITY_API_BASE}/operator/login`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: pendingNewPasswordAuth.email,
+            session: pendingNewPasswordAuth.session,
+            newPassword: newPass
+          })
+        });
+        const data = await res.json().catch(() => ({}));
+
+        btnNewPasswordSubmit.disabled = false;
+        if (btnSpan) btnSpan.textContent = originalText;
+
+        if (!res.ok || (!data.ok && !data.idToken)) {
+          showPortalStatus(data.error || 'Không đổi được mật khẩu. Vui lòng thử lại.', 'err');
+          return;
+        }
+
+        const email = pendingNewPasswordAuth.email;
+        pendingNewPasswordAuth = null;
+        portalNewPasswordForm.reset();
+
+        currentSession = {
+          email,
+          idToken: data.idToken,
+          accessToken: data.accessToken,
+          refreshToken: data.refreshToken,
+          operator: data.operator || { email, name: email.split('@')[0] },
+          room: data.room || null
+        };
+        saveSession(currentSession);
+
+        if (!currentSession.room || !currentSession.room.code) {
+          setView('createRoom');
+          showPortalStatus('✓ Đổi mật khẩu thành công! Giờ hãy khởi tạo phòng riêng cố định cho Kênh Band của bạn.', 'ok', 8000);
+        } else {
+          showPortalStatus('✓ Đổi mật khẩu thành công! Đang chuyển hướng sang Bảng Quản Lý...', 'ok', 3000);
+          setTimeout(() => {
+            window.location.href = 'portal.html';
+          }, 350);
+        }
+      } catch (err) {
+        btnNewPasswordSubmit.disabled = false;
+        if (btnSpan) btnSpan.textContent = originalText;
+        showPortalStatus('Không thể kết nối máy chủ xác thực. Kiểm tra mạng rồi thử lại.', 'err');
+      }
+    });
+  }
+
+  // 4. CREATE PERMANENT ROOM (1 ACCOUNT = 1 ROOM)
+  if (portalCreateRoomForm) {
+    portalCreateRoomForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      clearPortalStatus();
+
+      if (!currentSession || !currentSession.idToken) {
+        showPortalStatus('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.', 'err');
+        setView('login');
+        return;
+      }
+
+      const name = (createRoomName && createRoomName.value || '').trim();
+      const password = (createRoomPassword && createRoomPassword.value || '').trim();
+      const passwordConfirm = (createRoomPasswordConfirm && createRoomPasswordConfirm.value || '').trim();
+
+      if (!name) {
+        showPortalStatus('Vui lòng nhập tên phòng.', 'err');
+        return;
+      }
+      if (password.length < 4 || password.length > 12) {
+        showPortalStatus('Mật khẩu phòng từ 4 đến 12 ký tự.', 'err');
+        return;
+      }
+      if (password !== passwordConfirm) {
+        showPortalStatus('Xác nhận mật khẩu phòng không khớp.', 'err');
+        return;
+      }
+
+      btnCreateRoomSubmit.disabled = true;
+      const btnSpan = btnCreateRoomSubmit.querySelector('span');
+      const originalText = btnSpan ? btnSpan.textContent : '';
+      if (btnSpan) btnSpan.textContent = 'Đang khởi tạo phòng...';
+
+      try {
+        const res = await fetch(`${IDENTITY_API_BASE}/operator/room`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${currentSession.idToken}`
+          },
+          body: JSON.stringify({ name, password, email: currentSession.email })
+        });
+        const data = await res.json().catch(() => ({}));
+
+        btnCreateRoomSubmit.disabled = false;
+        if (btnSpan) btnSpan.textContent = originalText;
+
+        if (!res.ok || !data.ok) {
+          showPortalStatus(data.error || 'Không thể tạo phòng. Thử lại sau.', 'err');
+          return;
+        }
+
+        currentSession.room = data.room;
+        saveSession(currentSession);
+        portalCreateRoomForm.reset();
+
+        showPortalStatus('🎉 Khởi tạo phòng cố định thành công! Đang chuyển hướng sang Bảng Quản Lý...', 'ok', 3000);
+        setTimeout(() => {
+          window.location.href = 'portal.html';
+        }, 350);
+      } catch (err) {
+        btnCreateRoomSubmit.disabled = false;
+        if (btnSpan) btnSpan.textContent = originalText;
+        showPortalStatus('Không thể kết nối máy chủ. Kiểm tra kết nối mạng rồi thử lại.', 'err');
+      }
+    });
+  }
+
+  // 5. DASHBOARD & GLOBAL USER MANAGEMENT
+  function renderDashboard(session) {
+    if (!session) return;
+    const op = session.operator || {};
+    const room = session.room || {};
+
+    if (dashOpName) dashOpName.textContent = op.name || session.email;
+    if (dashOpChurch) dashOpChurch.textContent = `${op.church || 'Hội Thánh'} • ${op.area || 'Việt Nam'}`;
+    if (dashAvatar) {
+      const initials = (op.name || 'OP').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
+      dashAvatar.textContent = initials || 'OP';
+    }
+
+    if (dashRoomName) dashRoomName.textContent = room.name || 'Phòng Kênh Band';
+    if (dashRoomCode) dashRoomCode.textContent = room.code || '------';
+    if (dashRoomPassword) {
+      dashRoomPassword.textContent = isPasswordMasked ? '••••••' : (room.password || '');
+    }
+
+    const joinUrl = `https://channel.worship-official.link/m/?room=${room.code || ''}`;
+    if (dashJoinLink) dashJoinLink.textContent = joinUrl;
+  }
+
+  // Password toggle in room card
+  if (btnToggleRoomPassword) {
+    btnToggleRoomPassword.addEventListener('click', () => {
+      isPasswordMasked = !isPasswordMasked;
+      if (dashRoomPassword && currentSession && currentSession.room) {
+        dashRoomPassword.textContent = isPasswordMasked ? '••••••' : (currentSession.room.password || '');
+      }
+      btnToggleRoomPassword.textContent = isPasswordMasked ? '👁️' : '🔒';
+    });
+  }
+
+  // Copy Room Code
+  if (btnCopyRoomCode) {
+    btnCopyRoomCode.addEventListener('click', () => {
+      if (!currentSession || !currentSession.room || !currentSession.room.code) return;
+      navigator.clipboard.writeText(currentSession.room.code).then(() => {
+        btnCopyRoomCode.textContent = '✓ Copied';
+        setTimeout(() => { btnCopyRoomCode.textContent = 'Copy'; }, 1800);
+      });
+    });
+  }
+
+  // Copy Join Link
+  if (btnCopyJoinLink) {
+    btnCopyJoinLink.addEventListener('click', () => {
+      if (!dashJoinLink) return;
+      navigator.clipboard.writeText(dashJoinLink.textContent).then(() => {
+        btnCopyJoinLink.textContent = '✓ Đã sao chép';
+        setTimeout(() => { btnCopyJoinLink.textContent = 'Copy Link'; }, 1800);
+      });
+    });
+  }
+
+  // Load Band Member Users
+  async function loadBandUsers() {
+    if (!currentSession || !currentSession.idToken || !dashUsersList) return;
+    try {
+      const emailParam = currentSession.email ? `?email=${encodeURIComponent(currentSession.email)}` : '';
+      const res = await fetch(`${IDENTITY_API_BASE}/operator/users${emailParam}`, {
+        headers: { 'Authorization': `Bearer ${currentSession.idToken}` }
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.ok) return;
+
+      const users = data.users || [];
+      if (dashUsersCount) dashUsersCount.textContent = `${users.length} thành viên`;
+
+      if (users.length === 0) {
+        dashUsersList.innerHTML = '<div class="portal-empty-users">Chưa có user ban nhạc nào. Hãy tạo tài khoản đầu tiên ở trên!</div>';
+        return;
+      }
+
+      dashUsersList.innerHTML = '';
+      users.forEach(u => {
+        const row = document.createElement('div');
+        row.className = 'portal-user-row';
+        row.innerHTML = `
+          <div class="portal-user-left">
+            <span class="portal-user-badge">👤</span>
+            <div class="portal-user-info">
+              <strong>${escapeHtml(u.name || u.username)}</strong>
+              <span>@${escapeHtml(u.username)}</span>
+            </div>
+          </div>
+          <button type="button" class="btn-del-user" data-username="${escapeHtml(u.username)}" title="Xoá user">
+            🗑️ Xoá
+          </button>
+        `;
+
+        const delBtn = row.querySelector('.btn-del-user');
+        if (delBtn) {
+          delBtn.addEventListener('click', () => deleteBandUser(u.username));
+        }
+
+        dashUsersList.appendChild(row);
+      });
+    } catch (e) {
+      console.error('Failed to load band users:', e);
+    }
+  }
+
+  // Create Band Member User
+  if (formCreateUser) {
+    formCreateUser.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      clearPortalStatus();
+
+      if (!currentSession || !currentSession.idToken) {
+        showPortalStatus('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.', 'err');
+        return;
+      }
+
+      const name = (newUserName && newUserName.value || '').trim();
+      const username = (newUserUsername && newUserUsername.value || '').trim().toLowerCase();
+      const password = (newUserPassword && newUserPassword.value || '');
+      const confirmPassword = (newUserPasswordConfirm && newUserPasswordConfirm.value || '');
+
+      if (!name || !username || !password) {
+        showPortalStatus('Vui lòng nhập đầy đủ thông tin thành viên.', 'err');
+        return;
+      }
+      if (!/^[a-z0-9._-]{3,32}$/.test(username)) {
+        showPortalStatus('Tên tài khoản (username) 3-32 ký tự, chỉ gồm chữ thường, số, dấu chấm, gạch dưới.', 'err');
+        return;
+      }
+      if (password.length < 6) {
+        showPortalStatus('Mật khẩu thành viên tối thiểu 6 ký tự.', 'err');
+        return;
+      }
+      if (password !== confirmPassword) {
+        showPortalStatus('Xác nhận mật khẩu thành viên không khớp.', 'err');
+        return;
+      }
+
+      btnCreateUserSubmit.disabled = true;
+      const btnSpan = btnCreateUserSubmit.querySelector('span');
+      const origText = btnSpan ? btnSpan.textContent : '';
+      if (btnSpan) btnSpan.textContent = 'Đang tạo user...';
+
+      try {
+        const res = await fetch(`${IDENTITY_API_BASE}/operator/users/create`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${currentSession.idToken}`
+          },
+          body: JSON.stringify({ name, username, password, email: currentSession.email })
+        });
+        const data = await res.json().catch(() => ({}));
+
+        btnCreateUserSubmit.disabled = false;
+        if (btnSpan) btnSpan.textContent = origText;
+
+        if (!res.ok || !data.ok) {
+          showPortalStatus(data.error || 'Không tạo được user.', 'err');
+          return;
+        }
+
+        formCreateUser.reset();
+        showPortalStatus(`✓ Đã tạo thành công user @${username}! User này có thể tham gia bất kỳ phòng Kênh Band nào.`, 'ok', 6000);
+        loadBandUsers();
+      } catch (err) {
+        btnCreateUserSubmit.disabled = false;
+        if (btnSpan) btnSpan.textContent = origText;
+        showPortalStatus('Không thể kết nối máy chủ tạo user.', 'err');
+      }
+    });
+  }
+
+  // Delete Band Member User
+  async function deleteBandUser(username) {
+    if (!currentSession || !currentSession.idToken || !username) return;
+    if (!confirm(`Bạn có chắc chắn muốn xoá tài khoản user @${username}?`)) return;
+
+    try {
+      const res = await fetch(`${IDENTITY_API_BASE}/operator/users/delete`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${currentSession.idToken}`
+        },
+        body: JSON.stringify({ username, email: currentSession.email })
+      });
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok || !data.ok) {
+        showPortalStatus(data.error || 'Không thể xoá user.', 'err');
+        return;
+      }
+
+      showPortalStatus(`✓ Đã xoá tài khoản @${username}.`, 'ok', 4000);
+      loadBandUsers();
+    } catch (e) {
+      showPortalStatus('Lỗi kết nối khi xoá user.', 'err');
+    }
+  }
+
+  // Logout
+  if (btnLogout) {
+    btnLogout.addEventListener('click', () => {
+      clearSession();
+      currentSession = null;
+      if (portalLoginForm) portalLoginForm.reset();
+      setView('login');
+      showPortalStatus('Bạn đã đăng xuất khỏi Operator Portal.', 'ok', 4000);
+    });
+  }
+
+  // Session storage helpers
+  function saveSession(session) {
+    try {
+      localStorage.setItem(OP_SESSION_KEY, JSON.stringify(session));
+    } catch (e) {}
+  }
+
+  function loadSession() {
+    try {
+      const raw = localStorage.getItem(OP_SESSION_KEY);
+      return raw ? JSON.parse(raw) : null;
+    } catch (e) { return null; }
+  }
+
+  function clearSession() {
+    try {
+      localStorage.removeItem(OP_SESSION_KEY);
+    } catch (e) {}
+  }
+
+  // Initialize Portal State from Local Storage
+  const savedSession = loadSession();
+  if (savedSession && savedSession.idToken) {
+    currentSession = savedSession;
+
+    // Update navbar item to link to portal.html
+    const navLoginItem = document.getElementById('navItemLogin') || document.querySelector('a[href="#get-account"]');
+    if (navLoginItem) {
+      navLoginItem.href = 'portal.html';
+      navLoginItem.innerHTML = 'Quản Lý (Dashboard)';
+      navLoginItem.title = 'Mở Bảng Điều Khiển Kênh Band (Operator Dashboard)';
+    }
+
+    if (savedSession.room && savedSession.room.code) {
+      renderDashboard(savedSession);
+      setView('dashboard');
+    } else {
+      setView('createRoom');
+    }
+  } else {
+    setView('login');
   }
 
   /* Utility: Escape HTML */

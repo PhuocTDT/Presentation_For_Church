@@ -25,6 +25,27 @@
 // httpMetadata lúc put). Tự xoá sau 4 ngày qua lifecycle rule "expire-4d" đặt
 // trên bucket (đủ trải từ tối thứ 6 tập tới Chủ nhật diễn, xem wrangler.toml).
 
+export { RoomRelay } from './room-relay.js';
+
+// GĐ2 — relay realtime (thay LAN server, xem room-relay.js) sống trong
+// Durable Object riêng theo `room.code` (ID phòng 6 ký tự — KHÁC `roomId`
+// UUID dùng cho setlist/library/gallery bên dưới, xem giải thích trong
+// room-relay.js's comment đầu file), route qua `/api/room/<code>/…`.
+// Phần dưới đây (setlist cloud queue, library sync, gallery mirror, trang
+// composer) giữ NGUYÊN không đổi — vẫn dùng chung KV/R2 theo `roomId` UUID cũ.
+function isValidRoomCode(code) {
+  return typeof code === 'string' && /^[A-Z0-9]{4,10}$/.test(code);
+}
+function roomRelayFetch(env, roomCode, request, subPath) {
+  const id = env.ROOMS.idFromName(roomCode);
+  const stub = env.ROOMS.get(id);
+  const inner = new URL(request.url);
+  inner.pathname = subPath || '/';
+  inner.searchParams.set('roomCode', roomCode);
+  const forwarded = new Request(inner.toString(), request);
+  return stub.fetch(forwarded);
+}
+
 const TTL_SECONDS = 7 * 24 * 60 * 60; // 7 ngày
 // Thư viện bài hát đồng bộ lên đây để trang soạn setlist tĩnh (GET /composer)
 // tra cứu được ngay cả khi laptop operator tắt hẳn — không có server local nào
@@ -71,7 +92,7 @@ function json(obj, status = 200) {
 }
 
 function isValidRoomId(id) {
-  return typeof id === 'string' && /^[a-zA-Z0-9_-]{8,64}$/.test(id);
+  return typeof id === 'string' && /^[a-zA-Z0-9_-]{4,64}$/.test(id);
 }
 
 // Trang soạn setlist tĩnh, phục vụ NGAY từ Worker này (cùng origin với API,
@@ -337,6 +358,17 @@ export default {
     const url = new URL(req.url);
     const p = url.pathname;
 
+    // ---- /api/room/<roomId>/<...> -> forward tới Durable Object của phòng đó
+    // (GĐ2 relay realtime, xem room-relay.js). `roomId` = cloudRoomId. ----
+    if (p.indexOf('/api/room/') === 0) {
+      const rest = p.slice('/api/room/'.length);
+      const slash = rest.indexOf('/');
+      const roomCode = (slash >= 0 ? rest.slice(0, slash) : rest).toUpperCase();
+      const subPath = slash >= 0 ? rest.slice(slash) : '/';
+      if (!isValidRoomCode(roomCode)) return json({ error: 'ID phòng không hợp lệ' }, 400);
+      return roomRelayFetch(env, roomCode, req, subPath);
+    }
+
     // ---- POST /setlist { roomId, setlist:{id,name,from,ts,items} } ----
     if (p === '/setlist' && req.method === 'POST') {
       let body;
@@ -505,6 +537,29 @@ export default {
     // đang chạy (?room=<cloudRoomId>, xem COMPOSER_HTML ở trên) ----
     if (p === '/composer' && req.method === 'GET') {
       return new Response(COMPOSER_HTML, { headers: { 'Content-Type': 'text/html; charset=utf-8', ...CORS } });
+    }
+
+    // ---- GET /m, /m/, /m/app.js -> trang join Kênh Band (comm/mobile/),
+    // mount qua binding MOBILE_ASSETS (xem wrangler.toml) — URL CỐ ĐỊNH, không
+    // đổi theo máy operator/tunnel như LAN cũ (?room=<code> giữ nguyên như
+    // /composer). GĐ2, band-comm-plan.md §14.
+    // `/m` (không có dấu / cuối) PHẢI redirect sang `/m/` trước — index.html
+    // dùng <script src="app.js"> TƯƠNG ĐỐI (y hệt bản LAN gốc phục vụ ở
+    // path gốc "/"), trình duyệt resolve tương đối theo URL trang đang mở:
+    // mở đúng "/m/" thì ra "/m/app.js" (đúng); mở "/m" (thiếu /) thì ra
+    // "/app.js" (sai, 404) — đã tái hiện thật qua curl trước khi thêm redirect. ----
+    if (req.method === 'GET' && p === '/m') {
+      return Response.redirect(url.origin + '/m/' + url.search, 302);
+    }
+    if (req.method === 'GET' && (p === '/m/' || p.indexOf('/m/') === 0)) {
+      const assetUrl = new URL(req.url);
+      assetUrl.pathname = p === '/m/' ? '/index.html' : p.slice('/m'.length);
+      const assetRes = await env.MOBILE_ASSETS.fetch(new Request(assetUrl, req));
+      // Assets binding trả response gốc (không có CORS header của worker.js
+      // này) — không sao vì trang tự tải (same-origin request từ chính nó,
+      // browser không cần CORS cho navigation/script-src gốc), chỉ cần khi
+      // JS bên trong gọi fetch() sang origin khác (đã có CORS ở các route đó).
+      return assetRes;
     }
 
     if (p === '/' || p === '/health') return json({ ok: true, service: 'band-comm-relay' });
