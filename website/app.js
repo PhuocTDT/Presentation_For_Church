@@ -238,30 +238,38 @@ document.addEventListener('DOMContentLoaded', () => {
   const navLinksList = document.getElementById('navLinks');
 
   if (mobileNavToggle && navLinksList) {
-    mobileNavToggle.addEventListener('click', () => {
-      const isVisible = navLinksList.style.display === 'flex';
-      if (isVisible) {
-        navLinksList.style.display = 'none';
-      } else {
-        navLinksList.style.display = 'flex';
-        navLinksList.style.flexDirection = 'column';
-        navLinksList.style.position = 'absolute';
-        navLinksList.style.top = '76px';
-        navLinksList.style.left = '0';
-        navLinksList.style.right = '0';
-        navLinksList.style.background = 'rgba(6, 9, 17, 0.98)';
-        navLinksList.style.padding = '20px 24px';
-        navLinksList.style.borderBottom = '1px solid var(--border-subtle)';
+    function closeMobileNav() {
+      navLinksList.classList.remove('mobile-open');
+      mobileNavToggle.classList.remove('is-active');
+      mobileNavToggle.setAttribute('aria-expanded', 'false');
+    }
+
+    mobileNavToggle.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const isOpen = navLinksList.classList.toggle('mobile-open');
+      mobileNavToggle.classList.toggle('is-active', isOpen);
+      mobileNavToggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+    });
+
+    // Close mobile nav when clicking any link
+    navLinksList.querySelectorAll('a').forEach(link => {
+      link.addEventListener('click', () => {
+        closeMobileNav();
+      });
+    });
+
+    // Close mobile nav when clicking outside
+    document.addEventListener('click', (e) => {
+      if (!navLinksList.contains(e.target) && !mobileNavToggle.contains(e.target)) {
+        closeMobileNav();
       }
     });
 
-    // Close mobile nav when clicking a link
-    navLinks.forEach(link => {
-      link.addEventListener('click', () => {
-        if (window.innerWidth <= 768) {
-          navLinksList.style.display = 'none';
-        }
-      });
+    // Close on Escape key
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && navLinksList.classList.contains('mobile-open')) {
+        closeMobileNav();
+      }
     });
   }
 
@@ -571,7 +579,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const text = data[currentBibleVerKey] || data.rvv11;
 
     if (bibleSearchQuery) {
-      bibleSearchQuery.textContent = `${currentBibleRef} (${ver.short})`;
+      bibleSearchQuery.textContent = currentBibleRef;
     }
     if (verseRefTitle) {
       verseRefTitle.textContent = `${currentBibleRef.toUpperCase()} • ${ver.name}`;
