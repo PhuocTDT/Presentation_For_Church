@@ -90,5 +90,5 @@ export function createCognitoVerifier() {
     return payload;
   }
 
-  return { verifyIdToken };
+  return { verifyIdToken, verify: verifyIdToken };
 }

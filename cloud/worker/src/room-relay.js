@@ -242,14 +242,18 @@ export class RoomRelay {
       // Khi adminSecret không khớp (ví dụ cài lại app, xoá userData, đổi máy),
       // kiểm tra xem có xác thực qua Cognito token của operator không:
       if (bearerToken) {
-        if (!this.cognitoVerifier) this.cognitoVerifier = createCognitoVerifier();
-        const payload = await this.cognitoVerifier.verify(bearerToken).catch(() => null);
-        if (payload && payload.email) {
-          if (headerSecret && headerSecret.length >= 16) {
-            this.adminSecret = headerSecret;
-            await this.ctx.storage.put('adminSecret', this.adminSecret);
-            isAuthorized = true;
+        try {
+          if (!this.cognitoVerifier) this.cognitoVerifier = createCognitoVerifier();
+          const payload = await this.cognitoVerifier.verifyIdToken(bearerToken).catch(() => null);
+          if (payload && (payload.email || payload.sub)) {
+            if (headerSecret && headerSecret.length >= 16) {
+              this.adminSecret = headerSecret;
+              await this.ctx.storage.put('adminSecret', this.adminSecret);
+              isAuthorized = true;
+            }
           }
+        } catch (e) {
+          console.error('Cognito verify error in admin config:', e);
         }
       }
       // Hoặc nếu password phòng gửi lên khớp với password phòng hiện có trong DO:
@@ -880,49 +884,54 @@ export class RoomRelay {
   }
 
   async fetch(request) {
-    await this.ready;
-    const url = new URL(request.url);
-    const p = url.pathname;
-    const roomCodeParam = url.searchParams.get('roomCode');
-    if (roomCodeParam) this.roomCode = roomCodeParam;
-    await this.ensureConfig(roomCodeParam);
+    try {
+      await this.ready;
+      const url = new URL(request.url);
+      const p = url.pathname;
+      const roomCodeParam = url.searchParams.get('roomCode');
+      if (roomCodeParam) this.roomCode = roomCodeParam;
+      await this.ensureConfig(roomCodeParam);
 
-    if (request.method === 'GET' && p === '/ws') {
-      if (request.headers.get('Upgrade') !== 'websocket') return json({ error: 'expected websocket' }, 426);
-      return this.handleWebSocketUpgrade(request, url);
-    }
-    if (request.method === 'POST' && p === '/admin/config') return this.handleAdminConfig(request);
-    if (p.indexOf('/admin/accounts/') === 0) {
-      return this.handleAdminAccounts(request, p.slice('/admin/accounts/'.length));
-    }
-    if (p.indexOf('/admin/gallery/') === 0) {
-      return this.handleAdminGallery(request, p.slice('/admin/gallery/'.length));
-    }
-    if (request.method === 'GET' && p === '/mode') {
-      if (!this.config) return json({ configured: false });
-      return json({
-        configured: true, roomName: this.config.name,
-        accountsEnabled: !!this.config.accountsEnabled,
-        passwordRequiredWithAccounts: !!this.config.passwordRequiredWithAccounts,
-        authMode: this.config.authMode || 'local'
-      });
-    }
-    if (request.method === 'POST' && p === '/join') return this.handleJoin(request);
-    if (request.method === 'POST' && p === '/login') return this.handleLogin(request);
-    if (request.method === 'POST' && p === '/join-room') return this.handleJoinRoom(request);
-    if (request.method === 'POST' && p === '/change-password') return this.handleChangePassword(request, url);
-    if (request.method === 'GET' && p === '/presence') return json({ clients: this.presenceList() });
-    if (request.method === 'GET' && p === '/whoami') {
-      const ident = await this.verifyToken(url.searchParams.get('token') || '');
-      return ident ? json({ ok: true }) : json({ error: 'unauthorized' }, 401);
-    }
-    if (request.method === 'GET' && p === '/profile') return this.handleProfileGet(url);
-    if (request.method === 'POST' && p === '/profile') return this.handleProfileSave(request, url);
-    if (request.method === 'GET' && p === '/gallery') return json(await this.galleryManifest());
-    if (request.method === 'POST' && p === '/gallery/add') return this.handleGalleryAdd(request, url);
-    if (request.method === 'POST' && p === '/gallery/remove') return this.handleGalleryRemove(request, url);
-    if (request.method === 'POST' && p === '/setlist') return this.handleSetlistSubmit(request, url);
+      if (request.method === 'GET' && p === '/ws') {
+        if (request.headers.get('Upgrade') !== 'websocket') return json({ error: 'expected websocket' }, 426);
+        return this.handleWebSocketUpgrade(request, url);
+      }
+      if (request.method === 'POST' && p === '/admin/config') return this.handleAdminConfig(request);
+      if (p.indexOf('/admin/accounts/') === 0) {
+        return this.handleAdminAccounts(request, p.slice('/admin/accounts/'.length));
+      }
+      if (p.indexOf('/admin/gallery/') === 0) {
+        return this.handleAdminGallery(request, p.slice('/admin/gallery/'.length));
+      }
+      if (request.method === 'GET' && p === '/mode') {
+        if (!this.config) return json({ configured: false });
+        return json({
+          configured: true, roomName: this.config.name,
+          accountsEnabled: !!this.config.accountsEnabled,
+          passwordRequiredWithAccounts: !!this.config.passwordRequiredWithAccounts,
+          authMode: this.config.authMode || 'local'
+        });
+      }
+      if (request.method === 'POST' && p === '/join') return this.handleJoin(request);
+      if (request.method === 'POST' && p === '/login') return this.handleLogin(request);
+      if (request.method === 'POST' && p === '/join-room') return this.handleJoinRoom(request);
+      if (request.method === 'POST' && p === '/change-password') return this.handleChangePassword(request, url);
+      if (request.method === 'GET' && p === '/presence') return json({ clients: this.presenceList() });
+      if (request.method === 'GET' && p === '/whoami') {
+        const ident = await this.verifyToken(url.searchParams.get('token') || '');
+        return ident ? json({ ok: true }) : json({ error: 'unauthorized' }, 401);
+      }
+      if (request.method === 'GET' && p === '/profile') return this.handleProfileGet(url);
+      if (request.method === 'POST' && p === '/profile') return this.handleProfileSave(request, url);
+      if (request.method === 'GET' && p === '/gallery') return json(await this.galleryManifest());
+      if (request.method === 'POST' && p === '/gallery/add') return this.handleGalleryAdd(request, url);
+      if (request.method === 'POST' && p === '/gallery/remove') return this.handleGalleryRemove(request, url);
+      if (request.method === 'POST' && p === '/setlist') return this.handleSetlistSubmit(request, url);
 
-    return json({ error: 'not found' }, 404);
+      return json({ error: 'not found' }, 404);
+    } catch (err) {
+      console.error('[RoomRelay] Fetch error:', err);
+      return json({ error: (err && err.message) || 'Lỗi xử lý yêu cầu relay' }, 500);
+    }
   }
 }
