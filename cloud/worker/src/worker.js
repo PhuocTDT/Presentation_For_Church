@@ -548,7 +548,10 @@ export default {
     // path gốc "/"), trình duyệt resolve tương đối theo URL trang đang mở:
     // mở đúng "/m/" thì ra "/m/app.js" (đúng); mở "/m" (thiếu /) thì ra
     // "/app.js" (sai, 404) — đã tái hiện thật qua curl trước khi thêm redirect. ----
-    if (req.method === 'GET' && p === '/m') {
+    // ---- GET / hoặc /m -> tự động redirect sang /m/ (kèm query string ?room=<code>)
+    // Giúp người dùng khi truy cập trực tiếp channel.worship-official.link hoặc
+    // channel.worship-official.link/?room=... đều vào thẳng trang Kênh Band mà không bị crash/JSON thô ----
+    if (req.method === 'GET' && (p === '/' || p === '/m')) {
       return Response.redirect(url.origin + '/m/' + url.search, 302);
     }
     if (req.method === 'GET' && (p === '/m/' || p.indexOf('/m/') === 0)) {
@@ -562,7 +565,7 @@ export default {
       return assetRes;
     }
 
-    if (p === '/' || p === '/health') return json({ ok: true, service: 'band-comm-relay' });
+    if (p === '/health') return json({ ok: true, service: 'band-comm-relay' });
 
     return json({ error: 'not found' }, 404);
   }
