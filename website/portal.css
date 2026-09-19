@@ -1245,26 +1245,132 @@ body {
 @media (max-width: 768px) {
   .portal-header-inner {
     height: auto;
-    padding: 14px 0;
+    padding: 12px 0;
+    gap: 10px;
     flex-wrap: wrap;
+    justify-content: space-between;
+  }
+  .portal-header-brand {
+    gap: 8px;
+  }
+  .portal-logo-icon {
+    width: 32px;
+    height: 32px;
+    font-size: 1.1rem;
+  }
+  .portal-brand-title {
+    font-size: 1rem;
   }
   .portal-status-pill {
     display: none;
   }
+  .portal-header-user {
+    gap: 8px;
+  }
+  .portal-user-badge {
+    padding: 4px 8px;
+    max-width: 140px;
+  }
+  .portal-user-email {
+    font-size: 0.75rem;
+  }
   .portal-hero-card {
-    padding: 24px 20px;
+    padding: 20px 16px;
+    border-radius: var(--radius-lg);
   }
   .portal-hero-title {
-    font-size: 1.6rem;
+    font-size: 1.4rem;
+  }
+  .portal-hero-sub {
+    font-size: 0.88rem;
+  }
+  .portal-hero-chips {
+    gap: 6px;
+  }
+  .portal-hero-chip {
+    font-size: 0.74rem;
+    padding: 4px 8px;
+  }
+  .portal-metrics-grid {
+    grid-template-columns: 1fr;
+    gap: 14px;
+    margin-bottom: 24px;
+  }
+  .metric-card {
+    padding: 18px 16px;
+  }
+  .metric-card-footer {
+    gap: 6px;
+  }
+  .btn-action-sm {
+    flex: 1 1 auto;
+    justify-content: center;
+    font-size: 0.76rem;
+    padding: 6px 10px;
+  }
+  .workspace-tabs-nav {
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 4px;
+    gap: 6px;
+  }
+  .workspace-tab-btn {
+    white-space: nowrap;
+    flex-shrink: 0;
+    padding: 10px 14px;
+    font-size: 0.84rem;
   }
   .workspace-tab-panel {
-    padding: 20px 16px;
+    padding: 18px 14px;
+    border-radius: var(--radius-lg);
   }
   .members-toolbar {
     flex-direction: column;
     align-items: stretch;
+    gap: 10px;
   }
   .members-search-box {
     width: 100%;
+  }
+  .members-table-wrapper {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    margin: 0 -4px;
+  }
+  .members-table {
+    min-width: 480px;
+    font-size: 0.82rem;
+  }
+  .members-table th,
+  .members-table td {
+    padding: 8px 10px;
+  }
+  .qr-tab-layout {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+  .qr-card-display {
+    padding: 20px 14px;
+  }
+  .guide-step-item {
+    padding: 14px 12px;
+  }
+  .modal-card {
+    padding: 20px 16px;
+    max-width: 94vw;
+  }
+}
+
+@media (max-width: 480px) {
+  .portal-hero-title {
+    font-size: 1.25rem;
+  }
+  .metric-code-display {
+    font-size: 1.5rem;
+  }
+  .portal-quick-stats {
+    grid-template-columns: 1fr;
+    gap: 8px;
   }
 }

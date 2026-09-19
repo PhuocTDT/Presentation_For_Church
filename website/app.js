@@ -232,24 +232,43 @@ document.addEventListener('DOMContentLoaded', () => {
   window.addEventListener('scroll', updateActiveNav);
 
   /* ========================================================================
-     5. Mobile Menu Toggle
+     5. Mobile Menu Toggle & Side Drawer
      ======================================================================== */
   const mobileNavToggle = document.getElementById('mobileNavToggle');
   const navLinksList = document.getElementById('navLinks');
+  const mobileNavBackdrop = document.getElementById('mobileNavBackdrop');
 
   if (mobileNavToggle && navLinksList) {
     function closeMobileNav() {
       navLinksList.classList.remove('mobile-open');
       mobileNavToggle.classList.remove('is-active');
       mobileNavToggle.setAttribute('aria-expanded', 'false');
+      if (mobileNavBackdrop) mobileNavBackdrop.classList.remove('active');
+      document.body.style.overflow = '';
+    }
+
+    function openMobileNav() {
+      navLinksList.classList.add('mobile-open');
+      mobileNavToggle.classList.add('is-active');
+      mobileNavToggle.setAttribute('aria-expanded', 'true');
+      if (mobileNavBackdrop) mobileNavBackdrop.classList.add('active');
     }
 
     mobileNavToggle.addEventListener('click', (e) => {
       e.stopPropagation();
-      const isOpen = navLinksList.classList.toggle('mobile-open');
-      mobileNavToggle.classList.toggle('is-active', isOpen);
-      mobileNavToggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+      const isCurrentlyOpen = navLinksList.classList.contains('mobile-open');
+      if (isCurrentlyOpen) {
+        closeMobileNav();
+      } else {
+        openMobileNav();
+      }
     });
+
+    if (mobileNavBackdrop) {
+      mobileNavBackdrop.addEventListener('click', () => {
+        closeMobileNav();
+      });
+    }
 
     // Close mobile nav when clicking any link
     navLinksList.querySelectorAll('a').forEach(link => {
