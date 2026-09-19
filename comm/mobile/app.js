@@ -1234,9 +1234,30 @@
     }
   });
 
-  if (state.token && state.clientId && !forceLogin && (!urlRoomCode || urlRoomCode === currentRoomCode())) {
-    enterMain();
+  // Cơ chế bảo mật & kiểm tra URL:
+  // 1. Chỉ tự động kết nối vào phòng khi URL CÓ CHỈ ĐỊNH rõ ràng ID phòng (?room=<code>) VÀ khớp với token đã lưu.
+  // 2. Truy cập trực tiếp link gốc (không có ?room=) LUÔN mở màn hình Đăng nhập (Join Gate) để người dùng chủ động chọn phòng/nhập thông tin.
+  // 3. Trước khi mở màn hình chính, luôn xác thực token với server (/whoami) để chặn token hết hạn hoặc phòng đã đổi mật khẩu.
+  if (urlRoomCode && state.token && state.clientId && !forceLogin && urlRoomCode === currentRoomCode()) {
+    fetch(roomUrl('/whoami?token=' + encodeURIComponent(state.token || '')))
+      .then(function (r) {
+        if (r.ok) {
+          enterMain();
+        } else {
+          state.token = null;
+          state.clientId = null;
+          saveState();
+          $('join').classList.remove('hidden');
+          $('main').classList.add('hidden');
+          $('joinErr').textContent = 'Phiên đăng nhập đã hết hạn hoặc mật khẩu đã đổi. Vui lòng đăng nhập lại.';
+        }
+      })
+      .catch(function () {
+        // Mất mạng tạm thời lúc khởi động -> vẫn cố vào để WebSocket tự retry
+        enterMain();
+      });
   } else {
+    // Mặc định luôn hiện màn hình Đăng nhập
     $('join').classList.remove('hidden');
     $('main').classList.add('hidden');
   }
