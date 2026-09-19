@@ -148,8 +148,26 @@
       .catch(function () { /* mất mạng lúc dò */ });
   }
 
-  var urlRoomCode = (new URLSearchParams(location.search).get('room') || '').trim().toUpperCase();
-  if (urlRoomCode) { syncRoomCodeFields(urlRoomCode); lookupMode(urlRoomCode); }
+  var urlParams = new URLSearchParams(location.search);
+  var urlRoomCode = (urlParams.get('room') || '').trim().toUpperCase();
+  var forceLogin = urlParams.has('login') || urlParams.has('logout');
+
+  if (forceLogin) {
+    state.token = null;
+    state.clientId = null;
+    saveState();
+  } else if (urlRoomCode && state.roomCode && urlRoomCode !== currentRoomCode()) {
+    state.token = null;
+    state.clientId = null;
+    state.roomCode = urlRoomCode;
+    saveState();
+  }
+
+  var activeCode = urlRoomCode || currentRoomCode();
+  if (activeCode) {
+    syncRoomCodeFields(activeCode);
+    lookupMode(activeCode);
+  }
 
   ['roomCode', 'roomCode2', 'roomCode3'].forEach(function (id) {
     $(id) && $(id).addEventListener('input', function () {
@@ -519,6 +537,28 @@
   }
 
   /* ---------------- main ---------------- */
+
+  function leaveRoom() {
+    if (ws) {
+      try { ws.onclose = null; ws.close(); } catch (e) {}
+      ws = null;
+    }
+    if (reconnTimer) { clearTimeout(reconnTimer); reconnTimer = null; }
+    if (pingTimer) { clearInterval(pingTimer); pingTimer = null; }
+    state.token = null;
+    state.clientId = null;
+    saveState();
+    setDot('');
+    $('main').classList.add('hidden');
+    $('join').classList.remove('hidden');
+    $('joinErr').textContent = '';
+    $('joinInfo').textContent = '';
+    var code = currentRoomCode() || urlRoomCode;
+    if (code) {
+      syncRoomCodeFields(code);
+      lookupMode(code);
+    }
+  }
 
   function enterMain() {
     $('join').classList.add('hidden');
@@ -1188,7 +1228,16 @@
   // token still rehydrates them if they come back.
 
   /* ---------------- boot ---------------- */
-  if (state.token && state.clientId) {
+  $('leaveBtn') && $('leaveBtn').addEventListener('click', function () {
+    if (confirm('Bạn muốn rời khỏi phòng hiện tại để quay lại màn hình đăng nhập?')) {
+      leaveRoom();
+    }
+  });
+
+  if (state.token && state.clientId && !forceLogin && (!urlRoomCode || urlRoomCode === currentRoomCode())) {
     enterMain();
+  } else {
+    $('join').classList.remove('hidden');
+    $('main').classList.add('hidden');
   }
 })();
