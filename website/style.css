@@ -1758,11 +1758,12 @@ h1, h2, h3, h4, h5, h6 {
 .phone-mockup-frame {
   width: 100%;
   max-width: 360px;
-  background: #181c26;
-  border: 4px solid #2d3748;
-  border-radius: 36px;
-  padding: 14px;
-  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.7);
+  background: #ffffff;
+  border: 7px solid #1e2430;
+  border-radius: 34px;
+  padding: 0;
+  overflow: hidden;
+  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(255, 255, 255, 0.08);
   position: relative;
   margin: 0 auto;
 }
@@ -1779,18 +1780,14 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .phone-top-notch {
-  height: 24px;
-  background: #000;
-  width: 130px;
-  margin: 0 auto 8px;
-  border-radius: 0 0 14px 14px;
+  display: none;
 }
 
 .phone-app-bar {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 8px 12px;
+  padding: 12px 14px;
   background: #f4f5f7;
   border-bottom: 1px solid #dfe2e7;
   font-size: 0.82rem;

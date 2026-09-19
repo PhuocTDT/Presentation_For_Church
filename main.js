@@ -5,6 +5,7 @@ const os = require('os');
 const { pathToFileURL } = require('url');
 const { validateItem, migrateItem } = require('./src/schema');
 const { createStore: createBandCommStore } = require('./src/band-comm/store');
+const { createOperatorAuthStore } = require('./src/band-comm/operator-auth');
 const { createRelayClient } = require('./src/band-comm/relay-client');
 const { autoSyncPreviousVersionsLibrary, importLibraryFromCustomPath } = require('./src/library-sync');
 let pendingLibrarySyncNotification = null;
@@ -1036,7 +1037,7 @@ function initializeData() {
   // Default Settings
   if (!fs.existsSync(settingsFilePath)) {
     globalSettings = {
-      theme: 'dark',
+      theme: 'light',
       gpuAcceleration: true,
       fontFamilySong: 'CMG Sans',
       fontFamilyBible: 'Times New Roman',
@@ -1437,6 +1438,7 @@ function createWindow() {
   const win = new BrowserWindow({
     width: 1400,
     height: 900,
+    title: 'Presentation For Church',
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
@@ -1451,6 +1453,12 @@ function createWindow() {
     win.on('page-title-updated', (e, title) => {
       e.preventDefault();
       win.setTitle(`${title} [DEV]`);
+    });
+  } else {
+    win.setTitle('Presentation For Church');
+    win.on('page-title-updated', (e, title) => {
+      e.preventDefault();
+      win.setTitle(title ? `${title} - Presentation For Church` : 'Presentation For Church');
     });
   }
   win.loadFile('index.html');

@@ -5,6 +5,7 @@
 <head>
     <meta charset="utf-8" />
     <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+    <title>Presentation For Church</title>
     <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap"
         rel="stylesheet" />
@@ -1473,7 +1474,7 @@
             </div>
           </div>
           <div class="qrwrap">
-            <img id="bpQr" alt="Mã QR kết nối">
+            <img id="bpQr" alt="Mã QR kết nối" style="display:none;">
             <div class="u">
               <div class="host" id="bpHost">—</div>
             </div>
@@ -3015,7 +3016,7 @@
         };
         function createDefaultGlobalSettings() {
             return {
-                theme: 'dark',
+                theme: 'light',
                 gpuAcceleration: true,
                 fontFamilySong: 'CMG Sans',
                 fontFamilyBible: 'Times New Roman',
@@ -8685,16 +8686,29 @@
       }
 
       function renderQr(url) {
-        if (!url) { $('bpQr').removeAttribute('src'); return; }
-        $('bpQr').dataset.url = url;
-        if (url === lastQrText) return;
+        var el = $('bpQr');
+        if (!el) return;
+        if (!url) {
+          el.removeAttribute('src');
+          el.style.display = 'none';
+          return;
+        }
+        el.dataset.url = url;
+        if (url === lastQrText && el.getAttribute('src')) {
+          el.style.display = 'block';
+          return;
+        }
         lastQrText = url;
         try {
           var qr = qrcode(0, 'M');
           qr.addData(url);
           qr.make();
-          $('bpQr').src = qr.createDataURL(4, 8);
-        } catch (e) { $('bpQr').removeAttribute('src'); }
+          el.src = qr.createDataURL(4, 8);
+          el.style.display = 'block';
+        } catch (e) {
+          el.removeAttribute('src');
+          el.style.display = 'none';
+        }
       }
 
       var errAutoOpened = false;

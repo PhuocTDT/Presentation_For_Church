@@ -7,7 +7,7 @@
     "postinstall": "node scripts/fetch-cloudflared.js",
     "start": "electron .",
     "build": "npm run build:all",
-    "build:win": "electron-builder --win",
+    "build:win": "node scripts/kill-running.js && electron-builder --win",
     "build:mac": "electron-builder --mac",
     "build:all": "electron-builder --win --mac"
   },
@@ -65,7 +65,8 @@
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "Presentation For Church"
+      "shortcutName": "Presentation For Church",
+      "include": "build/installer.nsh"
     },
     "portable": {
       "artifactName": "Presentation.For.Church.Portable.${version}.${ext}"
