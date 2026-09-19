@@ -1406,6 +1406,7 @@ function initBandComm() {
   bandOperatorAuthStore = createOperatorAuthStore(userDataPath, safeWriteSync);
   commServer = createRelayClient({
     store: bandCommStore,
+    operatorAuthStore: bandOperatorAuthStore,
     onEvent: (env) => {
       broadcastToRenderers('band-comm-event', env);
       // Nudge the taskbar when a fresh band alert lands and the app is unfocused.

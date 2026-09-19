@@ -38,7 +38,7 @@ const RECONNECT_MAX_MS = 30000;
  * @param {(setlist:any)=>void} [opts.onSetlist]
  * @param {()=>Array}[opts.getLibraryIndex]
  */
-function createRelayClient({ store, onEvent, onPresence, onSetlist, getLibraryIndex }) {
+function createRelayClient({ store, operatorAuthStore, onEvent, onPresence, onSetlist, getLibraryIndex }) {
   let ws = null;
   let wsOpen = false;
   let wantConnected = false; // true giữa start()..stop() — phân biệt "đang cố reconnect" với "đã stop() chủ động"
@@ -51,13 +51,18 @@ function createRelayClient({ store, onEvent, onPresence, onSetlist, getLibraryIn
   let cloudPollTimer = null;
   const CLOUD_POLL_MS = 60000;
 
-  function ingestSetlist(sl) {
-    if (!sl || !sl.id || seenSetlistIds.has(sl.id)) return false;
-    seenSetlistIds.add(sl.id);
-    if (seenSetlistIds.size > 500) {
-      const oldest = Array.from(seenSetlistIds).slice(0, 100);
-      for (const k of oldest) seenSetlistIds.delete(k);
-    }
+  function ingestSetlist(raw) {
+    if (!raw || typeof raw !== 'object') return false;
+    const id = String(raw.id || '').trim();
+    if (!id || seenSetlistIds.has(id)) return false;
+    seenSetlistIds.add(id);
+    const sl = {
+      id,
+      title: String(raw.title || 'Setlist mới').slice(0, 100),
+      createdAt: Number(raw.createdAt) || Date.now(),
+      fromName: String(raw.fromName || 'Ẩn danh').slice(0, 60),
+      items: Array.isArray(raw.items) ? raw.items : []
+    };
     if (onSetlist) { try { onSetlist(sl); } catch (e) {} }
     return true;
   }
@@ -105,9 +110,18 @@ function createRelayClient({ store, onEvent, onPresence, onSetlist, getLibraryIn
   async function syncRoomConfig() {
     const c = cfg();
     const roomId = (c.room && c.room.code) || c.cloudRoomId;
+    const headers = { 'Content-Type': 'application/json', 'X-Admin-Secret': c.relayAdminSecret };
+    if (operatorAuthStore) {
+      try {
+        const sess = operatorAuthStore.load();
+        if (sess && sess.idToken) {
+          headers['Authorization'] = `Bearer ${sess.idToken}`;
+        }
+      } catch (e) {}
+    }
     const res = await fetch(`${roomBaseUrl()}/admin/config`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-Admin-Secret': c.relayAdminSecret },
+      headers,
       body: JSON.stringify({
         name: c.room.name, code: c.room.code, password: c.room.password, cloudRoomId: roomId,
         accountsEnabled: c.accountsEnabled, passwordRequiredWithAccounts: c.room.passwordRequiredWithAccounts,

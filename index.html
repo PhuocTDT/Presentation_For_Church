@@ -2650,18 +2650,20 @@
                 <div class="stg-plain" data-search="kênh band link kết nối mobile điện thoại">
                   <div class="stg-label">Link kết nối cho Band (Điện thoại / Máy tính bảng)</div>
                   <div class="stg-help" style="margin-bottom:6px;">Gửi link này cho ban nhạc để xem bài hát, hợp âm và nhắn tin trực tiếp trên trình duyệt điện thoại.</div>
-                  <div class="stg-path-row" style="margin-bottom:12px;">
-                    <input type="text" id="stgBandMobileLink" class="stg-input" readonly spellcheck="false">
-                    <button class="stg-btn" type="button" onclick="copyBandSettingLink('stgBandMobileLink', this)">Sao chép</button>
+                  <input type="text" id="stgBandMobileLink" class="stg-input" readonly spellcheck="false" style="width:100%; box-sizing:border-box;">
+                  <div style="display:flex; gap:8px; align-items:center; margin-top:8px; margin-bottom:14px;">
+                    <button class="stg-btn" type="button" onclick="copyBandSettingLink('stgBandMobileLink', this)">📋 Sao chép</button>
+                    <button class="stg-btn" type="button" onclick="showBandQrModal('stgBandMobileLink', 'Mã QR Kênh Band')">📲 Mã QR</button>
                   </div>
                 </div>
 
                 <div class="stg-plain" data-search="setlist soạn từ xa composer link">
                   <div class="stg-label">Link Soạn Setlist từ xa</div>
                   <div class="stg-help" style="margin-bottom:6px;">Dùng được mọi lúc (kể cả khi laptop tắt). Setlist và bài hát mới tự động đồng bộ về máy này.</div>
-                  <div class="stg-path-row">
-                    <input type="text" id="stgBandComposerLink" class="stg-input" readonly spellcheck="false">
-                    <button class="stg-btn" type="button" onclick="copyBandSettingLink('stgBandComposerLink', this)">Sao chép</button>
+                  <input type="text" id="stgBandComposerLink" class="stg-input" readonly spellcheck="false" style="width:100%; box-sizing:border-box;">
+                  <div style="display:flex; gap:8px; align-items:center; margin-top:8px;">
+                    <button class="stg-btn" type="button" onclick="copyBandSettingLink('stgBandComposerLink', this)">📋 Sao chép</button>
+                    <button class="stg-btn" type="button" onclick="showBandQrModal('stgBandComposerLink', 'Mã QR Soạn Setlist Từ Xa')">📲 Mã QR</button>
                   </div>
                 </div>
               </div>
@@ -2864,6 +2866,36 @@
         <div class="stg-footer">
           <button class="stg-btn" type="button" onclick="closeSettings()">Huỷ</button>
           <button class="stg-btn stg-btn-primary" type="button" onclick="saveSettings()">Lưu thay đổi</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal xem Mã QR phóng to trong Cài Đặt -->
+    <div class="modal-overlay" id="stg-qr-modal" style="display:none; z-index:999999; justify-content:center; align-items:center; background:rgba(0,0,0,0.65); backdrop-filter:blur(4px);" onclick="if(event.target===this)closeBandQrModal()">
+      <div class="stg-modal" style="width:380px; max-width:92vw; padding:0; overflow:hidden; display:flex; flex-direction:column; animation:stgPopIn 0.2s ease-out; border-radius:12px;">
+        <div class="stg-head" style="padding:14px 18px;">
+          <div class="stg-icon" style="background:linear-gradient(135deg, #6366f1, #a855f7); color:#fff; width:30px; height:30px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:15px;">
+            📲
+          </div>
+          <div class="stg-head-text">
+            <h1 id="stgQrModalTitle" style="font-size:15px; font-weight:700; margin:0;">Mã QR Kênh Band</h1>
+            <div class="stg-sub" style="font-size:11px;">Quét để truy cập nhanh trên thiết bị di động</div>
+          </div>
+          <button class="stg-close" type="button" title="Đóng" onclick="closeBandQrModal()">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+          </button>
+        </div>
+        <div style="padding:20px; text-align:center; background:var(--stg-surface-1);">
+          <div style="background:#ffffff; padding:14px; border-radius:10px; display:inline-block; box-shadow:0 4px 16px rgba(0,0,0,0.12); margin-bottom:12px;">
+            <img id="stgQrModalImg" src="" alt="Mã QR" style="width:200px; height:200px; display:block; image-rendering:pixelated;">
+          </div>
+          <div id="stgQrModalHint" style="font-size:12px; color:var(--stg-text-dim); margin-bottom:16px; line-height:1.4;">
+            Mở Camera điện thoại hoặc Zalo quét mã để mở ngay
+          </div>
+          <div style="display:flex; gap:8px; justify-content:center;">
+            <button class="stg-btn stg-btn-primary" type="button" id="stgQrModalCopyBtn" style="padding:7px 16px;">📋 Sao chép link</button>
+            <button class="stg-btn" type="button" onclick="closeBandQrModal()" style="padding:7px 16px;">Đóng</button>
+          </div>
         </div>
       </div>
     </div>
@@ -4904,6 +4936,50 @@
                 document.execCommand('copy');
                 finish();
             }
+        }
+
+        function showBandQrModal(inputId, title) {
+            const input = document.getElementById(inputId);
+            if (!input || !input.value) return;
+            const url = input.value;
+            const modal = document.getElementById('stg-qr-modal');
+            const titleEl = document.getElementById('stgQrModalTitle');
+            const imgEl = document.getElementById('stgQrModalImg');
+            const copyBtn = document.getElementById('stgQrModalCopyBtn');
+            if (!modal || !imgEl) return;
+
+            const stgModal = document.getElementById('settings-modal');
+            if (stgModal && stgModal.hasAttribute('data-theme')) {
+                modal.setAttribute('data-theme', stgModal.getAttribute('data-theme'));
+            }
+
+            if (titleEl) titleEl.textContent = title || 'Mã QR';
+
+            try {
+                if (typeof qrcode === 'function') {
+                    const qr = qrcode(0, 'M');
+                    qr.addData(url);
+                    qr.make();
+                    imgEl.src = qr.createDataURL(5, 10);
+                } else {
+                    imgEl.src = 'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=' + encodeURIComponent(url);
+                }
+            } catch (e) {
+                imgEl.src = 'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=' + encodeURIComponent(url);
+            }
+
+            if (copyBtn) {
+                copyBtn.onclick = function() {
+                    copyBandSettingLink(inputId, copyBtn);
+                };
+            }
+
+            modal.style.display = 'flex';
+        }
+
+        function closeBandQrModal() {
+            const modal = document.getElementById('stg-qr-modal');
+            if (modal) modal.style.display = 'none';
         }
 
         function openSettings() {

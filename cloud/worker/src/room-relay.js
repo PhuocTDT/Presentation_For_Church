@@ -224,6 +224,10 @@ export class RoomRelay {
     const body = await request.json().catch(() => null);
     if (!body) return json({ error: 'bad json' }, 400);
     const headerSecret = request.headers.get('X-Admin-Secret') || '';
+    const authHeader = request.headers.get('Authorization') || '';
+    const bearerToken = authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : '';
+
+    let isAuthorized = false;
 
     if (!this.adminSecret) {
       // Bootstrap lần đầu — client (main.js) tự sinh adminSecret, gửi lên
@@ -231,7 +235,42 @@ export class RoomRelay {
       if (!headerSecret || headerSecret.length < 16) return json({ error: 'Thiếu X-Admin-Secret hợp lệ lúc khởi tạo' }, 400);
       this.adminSecret = headerSecret;
       await this.ctx.storage.put('adminSecret', this.adminSecret);
-    } else if (headerSecret !== this.adminSecret) {
+      isAuthorized = true;
+    } else if (headerSecret === this.adminSecret) {
+      isAuthorized = true;
+    } else {
+      // Khi adminSecret không khớp (ví dụ cài lại app, xoá userData, đổi máy),
+      // kiểm tra xem có xác thực qua Cognito token của operator không:
+      if (bearerToken) {
+        if (!this.cognitoVerifier) this.cognitoVerifier = createCognitoVerifier();
+        const payload = await this.cognitoVerifier.verify(bearerToken).catch(() => null);
+        if (payload && payload.email) {
+          if (headerSecret && headerSecret.length >= 16) {
+            this.adminSecret = headerSecret;
+            await this.ctx.storage.put('adminSecret', this.adminSecret);
+            isAuthorized = true;
+          }
+        }
+      }
+      // Hoặc nếu password phòng gửi lên khớp với password phòng hiện có trong DO:
+      if (!isAuthorized && this.config && body.password && body.password === this.config.password) {
+        if (headerSecret && headerSecret.length >= 16) {
+          this.adminSecret = headerSecret;
+          await this.ctx.storage.put('adminSecret', this.adminSecret);
+          isAuthorized = true;
+        }
+      }
+      // Hoặc nếu DO chưa có config hoàn chỉnh:
+      if (!isAuthorized && (!this.config || !this.config.password)) {
+        if (headerSecret && headerSecret.length >= 16) {
+          this.adminSecret = headerSecret;
+          await this.ctx.storage.put('adminSecret', this.adminSecret);
+          isAuthorized = true;
+        }
+      }
+    }
+
+    if (!isAuthorized) {
       return json({ error: 'Sai admin secret' }, 403);
     }
 
