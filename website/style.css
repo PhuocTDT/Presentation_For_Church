@@ -251,17 +251,17 @@ h1, h2, h3, h4, h5, h6 {
 .section-header {
   text-align: center;
   max-width: 780px;
-  margin: 0 auto 40px;
+  margin: 0 auto 60px;
 }
 
 .section-header h2 {
-  font-size: clamp(1.8rem, 3.2vw, 2.7rem);
-  margin-bottom: 14px;
+  font-size: clamp(2rem, 3.5vw, 3rem);
+  margin-bottom: 18px;
 }
 
 .section-header p {
   color: var(--text-muted);
-  font-size: 0.95rem;
+  font-size: 1.125rem;
   line-height: 1.6;
 }
 
@@ -595,10 +595,10 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .hero-desc {
-  font-size: clamp(0.92rem, 1.4vw, 1.05rem);
+  font-size: clamp(1.05rem, 1.8vw, 1.25rem);
   color: var(--text-muted);
-  max-width: 740px;
-  margin: 0 auto 30px;
+  max-width: 780px;
+  margin: 0 auto 36px;
   line-height: 1.6;
 }
 
@@ -1076,8 +1076,8 @@ h1, h2, h3, h4, h5, h6 {
 
 .pillar-card p {
   color: var(--text-muted);
-  font-size: 0.86rem;
-  line-height: 1.55;
+  font-size: 0.95rem;
+  line-height: 1.6;
 }
 
 /* ==========================================================================
@@ -1146,8 +1146,8 @@ h1, h2, h3, h4, h5, h6 {
 
 .bento-card p {
   color: var(--text-muted);
-  font-size: 0.88rem;
-  line-height: 1.55;
+  font-size: 0.98rem;
+  line-height: 1.6;
   max-width: 620px;
 }
 
@@ -1729,7 +1729,7 @@ h1, h2, h3, h4, h5, h6 {
 
 .sim-headline-group p {
   color: var(--text-muted);
-  font-size: 0.82rem;
+  font-size: 0.9rem;
 }
 
 .sim-status-chip {
@@ -2092,20 +2092,20 @@ h1, h2, h3, h4, h5, h6 {
   border-collapse: separate;
   border-spacing: 0;
   text-align: left;
-  min-width: 480px;
+  min-width: 680px;
 }
 
 .compare-table th,
 .compare-table td {
-  padding: 6px 10px;
-  font-size: 0.74rem;
-  line-height: 1.35;
+  padding: 16px 20px;
+  font-size: 0.95rem;
+  line-height: 1.4;
   border-bottom: 1px solid var(--border-subtle);
 }
 
 .compare-table th {
   font-family: var(--font-heading);
-  font-size: 0.76rem;
+  font-size: 1.05rem;
   font-weight: 700;
   background: rgba(15, 23, 42, 0.95);
   white-space: nowrap;
@@ -2120,8 +2120,7 @@ h1, h2, h3, h4, h5, h6 {
   background: #0b111e;
   border-right: 1px solid var(--border-highlight);
   box-shadow: 4px 0 10px rgba(0, 0, 0, 0.35);
-  min-width: 115px;
-  max-width: 135px;
+  min-width: 160px;
 }
 
 .compare-table th:first-child {
@@ -2144,7 +2143,7 @@ h1, h2, h3, h4, h5, h6 {
   background: rgba(56, 189, 248, 0.06);
   border-left: 1px solid rgba(56, 189, 248, 0.2);
   border-right: 1px solid rgba(56, 189, 248, 0.2);
-  min-width: 125px;
+  min-width: 160px;
 }
 
 .compare-table th.highlight-col {
@@ -3541,6 +3540,21 @@ h1, h2, h3, h4, h5, h6 {
     display: none;
   }
 
+  /* Section Header Mobile */
+  .section-header {
+    margin: 0 auto 30px;
+  }
+
+  .section-header h2 {
+    font-size: clamp(1.6rem, 5.5vw, 2.2rem);
+    margin-bottom: 10px;
+  }
+
+  .section-header p {
+    font-size: 0.86rem;
+    line-height: 1.55;
+  }
+
   /* Pillar card responsive */
   .pillar-card {
     padding: 22px 18px;
@@ -3564,13 +3578,13 @@ h1, h2, h3, h4, h5, h6 {
   }
 
   .pillar-card p {
-    font-size: 0.9rem;
-    line-height: 1.55;
+    font-size: 0.82rem;
+    line-height: 1.5;
   }
 
   /* Sections general spacing */
   section {
-    padding: 50px 0;
+    padding: 45px 0;
   }
 
   /* Hero Section */
@@ -3595,9 +3609,9 @@ h1, h2, h3, h4, h5, h6 {
   }
 
   .hero-desc {
-    font-size: 0.95rem;
-    line-height: 1.6;
-    margin-bottom: 28px;
+    font-size: 0.86rem;
+    line-height: 1.55;
+    margin-bottom: 24px;
     padding: 0 4px;
   }
 
@@ -3725,7 +3739,8 @@ h1, h2, h3, h4, h5, h6 {
   }
 
   .pillar-card p {
-    font-size: 0.9rem;
+    font-size: 0.82rem;
+    line-height: 1.5;
   }
 
   /* Bento Grid */
@@ -3741,6 +3756,11 @@ h1, h2, h3, h4, h5, h6 {
 
   .bento-card h3 {
     font-size: 1.2rem;
+  }
+
+  .bento-card p {
+    font-size: 0.82rem;
+    line-height: 1.5;
   }
 
   .bible-sim-tabs {
