@@ -81,6 +81,7 @@ export function createCognitoVerifier() {
     if (payload.token_use !== 'id') throw new Error('Không phải ID token');
     if (payload.aud !== CLIENT_ID) throw new Error('aud không khớp');
     if (!payload.exp || Date.now() >= payload.exp * 1000) throw new Error('Token đã hết hạn');
+    if (payload.nbf && Date.now() < payload.nbf * 1000) throw new Error('Token chưa có hiệu lực');
 
     const key = await importKeyForKid(header.kid);
     const signature = b64urlToBytes(sigB64);

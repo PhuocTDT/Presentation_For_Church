@@ -63,7 +63,15 @@ function b64urlEncodeStr(str) {
 function b64urlDecodeToStr(s) {
   s = String(s || '').replace(/-/g, '+').replace(/_/g, '/');
   while (s.length % 4) s += '=';
-  try { return atob(s); } catch (e) { return ''; }
+  try {
+    // atob() trả chuỗi Latin-1 bytes — phải decode lại qua TextDecoder để
+    // khôi phục đúng UTF-8 (ký tự tiếng Việt dấu multi-byte). Dùng cách
+    // compatible nhất: chuyển binary string sang Uint8Array rồi decode.
+    const bin = atob(s);
+    const bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    return new TextDecoder('utf-8').decode(bytes);
+  } catch (e) { return ''; }
 }
 async function importHmacKey(secretHex) {
   const bytes = new Uint8Array(secretHex.match(/.{1,2}/g).map((h) => parseInt(h, 16)));
@@ -425,9 +433,14 @@ export class RoomRelay {
   async afterIdentityVerified(account) {
     if (!this.config.passwordRequiredWithAccounts) return json(await this.finishLogin(account));
     const tempToken = randomHex(16);
+    const now = Date.now();
+    // Dọn entry hết hạn trước khi thêm mới — chống inflate RAM khi bị abuse
+    for (const [k, v] of this.pendingLogins) {
+      if (v.expiresAt < now) this.pendingLogins.delete(k);
+    }
     this.pendingLogins.set(tempToken, {
       accountId: account.id, name: account.name, mustChangePassword: !!account.mustChangePassword,
-      expiresAt: Date.now() + PENDING_LOGIN_MAX_AGE_MS
+      expiresAt: now + PENDING_LOGIN_MAX_AGE_MS
     });
     return json({ needsRoomPassword: true, tempToken });
   }

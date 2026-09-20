@@ -31,8 +31,23 @@ document.addEventListener('DOMContentLoaded', () => {
 
   let session = getSession();
 
-  // Guard: If not logged in, redirect to login page
-  if (!session || !session.idToken) {
+  // Kiểm tra token hợp lệ: phải có idToken và chưa hết hạn (exp claim trong JWT payload)
+  function isSessionExpired(sess) {
+    if (!sess || !sess.idToken) return true;
+    try {
+      const parts = sess.idToken.split('.');
+      if (parts.length !== 3) return true;
+      const payload = JSON.parse(atob(parts[1].replace(/-/g, '+').replace(/_/g, '/')));
+      // exp là Unix timestamp (giây) — hết hạn nếu đã qua
+      return !payload.exp || Date.now() >= payload.exp * 1000;
+    } catch (e) {
+      return true;
+    }
+  }
+
+  // Guard: If not logged in or token expired, redirect to login page
+  if (!session || !session.idToken || isSessionExpired(session)) {
+    clearSession();
     window.location.href = 'index.html#get-account';
     return;
   }

@@ -3329,11 +3329,7 @@ h1, h2, h3, h4, h5, h6 {
   }
 
   .mockup-body {
-    grid-template-columns: 1fr;
-  }
-
-  .mockup-operator-side {
-    display: none;
+    grid-template-columns: 280px 1fr;
   }
 
   .bento-card.col-8,
@@ -3643,85 +3639,280 @@ h1, h2, h3, h4, h5, h6 {
     font-size: 0.74rem;
   }
 
-  /* Hero Mockup */
+  /* Hero Mockup - Keep exact desktop layout on mobile */
   .hero-mockup-wrapper {
     margin-top: 10px;
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
   }
 
   .mockup-window {
     border-radius: var(--radius-md);
+    min-width: 100%;
   }
 
   .mockup-titlebar {
-    padding: 8px 12px;
-    font-size: 0.75rem;
+    padding: 6px 10px;
+    font-size: 0.68rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .mockup-dots {
+    gap: 5px;
+  }
+
+  .mockup-dot {
+    width: 8px;
+    height: 8px;
   }
 
   .mockup-title {
+    font-size: 0.62rem;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    max-width: 170px;
+    max-width: 150px;
   }
 
   .mockup-actions-badge {
-    font-size: 0.68rem;
-    padding: 2px 6px;
+    font-size: 0.55rem;
+    padding: 1px 5px;
+    gap: 4px;
+    border-radius: 4px;
+    white-space: nowrap;
   }
 
+  .mockup-actions-badge .live-dot {
+    width: 5px;
+    height: 5px;
+  }
+
+  /* Menubar stays visible on mobile */
   .mockup-menubar {
-    display: none;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 3px 10px;
+    font-size: 0.58rem;
+    background: #0f172a;
+    overflow: hidden;
+    white-space: nowrap;
   }
 
+  .mockup-menubar span {
+    padding: 1px 4px;
+  }
+
+  /* Mockup 2-column Body */
+  .mockup-body {
+    display: grid;
+    grid-template-columns: 36% 64%;
+    min-height: 230px;
+    position: relative;
+    background: #0b0f19;
+  }
+
+  /* Floating Band Tab stays visible */
   .mockup-band-tab {
-    display: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    writing-mode: vertical-rl;
+    text-orientation: mixed;
+    transform: translateY(-50%);
+    font-size: 0.5rem;
+    padding: 6px 2px;
+    border-radius: 0 4px 4px 0;
+    width: 13px;
+    letter-spacing: 0.5px;
+    z-index: 10;
   }
 
+  /* Left Operator Schedule Column */
+  .mockup-operator-side {
+    display: flex;
+    flex-direction: column;
+    background: #0f1626;
+    border-right: 1px solid var(--border-subtle);
+    padding-left: 14px !important;
+    overflow: hidden;
+  }
+
+  .op-header {
+    padding: 5px 6px;
+    font-size: 0.56rem;
+    border-bottom: 1px solid var(--border-subtle);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .op-badge {
+    font-size: 0.5rem;
+    padding: 1px 4px;
+  }
+
+  .op-schedule-list {
+    padding: 4px;
+    gap: 3px;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .op-schedule-item {
+    padding: 3px 4px;
+    gap: 5px;
+    border-radius: 4px;
+    font-size: 0.54rem;
+    line-height: 1.15;
+  }
+
+  .op-schedule-item .item-icon {
+    width: 14px;
+    height: 14px;
+    font-size: 0.48rem;
+    border-radius: 3px;
+    flex-shrink: 0;
+  }
+
+  .op-schedule-item div div {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-size: 0.54rem;
+    line-height: 1.15;
+    max-width: 90px;
+  }
+
+  .op-schedule-item small {
+    font-size: 0.46rem;
+    display: block;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 90px;
+    line-height: 1.1;
+  }
+
+  /* Right Live Display Column */
   .mockup-live-display {
-    padding: 20px 14px 14px;
-    min-height: 240px;
+    position: relative;
+    padding: 26px 6px 24px !important;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    min-height: auto;
+    background-size: cover;
+    background-position: center;
+  }
+
+  .mockup-live-header {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 20px;
+    padding: 0 6px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: #991b1b;
+  }
+
+  .mockup-live-header .live-badge-left {
+    font-size: 0.52rem;
+    gap: 3px;
+    font-weight: 800;
+  }
+
+  .mockup-live-header .live-badge-left .red-dot {
+    width: 4px;
+    height: 4px;
+  }
+
+  .mockup-live-header .live-btn-group {
+    gap: 3px;
+  }
+
+  .mockup-live-header .live-top-btn {
+    font-size: 0.48rem;
+    padding: 1px 4px;
+    border-radius: 2px;
+  }
+
+  .mockup-live-content {
+    max-width: 100%;
+    padding: 0 4px;
+    text-align: center;
   }
 
   .mockup-song-badge {
-    font-size: 0.68rem;
-    padding: 2px 8px;
-    margin-bottom: 8px;
+    font-size: 0.48rem;
+    letter-spacing: 0.06em;
+    padding: 1px 5px;
+    margin-bottom: 2px;
   }
 
   .mockup-song-title {
-    font-size: clamp(1.05rem, 4.2vw, 1.5rem);
-    line-height: 1.35;
-    margin-bottom: 8px;
+    font-size: clamp(0.68rem, 2.4vw, 1.1rem);
+    font-weight: 800;
+    line-height: 1.2;
+    margin-bottom: 3px;
   }
 
   .mockup-song-sub {
-    font-size: 0.82rem;
-    line-height: 1.4;
+    font-size: clamp(0.5rem, 1.6vw, 0.75rem);
+    line-height: 1.25;
   }
 
   .mockup-live-controls {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 6px;
-    font-size: 0.72rem;
+    position: absolute;
+    bottom: 3px;
+    left: 4px;
+    right: 4px;
+    padding: 2px 4px;
+    font-size: 0.46rem;
+    border-radius: 4px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-direction: row;
+    gap: 3px;
+    background: rgba(15, 23, 42, 0.75);
   }
 
   .live-tags {
-    flex-wrap: wrap;
-    gap: 4px;
+    display: flex;
+    gap: 2px;
+    flex-wrap: nowrap;
   }
 
   .live-tag {
-    font-size: 0.62rem;
-    padding: 2px 6px;
+    font-size: 0.44rem;
+    padding: 1px 3px;
+    border-radius: 2px;
+    white-space: nowrap;
   }
 
+  .mockup-live-controls > div:last-child {
+    white-space: nowrap;
+    font-size: 0.44rem;
+  }
+
+  /* Statusbar stays single horizontal row */
   .mockup-statusbar {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 3px;
-    padding: 8px 12px;
-    font-size: 0.7rem;
+    height: 20px;
+    padding: 0 8px;
+    font-size: 0.52rem;
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    white-space: nowrap;
   }
 
   /* Pillars Grid */
@@ -4048,10 +4239,6 @@ h1, h2, h3, h4, h5, h6 {
 
   .stat-label {
     font-size: 0.7rem;
-  }
-
-  .mockup-song-title {
-    font-size: 1.05rem;
   }
 
   .account-trust-footer {

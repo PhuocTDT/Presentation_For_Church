@@ -2,6 +2,14 @@
 
 Tất cả các thay đổi và cập nhật quan trọng của dự án được ghi lại tại đây.
 
+## [3.1.7] - 2026-09-20
+
+### Fix & Feature Enhancements
+- **Window Title & Versioning**: Sửa lỗi nhân đôi tiêu đề ứng dụng (Double Title) trên thanh tiêu đề Windows; hiển thị định dạng chuẩn `Presentation For Church - v3.1.7` (kèm tên file lịch trình khi mở).
+- **Cơ chế Từ chối Setlist (Kênh Band)**: Bổ sung nút `[Từ chối]` cho thẻ Setlist trong sidebar người vận hành với hộp thoại nhập lý do tùy chọn, gửi thông báo đính chính tức thì về điện thoại ban hát; bổ sung nút `[Nạp lại]` tiện lợi nếu người vận hành lỡ bấm từ chối nhầm.
+- **Deduplication & Ring Buffer**: Ngăn chặn trùng lặp tin nhắn/setlist khi client/operator kết nối lại phòng Durable Object.
+- **Website & Documentation**: Đồng bộ giao diện mô phỏng Kênh Band và cập nhật số phiên bản v3.1.7 trên trang chủ.
+
 ## [Unreleased] - Kênh Band LAN (P1 + P2 + P2.5 + P4)
 
 ### chore(band): website hosting + đổi tên domain relay + dọn tunnel cũ (2026-09-19)

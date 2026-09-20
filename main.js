@@ -1209,7 +1209,7 @@ async function startBandComm() {
       code: err && err.code || null,
       message: err && err.message || String(err),
       syscall: err && err.syscall || null,
-      port: err && err.port || (bandCommStore && bandCommStore.load().port) || null,
+      port: (err && err.port) ? err.port : null,
       hint: bandStartupHint(err)
     };
     lastBandStartError = detail;
@@ -1436,10 +1436,14 @@ function initBandComm() {
 }
 
 function createWindow() {
+  const appVer = `v${app.getVersion()}`;
+  const baseTitle = `Presentation For Church - ${appVer}`;
+  const fullBaseTitle = !app.isPackaged ? `${baseTitle} [DEV]` : baseTitle;
+
   const win = new BrowserWindow({
     width: 1400,
     height: 900,
-    title: 'Presentation For Church',
+    title: fullBaseTitle,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
@@ -1449,19 +1453,20 @@ function createWindow() {
   });
 
   mainWindow = win;
-  if (!app.isPackaged) {
-    win.setTitle('Presentation For Church [DEV]');
-    win.on('page-title-updated', (e, title) => {
-      e.preventDefault();
-      win.setTitle(`${title} [DEV]`);
-    });
-  } else {
-    win.setTitle('Presentation For Church');
-    win.on('page-title-updated', (e, title) => {
-      e.preventDefault();
-      win.setTitle(title ? `${title} - Presentation For Church` : 'Presentation For Church');
-    });
-  }
+  win.setTitle(fullBaseTitle);
+  win.on('page-title-updated', (e, title) => {
+    e.preventDefault();
+    if (!title || title === 'Presentation For Church' || title === 'easyworship-app') {
+      win.setTitle(fullBaseTitle);
+    } else {
+      const cleanTitle = title.replace(/\s*[-—]\s*Presentation For Church.*$/i, '').trim();
+      if (!cleanTitle || cleanTitle === 'Presentation For Church') {
+        win.setTitle(fullBaseTitle);
+      } else {
+        win.setTitle(`${cleanTitle} - ${fullBaseTitle}`);
+      }
+    }
+  });
   win.loadFile('index.html');
   setupMenu(win);
 
@@ -1664,6 +1669,7 @@ app.whenReady().then(() => {
   });
 
   // --- IPC Handlers ---
+  ipcMain.handle('get-app-version', () => app.getVersion());
   ipcMain.handle('select-folder', async () => {
     const r = await dialog.showOpenDialog({ properties: ['openDirectory'] });
     if (!r.canceled && r.filePaths.length > 0) return r.filePaths[0];

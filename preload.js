@@ -1,6 +1,7 @@
 const { contextBridge, ipcRenderer } = require('electron');
 
 contextBridge.exposeInMainWorld('electronAPI', {
+  getAppVersion: () => ipcRenderer.invoke('get-app-version'),
   loadSongs: () => ipcRenderer.invoke('load-songs'),
   bulkReplaceLibraryText: (payload) => ipcRenderer.invoke('bulk-replace-library-text', payload),
   loadSettings: () => ipcRenderer.invoke('load-settings'),

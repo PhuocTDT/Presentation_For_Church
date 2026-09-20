@@ -1150,11 +1150,13 @@
       #bandPanel .bp-conn .bp-gal .gi .nm { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
       #bandPanel .bp-conn .bp-gal .gi .rm { border: none; background: none; color: #c0392f; font-size: 1.05rem; line-height: 1; cursor: pointer; padding: 0 4px; }
       #bandPanel .bp-conn .bp-gal .empty { color: #8a93a3; font-size: .78rem; }
-      #bandPanel .bp-slcard { align-self: stretch; border: 1px solid #bcd6f0; background: #eef5fd; border-radius: 11px; padding: 8px 10px; margin: 2px 0; }
+      #bandPanel .bp-slcard { align-self: stretch; border: 1px solid #bcd6f0; background: #eef5fd; border-radius: 11px; padding: 8px 10px; margin: 2px 0; transition: all 0.2s ease; }
+      #bandPanel .bp-slcard.loaded { border-color: #a7f3d0; background: #ecfdf5; }
+      #bandPanel .bp-slcard.rejected { border-color: #fecaca; background: #fef2f2; opacity: 0.88; }
       #bandPanel .bp-slcard .t { font-weight: 700; font-size: .88rem; }
       #bandPanel .bp-slcard .s { font-size: .76rem; color: #5b6472; margin: 2px 0 6px; }
-      #bandPanel .bp-slcard .a { display: flex; gap: 6px; }
-      #bandPanel .bp-slcard .a .bp-btn { flex: 1; }
+      #bandPanel .bp-slcard .a { display: flex; gap: 6px; flex-wrap: wrap; }
+      #bandPanel .bp-slcard .a .bp-btn { flex: 1 1 auto; }
       #bandPanel .bp-slcard .list { white-space: pre-wrap; font-size: .78rem; color: #1e2430; margin-top: 6px; border-top: 1px solid #cfe0f3; padding-top: 6px; }
 
       #bandPanel .bp-feed { flex: 1; overflow-y: auto; padding: 8px 10px; display: flex; flex-direction: column; gap: 9px; }
@@ -1207,21 +1209,21 @@
       #bandPanel .bp-conn .bp-purl input:focus { border-color: #2563a8; outline: none; }
       #bandPanel .bp-conn .bp-wizard-hint-in-conn { font-size: .74rem; color: #8a93a3; margin: -4px 0 10px; }
       #bandPanel .bp-conn .bp-composer-link { margin-top: 10px; }
-      #bandPanel .bp-conn .bp-composer-link > .k { display: block; width: auto; color: #8a93a3; font-size: .7rem; text-transform: uppercase; letter-spacing: .05em; margin-bottom: 3px; }
-      #bandPanel .bp-conn .bp-composer-link .row2 { margin-top: 0; flex-wrap: nowrap; }
+      #bandPanel .bp-conn .bp-composer-link > .k { display: block; width: auto; color: #8a93a3; font-size: .7rem; text-transform: uppercase; letter-spacing: .05em; margin-bottom: 5px; }
       #bandPanel .bp-conn #bpComposerLink {
-        flex: 1 1 auto; min-width: 0; border: 1px solid #d7dae1; border-radius: 8px; padding: 6px 9px;
+        width: 100%; box-sizing: border-box; border: 1px solid #d7dae1; border-radius: 8px; padding: 7px 10px;
         font-family: Consolas, ui-monospace, monospace; font-size: .8rem; color: #1e2430; background: #f8fafc;
       }
-      #bandPanel .bp-conn #bpComposerLinkCopy { flex: none; }
-      #bandPanel .bp-conn .bp-composer-link-hint { font-size: .74rem; color: #8a93a3; margin-top: 5px; }
+      #bandPanel .bp-conn .bp-composer-link .bp-btn {
+        display: inline-flex; align-items: center; gap: 6px; cursor: pointer; padding: 6px 12px; font-weight: 500; font-size: .8rem;
+      }
 
       /* ===== Settings modal v2 — sidebar + danh mục, màu đồng bộ theo
          Tailwind config của app (primary #5048e5, background-light/dark).
          Scope toàn bộ dưới #settings-modal, đổi theme qua [data-theme] do
          JS set (đồng bộ globalSettings.theme — KHÔNG dùng prefers-color-scheme
          vì app đã có công tắc theme riêng, không theo hệ điều hành). ===== */
-      #settings-modal {
+      #settings-modal, #stg-qr-modal {
         z-index: 99999 !important;
         --stg-accent: #5048e5; --stg-accent-dim: #423bc4; --stg-accent-soft: rgba(80,72,229,.16);
         --stg-accent-contrast: #ffffff; --stg-danger: #dc4c4c;
@@ -1230,37 +1232,37 @@
         --stg-text: #f1f0f6; --stg-text-dim: #a8a4c0; --stg-text-faint: #6d6890;
         --stg-shadow: rgba(0,0,0,.5);
       }
-      #settings-modal[data-theme="light"] {
+      #settings-modal[data-theme="light"], #stg-qr-modal[data-theme="light"] {
         --stg-accent-soft: rgba(80,72,229,.10);
         --stg-bg: #f6f6f8; --stg-surface: #ffffff; --stg-surface-2: #f1f1f5; --stg-surface-3: #e7e7ee;
         --stg-border: #dcdce6; --stg-border-soft: #ececf2;
         --stg-text: #1c1b2e; --stg-text-dim: #5c5a75; --stg-text-faint: #8b899f;
         --stg-shadow: rgba(20,20,35,.12);
       }
-      #settings-modal .stg-modal {
+      #settings-modal .stg-modal, #stg-qr-modal .stg-modal {
         width: 100%; max-width: 688px; height: min(544px, 92vh);
         background: var(--stg-surface); border: 1px solid var(--stg-border); border-radius: 14px;
         box-shadow: 0 24px 60px var(--stg-shadow);
         display: flex; flex-direction: column; overflow: hidden;
         font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; color: var(--stg-text);
       }
-      #settings-modal .stg-head {
+      #settings-modal .stg-head, #stg-qr-modal .stg-head {
         display: flex; align-items: center; gap: 10px; padding: 16px 18px;
         border-bottom: 1px solid var(--stg-border-soft); flex-shrink: 0;
       }
-      #settings-modal .stg-head .stg-icon {
+      #settings-modal .stg-head .stg-icon, #stg-qr-modal .stg-head .stg-icon {
         width: 30px; height: 30px; border-radius: 8px; background: var(--stg-accent-soft);
         display: flex; align-items: center; justify-content: center; color: var(--stg-accent); flex-shrink: 0;
       }
-      #settings-modal .stg-head-text { flex: 1; min-width: 0; }
-      #settings-modal .stg-head h1 { font-size: 15px; font-weight: 600; margin: 0; letter-spacing: -.01em; }
-      #settings-modal .stg-head .stg-sub { font-size: 12px; color: var(--stg-text-faint); margin-top: 1px; }
-      #settings-modal .stg-close {
+      #settings-modal .stg-head-text, #stg-qr-modal .stg-head-text { flex: 1; min-width: 0; }
+      #settings-modal .stg-head h1, #stg-qr-modal .stg-head h1 { font-size: 15px; font-weight: 600; margin: 0; letter-spacing: -.01em; color: var(--stg-text); }
+      #settings-modal .stg-head .stg-sub, #stg-qr-modal .stg-head .stg-sub { font-size: 12px; color: var(--stg-text-faint); margin-top: 1px; }
+      #settings-modal .stg-close, #stg-qr-modal .stg-close {
         width: 28px; height: 28px; border-radius: 7px; border: none; background: transparent; color: var(--stg-text-dim);
         display: flex; align-items: center; justify-content: center; cursor: pointer;
         transition: background .15s, color .15s; flex-shrink: 0;
       }
-      #settings-modal .stg-close:hover { background: var(--stg-surface-3); color: var(--stg-text); }
+      #settings-modal .stg-close:hover, #stg-qr-modal .stg-close:hover { background: var(--stg-surface-3); color: var(--stg-text); }
 
       #settings-modal .stg-body { flex: 1; display: flex; min-height: 0; }
       #settings-modal .stg-sidebar {
@@ -1353,14 +1355,14 @@
       #settings-modal .stg-box-grid .stg-cell input { width: 100%; text-align: center; padding: 6px 4px; }
       #settings-modal .stg-box-grid .stg-cell label { display: block; font-size: 10px; color: var(--stg-text-faint); margin-top: 4px; letter-spacing: .02em; }
 
-      #settings-modal .stg-btn {
+      #settings-modal .stg-btn, #stg-qr-modal .stg-btn {
         font-family: inherit; font-size: 12.5px; font-weight: 500; padding: 8px 13px; border-radius: 6px;
         border: 1px solid var(--stg-border); background: var(--stg-surface-2); color: var(--stg-text);
         cursor: pointer; display: inline-flex; align-items: center; gap: 7px; transition: background .15s, border-color .15s;
       }
-      #settings-modal .stg-btn:hover { background: var(--stg-surface-3); border-color: var(--stg-text-faint); }
-      #settings-modal .stg-btn-primary { background: var(--stg-accent); border-color: var(--stg-accent); color: var(--stg-accent-contrast); font-weight: 600; }
-      #settings-modal .stg-btn-primary:hover { background: var(--stg-accent-dim); border-color: var(--stg-accent-dim); }
+      #settings-modal .stg-btn:hover, #stg-qr-modal .stg-btn:hover { background: var(--stg-surface-3); border-color: var(--stg-text-faint); }
+      #settings-modal .stg-btn-primary, #stg-qr-modal .stg-btn-primary { background: var(--stg-accent); border-color: var(--stg-accent); color: var(--stg-accent-contrast); font-weight: 600; }
+      #settings-modal .stg-btn-primary:hover, #stg-qr-modal .stg-btn-primary:hover { background: var(--stg-accent-dim); border-color: var(--stg-accent-dim); }
 
       #settings-modal .stg-path-row { display: flex; gap: 8px; align-items: center; width: 100%; }
       #settings-modal .stg-path-row input { flex: 1; color: var(--stg-text-dim); }
@@ -1485,11 +1487,11 @@
           <div class="bp-kv"><span class="k">Đang nối</span><span class="v" id="bpCount">0</span></div>
           <div class="bp-composer-link">
             <span class="k">Link soạn setlist (dùng được cả khi tắt máy)</span>
-            <div class="row2">
-              <input id="bpComposerLink" type="text" readonly spellcheck="false">
-              <button class="bp-btn" id="bpComposerLinkCopy" type="button" title="Sao chép link">Sao chép</button>
+            <input id="bpComposerLink" type="text" readonly spellcheck="false">
+            <div style="display:flex; gap:8px; align-items:center; margin-top:8px;">
+              <button class="bp-btn" id="bpComposerLinkCopy" type="button" onclick="copyBandSettingLink('bpComposerLink', this)">📋 Sao chép</button>
+              <button class="bp-btn" id="bpComposerLinkQr" type="button" onclick="showBandQrModal('bpComposerLink', 'Mã QR Soạn Setlist Từ Xa')">📲 Mã QR</button>
             </div>
-            <div class="bp-composer-link-hint">Gửi link này 1 lần cho band (Zalo/Messenger) — họ tự vào soạn + gửi setlist bất cứ lúc nào, kể cả lúc laptop tắt hẳn.</div>
           </div>
           <div class="bp-gal">
             <div class="bp-kv">
@@ -2426,7 +2428,7 @@
                 Dữ liệu
               </button>
             </div>
-            <div class="stg-sidebar-footer">Presentation For Church</div>
+            <div class="stg-sidebar-footer" id="stg-sidebar-app-version">Presentation For Church</div>
           </div>
 
           <div class="stg-content">
@@ -2871,30 +2873,30 @@
     </div>
 
     <!-- Modal xem Mã QR phóng to trong Cài Đặt -->
-    <div class="modal-overlay" id="stg-qr-modal" style="display:none; z-index:999999; justify-content:center; align-items:center; background:rgba(0,0,0,0.65); backdrop-filter:blur(4px);" onclick="if(event.target===this)closeBandQrModal()">
-      <div class="stg-modal" style="width:380px; max-width:92vw; padding:0; overflow:hidden; display:flex; flex-direction:column; animation:stgPopIn 0.2s ease-out; border-radius:12px;">
-        <div class="stg-head" style="padding:14px 18px;">
-          <div class="stg-icon" style="background:linear-gradient(135deg, #6366f1, #a855f7); color:#fff; width:30px; height:30px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:15px;">
+    <div class="modal-overlay" id="stg-qr-modal" style="display:none; z-index:999999; justify-content:center; align-items:center; background:rgba(0,0,0,0.65); backdrop-filter:blur(6px);" onclick="if(event.target===this)closeBandQrModal()">
+      <div class="stg-modal" style="width:380px; max-width:92vw; height:auto; padding:0; overflow:hidden; display:flex; flex-direction:column; animation:stgPopIn 0.2s ease-out; border-radius:14px; background:var(--stg-surface); border:1px solid var(--stg-border); box-shadow:0 24px 60px var(--stg-shadow);">
+        <div class="stg-head" style="padding:14px 18px; border-bottom:1px solid var(--stg-border-soft); display:flex; align-items:center; gap:10px;">
+          <div class="stg-icon" style="background:var(--stg-accent-soft); color:var(--stg-accent); width:32px; height:32px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:16px; flex-shrink:0;">
             📲
           </div>
-          <div class="stg-head-text">
-            <h1 id="stgQrModalTitle" style="font-size:15px; font-weight:700; margin:0;">Mã QR Kênh Band</h1>
-            <div class="stg-sub" style="font-size:11px;">Quét để truy cập nhanh trên thiết bị di động</div>
+          <div class="stg-head-text" style="flex:1; min-width:0;">
+            <h1 id="stgQrModalTitle" style="font-size:15px; font-weight:700; margin:0; color:var(--stg-text);">Mã QR Kênh Band</h1>
+            <div class="stg-sub" style="font-size:11px; color:var(--stg-text-faint); margin-top:2px;">Quét để truy cập nhanh trên thiết bị di động</div>
           </div>
           <button class="stg-close" type="button" title="Đóng" onclick="closeBandQrModal()">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
           </button>
         </div>
-        <div style="padding:20px; text-align:center; background:var(--stg-surface-1);">
-          <div style="background:#ffffff; padding:14px; border-radius:10px; display:inline-block; box-shadow:0 4px 16px rgba(0,0,0,0.12); margin-bottom:12px;">
+        <div style="padding:22px; text-align:center; background:var(--stg-surface-2);">
+          <div style="background:#ffffff; padding:14px; border-radius:12px; display:inline-block; box-shadow:0 6px 20px rgba(0,0,0,0.15); margin-bottom:14px; border:1px solid rgba(0,0,0,0.06);">
             <img id="stgQrModalImg" src="" alt="Mã QR" style="width:200px; height:200px; display:block; image-rendering:pixelated;">
           </div>
-          <div id="stgQrModalHint" style="font-size:12px; color:var(--stg-text-dim); margin-bottom:16px; line-height:1.4;">
+          <div id="stgQrModalHint" style="font-size:12.5px; color:var(--stg-text-dim); margin-bottom:18px; line-height:1.45;">
             Mở Camera điện thoại hoặc Zalo quét mã để mở ngay
           </div>
-          <div style="display:flex; gap:8px; justify-content:center;">
-            <button class="stg-btn stg-btn-primary" type="button" id="stgQrModalCopyBtn" style="padding:7px 16px;">📋 Sao chép link</button>
-            <button class="stg-btn" type="button" onclick="closeBandQrModal()" style="padding:7px 16px;">Đóng</button>
+          <div style="display:flex; gap:10px; justify-content:center;">
+            <button class="stg-btn stg-btn-primary" type="button" id="stgQrModalCopyBtn" style="padding:8px 18px;">📋 Sao chép link</button>
+            <button class="stg-btn" type="button" onclick="closeBandQrModal()" style="padding:8px 18px;">Đóng</button>
           </div>
         </div>
       </div>
@@ -4593,6 +4595,12 @@
             loadMedia();
             setTimeout(loadSystemFonts, 0);
             setTimeout(syncMonitorVisibility, 0);
+            if (window.electronAPI && typeof window.electronAPI.getAppVersion === 'function') {
+                window.electronAPI.getAppVersion().then(ver => {
+                    const el = document.getElementById('stg-sidebar-app-version');
+                    if (el && ver) el.textContent = `Presentation For Church v${ver}`;
+                }).catch(() => {});
+            }
             document.querySelectorAll('#style-template-manager-modal input, #style-template-manager-modal select').forEach(el => {
                 const markDirtyAndPreview = () => { styleEditorDirty = true; updateStyleTemplatePreview(); };
                 el.addEventListener('input', markDirtyAndPreview);
@@ -4949,9 +4957,8 @@
             if (!modal || !imgEl) return;
 
             const stgModal = document.getElementById('settings-modal');
-            if (stgModal && stgModal.hasAttribute('data-theme')) {
-                modal.setAttribute('data-theme', stgModal.getAttribute('data-theme'));
-            }
+            const curTheme = (stgModal && stgModal.getAttribute('data-theme')) || (typeof globalSettings !== 'undefined' && globalSettings.theme) || 'dark';
+            modal.setAttribute('data-theme', curTheme);
 
             if (titleEl) titleEl.textContent = title || 'Mã QR';
 
@@ -8690,23 +8697,6 @@
         }).catch(function () {});
       }
       refreshComposerLink();
-      $('bpComposerLinkCopy') && $('bpComposerLinkCopy').addEventListener('click', function () {
-        var input = $('bpComposerLink');
-        var btn = $('bpComposerLinkCopy');
-        if (!input.value) return;
-        var done = function () {
-          var old = btn.textContent;
-          btn.textContent = 'Đã chép ✓';
-          setTimeout(function () { btn.textContent = old; }, 1500);
-        };
-        if (navigator.clipboard && navigator.clipboard.writeText) {
-          navigator.clipboard.writeText(input.value).then(done).catch(function () {
-            input.select(); try { document.execCommand('copy'); done(); } catch (e) {}
-          });
-        } else {
-          input.select(); try { document.execCommand('copy'); done(); } catch (e) {}
-        }
-      });
 
       // ---- chord-sheet gallery (operator uploads; phones show below buttons) ----
       function renderGal(m) {
@@ -8876,7 +8866,7 @@
       api.onServerStatus(function (_e, st) { applyStatus(st); });
       api.onSetlist && api.onSetlist(function (_e, sl) { showSetlistCard(sl); });
 
-      // ---- setlist từ điện thoại: hiện thẻ trong feed, [Xem] / [Nạp vào Schedule] ----
+      // ---- setlist từ điện thoại: hiện thẻ trong feed, [Xem] / [Nạp vào Schedule] / [Từ chối] ----
       function showSetlistCard(sl) {
         if (!sl || !Array.isArray(sl.items)) return;
         var feed = $('bpFeed');
@@ -8887,18 +8877,60 @@
         card.innerHTML =
           '<div class="t">📋 Setlist: ' + escHtml(sl.name) + '</div>' +
           '<div class="s">' + sl.items.length + ' bài · từ ' + escHtml(who) + '</div>' +
-          '<div class="a"><button class="bp-btn" data-x="view">Xem</button>' +
-          '<button class="bp-btn go" data-x="load">Nạp vào Schedule</button></div>' +
+          '<div class="a">' +
+            '<button class="bp-btn" data-x="view" title="Xem danh sách bài">Xem (' + sl.items.length + ')</button>' +
+            '<button class="bp-btn go" data-x="load" title="Nạp vào lịch trình máy chiếu">Nạp</button>' +
+            '<button class="bp-btn stop" data-x="reject" title="Từ chối nạp setlist này">Từ chối</button>' +
+          '</div>' +
           '<div class="list bp-hidden"></div>';
         var listEl = card.querySelector('.list');
         listEl.textContent = sl.items.map(function (it, i) { return (i + 1) + '. ' + (it.title || it.id); }).join('\n');
+        
+        var actionsEl = card.querySelector('.a');
         card.querySelector('[data-x="view"]').addEventListener('click', function () {
           listEl.classList.toggle('bp-hidden');
         });
-        card.querySelector('[data-x="load"]').addEventListener('click', function () {
-          if (!confirm('Nạp setlist "' + sl.name + '" — thay thế toàn bộ Schedule hiện tại?')) return;
+
+        function performLoad(isReload) {
+          if (!confirm((isReload ? 'Nạp lại' : 'Nạp') + ' setlist "' + sl.name + '" — thay thế toàn bộ Schedule hiện tại?')) return;
           loadSetlistIntoSchedule(sl);
+          card.classList.remove('rejected');
+          card.classList.add('loaded');
+          actionsEl.innerHTML = '<span style="color:#059669;font-weight:700;font-size:0.8rem;padding:3px 0;">✓ Đã nạp vào Schedule (' + sl.items.length + ' bài)</span>';
+          if (api && typeof api.send === 'function') {
+            api.send({ to: 'all', text: isReload ? ('✅ Operator đã tiếp nhận và nạp lại setlist "' + sl.name + '" vào Schedule.') : ('✅ Operator đã nạp setlist "' + sl.name + '" vào Schedule máy chiếu.') });
+          }
+        }
+
+        card.querySelector('[data-x="load"]').addEventListener('click', function () {
+          performLoad(false);
         });
+
+        card.querySelector('[data-x="reject"]').addEventListener('click', function () {
+          var reason = prompt('Lý do từ chối nạp setlist "' + sl.name + '" (hoặc bấm OK để từ chối không lý do):', '');
+          if (reason === null) return; // Người dùng bấm Hủy (Cancel)
+          reason = reason.trim();
+          card.classList.remove('loaded');
+          card.classList.add('rejected');
+          actionsEl.innerHTML =
+            '<div style="display:flex;align-items:center;justify-content:space-between;width:100%;gap:6px;">' +
+              '<span style="color:#c0392f;font-weight:700;font-size:0.8rem;">✕ Đã từ chối nạp</span>' +
+              '<button class="bp-btn go" data-x="reload" style="font-size:0.75rem;padding:2px 8px;flex:none;" title="Bấm để nạp lại nếu bạn từ chối nhầm">Nạp lại</button>' +
+            '</div>' +
+            (reason ? '<div style="font-size:0.75rem;color:#991b1b;margin-top:2px;width:100%;">Lý do: ' + escHtml(reason) + '</div>' : '');
+          
+          var reloadBtn = actionsEl.querySelector('[data-x="reload"]');
+          if (reloadBtn) {
+            reloadBtn.addEventListener('click', function () { performLoad(true); });
+          }
+
+          var notifText = '❌ Operator đã từ chối setlist "' + sl.name + '"' + (reason ? ' (Lý do: ' + reason + ')' : '.');
+          if (api && typeof api.send === 'function') {
+            api.send({ to: 'all', text: notifText });
+          }
+          addFeed('sys', '', 'Đã từ chối setlist "' + sl.name + '" từ ' + who + (reason ? ' — Lý do: ' + reason : '') + '.');
+        });
+
         feed.appendChild(card);
         feed.scrollTop = feed.scrollHeight;
         bumpUnread();
@@ -8938,8 +8970,20 @@
         $('bandPanelTabCount').textContent = unread;
       }
 
+      var seenEnvIds = new Set();  // dedup ring-buffer replay — operator reconnect
+
       function handle(env) {
         if (!env || !env.type) return;
+        // Bỏ qua envelope đã render (relay replay ring buffer khi reconnect)
+        if (env.id && env.type !== 'system') {
+          if (seenEnvIds.has(env.id)) return;
+          seenEnvIds.add(env.id);
+          // Giới hạn Set để tránh memory leak (chỉ giữ 500 id gần nhất)
+          if (seenEnvIds.size > 500) {
+            var it = seenEnvIds.values();
+            seenEnvIds.delete(it.next().value);
+          }
+        }
         if (env.type === 'alert') {
           // The alert message itself blinks in the feed; click it to acknowledge.
           addFeed('band', env.from.name, env.text, {

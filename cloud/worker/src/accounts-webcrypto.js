@@ -11,7 +11,7 @@
 // mảng accounts vào `ctx.storage`, các hàm ở đây chỉ thao tác THUẦN trên
 // mảng được truyền vào.
 
-const PBKDF2_ITERATIONS = 10000;
+const PBKDF2_ITERATIONS = 100000;
 const USERNAME_RE = /^[a-z0-9][a-z0-9_.-]{1,31}$/;
 export const MIN_PASSWORD_LEN = 6;
 

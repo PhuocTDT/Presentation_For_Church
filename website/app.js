@@ -157,12 +157,61 @@ document.addEventListener('DOMContentLoaded', () => {
   if (tabChords) tabChords.addEventListener('click', () => switchPhoneTab('chords'));
   if (tabSetlist) tabSetlist.addEventListener('click', () => switchPhoneTab('setlist'));
 
+  function addSetlistToOperatorFeed(sender, name, songList) {
+    if (!simFeedList) return;
+
+    unreadCount++;
+    if (feedCounter) feedCounter.textContent = unreadCount;
+
+    const alertCard = document.createElement('div');
+    alertCard.className = 'op-alert-card';
+    alertCard.style.borderLeft = '3px solid #38bdf8';
+    alertCard.innerHTML = `
+      <div class="alert-main-info">
+        <div class="alert-meta">
+          <span class="sender" style="color:var(--emerald,#10b981); font-weight:700;">${escapeHtml(sender)}</span>
+          <span>• Vừa gửi</span>
+        </div>
+        <div class="alert-text-body">
+          <strong style="color:var(--text,#f8fafc);">📋 Setlist: ${escapeHtml(name)}</strong> (${songList.length} bài)
+          <div style="font-size:0.75rem; color:#94a3b8; margin-top:4px; line-height:1.4;">${songList.map((s, i) => `${i + 1}. ${escapeHtml(s)}`).join('<br>')}</div>
+        </div>
+      </div>
+      <div style="display:flex; gap:6px; margin-top:8px; width:100%;" class="setlist-actions">
+        <button class="alert-ack-btn" style="background:linear-gradient(135deg,#059669,#10b981); color:#fff; border:none; flex:1; padding:6px 10px; border-radius:6px; cursor:pointer;" onclick="handleSetlistAction(this, true, '${escapeHtml(name)}')">Nạp vào Schedule</button>
+        <button class="alert-ack-btn" style="background:rgba(239,68,68,0.15); border:1px solid rgba(239,68,68,0.4); color:#fca5a5; flex:1; padding:6px 10px; border-radius:6px; cursor:pointer;" onclick="handleSetlistAction(this, false, '${escapeHtml(name)}')">Từ chối</button>
+      </div>
+    `;
+
+    simFeedList.insertBefore(alertCard, simFeedList.firstChild);
+  }
+
+  window.handleSetlistAction = function(btn, isAccept, name) {
+    const parent = btn.closest('.setlist-actions');
+    if (!parent) return;
+    if (isAccept) {
+      parent.innerHTML = `<span style="color:#34d399; font-weight:700; font-size:0.8rem; padding:4px 0;">✓ Đã nạp "${escapeHtml(name)}" vào Schedule</span>`;
+      showPhoneToast(`Operator đã nạp Setlist "${name}" vào máy chiếu!`, true);
+    } else {
+      parent.innerHTML = `<span style="color:#f87171; font-weight:700; font-size:0.8rem; padding:4px 0;">✕ Đã từ chối nạp "${escapeHtml(name)}"</span>`;
+      showPhoneToast(`Operator đã từ chối nạp Setlist "${name}".`, true);
+    }
+    if (unreadCount > 0) {
+      unreadCount--;
+      if (feedCounter) feedCounter.textContent = unreadCount;
+    }
+  };
+
   const btnSendSetlistSim = document.getElementById('btnSendSetlistSim');
   if (btnSendSetlistSim) {
     btnSendSetlistSim.addEventListener('click', () => {
       showPhoneToast('Đã gửi Setlist 3 bài về máy vận hành!');
       setTimeout(() => {
-        addAlertToOperatorFeed('Trưởng Ban Hát', '📋 Gửi Setlist mới: [Chúa chính Ngài là Đấng..., Lớn Bấy Duy Ngài, Tình Yêu Thương Xót]', false);
+        addSetlistToOperatorFeed('Trưởng Ban Hát', 'Buổi Thờ Phượng Sáng', [
+          'Chúa chính Ngài là Đấng...',
+          'Lớn Bấy Duy Ngài',
+          'Tình Yêu Thương Xót'
+        ]);
       }, 300);
     });
   }

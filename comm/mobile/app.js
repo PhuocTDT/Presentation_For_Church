@@ -23,20 +23,26 @@
 
   var state = loadState();
   var ws = null;
-  var lastId = null;          // last envelope id seen -> replay cursor on reconnect
+  var lastId = state.lastId || null;  // persist qua reload — tránh replay ring buffer khi mố lại trang
   var reconnTimer = null;
   var reconnDelay = 1000;
   var pingTimer = null;
   var toastQueue = [];
   var toastShowing = false;
   var editingId = null;
+  var saveLastIdTimer = null;  // debounce ghi localStorage
+
 
   var $ = function (id) { return document.getElementById(id); };
 
   function loadState() {
     var s = {};
     try { s = JSON.parse(localStorage.getItem(LS_KEY) || '{}') || {}; } catch (e) { s = {}; }
-    if (!s.profileId) s.profileId = 'p-' + Math.random().toString(16).slice(2, 10);
+    if (!s.profileId) {
+      var _buf = new Uint8Array(8);
+      crypto.getRandomValues(_buf);
+      s.profileId = 'p-' + Array.prototype.map.call(_buf, function (b) { return b.toString(16).padStart(2, '0'); }).join('');
+    }
     if (!Array.isArray(s.buttons)) s.buttons = [];
     if (typeof s.sound !== 'boolean') s.sound = true;
     if (typeof s.vibrate !== 'boolean') s.vibrate = true;
@@ -591,7 +597,13 @@
       if (msg.kind === 'pong') return;
       if (msg.kind !== 'envelope' || !msg.envelope) return;
       var env = msg.envelope;
-      if (env.id && env.type !== 'presence') lastId = env.id;
+      if (env.id && env.type !== 'presence') {
+        lastId = env.id;
+        state.lastId = lastId;   // persist: có hiệu lực qua reload/reconnect
+        // Debounce ghi localStorage — nhiều messages đến liên tục chỉ ghi 1 lần
+        clearTimeout(saveLastIdTimer);
+        saveLastIdTimer = setTimeout(saveState, 500);
+      }
       handleEnvelope(env);
     };
     ws.onerror = function () { /* onclose fires right after */ };
