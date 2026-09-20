@@ -2,6 +2,14 @@
 
 Tất cả các thay đổi và cập nhật quan trọng của dự án được ghi lại tại đây.
 
+## [3.1.8] - 2026-09-20
+
+### Fix & Stability Enhancements
+- **Xử lý triệt để Từ chối / Nạp Setlist**: Chuyển đổi hộp thoại hỏi lý do từ chối sang dạng Inline UI trong thẻ (tránh lỗi bị Electron chặn `window.prompt()`).
+- **Ghi nhớ trạng thái Setlist**: Lưu trữ trạng thái `Từ chối` / `Đã nạp` vào `localStorage`, tự động thu gọn thẻ và không bao giờ lặp lại yêu cầu nạp khi mở lại app.
+- **Tự động dọn dẹp KV Mailbox**: Cập nhật Cloudflare Worker xóa vĩnh viễn các Setlist đã được người vận hành tiếp nhận/xử lý.
+- **Tự động phục hồi thư mục dữ liệu**: Tự động tạo lại thư mục dữ liệu trên ổ đĩa nếu ổ đĩa còn tồn tại, tránh popup cảnh báo giả.
+
 ## [3.1.7] - 2026-09-20
 
 ### Fix & Feature Enhancements

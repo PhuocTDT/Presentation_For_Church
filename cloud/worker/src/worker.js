@@ -416,6 +416,14 @@ export default {
       const list = await env.SETLISTS.list({ prefix: `sl:${roomId}:`, limit: 100 });
       const out = [];
       for (const k of list.keys) {
+        const id = k.name.replace(`sl:${roomId}:`, '');
+        if (id) {
+          const isAcked = await env.SETLISTS.get(`ack:${roomId}:${id}`);
+          if (isAcked) {
+            await env.SETLISTS.delete(k.name).catch(() => {});
+            continue;
+          }
+        }
         const v = await env.SETLISTS.get(k.name);
         if (v) { try { out.push(JSON.parse(v)); } catch (e) {} }
       }
@@ -432,6 +440,7 @@ export default {
       if (!isValidRoomId(roomId) || !id) return json({ error: 'thiếu roomId/id' }, 400);
       if (!(await checkRateLimit(env, roomId))) return json({ error: 'Quá nhiều yêu cầu, thử lại sau ít phút' }, 429);
       await env.SETLISTS.put(`ack:${roomId}:${id}`, '1', { expirationTtl: TTL_SECONDS });
+      await env.SETLISTS.delete(`sl:${roomId}:${id}`).catch(() => {});
       return json({ ok: true });
     }
 

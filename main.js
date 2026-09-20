@@ -238,7 +238,19 @@ function applyStoredUserDataLocation() {
           if (marker.path !== defaultUserData) app.setPath('userData', marker.path);
           return false;
         }
-        return 'invalid'; // ổ ngoài/thư mục cũ không còn -> hỏi lại sau khi ready
+        // Nếu thư mục chưa có nhưng ổ đĩa/thư mục cha vẫn tồn tại và ghi được -> tự động tạo lại
+        try {
+          const parentDir = path.dirname(marker.path);
+          if (fs.existsSync(parentDir)) {
+            fs.mkdirSync(marker.path, { recursive: true });
+            const probe = path.join(marker.path, '.write-test');
+            fs.writeFileSync(probe, 'ok');
+            fs.unlinkSync(probe);
+            if (marker.path !== defaultUserData) app.setPath('userData', marker.path);
+            return false;
+          }
+        } catch (err) {}
+        return 'invalid'; // ổ ngoài/thư mục cũ thực sự không còn -> hỏi lại sau khi ready
       }
     }
   } catch (e) {

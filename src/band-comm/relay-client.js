@@ -58,9 +58,9 @@ function createRelayClient({ store, operatorAuthStore, onEvent, onPresence, onSe
     seenSetlistIds.add(id);
     const sl = {
       id,
-      title: String(raw.title || 'Setlist mới').slice(0, 100),
-      createdAt: Number(raw.createdAt) || Date.now(),
-      fromName: String(raw.fromName || 'Ẩn danh').slice(0, 60),
+      name: String(raw.name || raw.title || 'Setlist mới').slice(0, 100),
+      from: { name: String((raw.from && raw.from.name) || raw.fromName || 'Ban Hát').slice(0, 60) },
+      ts: Number(raw.ts || raw.createdAt) || Date.now(),
       items: Array.isArray(raw.items) ? raw.items : []
     };
     if (onSetlist) { try { onSetlist(sl); } catch (e) {} }

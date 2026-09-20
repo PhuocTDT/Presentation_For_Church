@@ -1150,14 +1150,28 @@
       #bandPanel .bp-conn .bp-gal .gi .nm { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
       #bandPanel .bp-conn .bp-gal .gi .rm { border: none; background: none; color: #c0392f; font-size: 1.05rem; line-height: 1; cursor: pointer; padding: 0 4px; }
       #bandPanel .bp-conn .bp-gal .empty { color: #8a93a3; font-size: .78rem; }
-      #bandPanel .bp-slcard { align-self: stretch; border: 1px solid #bcd6f0; background: #eef5fd; border-radius: 11px; padding: 8px 10px; margin: 2px 0; transition: all 0.2s ease; }
+      #bandPanel .bp-slcard { align-self: stretch; border: 1px solid #bcd6f0; background: #eef5fd; border-radius: 9px; padding: 7px 9px; margin: 3px 0; transition: all 0.2s ease; }
       #bandPanel .bp-slcard.loaded { border-color: #a7f3d0; background: #ecfdf5; }
-      #bandPanel .bp-slcard.rejected { border-color: #fecaca; background: #fef2f2; opacity: 0.88; }
-      #bandPanel .bp-slcard .t { font-weight: 700; font-size: .88rem; }
-      #bandPanel .bp-slcard .s { font-size: .76rem; color: #5b6472; margin: 2px 0 6px; }
-      #bandPanel .bp-slcard .a { display: flex; gap: 6px; flex-wrap: wrap; }
-      #bandPanel .bp-slcard .a .bp-btn { flex: 1 1 auto; }
-      #bandPanel .bp-slcard .list { white-space: pre-wrap; font-size: .78rem; color: #1e2430; margin-top: 6px; border-top: 1px solid #cfe0f3; padding-top: 6px; }
+      #bandPanel .bp-slcard.rejected { border-color: #fecaca; background: #fef2f2; }
+      #bandPanel .bp-slcard.compact { padding: 5px 8px; }
+      #bandPanel .bp-slcard .bp-slcard-compact-row { display: flex; align-items: center; gap: 6px; width: 100%; font-size: 0.78rem; }
+      #bandPanel .bp-slcard .bp-sl-icon { font-weight: bold; font-size: 0.85rem; }
+      #bandPanel .bp-slcard.loaded .bp-sl-icon { color: #059669; }
+      #bandPanel .bp-slcard.rejected .bp-sl-icon { color: #dc2626; }
+      #bandPanel .bp-slcard .bp-sl-text { flex: 1; min-width: 0; }
+      #bandPanel .bp-slcard .bp-sl-name { font-weight: 600; color: #1e293b; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.8rem; }
+      #bandPanel .bp-slcard .bp-sl-sub { font-size: 0.7rem; color: #64748b; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      #bandPanel .bp-slcard .bp-btn-mini { border: 1px solid #cbd5e1; background: #fff; border-radius: 4px; padding: 2px 6px; font-size: 0.72rem; cursor: pointer; color: #334155; flex-shrink: 0; line-height: 1.2; }
+      #bandPanel .bp-slcard .bp-btn-mini:hover { background: #f1f5f9; border-color: #94a3b8; }
+      #bandPanel .bp-slcard .bp-btn-mini.reload { background: #059669; color: #fff; border-color: #059669; font-weight: 600; }
+      #bandPanel .bp-slcard .bp-btn-mini.reload:hover { background: #047857; }
+      #bandPanel .bp-slcard .bp-btn-mini.dismiss { border: none; background: transparent; color: #94a3b8; font-size: 0.85rem; padding: 0 3px; }
+      #bandPanel .bp-slcard .bp-btn-mini.dismiss:hover { color: #ef4444; }
+      #bandPanel .bp-slcard .t { font-weight: 700; font-size: .84rem; color: #0f172a; }
+      #bandPanel .bp-slcard .s { font-size: .74rem; color: #64748b; margin: 2px 0 5px; }
+      #bandPanel .bp-slcard .a { display: flex; gap: 5px; margin-top: 4px; }
+      #bandPanel .bp-slcard .a .bp-btn { flex: 1; padding: 4px 6px; font-size: 0.78rem; }
+      #bandPanel .bp-slcard .list { white-space: pre-wrap; font-size: .75rem; color: #1e2430; margin-top: 5px; border-top: 1px solid #cfe0f3; padding-top: 5px; }
 
       #bandPanel .bp-feed { flex: 1; overflow-y: auto; padding: 8px 10px; display: flex; flex-direction: column; gap: 9px; }
 
@@ -8866,71 +8880,183 @@
       api.onServerStatus(function (_e, st) { applyStatus(st); });
       api.onSetlist && api.onSetlist(function (_e, sl) { showSetlistCard(sl); });
 
+      function showOperatorToast(msg, type) {
+        var isErr = type === 'error' || type === 'reject';
+        var isOk = type === 'success' || type === 'ok';
+        var banner = document.createElement('div');
+        banner.className = 'operator-floating-toast';
+        banner.style.cssText = 'position:fixed;bottom:24px;left:24px;background:#0f172a;color:' + (isErr ? '#f87171' : (isOk ? '#34d399' : '#38bdf8')) + ';padding:10px 18px;border-radius:10px;border:1px solid ' + (isErr ? 'rgba(239,68,68,0.5)' : (isOk ? 'rgba(16,185,129,0.5)' : 'rgba(56,189,248,0.4)')) + ';box-shadow:0 10px 30px rgba(0,0,0,0.6);z-index:99999;font-size:13px;font-weight:600;display:flex;align-items:center;gap:10px;animation:fadeIn 0.25s ease;max-width:420px;';
+        banner.innerHTML = '<span>' + (isErr ? '❌' : (isOk ? '✓' : 'ℹ️')) + '</span><span>' + escHtml(msg) + '</span><button style="background:none;border:none;color:#94a3b8;cursor:pointer;font-size:16px;margin-left:auto;padding:0 4px;" onclick="this.parentElement.remove()">✕</button>';
+        document.body.appendChild(banner);
+        setTimeout(function () { if (banner.parentElement) banner.remove(); }, 4500);
+      }
+
+      var handledSetlistIds = {};
+      try {
+        handledSetlistIds = JSON.parse(localStorage.getItem('band_handled_setlists') || '{}');
+      } catch (e) {}
+
+      function markSetlistHandled(id, status, reason) {
+        if (!id) return;
+        handledSetlistIds[id] = { status: status, reason: reason || '', ts: Date.now() };
+        try {
+          var keys = Object.keys(handledSetlistIds);
+          if (keys.length > 100) {
+            keys.sort(function(a, b) { return (handledSetlistIds[a].ts || 0) - (handledSetlistIds[b].ts || 0); });
+            for (var i = 0; i < keys.length - 100; i++) delete handledSetlistIds[keys[i]];
+          }
+          localStorage.setItem('band_handled_setlists', JSON.stringify(handledSetlistIds));
+        } catch (e) {}
+      }
+
       // ---- setlist từ điện thoại: hiện thẻ trong feed, [Xem] / [Nạp vào Schedule] / [Từ chối] ----
       function showSetlistCard(sl) {
         if (!sl || !Array.isArray(sl.items)) return;
         var feed = $('bpFeed');
         $('bpEmpty').classList.add('bp-hidden');
         var card = document.createElement('div');
-        card.className = 'bp-slcard';
-        var who = (sl.from && sl.from.name) || 'ai đó';
-        card.innerHTML =
-          '<div class="t">📋 Setlist: ' + escHtml(sl.name) + '</div>' +
-          '<div class="s">' + sl.items.length + ' bài · từ ' + escHtml(who) + '</div>' +
-          '<div class="a">' +
-            '<button class="bp-btn" data-x="view" title="Xem danh sách bài">Xem (' + sl.items.length + ')</button>' +
-            '<button class="bp-btn go" data-x="load" title="Nạp vào lịch trình máy chiếu">Nạp</button>' +
-            '<button class="bp-btn stop" data-x="reject" title="Từ chối nạp setlist này">Từ chối</button>' +
-          '</div>' +
-          '<div class="list bp-hidden"></div>';
-        var listEl = card.querySelector('.list');
-        listEl.textContent = sl.items.map(function (it, i) { return (i + 1) + '. ' + (it.title || it.id); }).join('\n');
-        
-        var actionsEl = card.querySelector('.a');
-        card.querySelector('[data-x="view"]').addEventListener('click', function () {
-          listEl.classList.toggle('bp-hidden');
-        });
+        var who = (sl.from && sl.from.name) ? sl.from.name : 'Ban Hát';
+        var slTitle = (sl.name && sl.name.trim()) ? sl.name.trim() : ('Setlist ' + sl.items.length + ' bài');
+        var slId = sl.id || (slTitle + '_' + sl.items.length + '_' + who);
+
+        function renderCard(status, reason) {
+          if (status === 'rejected') {
+            card.className = 'bp-slcard rejected compact';
+            card.innerHTML =
+              '<div class="bp-slcard-compact-row">' +
+                '<span class="bp-sl-icon">✕</span>' +
+                '<div class="bp-sl-text">' +
+                  '<div class="bp-sl-name">Từ chối: <strong>' + escHtml(slTitle) + '</strong></div>' +
+                  (reason ? '<div class="bp-sl-sub">Lý do: ' + escHtml(reason) + '</div>' : '<div class="bp-sl-sub">Từ ' + escHtml(who) + '</div>') +
+                '</div>' +
+                '<button class="bp-btn-mini reload" data-x="reload" title="Nạp lại vào Schedule nếu từ chối nhầm">Nạp lại</button>' +
+                '<button class="bp-btn-mini dismiss" data-x="dismiss" title="Ẩn thẻ">✕</button>' +
+              '</div>';
+
+            var reloadBtn = card.querySelector('[data-x="reload"]');
+            if (reloadBtn) reloadBtn.addEventListener('click', function () { performLoad(true); });
+            var dismissBtn = card.querySelector('[data-x="dismiss"]');
+            if (dismissBtn) dismissBtn.addEventListener('click', function () { card.remove(); });
+            return;
+          }
+
+          if (status === 'loaded') {
+            card.className = 'bp-slcard loaded compact';
+            card.innerHTML =
+              '<div class="bp-slcard-compact-row">' +
+                '<span class="bp-sl-icon">✓</span>' +
+                '<div class="bp-sl-text">' +
+                  '<div class="bp-sl-name">Đã nạp: <strong>' + escHtml(slTitle) + '</strong> (' + sl.items.length + ' bài)</div>' +
+                  '<div class="bp-sl-sub">Từ: ' + escHtml(who) + '</div>' +
+                '</div>' +
+                '<button class="bp-btn-mini" data-x="view">Xem</button>' +
+                '<button class="bp-btn-mini dismiss" data-x="dismiss" title="Ẩn thẻ">✕</button>' +
+              '</div>' +
+              '<div class="list bp-hidden"></div>';
+
+            var listEl = card.querySelector('.list');
+            listEl.textContent = sl.items.map(function (it, i) { return (i + 1) + '. ' + (it.title || it.id); }).join('\n');
+            card.querySelector('[data-x="view"]').addEventListener('click', function () {
+              listEl.classList.toggle('bp-hidden');
+            });
+            var dismissBtn = card.querySelector('[data-x="dismiss"]');
+            if (dismissBtn) dismissBtn.addEventListener('click', function () { card.remove(); });
+            return;
+          }
+
+          // Trạng thái chờ xử lý (Active)
+          card.className = 'bp-slcard active';
+          card.innerHTML =
+            '<div class="t">📋 ' + escHtml(slTitle) + ' <span style="font-size:0.75rem;font-weight:normal;color:#64748b;">(' + sl.items.length + ' bài)</span></div>' +
+            '<div class="s">Gửi bởi: <strong>' + escHtml(who) + '</strong></div>' +
+            '<div class="a">' +
+              '<button class="bp-btn" data-x="view" title="Xem danh sách bài">Xem bài (' + sl.items.length + ')</button>' +
+              '<button class="bp-btn go" data-x="load" title="Nạp vào lịch trình máy chiếu">Nạp</button>' +
+              '<button class="bp-btn stop" data-x="reject" title="Từ chối nạp setlist này">Từ chối</button>' +
+            '</div>' +
+            '<div class="list bp-hidden"></div>';
+
+          var listEl = card.querySelector('.list');
+          listEl.textContent = sl.items.map(function (it, i) { return (i + 1) + '. ' + (it.title || it.id); }).join('\n');
+
+          card.querySelector('[data-x="view"]').addEventListener('click', function () {
+            listEl.classList.toggle('bp-hidden');
+          });
+
+          card.querySelector('[data-x="load"]').addEventListener('click', function () {
+            performLoad(false);
+          });
+
+          card.querySelector('[data-x="reject"]').addEventListener('click', function () {
+            var actionsEl = card.querySelector('.a');
+            if (!actionsEl) return;
+            actionsEl.style.display = 'none';
+
+            var confirmBox = document.createElement('div');
+            confirmBox.className = 'bp-reject-confirm-box';
+            confirmBox.style.cssText = 'margin-top:6px;background:#fee2e2;border:1px solid #fca5a5;border-radius:6px;padding:6px 8px;display:flex;flex-direction:column;gap:5px;';
+            confirmBox.innerHTML =
+              '<div style="font-size:0.75rem;font-weight:700;color:#991b1b;">Xác nhận từ chối Setlist?</div>' +
+              '<input type="text" class="bp-reject-reason-input" placeholder="Lý do từ chối (tùy chọn)..." style="width:100%;box-sizing:border-box;border:1px solid #fca5a5;border-radius:4px;padding:4px 6px;font-size:0.75rem;background:#fff;outline:none;color:#1e293b;" />' +
+              '<div style="display:flex;gap:5px;justify-content:flex-end;">' +
+                '<button class="bp-btn" data-x="cancel-reject" type="button" style="font-size:0.74rem;padding:3px 8px;">Hủy</button>' +
+                '<button class="bp-btn stop" data-x="confirm-reject" type="button" style="font-size:0.74rem;padding:3px 8px;background:#dc2626;border-color:#dc2626;color:#fff;font-weight:700;">Từ chối ngay</button>' +
+              '</div>';
+
+            card.appendChild(confirmBox);
+
+            var inputEl = confirmBox.querySelector('.bp-reject-reason-input');
+            if (inputEl) inputEl.focus();
+
+            var doExecuteReject = function () {
+              var reason = (inputEl ? inputEl.value : '').trim();
+              confirmBox.remove();
+              markSetlistHandled(slId, 'rejected', reason);
+              renderCard('rejected', reason);
+
+              showOperatorToast('Đã từ chối nạp setlist "' + slTitle + '".', 'reject');
+
+              var notifText = '❌ Operator đã từ chối setlist "' + slTitle + '"' + (reason ? ' (Lý do: ' + reason + ')' : '.');
+              if (api && typeof api.send === 'function') {
+                api.send({ to: 'all', text: notifText });
+              }
+              addFeed('sys', '', 'Đã từ chối setlist "' + slTitle + '" từ ' + who + (reason ? ' — Lý do: ' + reason : '') + '.');
+            };
+
+            confirmBox.querySelector('[data-x="confirm-reject"]').addEventListener('click', doExecuteReject);
+            if (inputEl) {
+              inputEl.addEventListener('keydown', function (e) {
+                if (e.key === 'Enter') doExecuteReject();
+                if (e.key === 'Escape') {
+                  confirmBox.remove();
+                  actionsEl.style.display = 'flex';
+                }
+              });
+            }
+            confirmBox.querySelector('[data-x="cancel-reject"]').addEventListener('click', function () {
+              confirmBox.remove();
+              actionsEl.style.display = 'flex';
+            });
+          });
+        }
 
         function performLoad(isReload) {
-          if (!confirm((isReload ? 'Nạp lại' : 'Nạp') + ' setlist "' + sl.name + '" — thay thế toàn bộ Schedule hiện tại?')) return;
+          if (!confirm((isReload ? 'Nạp lại' : 'Nạp') + ' setlist "' + slTitle + '" — thay thế toàn bộ Schedule hiện tại?')) return;
           loadSetlistIntoSchedule(sl);
-          card.classList.remove('rejected');
-          card.classList.add('loaded');
-          actionsEl.innerHTML = '<span style="color:#059669;font-weight:700;font-size:0.8rem;padding:3px 0;">✓ Đã nạp vào Schedule (' + sl.items.length + ' bài)</span>';
+          markSetlistHandled(slId, 'loaded');
+          renderCard('loaded');
+          showOperatorToast('Đã nạp thành công ' + sl.items.length + ' bài từ setlist "' + slTitle + '" vào Schedule.', 'success');
           if (api && typeof api.send === 'function') {
-            api.send({ to: 'all', text: isReload ? ('✅ Operator đã tiếp nhận và nạp lại setlist "' + sl.name + '" vào Schedule.') : ('✅ Operator đã nạp setlist "' + sl.name + '" vào Schedule máy chiếu.') });
+            api.send({ to: 'all', text: isReload ? ('✅ Operator đã tiếp nhận và nạp lại setlist "' + slTitle + '" vào Schedule.') : ('✅ Operator đã nạp setlist "' + slTitle + '" vào Schedule máy chiếu.') });
           }
         }
 
-        card.querySelector('[data-x="load"]').addEventListener('click', function () {
-          performLoad(false);
-        });
-
-        card.querySelector('[data-x="reject"]').addEventListener('click', function () {
-          var reason = prompt('Lý do từ chối nạp setlist "' + sl.name + '" (hoặc bấm OK để từ chối không lý do):', '');
-          if (reason === null) return; // Người dùng bấm Hủy (Cancel)
-          reason = reason.trim();
-          card.classList.remove('loaded');
-          card.classList.add('rejected');
-          actionsEl.innerHTML =
-            '<div style="display:flex;align-items:center;justify-content:space-between;width:100%;gap:6px;">' +
-              '<span style="color:#c0392f;font-weight:700;font-size:0.8rem;">✕ Đã từ chối nạp</span>' +
-              '<button class="bp-btn go" data-x="reload" style="font-size:0.75rem;padding:2px 8px;flex:none;" title="Bấm để nạp lại nếu bạn từ chối nhầm">Nạp lại</button>' +
-            '</div>' +
-            (reason ? '<div style="font-size:0.75rem;color:#991b1b;margin-top:2px;width:100%;">Lý do: ' + escHtml(reason) + '</div>' : '');
-          
-          var reloadBtn = actionsEl.querySelector('[data-x="reload"]');
-          if (reloadBtn) {
-            reloadBtn.addEventListener('click', function () { performLoad(true); });
-          }
-
-          var notifText = '❌ Operator đã từ chối setlist "' + sl.name + '"' + (reason ? ' (Lý do: ' + reason + ')' : '.');
-          if (api && typeof api.send === 'function') {
-            api.send({ to: 'all', text: notifText });
-          }
-          addFeed('sys', '', 'Đã từ chối setlist "' + sl.name + '" từ ' + who + (reason ? ' — Lý do: ' + reason : '') + '.');
-        });
-
+        if (handledSetlistIds[slId]) {
+          var prev = handledSetlistIds[slId];
+          renderCard(prev.status, prev.reason);
+        } else {
+          renderCard('active');
+        }
         feed.appendChild(card);
         feed.scrollTop = feed.scrollHeight;
         bumpUnread();
