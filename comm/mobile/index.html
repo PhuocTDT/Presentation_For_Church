@@ -15,6 +15,8 @@
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' https://static.cloudflareinsights.com; style-src 'unsafe-inline'; connect-src 'self' wss://channel.worship-official.link https://channel.worship-official.link https://identity.worship-official.link https://cloudflareinsights.com; img-src 'self' data: blob: https://channel.worship-official.link; base-uri 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
 <meta name="theme-color" content="#ffffff">
+<link rel="icon" type="image/png" href="favicon.png">
+<link rel="apple-touch-icon" href="favicon.png">
 <title>Kênh Band</title>
 <style>
   /* Self-contained: church phones may have no mobile data. No CDN, no fonts.
@@ -71,33 +73,7 @@
   }
   .linklike:disabled { opacity:.5; }
 
-  /* Tabs chọn Đăng nhập tài khoản / Khách */
-  .auth-tabs {
-    display: flex;
-    background: var(--panel-2, #eceef1);
-    border-radius: 12px;
-    padding: 4px;
-    gap: 4px;
-    margin: 4px 0 8px;
-  }
-  .auth-tab {
-    flex: 1;
-    border: none;
-    background: transparent;
-    padding: 10px 8px;
-    border-radius: 9px;
-    font-size: .88rem;
-    font-weight: 600;
-    color: var(--ink-soft);
-    cursor: pointer;
-    transition: all .15s ease;
-    text-align: center;
-  }
-  .auth-tab.active {
-    background: #fff;
-    color: var(--ink);
-    box-shadow: 0 2px 6px rgba(0,0,0,0.06);
-  }
+
   .portal-footer-link {
     text-align: center;
     margin-top: 16px;
@@ -262,124 +238,28 @@
 <div id="join">
   <div>
     <h1>Kênh Band</h1>
-    <p class="sub" id="joinSub">Đăng nhập bằng tài khoản thành viên ban nhạc + ID phòng.</p>
+    <p class="sub" id="joinSub">Nhập tên, ID phòng và mật khẩu phòng để vào kênh.</p>
   </div>
 
-  <div class="auth-tabs" id="authTabs">
-    <button type="button" class="auth-tab active" id="tabAccount">🔑 Đăng nhập tài khoản</button>
-    <button type="button" class="auth-tab" id="tabLegacy">⚡ Khách vào nhanh</button>
+  <div class="field">
+    <label for="name">Tên của bạn</label>
+    <input id="name" autocomplete="name" placeholder="VD: Minh (Guitar), Ca trưởng..." maxlength="40">
   </div>
 
-  <!-- Chế độ tài khoản: đăng nhập bằng username+password do người trình chiếu cấp. -->
-  <div id="joinAccountFields">
-    <div class="field">
-      <label for="username">Tên đăng nhập (Username)</label>
-      <input id="username" autocomplete="username" placeholder="VD: minh" maxlength="32" autocapitalize="off">
-    </div>
-    <div class="field">
-      <label for="password">Mật khẩu</label>
-      <div class="pwd-wrap">
-        <input id="password" type="password" autocomplete="current-password" placeholder="••••••">
-        <button type="button" class="pwd-toggle" data-target="password" aria-label="Hiện mật khẩu">👁</button>
-      </div>
-    </div>
-    <div class="field">
-      <label for="roomCode2">ID phòng</label>
-      <input id="roomCode2" maxlength="10" placeholder="VD: 7K3M9X" autocapitalize="characters" autocorrect="off" spellcheck="false">
+  <div class="field">
+    <label for="roomCode">ID phòng</label>
+    <input id="roomCode" maxlength="10" placeholder="VD: 7K3M9X" autocapitalize="characters" autocorrect="off" spellcheck="false">
+  </div>
+
+  <div class="field">
+    <label for="roomPassword">Mật khẩu phòng</label>
+    <div class="pwd-wrap">
+      <input id="roomPassword" type="password" maxlength="12" placeholder="Mật khẩu phòng" autocomplete="current-password" autocapitalize="off" spellcheck="false">
+      <button type="button" class="pwd-toggle" data-target="roomPassword" aria-label="Hiện mật khẩu">👁</button>
     </div>
   </div>
 
-  <!-- Chế độ mặc định (không có tài khoản): tên tự gõ + ID phòng + mật khẩu phòng. -->
-  <div id="joinLegacyFields" class="hidden">
-    <div class="field">
-      <label for="name">Tên của bạn</label>
-      <input id="name" autocomplete="name" placeholder="VD: Minh" maxlength="40">
-    </div>
-    <div class="field">
-      <label for="roomCode">ID phòng</label>
-      <input id="roomCode" maxlength="10" placeholder="VD: 7K3M9X" autocapitalize="characters" autocorrect="off" spellcheck="false">
-    </div>
-    <div class="field">
-      <label for="roomPassword">Mật khẩu phòng</label>
-      <input id="roomPassword" maxlength="12" placeholder="Mật khẩu phòng" autocapitalize="off" spellcheck="false">
-    </div>
-  </div>
-
-  <!-- Chế độ tài khoản, bước 2 (tuỳ operator bật) — chỉ hiện sau khi đăng nhập thành công. -->
-  <div id="joinRoomPasswordFields" class="hidden">
-    <div class="field">
-      <label for="roomPassword2">Mật khẩu phòng</label>
-      <input id="roomPassword2" maxlength="12" placeholder="Mật khẩu phòng" autocapitalize="off" spellcheck="false">
-    </div>
-  </div>
-
-  <!-- Tài khoản local bị operator bắt đổi mật khẩu ngay lần đăng nhập đầu
-       (ô tick lúc tạo/reset tài khoản trong sidebar). -->
-  <div id="joinMustChangeFields" class="hidden">
-    <p class="sub">Người trình chiếu yêu cầu đổi mật khẩu trước khi dùng tiếp.</p>
-    <div class="field">
-      <label for="mcNewPassword">Mật khẩu mới</label>
-      <div class="pwd-wrap">
-        <input id="mcNewPassword" type="password" autocomplete="new-password" placeholder="Tối thiểu 6 ký tự">
-        <button type="button" class="pwd-toggle" data-target="mcNewPassword" aria-label="Hiện mật khẩu">👁</button>
-      </div>
-    </div>
-    <div class="field">
-      <label for="mcNewPasswordConfirm">Nhập lại mật khẩu mới</label>
-      <div class="pwd-wrap">
-        <input id="mcNewPasswordConfirm" type="password" autocomplete="new-password" placeholder="Gõ lại mật khẩu mới">
-        <button type="button" class="pwd-toggle" data-target="mcNewPasswordConfirm" aria-label="Hiện mật khẩu">👁</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- authMode='cognito' (cloud/identity-plan.md): 1 tài khoản dùng chung
-       nhiều nhà thờ, đăng nhập qua email — Worker "band-identity" xác thực,
-       KHÔNG gọi qua server này (server chỉ verify chữ ký JWT). -->
-  <div id="joinCognitoFields" class="hidden">
-    <div class="field">
-      <label for="ciName">Tên của bạn</label>
-      <input id="ciName" autocomplete="name" placeholder="VD: Minh" maxlength="40">
-    </div>
-    <div class="field">
-      <label for="ciEmail">Email</label>
-      <input id="ciEmail" type="email" inputmode="email" autocomplete="username" placeholder="ban@email.com" autocapitalize="off">
-    </div>
-    <div class="field">
-      <label for="ciPassword">Mật khẩu</label>
-      <div class="pwd-wrap">
-        <input id="ciPassword" type="password" autocomplete="current-password" placeholder="••••••">
-        <button type="button" class="pwd-toggle" data-target="ciPassword" aria-label="Hiện mật khẩu">👁</button>
-      </div>
-    </div>
-    <div class="field">
-      <label for="roomCode3">ID phòng</label>
-      <input id="roomCode3" maxlength="10" placeholder="VD: 7K3M9X" autocapitalize="characters" autocorrect="off" spellcheck="false">
-    </div>
-    <button type="button" id="ciRequestAccessBtn" class="linklike">Chưa có tài khoản? Yêu cầu qua email</button>
-    <button type="button" id="ciForgotPasswordBtn" class="linklike">Quên mật khẩu?</button>
-  </div>
-
-  <!-- Cognito bắt buộc đổi mật khẩu tạm ngay lần đăng nhập đầu tiên. -->
-  <div id="joinCognitoNewPasswordFields" class="hidden">
-    <p class="sub">Mật khẩu tạm chỉ dùng được 1 lần — đặt mật khẩu mới cho lần sau.</p>
-    <div class="field">
-      <label for="ciNewPassword">Mật khẩu mới</label>
-      <div class="pwd-wrap">
-        <input id="ciNewPassword" type="password" autocomplete="new-password" placeholder="Tối thiểu 8 ký tự">
-        <button type="button" class="pwd-toggle" data-target="ciNewPassword" aria-label="Hiện mật khẩu">👁</button>
-      </div>
-    </div>
-    <div class="field">
-      <label for="ciNewPasswordConfirm">Nhập lại mật khẩu mới</label>
-      <div class="pwd-wrap">
-        <input id="ciNewPasswordConfirm" type="password" autocomplete="new-password" placeholder="Gõ lại mật khẩu mới">
-        <button type="button" class="pwd-toggle" data-target="ciNewPasswordConfirm" aria-label="Hiện mật khẩu">👁</button>
-      </div>
-    </div>
-  </div>
-
-  <button id="joinBtn" class="primary">Đăng nhập vào kênh</button>
+  <button id="joinBtn" class="primary">Vào phòng</button>
   <div class="err" id="joinErr"></div>
   <div class="info" id="joinInfo"></div>
 

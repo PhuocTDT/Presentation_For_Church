@@ -6,7 +6,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Bảng Quản Lý Kênh Band • Presentation For Church</title>
   <meta name="description" content="Trung tâm điều hành và quản lý Kênh Band, phòng cố định Zoom-style và tài khoản thành viên ban nhạc.">
-  <link rel="icon" type="image/jpeg" href="assets/images/app-icon.jpg">
+  <link rel="icon" type="image/png" href="assets/images/favicon.png">
+  <link rel="apple-touch-icon" href="assets/images/favicon.png">
   <link rel="stylesheet" href="portal.css">
   <!-- Content Security Policy -->
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' https://identity.worship-official.link https://channel.worship-official.link; frame-ancestors 'none'; base-uri 'self'">
@@ -174,23 +175,23 @@
         </div>
       </div>
 
-      <!-- Card 4: Global Band Users -->
+      <!-- Card 4: Quick Access Info -->
       <div class="metric-card">
         <div class="metric-card-top">
-          <div class="metric-card-icon gold">👥</div>
-          <span class="metric-badge">Tài Khoản Toàn Cục</span>
+          <div class="metric-card-icon gold">⚡</div>
+          <span class="metric-badge">Tham Gia Tức Thì</span>
         </div>
         <div class="metric-card-main">
-          <h4>Thành Viên Ban Nhạc</h4>
+          <h4>Vào Phòng Nhanh</h4>
           <div class="metric-value-row">
-            <span class="metric-text-display" id="metricUsersCount">0 thành viên</span>
+            <span class="metric-text-display" style="font-size: 1.1rem; color: var(--text-primary);">Không Cần Tài Khoản</span>
           </div>
           <p style="font-size: 0.82rem; color: var(--text-muted); margin-top: 6px;">
-            Đăng nhập được trên mọi phòng khi có ID phòng &amp; mật khẩu.
+            Ban nhạc chỉ cần quét mã QR hoặc nhập ID phòng &amp; mật khẩu để vào phòng.
           </p>
         </div>
         <div class="metric-card-footer">
-          <button type="button" class="btn-action-sm primary" id="btnOpenAddMemberModal">+ Thêm Thành Viên</button>
+          <button type="button" class="btn-action-sm primary" id="btnShowQrModal2">📲 Xem Mã QR</button>
         </div>
       </div>
     </section>
@@ -199,18 +200,7 @@
     <section class="portal-workspace">
       <!-- Tabs Navigation -->
       <div class="workspace-nav-bar">
-        <button type="button" class="workspace-tab-btn active" data-tab="tabMembers">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
-            <circle cx="9" cy="7" r="4" />
-            <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
-            <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-          </svg>
-          <span>Quản Lý Thành Viên Ban Nhạc</span>
-          <span class="tab-badge-count" id="tabUsersCount">0</span>
-        </button>
-
-        <button type="button" class="workspace-tab-btn" data-tab="tabSettings">
+        <button type="button" class="workspace-tab-btn active" data-tab="tabSettings">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <circle cx="12" cy="12" r="3" />
             <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
@@ -237,61 +227,8 @@
         </button>
       </div>
 
-      <!-- TAB 1: MEMBERS MANAGEMENT -->
-      <div class="workspace-tab-panel active" id="tabMembers">
-        <!-- Toolbar -->
-        <div class="members-toolbar">
-          <div class="members-search-box">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <circle cx="11" cy="11" r="8" />
-              <path d="m21 21-4.3-4.3" />
-            </svg>
-            <input type="text" id="membersSearchInput" placeholder="Tìm theo tên hiển thị, username...">
-          </div>
-
-          <button type="button" class="btn-primary-action" id="btnOpenAddMemberModal2">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-              <path d="M12 5v14M5 12h14" />
-            </svg>
-            <span>Thêm Thành Viên Mới</span>
-          </button>
-        </div>
-
-        <div class="members-info-banner">
-          <span>💡</span>
-          <span>
-            <strong>Lưu ý:</strong> Tài khoản thành viên ban nhạc là tài khoản dùng chung toàn hệ thống. Thành viên có
-            thể đăng nhập vào bất kỳ phòng Kênh Band nào khi nhập đúng Mã Phòng &amp; Mật khẩu phòng.
-          </span>
-        </div>
-
-        <!-- Members Table -->
-        <div class="members-table-wrap">
-          <table class="members-table">
-            <thead>
-              <tr>
-                <th>Thành Viên</th>
-                <th>Trạng Thái</th>
-                <th>Ngày Tạo</th>
-                <th style="text-align: right;">Thao Tác</th>
-              </tr>
-            </thead>
-            <tbody id="membersTableBody">
-              <!-- Rendered dynamically by JS -->
-            </tbody>
-          </table>
-
-          <!-- Empty State -->
-          <div class="members-empty-state" id="membersEmptyState" style="display: none;">
-            <div class="empty-icon">👥</div>
-            <h5>Chưa Có Thành Viên Nào</h5>
-            <p>Bắt đầu thêm tài khoản cho ca đoàn, nhạc công hoặc trưởng ban nhạc của bạn.</p>
-          </div>
-        </div>
-      </div>
-
-      <!-- TAB 2: ROOM & REPLIES SETTINGS -->
-      <div class="workspace-tab-panel" id="tabSettings">
+      <!-- TAB: ROOM & REPLIES SETTINGS -->
+      <div class="workspace-tab-panel active" id="tabSettings">
         <!-- Section A: Room Info -->
         <div class="settings-section-card">
           <h3>
@@ -415,91 +352,7 @@
   </main>
 
   <!-- =========================================================================
-       MODAL 1: Thêm Thành Viên Mới
-       ========================================================================= -->
-  <div class="portal-modal-backdrop" id="modalAddMember">
-    <div class="portal-modal-window">
-      <div class="modal-header">
-        <h4>Thêm Thành Viên Ban Nhạc</h4>
-        <button type="button" class="modal-btn-close">&times;</button>
-      </div>
-      <form id="formAddMember">
-        <div class="modal-body">
-          <div class="form-group" style="margin-bottom: 16px;">
-            <label class="form-label" for="inputAddName">Tên Hiển Thị (Ví dụ: An - Trống, Hải - Piano)</label>
-            <div class="form-input-wrap">
-              <input type="text" id="inputAddName" placeholder="Nhập tên hiển thị..." required maxlength="40">
-            </div>
-          </div>
-
-          <div class="form-group" style="margin-bottom: 16px;">
-            <label class="form-label" for="inputAddUsername">Tên Tài Khoản (Username đăng nhập)</label>
-            <div class="form-input-wrap">
-              <input type="text" id="inputAddUsername" placeholder="antrong (chỉ chữ thường, số, dấu . _ -)" required maxlength="32">
-            </div>
-          </div>
-
-          <div class="form-group" style="margin-bottom: 16px;">
-            <label class="form-label" for="inputAddPass">Mật Khẩu (Tối thiểu 6 ký tự)</label>
-            <div class="form-input-wrap">
-              <input type="password" id="inputAddPass" placeholder="••••••••" required minlength="6">
-            </div>
-          </div>
-
-          <div class="form-group">
-            <label class="form-label" for="inputAddPassConfirm">Xác Nhận Mật Khẩu</label>
-            <div class="form-input-wrap">
-              <input type="password" id="inputAddPassConfirm" placeholder="••••••••" required minlength="6">
-            </div>
-          </div>
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="btn-secondary btn-modal-cancel">Hủy</button>
-          <button type="submit" class="btn-primary-action" id="btnSubmitAddMember">Tạo Tài Khoản</button>
-        </div>
-      </form>
-    </div>
-  </div>
-
-  <!-- =========================================================================
-       MODAL 2: Đổi Mật Khẩu Thành Viên
-       ========================================================================= -->
-  <div class="portal-modal-backdrop" id="modalResetPass">
-    <div class="portal-modal-window">
-      <div class="modal-header">
-        <h4>Đổi Mật Khẩu Thành Viên</h4>
-        <button type="button" class="modal-btn-close">&times;</button>
-      </div>
-      <form id="formResetPass">
-        <div class="modal-body">
-          <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 16px;">
-            Đặt lại mật khẩu cho tài khoản: <strong id="resetPassTargetUser" style="color: var(--primary);">@user</strong>
-          </p>
-
-          <div class="form-group" style="margin-bottom: 16px;">
-            <label class="form-label" for="inputResetPassNew">Mật Khẩu Mới (Tối thiểu 6 ký tự)</label>
-            <div class="form-input-wrap">
-              <input type="password" id="inputResetPassNew" placeholder="••••••••" required minlength="6">
-            </div>
-          </div>
-
-          <div class="form-group">
-            <label class="form-label" for="inputResetPassConfirm">Xác Nhận Mật Khẩu Mới</label>
-            <div class="form-input-wrap">
-              <input type="password" id="inputResetPassConfirm" placeholder="••••••••" required minlength="6">
-            </div>
-          </div>
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="btn-secondary btn-modal-cancel">Hủy</button>
-          <button type="submit" class="btn-primary-action" id="btnSubmitResetPass">Lưu Mật Khẩu</button>
-        </div>
-      </form>
-    </div>
-  </div>
-
-  <!-- =========================================================================
-       MODAL 3: Trình Chiếu QR Toàn Màn Hình (Stage Mode)
+       MODAL: Trình Chiếu QR Toàn Màn Hình (Stage Mode)
        ========================================================================= -->
   <div class="portal-modal-backdrop" id="modalFullscreenQr">
     <div class="portal-modal-window modal-qr-fullscreen">
@@ -512,7 +365,7 @@
           Phòng Kênh Band
         </h2>
         <p style="font-size: 1rem; color: var(--text-muted); margin-bottom: 24px;">
-          Quét mã bằng điện thoại để kết nối Kênh Band trực tiếp
+          Quét mã bằng điện thoại để kết nối Kênh Band trực tiếp (yêu cầu nhập mật khẩu phòng)
         </p>
 
         <div class="qr-code-canvas-container" id="fsQrCanvasContainer">
@@ -541,18 +394,6 @@
 
   <!-- Controller Script -->
   <script src="portal.js"></script>
-  <script>
-    // Bind secondary Add Member button in Tab 1 toolbar
-    const btn2 = document.getElementById('btnOpenAddMemberModal2');
-    const modalAdd = document.getElementById('modalAddMember');
-    if (btn2 && modalAdd) {
-      btn2.addEventListener('click', () => {
-        modalAdd.classList.add('active');
-        const inp = document.getElementById('inputAddName');
-        if (inp) inp.focus();
-      });
-    }
-  </script>
 </body>
 
 </html>

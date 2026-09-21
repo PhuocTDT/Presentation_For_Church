@@ -2677,49 +2677,42 @@ app.whenReady().then(() => {
 
   // ---- Đăng nhập tài khoản (band-comm-plan.md §11) — operator (laptop) là
   // nơi DUY NHẤT tạo/sửa/xoá tài khoản; band member chỉ đăng nhập qua
-  // POST /api/login, không tự đăng ký được (không có endpoint tương ứng).
-  // GĐ2: tài khoản giờ sống TRONG Durable Object (không phải
-  // band-comm-accounts.json cục bộ nữa) — mọi thao tác gọi qua
-  // commServer.accountsX() (relay-client.js), cần band-comm đang chạy
-  // (đã nối relay) để có adminSecret hợp lệ gửi kèm.
-  ipcMain.handle('band-accounts-list', () => {
+
+  // ---- Ảnh hợp âm (Gallery) — kết nối với relay-client (Durable Object & R2) ----
+  ipcMain.handle('band-comm-gallery-list', async () => {
     initBandComm();
-    return commServer.isRunning() ? commServer.accountsList() : [];
+    if (!commServer) return { images: [], updatedAt: 0 };
+    return commServer.galleryManifest();
   });
 
-  ipcMain.handle('band-accounts-create', (e, payload) => {
+  ipcMain.handle('band-comm-gallery-add', async (e, payload) => {
     initBandComm();
-    if (!commServer.isRunning()) return { error: 'Kênh Band chưa kết nối — thử lại sau.' };
-    return commServer.accountsCreate(payload || {});
+    if (!commServer) return { images: [], updatedAt: 0 };
+    return commServer.galleryAdd(payload);
   });
 
-  ipcMain.handle('band-accounts-update', (e, { id, name } = {}) => {
+  ipcMain.handle('band-comm-gallery-remove', async (e, id) => {
     initBandComm();
-    if (!commServer.isRunning()) return { error: 'Kênh Band chưa kết nối — thử lại sau.' };
-    return commServer.accountsUpdate({ id, name });
+    if (!commServer) return { images: [], updatedAt: 0 };
+    return commServer.galleryRemove(id);
   });
 
-  // Đổi mật khẩu / khoá / xoá tài khoản đều kick ngay các phiên hiện tại của
-  // tài khoản đó — relay (room-relay.js's handleAdminAccounts) tự
-  // rotateSecret() phía nó khi xử lý 3 thao tác này, không cần main.js gọi
-  // thêm gì nữa (khác LAN cũ, nơi main.js phải tự gọi commServer.rotateSecret()
-  // sau khi sửa file cục bộ).
-  ipcMain.handle('band-accounts-update-password', (e, { id, password, mustChangePassword } = {}) => {
+  ipcMain.handle('band-comm-gallery-remove-many', async (e, ids) => {
     initBandComm();
-    if (!commServer.isRunning()) return { error: 'Kênh Band chưa kết nối — thử lại sau.' };
-    return commServer.accountsUpdatePassword({ id, password, mustChangePassword });
+    if (!commServer) return { images: [], updatedAt: 0 };
+    return commServer.galleryRemoveMany(ids);
   });
 
-  ipcMain.handle('band-accounts-set-active', (e, { id, active } = {}) => {
+  ipcMain.handle('band-comm-gallery-clear', async () => {
     initBandComm();
-    if (!commServer.isRunning()) return { error: 'Kênh Band chưa kết nối — thử lại sau.' };
-    return commServer.accountsSetActive({ id, active });
+    if (!commServer) return { images: [], updatedAt: 0 };
+    return commServer.galleryClear();
   });
 
-  ipcMain.handle('band-accounts-remove', (e, id) => {
+  ipcMain.handle('band-comm-gallery-reorder', async (e, ids) => {
     initBandComm();
-    if (!commServer.isRunning()) return { error: 'Kênh Band chưa kết nối — thử lại sau.' };
-    return commServer.accountsRemove(id);
+    if (!commServer) return { images: [], updatedAt: 0 };
+    return commServer.galleryReorder(ids);
   });
 
   // ---- Đăng nhập CỦA OPERATOR (gate mở Kênh Band, bắt buộc mọi bản cài) ----
@@ -2985,10 +2978,6 @@ app.whenReady().then(() => {
     return commServer.operatorResolve(payload || {});
   });
 
-  ipcMain.handle('band-comm-gallery-list', () => commServer ? commServer.galleryManifest() : { images: [], updatedAt: 0 });
-  ipcMain.handle('band-comm-gallery-add', (e, p) => commServer ? commServer.galleryAdd(p || {}) : null);
-  ipcMain.handle('band-comm-gallery-remove', (e, id) => commServer ? commServer.galleryRemove(id) : null);
-  ipcMain.handle('band-comm-gallery-reorder', (e, ids) => commServer ? commServer.galleryReorder(ids || []) : null);
 
   // Mở link ngoài (icon "Hỗ trợ" trong sidebar Kênh Band) qua trình duyệt/app
   // mặc định của hệ điều hành thay vì điều hướng cả cửa sổ renderer. Allowlist

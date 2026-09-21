@@ -100,6 +100,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
     galleryList: () => ipcRenderer.invoke('band-comm-gallery-list'),
     galleryAdd: (payload) => ipcRenderer.invoke('band-comm-gallery-add', payload),
     galleryRemove: (id) => ipcRenderer.invoke('band-comm-gallery-remove', id),
+    galleryRemoveMany: (ids) => ipcRenderer.invoke('band-comm-gallery-remove-many', ids),
+    galleryClear: () => ipcRenderer.invoke('band-comm-gallery-clear'),
     galleryReorder: (ids) => ipcRenderer.invoke('band-comm-gallery-reorder', ids),
     onMessage: (callback) => {
       ipcRenderer.removeAllListeners('band-comm-event');

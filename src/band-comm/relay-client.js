@@ -123,9 +123,7 @@ function createRelayClient({ store, operatorAuthStore, onEvent, onPresence, onSe
       method: 'POST',
       headers,
       body: JSON.stringify({
-        name: c.room.name, code: c.room.code, password: c.room.password, cloudRoomId: roomId,
-        accountsEnabled: c.accountsEnabled, passwordRequiredWithAccounts: c.room.passwordRequiredWithAccounts,
-        authMode: c.authMode
+        name: c.room.name, code: c.room.code, password: c.room.password, cloudRoomId: roomId
       }),
       signal: AbortSignal.timeout(15000)
     });
@@ -331,6 +329,8 @@ function createRelayClient({ store, operatorAuthStore, onEvent, onPresence, onSe
   }
   function galleryAdd({ name, ext, dataB64 } = {}) { return adminGalleryCall('add', { name, ext, dataB64 }); }
   function galleryRemove(id) { return adminGalleryCall('remove', { id }); }
+  function galleryRemoveMany(ids) { return adminGalleryCall('remove-many', { ids }); }
+  function galleryClear() { return adminGalleryCall('clear', {}); }
   function galleryReorder(ids) { return adminGalleryCall('reorder', { ids }); }
 
   // Đẩy chỉ mục thư viện lên Worker (KV theo room code, KHÔNG qua DO) — y
@@ -353,7 +353,7 @@ function createRelayClient({ store, operatorAuthStore, onEvent, onPresence, onSe
     start, stop, getStatus, isRunning,
     operatorSend, operatorAck, operatorResolve,
     rotateSecret,
-    galleryManifest, galleryAdd, galleryRemove, galleryReorder,
+    galleryManifest, galleryAdd, galleryRemove, galleryRemoveMany, galleryClear, galleryReorder,
     announceRoomConfig, syncLibraryToCloud,
     accountsList, accountsCreate, accountsUpdate, accountsUpdatePassword, accountsSetActive, accountsRemove
   };

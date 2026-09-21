@@ -298,10 +298,7 @@ export class RoomRelay {
     const passwordChanged = !this.config || this.config.password !== password;
     this.config = {
       name, code, password, cloudRoomId,
-      passwordSetAt: passwordChanged ? Date.now() : ((this.config && this.config.passwordSetAt) || Date.now()),
-      accountsEnabled: body.accountsEnabled === true,
-      passwordRequiredWithAccounts: body.passwordRequiredWithAccounts === true,
-      authMode: body.authMode === 'cognito' ? 'cognito' : 'local'
+      passwordSetAt: passwordChanged ? Date.now() : ((this.config && this.config.passwordSetAt) || Date.now())
     };
     await this.ctx.storage.put('config', this.config);
     if (passwordChanged) await this.rotateSecret();
@@ -321,10 +318,7 @@ export class RoomRelay {
             code: r.code || c,
             password: r.password || '',
             cloudRoomId: r.code || c,
-            passwordSetAt: r.createdAt || Date.now(),
-            accountsEnabled: true,
-            passwordRequiredWithAccounts: false,
-            authMode: 'local'
+            passwordSetAt: r.createdAt || Date.now()
           };
           await this.ctx.storage.put('config', this.config);
         }
@@ -394,6 +388,16 @@ export class RoomRelay {
     if (action === 'remove') {
       const result = await this.removeImage(body.id, {});
       return json(result.error ? { error: result.error } : result.manifest, result.error ? 404 : 200);
+    }
+    if (action === 'remove-many') {
+      const ids = Array.isArray(body.ids) ? body.ids : (body.id ? [body.id] : []);
+      const result = await this.removeImages(ids, {});
+      return json(result.manifest || await this.galleryManifest());
+    }
+    if (action === 'clear') {
+      const allIds = this.gallery.images.map((x) => x.id);
+      const result = await this.removeImages(allIds, {});
+      return json(result.manifest || await this.galleryManifest());
     }
     if (action === 'reorder') {
       const ids = Array.isArray(body.ids) ? body.ids : [];
@@ -660,6 +664,32 @@ export class RoomRelay {
     return { manifest: await this.galleryManifest() };
   }
 
+  async removeImages(ids, { enforceOwnership, callerProfileId } = {}) {
+    const list = Array.isArray(ids) ? ids.map(String) : [];
+    if (!list.length) return { manifest: await this.galleryManifest() };
+    const idSet = new Set(list);
+    const toDeleteIds = [];
+    this.gallery.images = this.gallery.images.filter((x) => {
+      if (idSet.has(x.id)) {
+        if (enforceOwnership && (!x.ownerId || x.ownerId !== callerProfileId)) {
+          return true;
+        }
+        toDeleteIds.push(x.id);
+        return false;
+      }
+      return true;
+    });
+    if (toDeleteIds.length > 0) {
+      this.gallery.updatedAt = Date.now();
+      await this.ctx.storage.put('gallery', this.gallery);
+      if (this.config.cloudRoomId) {
+        await Promise.all(toDeleteIds.map((id) => this.env.GALLERY.delete(`${this.config.cloudRoomId}/${id}`).catch(() => {})));
+      }
+      await this.announceGallery();
+    }
+    return { manifest: await this.galleryManifest(), deletedCount: toDeleteIds.length };
+  }
+
   async handleGalleryAdd(request, url) {
     const ident = await this.verifyToken(url.searchParams.get('token') || '');
     if (!ident) return json({ error: 'unauthorized' }, 401);
@@ -919,10 +949,8 @@ export class RoomRelay {
       if (request.method === 'GET' && p === '/mode') {
         if (!this.config) return json({ configured: false });
         return json({
-          configured: true, roomName: this.config.name,
-          accountsEnabled: !!this.config.accountsEnabled,
-          passwordRequiredWithAccounts: !!this.config.passwordRequiredWithAccounts,
-          authMode: this.config.authMode || 'local'
+          configured: true,
+          roomName: this.config.name || 'Kênh Band'
         });
       }
       if (request.method === 'POST' && p === '/join') return this.handleJoin(request);

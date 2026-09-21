@@ -1145,11 +1145,24 @@
       #bandPanel .bp-conn .bp-support .bp-btn:hover { background: #f4efdc; border-color: #e6dfc4; }
       #bandPanel select.bp-btn { flex: 1 1 100%; }
       #bandPanel .bp-conn .bp-gal { margin-top: 12px; border-top: 1px solid #e2e4e9; padding-top: 10px; }
-      #bandPanel .bp-conn .bp-gal #bpGalList { margin-top: 6px; display: flex; flex-direction: column; gap: 4px; }
-      #bandPanel .bp-conn .bp-gal .gi { display: flex; align-items: center; gap: 8px; font-size: .8rem; }
-      #bandPanel .bp-conn .bp-gal .gi .nm { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-      #bandPanel .bp-conn .bp-gal .gi .rm { border: none; background: none; color: #c0392f; font-size: 1.05rem; line-height: 1; cursor: pointer; padding: 0 4px; }
-      #bandPanel .bp-conn .bp-gal .empty { color: #8a93a3; font-size: .78rem; }
+      #bandPanel .bp-conn .bp-gal .bp-gal-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; flex-wrap: wrap; }
+      #bandPanel .bp-conn .bp-gal .bp-gal-title-row { display: flex; align-items: center; gap: 6px; }
+      #bandPanel .bp-conn .bp-gal .bp-gal-count { font-size: .75rem; color: #64748b; font-weight: normal; }
+      #bandPanel .bp-conn .bp-gal .bp-gal-actions { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+      #bandPanel .bp-conn .bp-gal .bp-gal-actions .bp-btn { font-size: 0.74rem; padding: 4px 8px; }
+      #bandPanel .bp-conn .bp-gal .bp-gal-actions .bp-btn.stop { background: #fee2e2; border-color: #fca5a5; color: #b91c1c; font-weight: 600; }
+      #bandPanel .bp-conn .bp-gal .bp-gal-actions .bp-btn.stop:hover { background: #fecaca; }
+      #bandPanel .bp-conn .bp-gal .bp-gal-select-bar { display: flex; align-items: center; justify-content: space-between; padding: 4px 8px; background: #f1f5f9; border-radius: 6px; margin-bottom: 6px; }
+      #bandPanel .bp-conn .bp-gal #bpGalList { display: flex; flex-direction: column; gap: 4px; max-height: 180px; overflow-y: auto; padding-right: 2px; }
+      #bandPanel .bp-conn .bp-gal .gi { display: flex; align-items: center; gap: 8px; font-size: .8rem; padding: 4px 8px; border-radius: 6px; background: #f8fafc; border: 1px solid #e2e8f0; transition: background 0.15s, border-color 0.15s; }
+      #bandPanel .bp-conn .bp-gal .gi:hover { background: #f1f5f9; }
+      #bandPanel .bp-conn .bp-gal .gi.selected { background: #eff6ff; border-color: #93c5fd; }
+      #bandPanel .bp-conn .bp-gal .gi .chk { margin: 0; cursor: pointer; accent-color: #2563a8; }
+      #bandPanel .bp-conn .bp-gal .gi .idx { font-size: .72rem; color: #94a3b8; width: 16px; text-align: right; flex-shrink: 0; }
+      #bandPanel .bp-conn .bp-gal .gi .nm { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; color: #1e293b; }
+      #bandPanel .bp-conn .bp-gal .gi .rm { border: none; background: none; color: #94a3b8; font-size: 1.1rem; line-height: 1; cursor: pointer; padding: 1px 5px; border-radius: 4px; transition: color 0.15s, background 0.15s; }
+      #bandPanel .bp-conn .bp-gal .gi .rm:hover { color: #dc2626; background: #fee2e2; }
+      #bandPanel .bp-conn .bp-gal .empty { color: #8a93a3; font-size: .78rem; text-align: center; padding: 12px; background: #f8fafc; border-radius: 6px; border: 1px dashed #cbd5e1; }
       #bandPanel .bp-slcard { align-self: stretch; border: 1px solid #bcd6f0; background: #eef5fd; border-radius: 9px; padding: 7px 9px; margin: 3px 0; transition: all 0.2s ease; }
       #bandPanel .bp-slcard.loaded { border-color: #a7f3d0; background: #ecfdf5; }
       #bandPanel .bp-slcard.rejected { border-color: #fecaca; background: #fef2f2; }
@@ -1508,9 +1521,29 @@
             </div>
           </div>
           <div class="bp-gal">
-            <div class="bp-kv">
-              <span class="k">Ảnh hợp âm</span>
-              <label class="bp-btn" style="flex:none">Thêm ảnh<input type="file" id="bpGalInput" accept="image/*" multiple hidden></label>
+            <div class="bp-gal-head">
+              <div class="bp-gal-title-row">
+                <span class="k" style="font-weight:700;">Ảnh hợp âm</span>
+                <span class="bp-gal-count" id="bpGalCount">(0 ảnh)</span>
+              </div>
+              <div class="bp-gal-actions">
+                <label class="bp-btn" style="flex:none; cursor:pointer;" title="Thêm ảnh hợp âm từ máy">
+                  + Thêm ảnh
+                  <input type="file" id="bpGalInput" accept="image/*" multiple hidden>
+                </label>
+                <button class="bp-btn stop" id="bpGalDeleteSelected" type="button" style="display:none;" title="Xóa các ảnh đã chọn">
+                  Xóa chọn (<span id="bpGalSelectedCount">0</span>)
+                </button>
+                <button class="bp-btn stop" id="bpGalDeleteAll" type="button" style="display:none;" title="Xóa toàn bộ ảnh hợp âm">
+                  Xóa tất cả
+                </button>
+              </div>
+            </div>
+            <div class="bp-gal-select-bar" id="bpGalSelectBar" style="display:none;">
+              <label style="display:flex; align-items:center; gap:6px; cursor:pointer; font-size:0.75rem; color:#475569; user-select:none;">
+                <input type="checkbox" id="bpGalSelectAll">
+                <span>Chọn tất cả</span>
+              </label>
             </div>
             <div id="bpGalList"></div>
           </div>
@@ -2685,71 +2718,17 @@
               </div>
 
               <div class="stg-section">
-                <div class="stg-row" data-search="đăng nhập tài khoản account login username password">
-                  <div class="stg-row-text">
-                    <div class="stg-label">Đăng nhập tài khoản</div>
-                    <div class="stg-help">Bật để band/leader đăng nhập bằng tài khoản bạn tạo (username + mật khẩu) thay vì chỉ gõ tên tự do + mật khẩu phòng chung.</div>
+                <div class="stg-plain" data-search="kênh band kết nối mã qr id phòng mật khẩu phòng">
+                  <div class="stg-label" style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
+                    <span style="font-size: 16px;">📡</span>
+                    <span>Kênh Band (Giao tiếp thời gian thực)</span>
                   </div>
-                  <div class="stg-row-control">
-                    <label class="stg-toggle">
-                      <input type="checkbox" id="stgAccountsEnabled">
-                      <span class="stg-track"></span>
-                    </label>
+                  <div class="stg-help" style="margin-bottom: 12px; line-height: 1.5;">
+                    Thành viên ban nhạc chỉ cần quét <strong>Mã QR</strong> hoặc nhập <strong>ID Phòng</strong> + <strong>Mật khẩu phòng</strong> trên điện thoại để tham gia. Không cần tạo hay quản lý tài khoản thành viên.
                   </div>
-                </div>
-                <div class="stg-row" data-search="mật khẩu pin phòng sau khi đăng nhập tài khoản">
-                  <div class="stg-row-text">
-                    <div class="stg-label">Yêu cầu thêm mật khẩu phòng sau khi đăng nhập</div>
-                    <div class="stg-help">Tuỳ chọn — dùng lại mật khẩu phòng ở popup Kết nối làm lớp phụ, đổi được mỗi buổi mà không ảnh hưởng mật khẩu cá nhân của ai.</div>
-                  </div>
-                  <div class="stg-row-control">
-                    <label class="stg-toggle">
-                      <input type="checkbox" id="stgPasswordRequiredWithAccounts">
-                      <span class="stg-track"></span>
-                    </label>
-                  </div>
-                </div>
-                <div class="stg-row" data-search="kiểu đăng nhập cục bộ trung tâm cognito email nhiều nhà thờ">
-                  <div class="stg-row-text">
-                    <div class="stg-label">Kiểu tài khoản</div>
-                    <div class="stg-help">Cục bộ: bạn tự tạo/đổi mật khẩu từng người ở máy này. Trung tâm: band tự đăng nhập bằng email dùng chung được nhiều nhà thờ (không cần bạn tạo tài khoản).</div>
-                  </div>
-                  <div class="stg-row-control">
-                    <select id="stgAuthMode" class="stg-input">
-                      <option value="local">Cục bộ (máy này)</option>
-                      <option value="cognito">Trung tâm (email)</option>
-                    </select>
-                  </div>
-                </div>
-                <div class="stg-plain" id="bpLocalAccountsBlock" data-search="tài khoản thành viên">
-                  <div class="stg-label" style="margin-bottom:6px;">Tài khoản thành viên</div>
-                  <div class="stg-help" style="margin-bottom:8px;">Chỉ bạn tạo/đổi mật khẩu được ở đây — band member không tự đổi mật khẩu.</div>
-                  <div id="bpAcctList" class="bp-acct-list"></div>
-                  <div class="bp-acct-add">
-                    <div class="stg-row-text">
-                      <div class="stg-label" style="font-weight:400; font-size:11px; text-transform:uppercase; color:var(--stg-text-faint); margin-bottom:4px;">Tên đăng nhập</div>
-                      <input id="bpAcctUsername" class="stg-input" placeholder="vd: minh" spellcheck="false" autocomplete="off" style="width:100%;">
-                    </div>
-                    <div class="stg-row-text">
-                      <div class="stg-label" style="font-weight:400; font-size:11px; text-transform:uppercase; color:var(--stg-text-faint); margin-bottom:4px;">Tên hiển thị</div>
-                      <input id="bpAcctName" class="stg-input" placeholder="vd: Minh (Guitar)" spellcheck="false" autocomplete="off" style="width:100%;">
-                    </div>
-                  </div>
-                  <div class="bp-acct-add-row2">
-                    <div class="stg-row-text">
-                      <div class="stg-label" style="font-weight:400; font-size:11px; text-transform:uppercase; color:var(--stg-text-faint); margin-bottom:4px;">Mật khẩu tạm</div>
-                      <input id="bpAcctPassword" class="stg-input" type="text" placeholder="≥ 6 ký tự" spellcheck="false" autocomplete="off" style="width:100%;">
-                    </div>
-                    <button class="stg-btn stg-btn-primary" id="bpAcctAddBtn" type="button">+ Thêm thành viên</button>
-                  </div>
-                  <label class="bp-acct-mustchange" style="display:flex; align-items:center; gap:6px; margin-top:8px; font-size:12px; color:var(--stg-text-faint); cursor:pointer;">
-                    <input type="checkbox" id="bpAcctMustChange">
-                    Bắt đổi mật khẩu sau lần đăng nhập đầu
-                  </label>
-                  <div class="bp-acct-status" id="bpAcctStatus"></div>
-                </div>
-                <div class="stg-plain hidden" id="bpCognitoInfoBlock" data-search="tài khoản trung tâm cognito email">
-                  <div class="stg-help">Band tự bấm "Yêu cầu tài khoản" ngay màn đăng nhập trên điện thoại (nhập email, nhận mật khẩu tạm qua mail) — không có danh sách quản lý ở đây vì tài khoản dùng chung cho mọi nhà thờ, không riêng máy này.</div>
+                  <button class="stg-btn stg-btn-primary" type="button" onclick="closeSettingsModal(); if(window.toggleBandPanel) window.toggleBandPanel(true);">
+                    Mở Bảng Điều Khiển Kênh Band
+                  </button>
                 </div>
               </div>
             </div>
@@ -5042,19 +5021,7 @@
                         var elComposer = document.getElementById('stgBandComposerLink');
                         if (elComposer) elComposer.value = roomCode ? ('https://channel.worship-official.link/composer?room=' + encodeURIComponent(roomCode)) : '';
 
-                        var acctEnabledEl = document.getElementById('stgAccountsEnabled');
-                        if (acctEnabledEl) acctEnabledEl.checked = !!(cfg && cfg.accountsEnabled);
-
-                        var pwReqEl = document.getElementById('stgPasswordRequiredWithAccounts');
-                        if (pwReqEl) pwReqEl.checked = !!(cfg && cfg.room && cfg.room.passwordRequiredWithAccounts);
-
-                        var authMode = (cfg && cfg.authMode === 'cognito') ? 'cognito' : 'local';
-                        var authModeEl = document.getElementById('stgAuthMode');
-                        if (authModeEl) authModeEl.value = authMode;
-                        if (window.__updateAuthModeUI) window.__updateAuthModeUI(authMode);
                     }).catch(function () {});
-
-                    if (window.__refreshAcctList) window.__refreshAcctList();
                 }
 
                 const fontSongEl = document.getElementById('settings-font-family-song');
@@ -8473,109 +8440,7 @@
         $('bpTunnelName').addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); $('bpTunnelName').blur(); } });
       }
 
-      // Đăng nhập tài khoản (band-comm-plan.md §11) — operator (laptop) là
-      // nơi DUY NHẤT tạo/sửa/xoá tài khoản; band member chỉ đăng nhập, không
-      // tự đổi mật khẩu được (đã chốt D12).
-      function renderAcctList(accounts) {
-        var list = $('bpAcctList');
-        if (!accounts || !accounts.length) { list.innerHTML = '<div class="bp-acct-empty">Chưa có tài khoản nào.</div>'; return; }
-        list.innerHTML = accounts.map(function (a) {
-          return '<div class="bp-acct-row" data-id="' + escapeHtml(a.id) + '">' +
-            '<div class="nm">' + escapeHtml(a.name) + ' <span class="un">@' + escapeHtml(a.username) + '</span>' +
-            (a.active === false ? '<span class="inactive">Đã khoá</span>' : '') +
-            '</div>' +
-            '<div class="acts">' +
-            '<button class="bp-btn edit" data-act="edit">Sửa tên</button>' +
-            '<button class="bp-btn pw" data-act="pw">Đổi MK</button>' +
-            '<button class="bp-btn toggle" data-act="toggle">' + (a.active === false ? 'Mở khoá' : 'Khoá') + '</button>' +
-            '<button class="bp-btn del" data-act="del">Xoá</button>' +
-            '</div>' +
-            '</div>';
-        }).join('');
-      }
-      function refreshAcctList() {
-        api.accountsList().then(function (list) {
-          renderAcctList(Array.isArray(list) ? list : []);
-        }).catch(function () {});
-      }
-      window.__refreshAcctList = refreshAcctList;
-      $('bpAcctList').addEventListener('click', function (e) {
-        var btn = e.target.closest('button[data-act]');
-        if (!btn) return;
-        var row = btn.closest('.bp-acct-row');
-        var id = row && row.dataset.id;
-        if (!id) return;
-        var act = btn.dataset.act;
-        if (act === 'edit') {
-          var curName = row.querySelector('.nm').childNodes[0].textContent.trim();
-          var newName = prompt('Tên hiển thị mới:', curName);
-          if (!newName || newName === curName) return;
-          api.accountsUpdate({ id: id, name: newName }).then(function () { refreshAcctList(); });
-        } else if (act === 'pw') {
-          var newPw = prompt('Mật khẩu mới (≥ 6 ký tự):');
-          if (!newPw) return;
-          if (newPw.length < 6) { alert('Mật khẩu tối thiểu 6 ký tự.'); return; }
-          var must = confirm('Bắt người này đổi mật khẩu sau lần đăng nhập tới?');
-          api.accountsUpdatePassword({ id: id, password: newPw, mustChangePassword: must }).then(function () {
-            alert('Đã đổi mật khẩu. Nếu đang đăng nhập, máy người này sẽ bị ngắt kết nối và phải đăng nhập lại bằng mật khẩu mới.');
-            refreshAcctList();
-          });
-        } else if (act === 'toggle') {
-          var isLocked = !!row.querySelector('.inactive');
-          var wantActive = isLocked;
-          api.accountsSetActive({ id: id, active: wantActive }).then(function () { refreshAcctList(); });
-        } else if (act === 'del') {
-          if (!confirm('Xoá tài khoản này? Người này sẽ bị ngắt kết nối ngay lập tức.')) return;
-          api.accountsDelete({ id: id }).then(function () { refreshAcctList(); });
-        }
-      });
-      $('bpAcctAddBtn').addEventListener('click', function () {
-        var u = $('bpAcctUsername').value.trim();
-        var n = $('bpAcctName').value.trim();
-        var p = $('bpAcctPassword').value;
-        var mc = $('bpAcctMustChange').checked;
-        var st = $('bpAcctStatus');
-        st.textContent = '';
-        if (!u || !n || !p) { st.textContent = 'Điền đủ username, tên hiển thị và mật khẩu.'; st.className = 'bp-acct-status err'; return; }
-        if (p.length < 6) { st.textContent = 'Mật khẩu tối thiểu 6 ký tự.'; st.className = 'bp-acct-status err'; return; }
-        api.accountsCreate({ username: u, name: n, password: p, mustChangePassword: mc }).then(function (r) {
-          if (r && r.error) { st.textContent = r.error; st.className = 'bp-acct-status err'; return; }
-          st.textContent = 'Đã thêm ' + n + '.'; st.className = 'bp-acct-status ok';
-          setTimeout(function () { st.textContent = ''; }, 2500);
-          $('bpAcctUsername').value = ''; $('bpAcctName').value = ''; $('bpAcctPassword').value = '';
-          $('bpAcctMustChange').checked = false;
-          refreshAcctList();
-        });
-      });
-      $('stgAccountsEnabled').addEventListener('change', function () {
-        var checked = $('stgAccountsEnabled').checked;
-        api.getConfig().then(function (cfg) {
-          return api.saveConfig(Object.assign({}, cfg, { accountsEnabled: checked }));
-        }).catch(function () {});
-      });
-      $('stgPasswordRequiredWithAccounts').addEventListener('change', function () {
-        var checked = $('stgPasswordRequiredWithAccounts').checked;
-        api.getConfig().then(function (cfg) {
-          var room = Object.assign({}, cfg.room, { passwordRequiredWithAccounts: checked });
-          return api.saveConfig(Object.assign({}, cfg, { room: room }));
-        }).catch(function () {});
-      });
-      // 'local' (mặc định, band-comm-plan.md §11) hay 'cognito' (danh tính
-      // trung tâm dùng chung nhiều nhà thờ, cloud/identity-plan.md) — 2 mô
-      // hình loại trừ nhau, chỉ khác NƠI xác thực; luồng mật khẩu phòng phía
-      // trên không đổi gì dù chọn mô hình nào.
-      function updateAuthModeUI(mode) {
-        if ($('bpLocalAccountsBlock')) $('bpLocalAccountsBlock').classList.toggle('hidden', mode === 'cognito');
-        if ($('bpCognitoInfoBlock')) $('bpCognitoInfoBlock').classList.toggle('hidden', mode !== 'cognito');
-      }
-      window.__updateAuthModeUI = updateAuthModeUI;
-      $('stgAuthMode').addEventListener('change', function () {
-        var mode = $('stgAuthMode').value === 'cognito' ? 'cognito' : 'local';
-        updateAuthModeUI(mode);
-        api.getConfig().then(function (cfg) {
-          return api.saveConfig(Object.assign({}, cfg, { authMode: mode }));
-        }).catch(function () {});
-      });
+
 
       // Wizard "domain riêng tự động" — an toàn nếu element tồn tại
       if ($('bpWizOpenBtn')) {
@@ -8712,20 +8577,178 @@
       }
       refreshComposerLink();
 
-      // ---- chord-sheet gallery (operator uploads; phones show below buttons) ----
+      // ---- chord-sheet gallery (operator uploads & bulk manages; phones view & upload) ----
+      var selectedGalIds = new Set();
+      var currentGalImages = [];
+
+      function updateGalToolbar() {
+        var total = currentGalImages.length;
+        var selCount = selectedGalIds.size;
+        var countEl = $('bpGalCount');
+        if (countEl) countEl.textContent = '(' + total + ' ảnh)';
+        var selBar = $('bpGalSelectBar');
+        if (selBar) selBar.style.display = total > 0 ? 'flex' : 'none';
+        var delSelBtn = $('bpGalDeleteSelected');
+        if (delSelBtn) delSelBtn.style.display = selCount > 0 ? 'inline-flex' : 'none';
+        var selCountEl = $('bpGalSelectedCount');
+        if (selCountEl) selCountEl.textContent = selCount;
+        var delAllBtn = $('bpGalDeleteAll');
+        if (delAllBtn) delAllBtn.style.display = total > 1 ? 'inline-flex' : 'none';
+        var selAllChk = $('bpGalSelectAll');
+        if (selAllChk) {
+          selAllChk.checked = total > 0 && selCount === total;
+          selAllChk.indeterminate = selCount > 0 && selCount < total;
+        }
+      }
+
       function renderGal(m) {
-        var list = $('bpGalList'); list.textContent = '';
+        var list = $('bpGalList'); if (!list) return;
+        list.textContent = '';
         var imgs = (m && m.images) || [];
-        if (!imgs.length) { var e = document.createElement('div'); e.className = 'empty'; e.textContent = 'Chưa có ảnh nào.'; list.appendChild(e); return; }
-        imgs.forEach(function (im) {
-          var row = document.createElement('div'); row.className = 'gi';
-          var nm = document.createElement('span'); nm.className = 'nm'; nm.textContent = im.name || im.id;
-          var rm = document.createElement('button'); rm.className = 'rm'; rm.textContent = '×'; rm.title = 'Xoá';
-          rm.addEventListener('click', function () { api.galleryRemove(im.id).then(renderGal).catch(function () {}); });
-          row.appendChild(nm); row.appendChild(rm);
+        currentGalImages = imgs;
+
+        var validIds = new Set(imgs.map(function (x) { return x.id; }));
+        var newSelected = new Set();
+        selectedGalIds.forEach(function (id) {
+          if (validIds.has(id)) newSelected.add(id);
+        });
+        selectedGalIds = newSelected;
+        updateGalToolbar();
+
+        if (!imgs.length) {
+          var e = document.createElement('div');
+          e.className = 'empty';
+          e.textContent = 'Chưa có ảnh hợp âm nào. Nhấn "+ Thêm ảnh" để tải lên.';
+          list.appendChild(e);
+          return;
+        }
+
+        imgs.forEach(function (im, idx) {
+          var row = document.createElement('div');
+          row.className = 'gi' + (selectedGalIds.has(im.id) ? ' selected' : '');
+          row.dataset.id = im.id;
+
+          var chk = document.createElement('input');
+          chk.type = 'checkbox';
+          chk.className = 'chk';
+          chk.checked = selectedGalIds.has(im.id);
+          chk.addEventListener('change', function (e) {
+            e.stopPropagation();
+            if (chk.checked) {
+              selectedGalIds.add(im.id);
+              row.classList.add('selected');
+            } else {
+              selectedGalIds.delete(im.id);
+              row.classList.remove('selected');
+            }
+            updateGalToolbar();
+          });
+
+          var num = document.createElement('span');
+          num.className = 'idx';
+          num.textContent = (idx + 1) + '.';
+
+          var nm = document.createElement('span');
+          nm.className = 'nm';
+          nm.textContent = im.name || im.id;
+          nm.title = im.name || im.id;
+
+          var rm = document.createElement('button');
+          rm.className = 'rm';
+          rm.type = 'button';
+          rm.textContent = '×';
+          rm.title = 'Xoá ảnh này';
+          rm.addEventListener('click', function (e) {
+            e.stopPropagation();
+            if (!confirm('Xác nhận xoá ảnh hợp âm "' + (im.name || im.id) + '"?')) return;
+            selectedGalIds.delete(im.id);
+            api.galleryRemove(im.id)
+              .then(function (res) {
+                renderGal(res);
+                showOperatorToast('Đã xoá 1 ảnh hợp âm.', 'success');
+              })
+              .catch(function (err) {
+                alert('Không xoá được ảnh: ' + (err && err.message || err));
+              });
+          });
+
+          row.appendChild(chk);
+          row.appendChild(num);
+          row.appendChild(nm);
+          row.appendChild(rm);
           list.appendChild(row);
         });
       }
+
+      var selAllEl = $('bpGalSelectAll');
+      if (selAllEl) {
+        selAllEl.addEventListener('change', function () {
+          var isChecked = selAllEl.checked;
+          if (isChecked) {
+            currentGalImages.forEach(function (im) { selectedGalIds.add(im.id); });
+          } else {
+            selectedGalIds.clear();
+          }
+          renderGal({ images: currentGalImages });
+        });
+      }
+
+      var delSelBtn = $('bpGalDeleteSelected');
+      if (delSelBtn) {
+        delSelBtn.addEventListener('click', function () {
+          var ids = Array.from(selectedGalIds);
+          if (!ids.length) return;
+          if (!confirm('Bạn có chắc chắn muốn xoá ' + ids.length + ' ảnh hợp âm đã chọn?')) return;
+          delSelBtn.disabled = true;
+          var call = (api && typeof api.galleryRemoveMany === 'function')
+            ? api.galleryRemoveMany(ids)
+            : Promise.all(ids.map(function (id) { return api.galleryRemove(id); }));
+          Promise.resolve(call)
+            .then(function (res) {
+              delSelBtn.disabled = false;
+              selectedGalIds.clear();
+              if (res && res.images) {
+                renderGal(res);
+              } else {
+                api.galleryList().then(renderGal).catch(function () {});
+              }
+              showOperatorToast('Đã xoá ' + ids.length + ' ảnh hợp âm.', 'success');
+            })
+            .catch(function (err) {
+              delSelBtn.disabled = false;
+              alert('Lỗi khi xoá ảnh: ' + (err && err.message || err));
+            });
+        });
+      }
+
+      var delAllBtn = $('bpGalDeleteAll');
+      if (delAllBtn) {
+        delAllBtn.addEventListener('click', function () {
+          var total = currentGalImages.length;
+          if (!total) return;
+          if (!confirm('CẢNH BÁO: Bạn có chắc chắn muốn xoá TOÀN BỘ ' + total + ' ảnh hợp âm?')) return;
+          delAllBtn.disabled = true;
+          var call = (api && typeof api.galleryClear === 'function')
+            ? api.galleryClear()
+            : api.galleryRemoveMany(currentGalImages.map(function (x) { return x.id; }));
+          Promise.resolve(call)
+            .then(function (res) {
+              delAllBtn.disabled = false;
+              selectedGalIds.clear();
+              if (res && res.images) {
+                renderGal(res);
+              } else {
+                api.galleryList().then(renderGal).catch(function () {});
+              }
+              showOperatorToast('Đã xoá toàn bộ ảnh hợp âm.', 'success');
+            })
+            .catch(function (err) {
+              delAllBtn.disabled = false;
+              alert('Lỗi khi xoá tất cả ảnh: ' + (err && err.message || err));
+            });
+        });
+      }
+
       function downscaleImg(file, cb) {
         var img = new Image();
         img.onload = function () {
@@ -8742,9 +8765,16 @@
       $('bpGalInput').addEventListener('change', function (ev) {
         var files = Array.prototype.slice.call(ev.target.files || []);
         ev.target.value = '';
+        if (!files.length) return;
+        showOperatorToast('Đang tải lên ' + files.length + ' ảnh hợp âm...', 'info');
         files.forEach(function (f) {
           downscaleImg(f, function (dataUrl) {
-            api.galleryAdd({ name: f.name, ext: '.jpg', dataB64: dataUrl }).then(renderGal).catch(function () {});
+            api.galleryAdd({ name: f.name, ext: '.jpg', dataB64: dataUrl })
+              .then(function (res) {
+                renderGal(res);
+                showOperatorToast('Đã thêm ảnh "' + f.name + '".', 'success');
+              })
+              .catch(function () {});
           });
         });
       });
