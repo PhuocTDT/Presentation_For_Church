@@ -137,10 +137,32 @@ document.addEventListener('DOMContentLoaded', () => {
   // =========================================================================
   // Theme Toggle (Sync with Landing Page)
   // =========================================================================
+  function updateFavicon(theme) {
+    const iconHref = theme === 'light'
+      ? 'assets/images/app-icon-for-light-theme.png'
+      : 'assets/images/app-icon-for-dark-theme.png';
+
+    document.querySelectorAll("link[rel*='icon']").forEach(el => el.remove());
+
+    const link = document.createElement('link');
+    link.id = 'faviconTag';
+    link.rel = 'icon';
+    link.type = 'image/png';
+    link.href = iconHref;
+    document.head.appendChild(link);
+
+    const appleLink = document.createElement('link');
+    appleLink.id = 'appleTouchIconTag';
+    appleLink.rel = 'apple-touch-icon';
+    appleLink.href = iconHref;
+    document.head.appendChild(appleLink);
+  }
+
   function initTheme() {
     const savedTheme = localStorage.getItem('theme') || 'dark';
     document.documentElement.setAttribute('data-theme', savedTheme);
     updateThemeIcon(savedTheme);
+    updateFavicon(savedTheme);
   }
 
   function updateThemeIcon(theme) {
@@ -155,6 +177,7 @@ document.addEventListener('DOMContentLoaded', () => {
       document.documentElement.setAttribute('data-theme', cur);
       localStorage.setItem('theme', cur);
       updateThemeIcon(cur);
+      updateFavicon(cur);
     });
   }
   initTheme();

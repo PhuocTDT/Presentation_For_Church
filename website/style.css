@@ -317,6 +317,23 @@ h1, h2, h3, h4, h5, h6 {
   object-fit: cover;
 }
 
+/* Dynamic Logo Theme Switching */
+.logo-dark-theme {
+  display: block;
+}
+
+.logo-light-theme {
+  display: none;
+}
+
+[data-theme="light"] .logo-dark-theme {
+  display: none !important;
+}
+
+[data-theme="light"] .logo-light-theme {
+  display: block !important;
+}
+
 .brand-text-block {
   display: flex;
   flex-direction: column;

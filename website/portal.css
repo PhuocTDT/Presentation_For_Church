@@ -205,6 +205,22 @@ body {
   border-radius: calc(var(--radius-sm) - 2px);
 }
 
+.logo-dark-theme {
+  display: block;
+}
+
+.logo-light-theme {
+  display: none;
+}
+
+[data-theme="light"] .logo-dark-theme {
+  display: none !important;
+}
+
+[data-theme="light"] .logo-light-theme {
+  display: block !important;
+}
+
 .portal-brand-title {
   font-family: var(--font-heading);
   font-size: 1.15rem;
