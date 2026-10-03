@@ -1,0 +1,7 @@
+Dòng lời 1 của slide thứ nhất
+Dòng lời 2 của slide thứ nhất
+
+Dòng lời 1 của slide thứ hai
+Dòng lời 2 của slide thứ hai
+
+Dòng lời của slide thứ ba

@@ -36,9 +36,33 @@
     { id: 'b-def-next-song', label: 'Chuyển bài', group: 'Nhạc' },
     { id: 'b-def-ok', label: 'Ok', group: '' }
   ];
+  // Nút mặc định chỉ được nạp cho THIẾT BỊ HOÀN TOÀN MỚI (xem finalizeJoin) nên điện
+  // thoại đã có nút tự tạo (hoặc khôi phục từ hồ sơ cũ trên server) không bao giờ có
+  // chúng, trong khi laptop/trình duyệt mới thì có — đó là lý do 2 nơi khác nhau.
+  // Hàm dưới thêm bộ mặc định vào máy ĐÃ có nút mà KHÔNG xoá/sửa nút người dùng:
+  //  - bỏ qua nút mặc định đã có (cùng id) hoặc trùng nhãn với nút tự tạo (tránh nhân đôi);
+  //  - `ignoreDeleted=false` (tự động, 1 lần/thiết bị) tôn trọng nút mặc định người dùng đã xoá;
+  //  - `ignoreDeleted=true` (bấm "Nút mặc định") thêm lại tất cả.
+  function missingDefaults(ignoreDeleted) {
+    var haveId = {}, haveLabel = {};
+    (state.buttons || []).forEach(function (b) { haveId[b.id] = 1; haveLabel[String(b.label || '').trim().toLowerCase()] = 1; });
+    var gone = ignoreDeleted ? [] : (state.deletedDefaults || []);
+    return DEFAULT_BUTTONS.filter(function (d) {
+      return !haveId[d.id] && !haveLabel[d.label.toLowerCase()] && gone.indexOf(d.id) === -1;
+    });
+  }
+  function addDefaultButtons(ignoreDeleted) {
+    var add = missingDefaults(ignoreDeleted);
+    if (ignoreDeleted) state.deletedDefaults = [];
+    add.forEach(function (d) { state.buttons.push({ id: d.id, label: d.label, group: d.group }); });
+    return add.length;
+  }
   // Cùng 1 Worker phục vụ CẢ trang này (mount /m/) LẪN toàn bộ API/relay —
   // xem cloud/worker/src/worker.js + room-relay.js.
-  var CLOUD_API_BASE = 'https://channel.worship-official.link';
+  // Trang này LUÔN do chính Worker phục vụ nên gọi API cùng origin: production vẫn là
+  // channel.worship-official.link, còn chạy local (wrangler dev) thì trỏ vào relay local thay vì
+  // lén gọi nhầm production.
+  var CLOUD_API_BASE = /^https?:$/.test(location.protocol) ? location.origin : 'https://channel.worship-official.link';
 
   var state = loadState();
   var ws = null;
@@ -77,7 +101,6 @@
     if (!Array.isArray(s.buttons)) s.buttons = [];
     if (typeof s.sound !== 'boolean') s.sound = true;
     if (typeof s.vibrate !== 'boolean') s.vibrate = true;
-    if (!Array.isArray(s.slDraft)) s.slDraft = [];
     return s;
   }
   function saveState() {
@@ -220,9 +243,6 @@
     if (pingTimer) { clearInterval(pingTimer); pingTimer = null; }
     state.token = null;
     state.clientId = null;
-    // Nháp setlist gắn với phòng vừa rời — không mang sang phòng khác
-    // (khác nhà thờ/buổi lễ) kẻo gửi nhầm bài không thuộc phòng mới.
-    state.slDraft = [];
     saveState();
     setDot('');
     $('main').classList.add('hidden');
@@ -238,6 +258,11 @@
     $('join').classList.add('hidden');
     $('main').classList.remove('hidden');
     $('roomName').textContent = state.roomName || 'Kênh Band';
+    // 1 lần / thiết bị: bổ sung bộ nút mặc định cho máy đã có nút tự tạo (xem missingDefaults).
+    if (!state.defaultsMergedV1) {
+      state.defaultsMergedV1 = true;
+      if (addDefaultButtons(false)) persistButtons(); else saveState();
+    }
     renderButtons();
     connect();
     startPing();
@@ -453,6 +478,19 @@
     add.textContent = 'Tạo nút';
     add.addEventListener('click', function () { openEditor(null); });
     addGrid.appendChild(add);
+    // Chỉ hiện khi còn nút mặc định chưa có (kể cả đã xoá) — thêm lại không đụng nút tự tạo.
+    if (missingDefaults(true).length) {
+      var defBtn = document.createElement('button');
+      defBtn.className = 'qbtn add';
+      defBtn.textContent = 'Nút mặc định';
+      defBtn.title = 'Thêm các nút mặc định còn thiếu (Âm lượng, Sự cố, Nhạc…)';
+      defBtn.addEventListener('click', function () {
+        var n = addDefaultButtons(true);
+        persistButtons();
+        toast('band', '', n ? ('Đã thêm ' + n + ' nút mặc định.') : 'Đã có đủ nút mặc định.');
+      });
+      addGrid.appendChild(defBtn);
+    }
     wrap.appendChild(addGrid);
 
     var groups = {};
@@ -540,6 +578,10 @@
   $('edCancel').addEventListener('click', closeEditor);
   $('editor').addEventListener('click', function (e) { if (e.target === $('editor')) closeEditor(); });
   $('edDelete').addEventListener('click', function () {
+    // Nhớ nút MẶC ĐỊNH đã xoá để lần nạp tự động sau không thêm lại ngược ý người dùng.
+    if (editingId && String(editingId).indexOf('b-def-') === 0) {
+      state.deletedDefaults = (state.deletedDefaults || []).filter(function (x) { return x !== editingId; }).concat([editingId]);
+    }
     state.buttons = state.buttons.filter(function (x) { return x.id !== editingId; });
     persistButtons();
     closeEditor();
@@ -589,6 +631,7 @@
     // thấy nút "+ Thêm ảnh" để bắt đầu, không còn khái niệm "chưa bật".
     if (!chOpen) { sec.classList.add('hidden'); if (force) { track.textContent = ''; dots.textContent = ''; } return; }
     sec.classList.remove('hidden');
+    if ($('chOrderBtn')) $('chOrderBtn').hidden = imgs.length < 2;
     if (!force) return;
     track.textContent = ''; dots.textContent = '';
     imgs.forEach(function (item, i) {
@@ -624,6 +667,56 @@
     });
     chCarousel.goTo(0, false);
   }
+
+  // ---- Sắp xếp thứ tự ảnh hợp âm (thứ tự dùng chung cả phòng) ----
+  // Làm việc trên BẢN SAO cục bộ, bấm "Lưu thứ tự" mới gửi 1 lần (không bắn 1 request
+  // mỗi lần bấm ▲▼ — relay có giới hạn tần suất và mỗi lần đổi đều phát cho cả phòng).
+  var chOrderIds = [];
+  function renderChOrder() {
+    var list = $('chOrderList'); list.textContent = '';
+    var byId = {}; chImgs.forEach(function (x) { byId[x.id] = x; });
+    chOrderIds.forEach(function (id, i) {
+      var it = byId[id] || { id: id };
+      var row = document.createElement('div'); row.className = 'o';
+      var idx = document.createElement('span'); idx.className = 'i'; idx.textContent = (i + 1) + '.';
+      var im = document.createElement('img'); im.alt = '';
+      im.src = CLOUD_API_BASE + '/gallery/image/' + encodeURIComponent(state.cloudRoomId) + '/' + encodeURIComponent(id);
+      var nm = document.createElement('span'); nm.className = 'n'; nm.textContent = it.name || ('Ảnh ' + (i + 1));
+      var up = document.createElement('button'); up.type = 'button'; up.textContent = '▲'; up.disabled = i === 0; up.setAttribute('aria-label', 'Lên');
+      var dn = document.createElement('button'); dn.type = 'button'; dn.textContent = '▼'; dn.disabled = i === chOrderIds.length - 1; dn.setAttribute('aria-label', 'Xuống');
+      up.addEventListener('click', function () { moveChOrder(i, -1); });
+      dn.addEventListener('click', function () { moveChOrder(i, 1); });
+      row.appendChild(idx); row.appendChild(im); row.appendChild(nm); row.appendChild(up); row.appendChild(dn);
+      list.appendChild(row);
+    });
+  }
+  function moveChOrder(i, d) {
+    var j = i + d; if (j < 0 || j >= chOrderIds.length) return;
+    var t = chOrderIds[i]; chOrderIds[i] = chOrderIds[j]; chOrderIds[j] = t;
+    renderChOrder();
+  }
+  function closeChOrder() { $('chOrder').classList.add('hidden'); }
+  $('chOrderBtn') && $('chOrderBtn').addEventListener('click', function () {
+    if (chImgs.length < 2) { toast('band', '', 'Cần ít nhất 2 ảnh để sắp xếp.'); return; }
+    chOrderIds = chImgs.map(function (x) { return x.id; });
+    renderChOrder();
+    $('chOrder').classList.remove('hidden');
+  });
+  $('chOrderCancel') && $('chOrderCancel').addEventListener('click', closeChOrder);
+  $('chOrder') && $('chOrder').addEventListener('click', function (e) { if (e.target === $('chOrder')) closeChOrder(); });
+  $('chOrderSave') && $('chOrderSave').addEventListener('click', function () {
+    var btn = $('chOrderSave'); btn.disabled = true;
+    fetch(roomUrl('/gallery/reorder?token=' + encodeURIComponent(state.token || '')), {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ids: chOrderIds })
+    })
+      .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+      .then(function (res) {
+        btn.disabled = false;
+        if (res.ok) { closeChOrder(); renderChords(res.j); toast('band', '', 'Đã lưu thứ tự ảnh hợp âm.'); }
+        else { toast('band', '', (res.j && res.j.error) || 'Lưu thứ tự không được.'); }
+      })
+      .catch(function () { btn.disabled = false; toast('band', '', 'Lưu thứ tự không được (mất kết nối?).'); });
+  });
 
   function updateChToggle() {
     var b = $('chToggleBtn'), nb = $('chNew');
@@ -824,155 +917,11 @@
   }
   $('chLightboxClose') && $('chLightboxClose').addEventListener('click', closeLightbox);
 
-  /* ---------------- setlist (soạn danh sách bài gửi máy chiếu) ---------------- */
-
-  var slSongs = [];
-  var slLibLoaded = false;
-
-  function fetchLibrary() {
-    // fallback từ cache trước cho nhanh / lúc mạng chờn (chỉ dùng nếu cache khớp đúng room)
-    if (!slSongs.length && state.slLibCache && state.slLibCache.roomId === state.cloudRoomId && Array.isArray(state.slLibCache.songs)) {
-      slSongs = state.slLibCache.songs;
-    }
-    // /library (Worker-level, không qua DO) — cùng endpoint /composer đã
-    // dùng, KV theo cloudRoomId, độc lập LAN từ trước tới giờ.
-    fetch(CLOUD_API_BASE + '/library?roomId=' + encodeURIComponent(state.cloudRoomId || ''))
-      .then(function (r) { return r.json(); })
-      .then(function (j) {
-        if (j && Array.isArray(j.songs)) {
-          slSongs = j.songs;
-          slLibLoaded = true;
-          state.slLibCache = { roomId: state.cloudRoomId, songs: j.songs, ts: Date.now() };
-          saveState();
-          renderSlResults($('slSearch').value);
-        }
-      }).catch(function () {});
-  }
-
-  function renderSlDraft() {
-    var box = $('slDraft'); box.textContent = '';
-    var d = state.slDraft || [];
-    if (!d.length) { var e = document.createElement('div'); e.className = 'empty'; e.textContent = 'Chưa có bài. Gõ tìm bên dưới rồi chạm để thêm.'; box.appendChild(e); return; }
-    d.forEach(function (it, i) {
-      var row = document.createElement('div'); row.className = 'row';
-      var n = document.createElement('span'); n.className = 'n'; n.textContent = (i + 1) + '. ' + it.title;
-      row.appendChild(n);
-      [['↑', -1], ['↓', 1], ['×', 0]].forEach(function (pair) {
-        var b = document.createElement('button');
-        b.type = 'button'; b.textContent = pair[0];
-        if (pair[1] === 0) b.className = 'x';
-        b.addEventListener('click', function () {
-          if (pair[1] === 0) { state.slDraft.splice(i, 1); }
-          else { var j = i + pair[1]; if (j < 0 || j >= state.slDraft.length) return; var t = state.slDraft[i]; state.slDraft[i] = state.slDraft[j]; state.slDraft[j] = t; }
-          saveState(); renderSlDraft(); renderSlResults($('slSearch').value);
-        });
-        row.appendChild(b);
-      });
-      box.appendChild(row);
-    });
-  }
-
-  function norm(s) {
-    return String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/đ/gi, 'd').toLowerCase();
-  }
-  function renderSlResults(query) {
-    var wrap = $('slResults');
-    var q = norm(query).trim();
-    if (!q) { wrap.classList.add('hidden'); wrap.textContent = ''; return; }
-    var inDraft = {}; (state.slDraft || []).forEach(function (x) { inDraft[String(x.id)] = 1; });
-    var hits = slSongs.filter(function (s) { return norm(s.title).indexOf(q) >= 0 || norm(s.lyrics).indexOf(q) >= 0; }).slice(0, 40);
-    wrap.textContent = '';
-    if (!hits.length) { wrap.classList.remove('hidden'); var e = document.createElement('div'); e.className = 'r'; e.textContent = slLibLoaded ? 'Không thấy bài nào.' : 'Đang tải thư viện…'; wrap.appendChild(e); return; }
-    hits.forEach(function (s) {
-      var r = document.createElement('div'); r.className = 'r' + (inDraft[String(s.id)] ? ' added' : '');
-      var title = document.createElement('span'); title.textContent = (inDraft[String(s.id)] ? '✓ ' : '') + s.title;
-      r.appendChild(title);
-      if (s.lyrics) { var ly = document.createElement('span'); ly.className = 'ly'; ly.textContent = s.lyrics.replace(/\n+/g, ' · ').slice(0, 90); r.appendChild(ly); }
-      r.addEventListener('click', function () {
-        var k = String(s.id);
-        if (inDraft[k]) { state.slDraft = state.slDraft.filter(function (x) { return String(x.id) !== k; }); }
-        else { state.slDraft.push({ id: s.id, title: s.title }); }
-        saveState(); renderSlDraft(); renderSlResults(query);
-      });
-      wrap.appendChild(r);
-    });
-    wrap.classList.remove('hidden');
-  }
-
-  function sendSetlist() {
-    var d = state.slDraft || [];
-    if (!d.length) { toast('band', '', 'Setlist đang trống.'); return; }
-    var name = $('slName').value.trim() || 'Setlist';
-    var payload = {
-      id: 'sl-' + Date.now().toString(16) + Math.random().toString(16).slice(2, 8),
-      name: name,
-      items: d.map(function (x) { return { type: 'song', id: x.id, title: x.title }; })
-    };
-    $('slSend').disabled = true;
-    fetch(roomUrl('/setlist?token=' + encodeURIComponent(state.token || '')), {
-      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
-    })
-      .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
-      .then(function (res) {
-        $('slSend').disabled = false;
-        if (!res.ok || !res.j || !res.j.ok) { toast('band', '', (res.j && res.j.error) || 'Máy chiếu chưa nhận được.'); return; }
-        // relay luôn trả lời được dù operator đang offline (khác LAN cũ,
-        // network error mới báo "tắt") — res.j.delivered mới là tín hiệu
-        // thật "operator có đang mở app không", quyết định có cần gửi thêm
-        // qua hộp thư cloud hay không.
-        if (res.j.delivered) { finishSetlistSent(false); }
-        else { sendSetlistToCloud(payload); }
-      })
-      .catch(function () { sendSetlistToCloud(payload); });
-  }
-
-  function finishSetlistSent(viaCloud) {
-    state.slDraft = []; saveState();
-    $('slName').value = ''; $('slSearch').value = '';
-    renderSlDraft(); renderSlResults('');
-    toast('op', '', viaCloud ? 'Máy chiếu đang tắt — đã gửi qua hộp thư, sẽ tới khi máy chiếu mở lại.' : 'Đã gửi setlist cho máy chiếu.');
-    $('setlistBlock').classList.add('hidden');
-  }
-
-  function sendSetlistToCloud(payload) {
-    if (!state.cloudRoomId) {
-      $('slSend').disabled = false;
-      toast('band', '', 'Chưa gửi được — máy chiếu chưa online. Danh sách vẫn được giữ.');
-      return;
-    }
-    fetch(CLOUD_API_BASE + '/setlist', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        roomId: state.cloudRoomId,
-        setlist: { id: payload.id, name: payload.name, from: { name: state.name }, items: payload.items }
-      })
-    })
-      .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
-      .then(function (res) {
-        $('slSend').disabled = false;
-        if (res.ok && res.j && res.j.ok) finishSetlistSent(true);
-        else toast('band', '', 'Chưa gửi được — thử lại sau.');
-      })
-      .catch(function () {
-        $('slSend').disabled = false;
-        toast('band', '', 'Không có mạng — thử lại khi có kết nối.');
-      });
-  }
-
-  $('slToggleBtn') && $('slToggleBtn').addEventListener('click', function () {
-    var sec = $('setlistBlock');
-    var show = sec.classList.contains('hidden');
-    sec.classList.toggle('hidden', !show);
-    $('slToggleBtn').classList.toggle('active', show);
-    if (show) {
-      renderSlDraft();
-      if (!slLibLoaded) fetchLibrary();
-      sec.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
-  });
-  $('slSearch') && $('slSearch').addEventListener('input', function () { renderSlResults(this.value); });
-  $('slSend') && $('slSend').addEventListener('click', sendSetlist);
+  /* ---------------- setlist: đã tách thành trang riêng /setlist/ ---------------- */
+  // Trước đây soạn setlist nằm ngay trong trang này. Giờ mở trang riêng (comm/setlist/,
+  // có tạo bài mới + xem trước slide). KHÔNG kèm ?room= : trang đó tự nhận lại phiên
+  // đăng nhập của trang này (cùng origin) nên không bắt nhập mật khẩu lần nữa.
+  $('slToggleBtn') && $('slToggleBtn').addEventListener('click', function () { location.href = '/setlist/'; });
 
   /* ---------------- composer + settings ---------------- */
 

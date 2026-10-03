@@ -162,11 +162,26 @@ function sanitizeButtons(buttons) {
 /**
  * @param {string} userDataPath
  * @param {(filePath:string, data:any)=>boolean} safeWriteSync  reused from main.js
+ * @param {{available:()=>boolean, encrypt:(s:string)=>string, decrypt:(s:string)=>string}} [secretBox]
+ *   tùy chọn (main.js truyền Electron safeStorage): mã hóa `relayAdminSecret` at-rest —
+ *   đó là khóa xác thực của máy operator với relay, lộ file = giả danh được operator.
+ *   Module vẫn không phụ thuộc Electron. Không có secretBox thì lưu rõ như trước.
  */
-function createStore(userDataPath, safeWriteSync) {
+function createStore(userDataPath, safeWriteSync, secretBox) {
   const configPath = path.join(userDataPath, 'band-comm.json');
   const mediaDir = path.join(userDataPath, 'band-comm-media');
   let cache = null;
+
+  function canEncrypt() {
+    try { return !!(secretBox && secretBox.available()); } catch (e) { return false; }
+  }
+  // Ghi xuống đĩa: relayAdminSecret → relayAdminSecretEnc (nếu OS cho phép mã hóa).
+  function persist(cfg) {
+    if (!canEncrypt() || !cfg || !cfg.relayAdminSecret) { safeWriteSync(configPath, cfg); return; }
+    const onDisk = { ...cfg, relayAdminSecretEnc: secretBox.encrypt(cfg.relayAdminSecret) };
+    delete onDisk.relayAdminSecret;
+    safeWriteSync(configPath, onDisk);
+  }
 
   try {
     if (!fs.existsSync(mediaDir)) fs.mkdirSync(mediaDir, { recursive: true });
@@ -182,6 +197,16 @@ function createStore(userDataPath, safeWriteSync) {
     } catch (e) {
       console.error('[BandComm] Failed to read band-comm.json, using defaults:', e);
     }
+    // Giải mã relayAdminSecret nếu file mới; giải mã lỗi (đổi tài khoản Windows, file hỏng)
+    // = coi như mất secret → normalizeConfig sinh secret mới; chủ phòng lấy lại quyền với
+    // relay bằng đăng nhập Cognito (xem room-relay.js handleAdminConfig).
+    if (raw && typeof raw.relayAdminSecretEnc === 'string') {
+      let plain = '';
+      try { if (canEncrypt()) plain = String(secretBox.decrypt(raw.relayAdminSecretEnc) || ''); } catch (e) { plain = ''; }
+      if (!plain) console.warn('[BandComm] Không giải mã được relayAdminSecret — sinh khóa mới, cần đăng nhập lại để relay chấp nhận.');
+      raw = { ...raw, relayAdminSecret: plain };
+      delete raw.relayAdminSecretEnc;
+    }
     cache = normalizeConfig(raw);
     // File mới toàn bộ, hoặc file cũ chưa có cloudRoomId (nâng cấp từ bản trước
     // M2), hoặc file cũ còn dùng key `room.pin`/`pinSetAt`/`pinRequiredWithAccounts`
@@ -191,7 +216,11 @@ function createStore(userDataPath, safeWriteSync) {
     const legacyPinKeys = raw && raw.room && raw.room.pin !== undefined;
     const missingRoomCode = !raw || !raw.room || !raw.room.code;
     const missingRelaySecret = !raw || !raw.relayAdminSecret;
-    if (!raw || raw.cloudRoomId !== cache.cloudRoomId || legacyPinKeys || missingRoomCode || missingRelaySecret) safeWriteSync(configPath, cache);
+    // File cũ lưu secret dạng rõ → ghi lại bản mã hóa ngay (nếu OS hỗ trợ).
+    const needsEncryptMigration = canEncrypt() && !!(raw && raw.relayAdminSecret) && (() => {
+      try { return !JSON.parse(fs.readFileSync(configPath, 'utf8')).relayAdminSecretEnc; } catch (e) { return false; }
+    })();
+    if (!raw || raw.cloudRoomId !== cache.cloudRoomId || legacyPinKeys || missingRoomCode || missingRelaySecret || needsEncryptMigration) persist(cache);
     return cache;
   }
 
@@ -203,7 +232,7 @@ function createStore(userDataPath, safeWriteSync) {
     // place that can tell "did the password actually change", so stamp it here.
     if (prevPassword && normalized.room.password !== prevPassword) normalized.room.passwordSetAt = Date.now();
     cache = normalized;
-    safeWriteSync(configPath, cache);
+    persist(cache);
     return cache;
   }
 
@@ -222,7 +251,7 @@ function createStore(userDataPath, safeWriteSync) {
       buttons: sanitizeButtons(buttons)
     };
     cur.profiles[profileId] = entry;
-    safeWriteSync(configPath, cur);
+    persist(cur);
     cache = cur;
     return entry;
   }

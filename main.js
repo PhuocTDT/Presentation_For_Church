@@ -1,14 +1,79 @@
-const { app, BrowserWindow, Menu, ipcMain, dialog, protocol, net, screen, shell } = require('electron');
+const { app, BrowserWindow, Menu, ipcMain, dialog, protocol, net, screen, shell, session, safeStorage, nativeImage } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const os = require('os');
-const { pathToFileURL } = require('url');
+const { pathToFileURL, fileURLToPath } = require('url');
 const { validateItem, migrateItem } = require('./src/schema');
 const { createStore: createBandCommStore } = require('./src/band-comm/store');
 const { createOperatorAuthStore } = require('./src/band-comm/operator-auth');
 const { createRelayClient } = require('./src/band-comm/relay-client');
 const { autoSyncPreviousVersionsLibrary, importLibraryFromCustomPath } = require('./src/library-sync');
 let pendingLibrarySyncNotification = null;
+// ── Renderer hardening (trust boundary: renderer = không tin cậy) ─────────────
+// 1) Mọi ipcMain.handle chỉ nhận lệnh từ đúng 2 trang của app (index.html /
+//    live.html nạp từ file://). Frame lạ (điều hướng/nhúng bất ngờ) bị từ chối.
+const TRUSTED_RENDERER_PAGES = ['index.html', 'live.html'];
+function normalizeFsPath(p) {
+  const r = path.resolve(p);
+  return process.platform === 'win32' ? r.toLowerCase() : r;
+}
+function isTrustedRendererUrl(rawUrl) {
+  try {
+    const u = new URL(String(rawUrl || ''));
+    if (u.protocol !== 'file:') return false;
+    const p = normalizeFsPath(fileURLToPath(u));
+    return TRUSTED_RENDERER_PAGES.some(name => p === normalizeFsPath(path.join(__dirname, name)));
+  } catch (e) { return false; }
+}
+function isTrustedSender(event) {
+  const frame = event && event.senderFrame;
+  return !!frame && isTrustedRendererUrl(frame.url);
+}
+const _ipcHandle = ipcMain.handle.bind(ipcMain);
+ipcMain.handle = (channel, listener) => _ipcHandle(channel, (event, ...args) => {
+  if (!isTrustedSender(event)) {
+    console.warn('[security] IPC bị từ chối (sender không tin cậy):', channel, event && event.senderFrame && event.senderFrame.url);
+    throw new Error('Untrusted IPC sender');
+  }
+  return listener(event, ...args);
+});
+
+// 2) Chặn điều hướng / cửa sổ mới / webview; link ngoài chỉ qua allowlist scheme.
+function openExternalSafe(url) {
+  if (typeof url === 'string' && /^(https:|mailto:)/i.test(url)) {
+    shell.openExternal(url);
+    return true;
+  }
+  return false;
+}
+app.on('web-contents-created', (_e, contents) => {
+  contents.on('will-navigate', (e, url) => {
+    if (!isTrustedRendererUrl(url)) e.preventDefault();
+  });
+  contents.setWindowOpenHandler(({ url }) => {
+    openExternalSafe(url);
+    return { action: 'deny' };
+  });
+  contents.on('will-attach-webview', (e) => e.preventDefault());
+});
+
+// 3b) Đường dẫn file do renderer gửi lên KHÔNG được tin: chỉ chấp nhận đường dẫn
+//     mà chính main process đã thấy qua dialog (hoặc mở file từ OS).
+const approvedSchedulePaths = new Set();
+const approvedSongImportPaths = new Set();
+const approvedMediaFolders = new Set(); // thư mục media: chỉ nhận từ dialog select-folder
+function approvePath(set, p) { if (typeof p === 'string' && p) set.add(normalizeFsPath(p)); }
+function isApprovedPath(set, p) { return typeof p === 'string' && !!p && set.has(normalizeFsPath(p)); }
+
+// 3) Quyền của Chromium (camera, mic, thông báo, vị trí…): từ chối mặc định,
+//    chỉ cho phép những gì app thật sự dùng (copy link vào clipboard, fullscreen).
+const ALLOWED_PERMISSIONS = new Set(['clipboard-sanitized-write', 'fullscreen']);
+function installPermissionPolicy() {
+  const ses = session.defaultSession;
+  ses.setPermissionRequestHandler((_wc, permission, callback) => callback(ALLOWED_PERMISSIONS.has(permission)));
+  ses.setPermissionCheckHandler((_wc, permission) => ALLOWED_PERMISSIONS.has(permission));
+}
+
 
 // CPU Usage helper
 let lastCpuUsage = { idle: 0, total: 0 };
@@ -103,8 +168,6 @@ let bandOperatorAuthStore = null;
 let pendingOperatorCognito = null;
 let commServer = null; // GĐ2: instance createRelayClient() (src/band-comm/relay-client.js), không phải LAN server nữa — tên biến giữ nguyên để không phải đổi hàng trăm chỗ gọi commServer.*
 let lastBandStartError = null;
-let bandTunnelProc = null;   // child cloudflared, null nếu không chạy
-let bandTunnelMode = null;   // 'named:<tên>' hoặc 'quick' — mode mà bandTunnelProc đang chạy
 let globalSettings = {};
 let liveWindowTargetDisplayId = null;
 
@@ -348,6 +411,40 @@ function bootstrapGpuAccelerationPreference() {
 // 3. Helper Functions
 function getMediaFolderPath() {
   return (globalSettings && globalSettings.mediaPath) ? globalSettings.mediaPath : defaultMediaFolderPath;
+}
+
+// ---- Ảnh nền thư viện -> cloud (trang /setlist/ xem trước slide) ----
+// Chỉ ẢNH (jpg/jpeg/png); video bỏ qua. `key` đổi khi file đổi (tên|size|mtime) để
+// relay biết ảnh nào cần tải lại. Thumb thu nhỏ ~960px JPEG ≤400KB bằng nativeImage
+// (không thêm thư viện); relay-client gọi tuần tự nên không đè UI.
+function listBackgroundImagesForCloud() {
+  try {
+    const dir = getMediaFolderPath();
+    if (!dir || !fs.existsSync(dir)) return [];
+    const out = [];
+    for (const f of fs.readdirSync(dir)) {
+      if (!/\.(jpe?g|png)$/i.test(f)) continue;
+      let st; try { st = fs.statSync(path.join(dir, f)); } catch (e) { continue; }
+      if (!st.isFile()) continue;
+      out.push({ name: f, key: require('crypto').createHash('sha1').update(`${f}|${st.size}|${Math.round(st.mtimeMs)}`).digest('hex') });
+    }
+    return out.sort((a, b) => a.name.localeCompare(b.name));
+  } catch (e) { return []; }
+}
+
+async function makeBackgroundThumbForCloud(name) {
+  await new Promise((r) => setImmediate(r)); // nhường event loop giữa các ảnh
+  if (!name || path.basename(name) !== name) return null; // chống path traversal
+  const full = path.join(getMediaFolderPath(), name);
+  let img = nativeImage.createFromPath(full);
+  if (!img || img.isEmpty()) return null;
+  if (img.getSize().width > 960) img = img.resize({ width: 960, quality: 'good' });
+  for (const q of [80, 65, 50]) {
+    const buf = img.toJPEG(q);
+    if (buf.length <= 400 * 1024) return buf;
+  }
+  const small = img.resize({ width: 640 }).toJPEG(60);
+  return small.length <= 400 * 1024 ? small : null;
 }
 
 function ensureJsonFile(filePath, fallbackData) {
@@ -976,6 +1073,84 @@ function replaceWithRegex(text, regex, replaceText) {
   return String(text || '').replace(regex, replaceText);
 }
 
+// ── Import dữ liệu do người dùng tự chuẩn bị (bài hát JSON, Kinh Thánh XML) ─────────
+// Phần mềm không kèm sẵn nội dung; người dùng nhập file theo định dạng trong
+// templates/import/HUONG-DAN-NHAP-DU-LIEU.md. Mọi file nhập vào đều là dữ liệu KHÔNG tin
+// cậy: kiểm tra kích thước, schema, loại trùng theo nội dung.
+const MAX_IMPORT_FILE_BYTES = 20 * 1024 * 1024;       // .txt/.docx/.json
+const MAX_BIBLE_XML_BYTES = 60 * 1024 * 1024;         // 1 bản Kinh Thánh đầy đủ ~6 MB
+const MAX_IMPORT_SONGS_PER_FILE = 5000;
+const MAX_SONG_TITLE_CHARS = 300;
+const MAX_SONG_LYRICS_CHARS = 100000;
+
+function songFingerprint(song) {
+  const norm = (v) => String((v == null) ? '' : v).replace(/\s+/g, ' ').trim().toLowerCase();
+  return norm(song && song.title) + '\u0001' + norm(song && song.lyrics);
+}
+
+// Gộp một mảng bài hát (từ file JSON) vào songs.json. Trả về số liệu để báo người dùng.
+function importSongArray(rawSongs) {
+  let existing = [];
+  try {
+    const parsed = JSON.parse(fs.readFileSync(songsFilePath, 'utf8') || '[]');
+    if (Array.isArray(parsed)) existing = parsed;
+  } catch (e) { existing = []; }
+  const usedIds = new Set(existing.map((s) => String(s && s.id)));
+  const seenContent = new Set(existing.map(songFingerprint));
+  let nextId = Date.now();
+  let added = 0, skipped = 0, invalid = 0;
+  const list = rawSongs.slice(0, MAX_IMPORT_SONGS_PER_FILE);
+  invalid += Math.max(0, rawSongs.length - list.length);
+  for (const raw of list) {
+    if (!raw || typeof raw !== 'object' || Array.isArray(raw)) { invalid++; continue; }
+    if (raw.type === 'bible') { invalid++; continue; } // Kinh Thánh nhập bằng file XML, không nhập qua danh sách bài hát
+    const song = migrateItem(raw);
+    song.type = 'song';
+    if (song.id === undefined || song.id === null || song.id === '') song.id = nextId++;
+    const check = validateItem(song);
+    if (!check.valid || song.title.length > MAX_SONG_TITLE_CHARS || song.lyrics.length > MAX_SONG_LYRICS_CHARS) { invalid++; continue; }
+    const fp = songFingerprint(song);
+    if (seenContent.has(fp)) { skipped++; continue; } // trùng cả tên lẫn lời
+    // id trùng nhưng nội dung khác (ví dụ 2 file cùng đánh số 1..n): cấp id mới, không bỏ bài
+    while (usedIds.has(String(song.id))) song.id = nextId++;
+    usedIds.add(String(song.id));
+    seenContent.add(fp);
+    existing.push(song);
+    added++;
+  }
+  if (added > 0) {
+    saveAndBackupSync(songsFilePath, existing);
+    if (commServer) commServer.syncLibraryToCloud();
+  }
+  return { added, skipped, invalid, total: rawSongs.length };
+}
+
+// Kiểm tra nhanh file Kinh Thánh XML trước khi nhận: phải có sách → chương → câu đúng
+// kiểu parser trong 'load-bible-parsed' đọc được. Trả { ok } hoặc { ok:false, error }.
+function validateBibleXmlText(xml) {
+  const text = String(xml || '');
+  // Quét TUYẾN TÍNH (sách → chương → câu, mỗi bước tìm tiếp từ vị trí trước). Không dùng một
+  // regex lồng [\s\S]*? vì file XML độc hại nhiều thẻ sách mà không có chương sẽ làm quét lặp
+  // lại toàn bộ file cho từng thẻ (độ phức tạp bình phương).
+  const bookRe = /<(?:BIBLEBOOK|book)\s+[^>]*?(?:bnumber|bname|number)=['"][^'"]+['"][^>]*>/i;
+  const chapRe = /<(?:CHAPTER|chapter)\s+[^>]*?(?:cnumber|number)=['"][^'"]+['"][^>]*>/ig;
+  const versRe = /<(?:VERS|verse)\b/ig;
+  const book = bookRe.exec(text);
+  if (!book) {
+    return { ok: false, error: 'File không đúng định dạng: không thấy thẻ <BIBLEBOOK bnumber="…"> (sách). Xem file mẫu trong Cài đặt → Dữ liệu → "Tải file mẫu định dạng".' };
+  }
+  chapRe.lastIndex = book.index + book[0].length;
+  const chap = chapRe.exec(text);
+  if (!chap) {
+    return { ok: false, error: 'File không đúng định dạng: sách không có thẻ <CHAPTER cnumber="…"> (chương).' };
+  }
+  versRe.lastIndex = chap.index + chap[0].length;
+  if (!versRe.exec(text)) {
+    return { ok: false, error: 'File không đúng định dạng: chương không có thẻ <VERS vnumber="…"> (câu).' };
+  }
+  return { ok: true };
+}
+
 function initializeData() {
   userDataPath = app.getPath('userData');
   songsFilePath = path.join(userDataPath, 'songs.json');
@@ -1127,6 +1302,9 @@ function createLiveWindow(initialBounds = null) {
     backgroundColor: '#000000',
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
+      contextIsolation: true,
+      nodeIntegration: false,
+      sandbox: true,
       autoplayPolicy: 'no-user-gesture-required'
     }
   });
@@ -1243,147 +1421,44 @@ async function startBandComm() {
   }
 }
 
-// Binary cloudflared: ưu tiên bản đóng gói sẵn trong app (extraResources —
-// xem scripts/fetch-cloudflared.js), rồi tới bản dev tải qua postinstall,
-// cuối cùng mới thử PATH hệ thống (máy đã tự cài cloudflared từ trước, như
-// hành vi cũ trước khi có tính năng bundle). Không có cái nào -> vẫn trả về
-// 'cloudflared' để spawn() tự báo ENOENT rõ ràng thay vì im lặng.
-function resolveCloudflaredCmd() {
-  const candidates = [];
-  if (app.isPackaged) candidates.push(path.join(process.resourcesPath, 'cloudflared', 'cloudflared.exe'));
-  candidates.push(path.join(__dirname, 'vendor', 'cloudflared', 'win', 'cloudflared.exe'));
-  for (const p of candidates) {
-    try { if (fs.existsSync(p)) return p; } catch (e) {}
-  }
-  return 'cloudflared';
-}
-
-// spawnSync blocks the WHOLE Electron main process (every window, every other
-// IPC call) for as long as the child runs — fatal here since the firewall
-// handler waits on a human clicking a UAC prompt, and the tunnel wizard waits
-// on two sequential Cloudflare API calls. This is the async, non-blocking
-// equivalent (same {status, stdout, stderr} shape spawnSync callers expect),
-// with an optional `timeout` (ms) that kills the child instead of hanging.
-function spawnAsync(cmd, args, opts) {
-  const { spawn } = require('child_process');
-  return new Promise((resolve) => {
-    let child;
-    try {
-      child = spawn(cmd, args, Object.assign({ windowsHide: true }, opts));
-    } catch (e) {
-      return resolve({ status: -1, stdout: '', stderr: e.message || String(e) });
-    }
-    let stdout = '', stderr = '', settled = false, timer = null;
-    const finish = (result) => { if (settled) return; settled = true; if (timer) clearTimeout(timer); resolve(result); };
-    if (opts && opts.timeout) {
-      timer = setTimeout(() => { try { child.kill(); } catch (e) {} finish({ status: null, stdout, stderr, timedOut: true }); }, opts.timeout);
-    }
-    if (child.stdout) child.stdout.on('data', d => { stdout += d; });
-    if (child.stderr) child.stderr.on('data', d => { stderr += d; });
-    child.on('error', (e) => finish({ status: -1, stdout, stderr: stderr || e.message || String(e) }));
-    child.on('exit', (code) => finish({ status: code, stdout, stderr }));
-  });
-}
-
-// Cloudflare Tunnel — luôn 1 tiến trình con ngoài app. 2 chế độ:
-//  - "named:<tên>"  cfg.tunnelName được set (nâng cao, domain cố định của
-//    riêng church đó) -> `cloudflared tunnel run <tên>`.
-//  - "quick"         mặc định khi CHƯA cấu hình tunnelName -> `cloudflared
-//    tunnel --url http://127.0.0.1:<port>`, tự bắt URL *.trycloudflare.com
-//    in ra rồi lưu vào publicUrl. Đổi mỗi lần band-comm start (bản chất
-//    Quick Tunnel), QR tự cập nhật theo `publicUrl` như bình thường.
-// Gọi lại an toàn nhiều lần: no-op nếu mode/tên không đổi và tunnel vẫn
-// đang sống; tự restart khi đổi; KHÔNG có trạng thái "tắt hẳn" — luôn có
-// 1 trong 2 chế độ chạy, đúng tinh thần "mặc định có internet, không cần ai
-// tự cấu hình gì".
-function syncBandTunnel() {
-  if (!commServer) return;
-  const cfg = bandCommStore ? bandCommStore.load() : null;
-  const wantMode = cfg && cfg.tunnelName ? ('named:' + cfg.tunnelName) : 'quick';
-  if (wantMode === bandTunnelMode && bandTunnelProc) return;
-  if (bandTunnelProc) { try { bandTunnelProc.kill(); } catch (e) {} bandTunnelProc = null; }
-  bandTunnelMode = wantMode;
-
-  const isNamed = wantMode.indexOf('named:') === 0;
-  const port = commServer.getStatus().port;
-  if (!isNamed && !port) return; // band-comm chưa thật sự chạy, chưa có cổng để trỏ tới
-  let args;
-  if (isNamed) {
-    args = ['tunnel', 'run', cfg.tunnelName];
-  } else {
-    // QUAN TRỌNG: cloudflared tự nạp %USERPROFILE%\.cloudflared\config.yml
-    // theo mặc định NGAY CẢ KHI dùng --url — nếu máy đó đã có Named Tunnel
-    // cấu hình (config.yml có ingress + catch-all http_status:404), Quick
-    // Tunnel sẽ bị đè bởi catch-all đó (mọi request trả 404 dù origin sống
-    // bình thường). Test thật đã tái hiện đúng lỗi này. Cô lập bằng cách trỏ
-    // --config sang 1 file rỗng riêng, ghi trong userData mỗi lần dùng.
-    const quickCfgPath = path.join(app.getPath('userData'), 'cloudflared-quick.yml');
-    try { fs.writeFileSync(quickCfgPath, '{}\n'); } catch (e) {}
-    args = ['tunnel', '--config', quickCfgPath, '--url', `http://127.0.0.1:${port}`];
-  }
-  const label = isNamed ? `Named Tunnel "${cfg.tunnelName}"` : 'Quick Tunnel';
-
-  let child;
-  try {
-    child = require('child_process').spawn(resolveCloudflaredCmd(), args, {
-      windowsHide: true,
-      stdio: isNamed ? 'ignore' : ['ignore', 'pipe', 'pipe']
-    });
-  } catch (e) {
-    bandSystemLine(`Không chạy được ${label}: ${e.message}`);
-    return;
-  }
-  bandTunnelProc = child;
-  child.on('error', (e) => {
-    if (bandTunnelProc === child) bandTunnelProc = null;
-    const hint = e.code === 'ENOENT' ? 'không tìm thấy cloudflared (chưa tải/cài được)' : e.message;
-    bandSystemLine(`${label} lỗi: ${hint}. Kênh vẫn hoạt động bình thường trong LAN.`);
-  });
-  child.on('exit', (code) => {
-    if (bandTunnelProc === child) bandTunnelProc = null;
-    if (code) bandSystemLine(`${label} đã dừng (mã ${code}). Kênh vẫn hoạt động trong LAN.`);
-  });
-
-  if (isNamed) {
-    bandSystemLine(`Đang bật ${label} cho truy cập ngoài LAN…`);
-  } else {
-    // Quick Tunnel in URL ra stdout/stderr dạng "https://xxx.trycloudflare.com"
-    // — bắt 1 lần đầu tiên thấy, tự lưu vào publicUrl + báo sidebar.
-    let captured = false;
-    const onData = (buf) => {
-      if (captured) return;
-      const m = String(buf).match(/https:\/\/[a-z0-9-]+\.trycloudflare\.com/i);
-      if (!m) return;
-      captured = true;
-      try {
-        const saved = bandCommStore.patch({ publicUrl: m[0] });
-        sendBandStatus();
-        bandSystemLine(`Quick Tunnel sẵn sàng · ${saved.publicUrl}`);
-      } catch (e) {}
-    };
-    if (child.stdout) child.stdout.on('data', onData);
-    if (child.stderr) child.stderr.on('data', onData);
-  }
-}
-
-function stopBandTunnel() {
-  if (bandTunnelProc) {
-    try {
-      const pid = bandTunnelProc.pid;
-      bandTunnelProc.kill();
-      if (process.platform === 'win32' && pid) {
-        try {
-          const { execSync } = require('child_process');
-          execSync(`taskkill /pid ${pid} /T /F`, { stdio: 'ignore' });
-        } catch (e) {}
-      }
-    } catch (e) {}
-  }
-  bandTunnelProc = null;
-  bandTunnelMode = null;
-}
-
 let isShuttingDown = false;
+// ---- Hỏi lưu Schedule chưa lưu trước khi thoát (đóng cửa sổ chính HOẶC app.quit từ menu) ----
+// Hỏi renderer qua executeJavaScript (không thêm IPC mới): window.__scheduleIsDirty() do index.html cấp.
+// Mọi lỗi/treo/renderer chết -> cho thoát (KHÔNG BAO GIỜ kẹt người dùng trong app).
+let exitConfirmed = false;
+let askingToSaveBeforeExit = false;
+async function confirmSaveBeforeExit() {
+  const win = mainWindow;
+  if (exitConfirmed || isShuttingDown || !win || win.isDestroyed()) return true;
+  try {
+    const wc = win.webContents;
+    if (wc.isDestroyed() || wc.isCrashed()) return true;
+    const dirty = await Promise.race([
+      wc.executeJavaScript('!!(window.__scheduleIsDirty && window.__scheduleIsDirty())', true),
+      new Promise((resolve) => setTimeout(() => resolve(false), 2500))
+    ]);
+    if (!dirty) return true;
+    const { response } = await dialog.showMessageBox(win, {
+      type: 'question',
+      buttons: ['Lưu', 'Không lưu', 'Hủy'],
+      defaultId: 0,
+      cancelId: 2,
+      noLink: true,
+      title: 'Lưu Schedule?',
+      message: 'Schedule hiện tại có thay đổi chưa lưu.',
+      detail: 'Bạn có muốn lưu trước khi thoát không?'
+    });
+    if (response === 2) return false;   // Hủy -> ở lại
+    if (response === 1) return true;    // Không lưu -> thoát
+    // Lưu: false = người dùng bấm Hủy ở hộp "Lưu thành…" hoặc lưu lỗi -> ở lại để họ chọn lại
+    const saved = await wc.executeJavaScript('window.__saveScheduleForExit ? window.__saveScheduleForExit() : false', true);
+    return !!saved;
+  } catch (e) {
+    console.warn('[App] Không hỏi được lưu Schedule trước khi thoát, cho thoát:', e && e.message);
+    return true;
+  }
+}
+
 function cleanupAndExit() {
   if (isShuttingDown) return;
   isShuttingDown = true;
@@ -1395,9 +1470,6 @@ function cleanupAndExit() {
     try { clearTimeout(liveWindowSyncTimer); } catch (e) {}
     liveWindowSyncTimer = null;
   }
-  try {
-    stopBandTunnel();
-  } catch (e) {}
   try {
     stopBandComm();
   } catch (e) {}
@@ -1423,13 +1495,45 @@ function stopBandComm() {
   }
 }
 
+// Mã hóa token operator at-rest bằng DPAPI (Windows) / Keychain (macOS) qua Electron
+// safeStorage. Chỉ dùng được sau app.whenReady() — initBandComm() chạy sau đó.
+const operatorSecretBox = {
+  available: () => { try { return safeStorage.isEncryptionAvailable(); } catch (e) { return false; } },
+  encrypt: (str) => safeStorage.encryptString(str).toString('base64'),
+  decrypt: (b64) => safeStorage.decryptString(Buffer.from(b64, 'base64'))
+};
+
+// Làm mới idToken của operator (qua identity /refresh) khi sắp/đã hết hạn. Lỗi mạng hay
+// refresh token hết hạn thì bỏ qua: không xóa phiên (gate đăng nhập vẫn dựa refreshToken).
+async function refreshOperatorSessionIfNeeded() {
+  if (!bandOperatorAuthStore) return;
+  const s = bandOperatorAuthStore.load();
+  if (!s || !s.refreshToken || !s.email) return;
+  if (s.idToken && s.expiresAt && Date.now() < s.expiresAt - 5 * 60 * 1000) return; // còn > 5 phút
+  try {
+    const r = await fetch(`${IDENTITY_API_BASE}/refresh`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: s.email, refreshToken: s.refreshToken }),
+      signal: AbortSignal.timeout(10000)
+    });
+    if (!r.ok) return;
+    const j = await r.json();
+    if (!j || !j.idToken) return;
+    bandOperatorAuthStore.save({
+      email: s.email, idToken: j.idToken, accessToken: j.accessToken || s.accessToken, refreshToken: s.refreshToken,
+      expiresAt: Date.now() + (Number(j.expiresIn) || 3600) * 1000
+    });
+  } catch (e) { /* offline / refresh token hết hạn: giữ nguyên phiên cũ */ }
+}
+
 function initBandComm() {
   if (commServer) return;
-  bandCommStore = createBandCommStore(userDataPath, safeWriteSync);
-  bandOperatorAuthStore = createOperatorAuthStore(userDataPath, safeWriteSync);
+  bandCommStore = createBandCommStore(userDataPath, safeWriteSync, operatorSecretBox);
+  bandOperatorAuthStore = createOperatorAuthStore(userDataPath, safeWriteSync, operatorSecretBox);
   commServer = createRelayClient({
     store: bandCommStore,
     operatorAuthStore: bandOperatorAuthStore,
+    refreshOperatorSession: refreshOperatorSessionIfNeeded,
     onEvent: (env) => {
       broadcastToRenderers('band-comm-event', env);
       // Nudge the taskbar when a fresh band alert lands and the app is unfocused.
@@ -1441,12 +1545,30 @@ function initBandComm() {
     },
     onPresence: (list) => broadcastToRenderers('band-comm-presence', list),
     // Chỉ mục thư viện bài hát cho /api/library (điện thoại soạn setlist).
+    listBackgroundImages: listBackgroundImagesForCloud,
+    makeBackgroundThumb: makeBackgroundThumbForCloud,
     getLibraryIndex: () => {
       try {
         const raw = JSON.parse(fs.readFileSync(songsFilePath, 'utf8') || '[]');
         return raw.map(migrateItem)
           .filter(s => s && s.title)
-          .map(s => ({ id: s.id, title: s.title, lyrics: s.lyrics || '' }));
+          .map(s => {
+            const st = s.style || {};
+            // Chỉ các trường đủ để web vẽ preview slide giống màn chiếu — KHÔNG
+            // gửi nguyên style (boxStyle/textBox… to, không cần).
+            const bgRef = (st.background && st.background.mediaName) || (s.lastBackground && s.lastBackground.mediaName) || null;
+            return {
+              id: s.id, title: s.title, lyrics: s.lyrics || '',
+              style: {
+                fontFamily: st.fontFamily, fontSize: st.fontSize, color: st.color,
+                textAlign: st.textAlign, verticalAlign: st.verticalAlign,
+                textStrokeWidth: st.textStrokeWidth, textStrokeColor: st.textStrokeColor
+              },
+              bg: bgRef,
+              // bài vốn do thành viên tạo trên web (đã duyệt): web khử trùng với danh sách bài web
+              webId: (s.origin && s.origin.webId) || null
+            };
+          });
       } catch (e) { return []; }
     },
     onSetlist: (sl) => {
@@ -1471,6 +1593,7 @@ function createWindow() {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
       nodeIntegration: false,
+      sandbox: true,
       autoplayPolicy: 'no-user-gesture-required'
     }
   });
@@ -1492,6 +1615,20 @@ function createWindow() {
   });
   win.loadFile('index.html');
   setupMenu(win);
+
+  // Đóng cửa sổ chính (nút X / Alt+F4): hỏi lưu nếu Schedule có thay đổi chưa lưu.
+  win.on('close', (e) => {
+    if (exitConfirmed || isShuttingDown) return;
+    e.preventDefault();
+    if (askingToSaveBeforeExit) return;
+    askingToSaveBeforeExit = true;
+    confirmSaveBeforeExit().then((ok) => { return ok; }, () => true).then((ok) => {
+      askingToSaveBeforeExit = false;
+      if (ok) { exitConfirmed = true; if (!win.isDestroyed()) win.close(); }
+    });
+  });
+  // Tắt máy/đăng xuất Windows: không được chặn.
+  win.on('session-end', () => { exitConfirmed = true; });
 
   // Push a queued .bcsch again once the page is up (covers the launch-with-file
   // case even if the renderer wired its listener after the first send).
@@ -1532,25 +1669,33 @@ function setupMenu(win) {
   const template = [
     {
       label: 'File',
+      // Nhóm theo chức năng. Phím tắt và hành động giữ nguyên như trước; tên khớp bảng lệnh trong app.
       submenu: [
-        { label: 'Cửa sổ mới (New Window)', accelerator: 'CmdOrCtrl+Shift+N', click: () => createWindow() },
+        // Lịch trình (Schedule)
+        { label: 'Tạo Schedule mới', click: () => sendMenuAction(win, 'new-schedule') },
+        { label: 'Mở Schedule...', click: () => sendMenuAction(win, 'open-schedule') },
+        { label: 'Lưu Schedule', accelerator: 'CmdOrCtrl+S', click: () => sendMenuAction(win, 'save-schedule') },
         { type: 'separator' },
-        { label: 'New Schedule', click: () => sendMenuAction(win, 'new-schedule') },
-        { label: 'New Song', click: () => sendMenuAction(win, 'new-song') },
-        { label: 'Save Schedule', accelerator: 'CmdOrCtrl+S', click: () => sendMenuAction(win, 'save-schedule') },
-        { label: 'Import File', accelerator: 'CmdOrCtrl+O', click: () => sendMenuAction(win, 'import-file') },
-        { label: 'Đồng bộ thư viện từ bản cũ...', click: () => sendMenuAction(win, 'sync-previous-library') },
+        // Thư viện: tạo / nhập dữ liệu
+        { label: 'Tạo Bài hát mới', click: () => sendMenuAction(win, 'new-song') },
+        { label: 'Nhập bài hát / Kinh Thánh...', accelerator: 'CmdOrCtrl+O', click: () => sendMenuAction(win, 'import-file') },
+        { label: 'Nhập Media...', click: () => sendMenuAction(win, 'import-media') },
+        { label: 'Tải file mẫu định dạng nhập dữ liệu...', click: () => sendMenuAction(win, 'export-import-templates') },
+        { type: 'separator' },
+        // Thư viện: sao lưu / khôi phục
         { label: 'Sao lưu thư viện ra file...', click: () => sendMenuAction(win, 'export-songs') },
-        { label: 'Open Schedule', click: () => sendMenuAction(win, 'open-schedule') },
+        { label: 'Đồng bộ thư viện từ bản cũ...', click: () => sendMenuAction(win, 'sync-previous-library') },
         { type: 'separator' },
-        { label: 'Import Media', click: () => sendMenuAction(win, 'import-media') },
-        { label: 'Add To Schedule', accelerator: 'CmdOrCtrl+Shift+A', click: () => sendMenuAction(win, 'add-selected-to-schedule') },
-        { label: 'Screen Live', accelerator: 'CmdOrCtrl+L', click: () => sendMenuAction(win, 'toggle-live-window') },
-        { label: 'Clear Live', accelerator: 'CmdOrCtrl+H', click: () => sendMenuAction(win, 'clear-live') },
+        // Trình chiếu
+        { label: 'Thêm vào Schedule', accelerator: 'CmdOrCtrl+Shift+A', click: () => sendMenuAction(win, 'add-selected-to-schedule') },
+        { label: 'Bật/Tắt màn hình Live', accelerator: 'CmdOrCtrl+L', click: () => sendMenuAction(win, 'toggle-live-window') },
+        { label: 'Xóa màn hình Live', accelerator: 'CmdOrCtrl+H', click: () => sendMenuAction(win, 'clear-live') },
         { type: 'separator' },
-        { label: 'Settings', accelerator: 'CmdOrCtrl+Shift+P', click: () => sendMenuAction(win, 'open-settings') },
+        // Ứng dụng
+        { label: 'Cửa sổ mới', accelerator: 'CmdOrCtrl+Shift+N', click: () => createWindow() },
+        { label: 'Cài đặt...', accelerator: 'CmdOrCtrl+Shift+P', click: () => sendMenuAction(win, 'open-settings') },
         { type: 'separator' },
-        { label: 'Thoát ứng dụng (Quit)', accelerator: 'CmdOrCtrl+Q', click: () => cleanupAndExit() }
+        { label: 'Thoát ứng dụng', accelerator: 'CmdOrCtrl+Q', click: () => cleanupAndExit() }
       ]
     },
     {
@@ -1606,6 +1751,7 @@ function deliverSchedulePath(p) {
     return;
   }
   console.log('[Schedule] queued from file:', p);
+  approvePath(approvedSchedulePaths, p);
   scheduleToOpen = { filePath: p, data };
   if (mainWindow && !mainWindow.isDestroyed()) {
     mainWindow.webContents.send('open-schedule-file', scheduleToOpen);
@@ -1662,6 +1808,7 @@ if (!hasInstanceLock) {
 bootstrapGpuAccelerationPreference();
 app.whenReady().then(() => {
   if (!hasInstanceLock) return; // a rival instance — we're already quitting
+  installPermissionPolicy();
   promptUserDataLocationIfNeeded(pendingUserDataPrompt);
   initializeData();
   // Band Comm: server auto-starts in the background (see band-comm-plan.md B1)
@@ -1702,7 +1849,10 @@ app.whenReady().then(() => {
   ipcMain.handle('get-app-version', () => app.getVersion());
   ipcMain.handle('select-folder', async () => {
     const r = await dialog.showOpenDialog({ properties: ['openDirectory'] });
-    if (!r.canceled && r.filePaths.length > 0) return r.filePaths[0];
+    if (!r.canceled && r.filePaths.length > 0) {
+      approvePath(approvedMediaFolders, r.filePaths[0]);
+      return r.filePaths[0];
+    }
     return null;
   });
 
@@ -1837,6 +1987,17 @@ app.whenReady().then(() => {
   ipcMain.handle('save-settings', (event, data) => {
     try {
       const incoming = data && typeof data === 'object' ? { ...data } : {};
+      // mediaPath là gốc của app-media:// — renderer không được tự đặt thành thư mục
+      // bất kỳ (vd ổ C:) để đọc file tùy ý; chỉ nhận giá trị hiện tại hoặc thư mục
+      // vừa chọn qua dialog select-folder.
+      if (typeof incoming.mediaPath === 'string' && incoming.mediaPath) {
+        const cur = globalSettings && globalSettings.mediaPath;
+        const unchanged = !!cur && normalizeFsPath(cur) === normalizeFsPath(incoming.mediaPath);
+        if (!unchanged && !isApprovedPath(approvedMediaFolders, incoming.mediaPath)) {
+          console.warn('[security] save-settings từ chối mediaPath chưa qua dialog:', incoming.mediaPath);
+          incoming.mediaPath = cur || '';
+        }
+      }
       const currentLiveBounds = sanitizeLiveWindowBounds(globalSettings.liveWindowBounds);
       if (!sanitizeLiveWindowBounds(incoming.liveWindowBounds) && currentLiveBounds) {
         incoming.liveWindowBounds = currentLiveBounds;
@@ -1909,6 +2070,12 @@ app.whenReady().then(() => {
         if (fs.existsSync(dest) && path.resolve(src) !== path.resolve(dest)) {
           return { success: false, error: 'Đã tồn tại một bản dịch có cùng tên file XML.' };
         }
+        // Kiểm tra TRƯỚC khi chép: file lạ/không đúng định dạng không được vào thư mục dữ liệu.
+        let srcSize = 0;
+        try { srcSize = fs.statSync(src).size; } catch (e) { return { success: false, error: 'Không đọc được file đã chọn.' }; }
+        if (srcSize > MAX_BIBLE_XML_BYTES) return { success: false, error: 'File quá lớn (giới hạn 60 MB).' };
+        const verdict = validateBibleXmlText(fs.readFileSync(src, 'utf8'));
+        if (!verdict.ok) return { success: false, error: verdict.error };
         if (path.resolve(src) !== path.resolve(dest)) {
           fs.copyFileSync(src, dest);
         }
@@ -2170,6 +2337,21 @@ app.whenReady().then(() => {
   ipcMain.handle('save-song', (event, rawSong) => {
     try {
       let song = { ...rawSong };
+      // `origin` = bài do thành viên gửi từ trang web /setlist/ (đã được operator
+      // duyệt). Chỉ giữ 2 trường đã làm sạch; không tin object tuỳ ý.
+      const webId = song.origin && /^[A-Za-z0-9_-]{8,64}$/.test(String(song.origin.webId || '')) ? String(song.origin.webId) : null;
+      if (webId) song.origin = { webId, from: String((song.origin && song.origin.from) || '').slice(0, 60) };
+      else delete song.origin;
+
+      // Chống trùng: duyệt/lưu cùng 1 bài web 2 lần (bấm đúp, retry sau mất mạng,
+      // vừa Duyệt vừa Chỉnh sửa…) cho ra ĐÚNG 1 bài trong thư viện.
+      let existingItems = null;
+      let dupHit = false;
+      if (webId && !song.id) {
+        try { existingItems = JSON.parse(fs.readFileSync(songsFilePath, 'utf8') || '[]'); } catch (e) { existingItems = []; }
+        const dup = existingItems.find((s) => s && s.origin && s.origin.webId === webId);
+        if (dup) { song.id = dup.id; dupHit = true; }
+      }
       if (!song.id) song.id = Date.now();
       song = migrateItem(song);
 
@@ -2180,12 +2362,20 @@ app.whenReady().then(() => {
       let items = fs.existsSync(filePath) ? JSON.parse(fs.readFileSync(filePath, 'utf8') || '[]') : [];
       
       const idx = items.findIndex(s => s.id === song.id);
+      const isNewEntry = idx === -1;
       if (idx !== -1) items[idx] = song; else items.push(song);
 
       saveAndBackupSync(filePath, items);
-      // Đồng bộ thư viện lên cloud để trang soạn setlist tĩnh (/composer) tra
+      // Đồng bộ thư viện lên cloud để trang soạn setlist (/setlist/) tra
       // cứu được — chỉ khi đụng tới songs.json (không phải Bible). Fire-and-forget.
       if (filePath === songsFilePath && commServer) commServer.syncLibraryToCloud();
+      // Báo relay "bài web này đã nạp" để trang web đổi trạng thái. Lỗi mạng KHÔNG
+      // làm hỏng việc lưu — lần duyệt lại (dupHit) hoặc band-song-pending ở dưới tự chữa
+      // (bài đã có origin.webId trong thư viện thì tự resolve approve).
+      if (webId && (isNewEntry || dupHit) && filePath === songsFilePath && commServer) {
+        Promise.resolve(commServer.resolveSong({ webId, action: 'approve', songId: song.id }))
+          .catch((e) => console.warn('[BandComm] resolve approve thất bại:', e && e.message));
+      }
       return { success: true, item: song, list: items };
     } catch (e) { throw e; }
   });
@@ -2280,7 +2470,12 @@ app.whenReady().then(() => {
       userBibleDataPath,
       songsCount,
       bibleCount,
-      mediaPath: getMediaFolderPath()
+      mediaPath: getMediaFolderPath(),
+      // Bản MSIX/Microsoft Store: %APPDATA% bị ảo hóa theo gói → gỡ app là xóa dữ liệu,
+      // và bản cài thường (NSIS) không thấy dữ liệu của bản Store (docs/microsoft-store-readiness.md A4).
+      isStoreBuild: !!process.windowsStore,
+      // Bản không đóng gói dữ liệu mẫu: UI ẩn nút "Nạp lại dữ liệu gốc" (không có gì để nạp).
+      hasBundledData: getBundledDataDirs().length > 0
     };
   });
 
@@ -2374,6 +2569,7 @@ app.whenReady().then(() => {
         if (currentSongs.length === 0) {
           fs.writeFileSync(songsFilePath, bundled.content, 'utf8');
           songsReloaded = bundled.parsed.length;
+          if (commServer) commServer.syncLibraryToCloud();
         } else {
           const existingTitles = new Set(currentSongs.map(s => String(s.title || '').trim().toLowerCase()));
           let added = 0;
@@ -2387,6 +2583,7 @@ app.whenReady().then(() => {
           }
           if (added > 0) {
             saveAndBackupSync(songsFilePath, currentSongs);
+            if (commServer) commServer.syncLibraryToCloud();
           }
           songsReloaded = currentSongs.length;
         }
@@ -2519,6 +2716,7 @@ app.whenReady().then(() => {
     if (mainWindow && !mainWindow.isDestroyed()) mainWindow.focus();
     if (!r.canceled && r.filePaths.length > 0) {
       try {
+        approvePath(approvedSchedulePaths, r.filePaths[0]);
         return { filePath: r.filePaths[0], data: JSON.parse(fs.readFileSync(r.filePaths[0], 'utf8')) };
       } catch (e) {
         return { error: String(e && e.message || e) };
@@ -2530,7 +2728,7 @@ app.whenReady().then(() => {
   ipcMain.handle('show-save-dialog', async (e, d) => {
     const r = await dialog.showSaveDialog(mainWindow, { filters: [{ name: 'Worship Schedule', extensions: ['bcsch'] }] });
     if (mainWindow && !mainWindow.isDestroyed()) mainWindow.focus();
-    if (!r.canceled && r.filePath) { safeWriteSync(r.filePath, d); return r.filePath; }
+    if (!r.canceled && r.filePath) { approvePath(approvedSchedulePaths, r.filePath); safeWriteSync(r.filePath, d); return r.filePath; }
     return null;
   });
 
@@ -2538,6 +2736,10 @@ app.whenReady().then(() => {
   ipcMain.handle('save-schedule-to-path', (e, payload) => {
     const filePath = payload && payload.filePath;
     if (!filePath || typeof filePath !== 'string' || !filePath.toLowerCase().endsWith('.bcsch')) return false;
+    if (!isApprovedPath(approvedSchedulePaths, filePath)) {
+      console.warn('[security] save-schedule-to-path từ chối đường dẫn chưa qua dialog:', filePath);
+      return false;
+    }
     return safeWriteSync(filePath, payload.data);
   });
 
@@ -2549,6 +2751,7 @@ app.whenReady().then(() => {
         const name = path.basename(p);
         const dest = path.join(mediaPath, name);
         fs.copyFileSync(p, dest);
+        if (commServer && /\.(jpe?g|png)$/i.test(name)) commServer.syncBackgroundsToCloud(); // gom lại (debounce) nên import nhiều file vẫn chỉ 1 lượt
         return { name, path: dest, url: pathToFileURL(dest).toString(), type: isVideo(name) ? 'video' : 'image', mimeType: getMediaMimeType(name) };
       });
     }
@@ -2619,52 +2822,6 @@ app.whenReady().then(() => {
   // One-click: add a Windows Firewall inbound-allow rule for this app so phones
   // on the LAN can reach the comm server + mDNS. Triggers a UAC prompt. The
   // elevated script writes a result file we read back to know if it truly worked.
-  ipcMain.handle('band-comm-open-firewall', async () => {
-    if (process.platform !== 'win32') return { ok: false, error: 'Chỉ áp dụng trên Windows.' };
-    const exe = process.execPath;
-    const tmp = app.getPath('temp');
-    const ps1 = path.join(tmp, 'bandcomm-fw.ps1');
-    const res = path.join(tmp, 'bandcomm-fw-result.txt');
-    const port = bandCommStore ? bandCommStore.load().port : 7071;
-    const manual =
-      `netsh advfirewall firewall add rule name="Presentation Ban Comm" dir=in action=allow program="${exe}" enable=yes profile=any\n` +
-      `netsh advfirewall firewall add rule name="Presentation Ban Comm TCP" dir=in action=allow protocol=TCP localport=${port} enable=yes profile=any`;
-
-    const script = [
-      "$ErrorActionPreference = 'Stop'",
-      `$exe = '${exe.replace(/'/g, "''")}'`,
-      `$res = '${res.replace(/'/g, "''")}'`,
-      'try {',
-      "  cmd /c 'netsh advfirewall firewall delete rule name=\"Presentation Ban Comm\"' | Out-Null",
-      "  cmd /c 'netsh advfirewall firewall delete rule name=\"Presentation Ban Comm TCP\"' | Out-Null",
-      `  $r1 = cmd /c ('netsh advfirewall firewall add rule name=\"Presentation Ban Comm\" dir=in action=allow program=\"' + $exe + '\" enable=yes profile=any')`,
-      `  $r2 = cmd /c ('netsh advfirewall firewall add rule name=\"Presentation Ban Comm TCP\" dir=in action=allow protocol=TCP localport=${port} enable=yes profile=any')`,
-      "  if ($LASTEXITCODE -ne 0) { throw ('netsh: ' + $r1 + ' ' + $r2) }",
-      "  Set-Content -LiteralPath $res -Value 'OK' -Encoding ascii",
-      '} catch {',
-      "  Set-Content -LiteralPath $res -Value ('ERR: ' + $_.Exception.Message) -Encoding ascii",
-      '}'
-    ].join('\n');
-
-    try {
-      try { fs.unlinkSync(res); } catch (e) {}
-      fs.writeFileSync(ps1, script, 'utf8');
-      const r = await spawnAsync('powershell.exe', [
-        '-NoProfile', '-ExecutionPolicy', 'Bypass', '-Command',
-        `Start-Process -FilePath powershell -Verb RunAs -Wait -WindowStyle Hidden -ArgumentList @('-NoProfile','-ExecutionPolicy','Bypass','-File','${ps1.replace(/'/g, "''")}')`
-      ], { timeout: 120000 });
-      let out = '';
-      try { out = fs.readFileSync(res, 'utf8').trim(); } catch (e) {}
-      try { fs.unlinkSync(ps1); } catch (e) {}
-      try { fs.unlinkSync(res); } catch (e) {}
-      if (out === 'OK') return { ok: true };
-      if (out.indexOf('ERR:') === 0) return { ok: false, error: out + '\n\nChạy tay (PowerShell Admin):\n' + manual };
-      return { ok: false, error: 'Bị huỷ UAC hoặc không chạy được (' + (r.status) + '). Chạy tay (PowerShell/CMD Admin):\n' + manual };
-    } catch (e) {
-      return { ok: false, error: (e && e.message || 'Lỗi') + '\n\nChạy tay:\n' + manual };
-    }
-  });
-
   ipcMain.handle('band-comm-status', () => {
     initBandComm();
     const st = commServer.getStatus();
@@ -2673,14 +2830,29 @@ app.whenReady().then(() => {
     return st;
   });
 
+  // relayAdminSecret = khóa xác thực của máy operator với relay (X-Admin-Secret).
+  // Renderer không bao giờ cần nó (chỉ relay-client.js ở main dùng) nên KHÔNG trả về
+  // renderer — renderer bị chiếm cũng không lấy được khóa để giả danh operator.
+  function bandConfigForRenderer(cfg) {
+    const { relayAdminSecret, ...safe } = cfg || {};
+    return safe;
+  }
+
   ipcMain.handle('band-comm-get-config', () => {
     initBandComm();
-    return bandCommStore.load();
+    return bandConfigForRenderer(bandCommStore.load());
   });
 
   ipcMain.handle('band-comm-save-config', async (e, cfg) => {
     initBandComm();
-    const saved = bandCommStore.save(cfg);
+    // Renderer không có (và không được đặt) relayAdminSecret/cloudRoomId: giữ giá trị
+    // hiện có ở main, nếu không store sẽ sinh secret mới và làm hỏng xác thực với relay.
+    const cur = bandCommStore.load();
+    const saved = bandCommStore.save({
+      ...(cfg && typeof cfg === 'object' ? cfg : {}),
+      relayAdminSecret: cur.relayAdminSecret,
+      cloudRoomId: cur.cloudRoomId
+    });
     // GĐ2: MỌI thay đổi config (tên/code/password/accountsEnabled/…) đều cần
     // đẩy lại lên relay — không chỉ 3 cờ auth như trước (LAN cũ chỉ cần
     // rotateSecret cục bộ cho việc đó; giờ commServer.rotateSecret() = gọi
@@ -2690,7 +2862,7 @@ app.whenReady().then(() => {
       try { await commServer.rotateSecret(); } catch (err) { console.error('[BandComm] sync config lên relay thất bại:', err); }
     }
     sendBandStatus();
-    return saved;
+    return bandConfigForRenderer(saved);
   });
 
   // ---- Đăng nhập tài khoản (band-comm-plan.md §11) — operator (laptop) là
@@ -2783,6 +2955,34 @@ app.whenReady().then(() => {
     initBandComm();
     if (!commServer) return [];
     return commServer.blockedList();
+  });
+
+  // Hộp thư bài hát mới từ web: renderer kéo danh sách chờ duyệt / từ chối.
+  // (DUYỆT đi qua 'save-song' với origin.webId — một đường lưu duy nhất.)
+  ipcMain.handle('band-song-pending', async () => {
+    initBandComm();
+    if (!commServer) return { error: 'Kênh Band chưa khởi động', songs: [] };
+    try {
+      const list = await commServer.fetchPendingSongs();
+      // Tự chữa: bài ĐÃ có trong thư viện (đã duyệt nhưng resolve lên relay chưa kịp) -> báo relay, bỏ khỏi danh sách.
+      let inLib = new Set();
+      try {
+        JSON.parse(fs.readFileSync(songsFilePath, 'utf8') || '[]').forEach((s) => { if (s && s.origin && s.origin.webId) inLib.add(s.origin.webId); });
+      } catch (e) {}
+      const fresh = [];
+      for (const it of list) {
+        if (inLib.has(it.webId)) Promise.resolve(commServer.resolveSong({ webId: it.webId, action: 'approve' })).catch(() => {});
+        else fresh.push(it);
+      }
+      return { songs: fresh };
+    }
+    catch (e) { return { error: String((e && e.message) || e), songs: [] }; }
+  });
+
+  ipcMain.handle('band-song-reject', async (e, { webId, reason } = {}) => {
+    initBandComm();
+    if (!commServer) return { error: 'Kênh Band chưa khởi động' };
+    return commServer.resolveSong({ webId: String(webId || ''), action: 'reject', reason: String(reason || '').slice(0, 200) });
   });
 
   ipcMain.handle('band-comm-kick', async (e, clientId) => {
@@ -2943,114 +3143,6 @@ app.whenReady().then(() => {
     return { ok: true };
   });
 
-  // ---- Named Tunnel wizard ("Cài đặt nâng cao" trong sidebar) — tự động hoá
-  // đúng quy trình `cloudflared tunnel login/create/route dns` mà trước đó
-  // phải gõ tay trong terminal. KHÔNG tự động hoá việc đổi Nameserver domain
-  // ở nơi mua domain — luôn là thao tác thủ công của người dùng ở ngoài.
-  function cloudflaredCertPath() { return path.join(os.homedir(), '.cloudflared', 'cert.pem'); }
-
-  ipcMain.handle('band-comm-tunnel-check-login', () => {
-    return { loggedIn: fs.existsSync(cloudflaredCertPath()) };
-  });
-
-  ipcMain.handle('band-comm-tunnel-login', () => {
-    return new Promise((resolve) => {
-      const { spawn } = require('child_process');
-      let child;
-      try {
-        child = spawn(resolveCloudflaredCmd(), ['tunnel', 'login'], { windowsHide: true });
-      } catch (e) {
-        return resolve({ ok: false, error: e.message });
-      }
-      let urlSent = false;
-      const timer = setTimeout(() => {
-        try { child.kill(); } catch (e) {}
-        resolve({ ok: false, error: 'Hết thời gian chờ đăng nhập (5 phút). Thử lại.' });
-      }, 5 * 60 * 1000);
-      const onData = (buf) => {
-        if (urlSent) return;
-        const m = String(buf).match(/https:\/\/dash\.cloudflare\.com\/argotunnel\S*/);
-        if (!m) return;
-        urlSent = true;
-        try { shell.openExternal(m[0]); } catch (e) {}
-        broadcastToRenderers('band-comm-tunnel-login-url', m[0]);
-      };
-      if (child.stdout) child.stdout.on('data', onData);
-      if (child.stderr) child.stderr.on('data', onData);
-      child.on('exit', (code) => {
-        clearTimeout(timer);
-        resolve(fs.existsSync(cloudflaredCertPath())
-          ? { ok: true }
-          : { ok: false, error: `Đăng nhập chưa hoàn tất (mã thoát ${code}).` });
-      });
-      child.on('error', (e) => {
-        clearTimeout(timer);
-        resolve({ ok: false, error: e.code === 'ENOENT' ? 'Không tìm thấy cloudflared.' : e.message });
-      });
-    });
-  });
-
-  ipcMain.handle('band-comm-tunnel-create', async (e, payload) => {
-    const name = String((payload && payload.name) || '').trim();
-    const domain = String((payload && payload.domain) || '').trim().toLowerCase();
-    if (!/^[a-zA-Z0-9][a-zA-Z0-9_-]{2,63}$/.test(name)) {
-      return { ok: false, error: 'Tên tunnel không hợp lệ (chỉ chữ/số/-/_, 3-64 ký tự).' };
-    }
-    if (!/^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?(\.[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)+$/.test(domain)) {
-      return { ok: false, error: 'Domain không hợp lệ.' };
-    }
-    if (!fs.existsSync(cloudflaredCertPath())) return { ok: false, error: 'Chưa đăng nhập Cloudflare.' };
-
-    const cmd = resolveCloudflaredCmd();
-    // --config trỏ file rỗng riêng: cloudflared tự nạp config.yml mặc định
-    // (nếu máy đã có tunnel khác từ trước) và ÂM THẦM dùng `tunnel:` trong đó
-    // thay vì tên tunnel truyền trên CLI — test thật đã tái hiện đúng lỗi
-    // này cho `route dns` (domain mới bị trỏ nhầm sang tunnel CŨ). Cô lập cho
-    // cả create lẫn route dns để chắc chắn không dính lại.
-    const isoConfigPath = path.join(app.getPath('userData'), 'cloudflared-wizard.yml');
-    try { fs.writeFileSync(isoConfigPath, '{}\n'); } catch (e) {}
-
-    const created = await spawnAsync(cmd, ['tunnel', '--config', isoConfigPath, 'create', name], {});
-    const createdOut = (created.stdout || '') + (created.stderr || '');
-    if (created.status !== 0) {
-      return { ok: false, error: 'Tạo tunnel lỗi: ' + createdOut.trim().slice(0, 500) };
-    }
-    const idMatch = createdOut.match(/with id ([0-9a-fA-F-]{36})/);
-    const credMatch = createdOut.match(/credentials written to (.+\.json)/i);
-    const tunnelId = idMatch && idMatch[1];
-    if (!tunnelId) return { ok: false, error: 'Tạo tunnel thành công nhưng không đọc được tunnel ID:\n' + createdOut.slice(0, 500) };
-    const credFile = (credMatch && credMatch[1].trim()) || path.join(path.dirname(cloudflaredCertPath()), `${tunnelId}.json`);
-
-    const routed = await spawnAsync(cmd, ['tunnel', '--config', isoConfigPath, 'route', 'dns', '-f', name, domain], {});
-    if (routed.status !== 0) {
-      return {
-        ok: false,
-        error: 'Trỏ DNS lỗi: ' + ((routed.stderr || routed.stdout || '').trim().slice(0, 500)) +
-          '\n\nKiểm tra: domain đã trỏ Nameserver sang Cloudflare chưa? (đổi NS ở nơi mua domain, có thể mất vài giờ để có hiệu lực)'
-      };
-    }
-
-    const cloudflaredDir = path.dirname(cloudflaredCertPath());
-    const configPath = path.join(cloudflaredDir, 'config.yml');
-    const port = (commServer && commServer.getStatus().port) || (bandCommStore ? bandCommStore.load().port : 7071);
-    const configYml = `tunnel: ${tunnelId}\ncredentials-file: ${credFile}\n\ningress:\n  - hostname: ${domain}\n    service: http://127.0.0.1:${port}\n  - service: http_status:404\n`;
-    try {
-      fs.writeFileSync(configPath, configYml, 'utf8');
-    } catch (err) {
-      return { ok: false, error: 'Ghi config.yml lỗi: ' + err.message };
-    }
-
-    initBandComm();
-    const cur = bandCommStore.load();
-    const saved = bandCommStore.save({ ...cur, tunnelName: name, publicUrl: `https://${domain}` });
-    // GĐ2: wizard Named Tunnel này thuộc kiến trúc LAN cũ — relay-client.js
-    // không host gì cục bộ nên không có tunnel nào để trỏ tới nữa. Vẫn lưu
-    // lại `tunnelName`/`publicUrl` (vô hại, không đọc ở đâu nữa) để không vỡ
-    // response shape; xoá hẳn UI + IPC này thuộc bước dọn code chết sau cùng.
-    sendBandStatus();
-    return { ok: true, tunnelName: name, publicUrl: saved.publicUrl };
-  });
-
   ipcMain.handle('band-comm-send', (e, payload) => {
     if (!commServer) return null;
     return commServer.operatorSend(payload || {});
@@ -3067,15 +3159,40 @@ app.whenReady().then(() => {
   });
 
 
+  // Đã gỡ các IPC chết từ GĐ2: band-comm-open-firewall, band-comm-tunnel-check-login/-login/-create.
+
+  // Chép bộ file mẫu định dạng nhập (bài hát JSON/TXT, Kinh Thánh XML, hướng dẫn) ra thư mục
+  // do người dùng chọn qua dialog. Nguồn cố định trong gói app, không nhận đường dẫn từ renderer.
+  ipcMain.handle('export-import-templates', async () => {
+    try {
+      const srcDir = path.join(__dirname, 'templates', 'import');
+      if (!fs.existsSync(srcDir)) return { success: false, error: 'Không tìm thấy bộ file mẫu trong ứng dụng.' };
+      const parent = mainWindow && !mainWindow.isDestroyed() ? mainWindow : undefined;
+      const opts = { title: 'Chọn nơi lưu file mẫu định dạng nhập dữ liệu', properties: ['openDirectory', 'createDirectory'], buttonLabel: 'Lưu vào thư mục này' };
+      const r = parent ? await dialog.showOpenDialog(parent, opts) : await dialog.showOpenDialog(opts);
+      if (r.canceled || !r.filePaths || !r.filePaths[0]) return { canceled: true };
+      const target = path.join(r.filePaths[0], 'PresentationForChurch-MauNhapDuLieu');
+      fs.mkdirSync(target, { recursive: true });
+      const copied = [];
+      for (const f of fs.readdirSync(srcDir)) {
+        const from = path.join(srcDir, f);
+        if (!fs.statSync(from).isFile()) continue;
+        fs.copyFileSync(from, path.join(target, f));
+        copied.push(f);
+      }
+      try { shell.openPath(target); } catch (e) {}
+      return { success: true, path: target, files: copied };
+    } catch (e) {
+      console.error('export-import-templates error:', e);
+      return { success: false, error: e.message || String(e) };
+    }
+  });
+
   // Mở link ngoài (icon "Hỗ trợ" trong sidebar Kênh Band) qua trình duyệt/app
   // mặc định của hệ điều hành thay vì điều hướng cả cửa sổ renderer. Allowlist
   // scheme phòng khi sau này URL không còn hardcode trong index.html nữa.
   ipcMain.handle('open-external', (e, url) => {
-    if (typeof url === 'string' && /^(https:|mailto:)/i.test(url)) {
-      shell.openExternal(url);
-      return true;
-    }
-    return false;
+    return openExternalSafe(url);
   });
 
   ipcMain.handle('quit-app', () => {
@@ -3087,8 +3204,18 @@ app.whenReady().then(() => {
     return getCpuUsage();
   });
 
+  // Chỉ dùng cho import bài hát: không nhận options tùy ý từ renderer (title/filters
+  // cố định), và ghi nhớ file đã chọn để import-songs-from-file chỉ đọc đúng các file này.
   ipcMain.handle('show-open-dialog-multi', async (event, options) => {
-    const result = await dialog.showOpenDialog({ ...options, properties: ['openFile', 'multiSelections'] });
+    const title = options && typeof options.title === 'string' ? options.title.slice(0, 120) : 'Import bài hát';
+    const parent = mainWindow && !mainWindow.isDestroyed() ? mainWindow : undefined;
+    const dialogOptions = {
+      title,
+      filters: [{ name: 'Song files', extensions: ['txt', 'docx', 'json'] }],
+      properties: ['openFile', 'multiSelections']
+    };
+    const result = parent ? await dialog.showOpenDialog(parent, dialogOptions) : await dialog.showOpenDialog(dialogOptions);
+    if (!result.canceled) result.filePaths.forEach(p => approvePath(approvedSongImportPaths, p));
     return result;
   });
 
@@ -3096,10 +3223,23 @@ app.whenReady().then(() => {
     let mammoth = null;
     try { mammoth = require('mammoth'); } catch (e) { /* not installed */ }
     const results = [];
+    if (!Array.isArray(filePaths)) return results;
     for (const filePath of filePaths) {
+      if (!isApprovedPath(approvedSongImportPaths, filePath)) {
+        console.warn('[security] import-songs-from-file từ chối đường dẫn chưa qua dialog:', filePath);
+        continue;
+      }
       const ext = path.extname(filePath).toLowerCase();
       const title = path.basename(filePath, ext);
       let lyrics = '';
+      try {
+        if (fs.statSync(filePath).size > MAX_IMPORT_FILE_BYTES) {
+          console.warn('[Import] bỏ qua file quá lớn:', filePath);
+          results.push({ type: 'rejected', file: path.basename(filePath), reason: 'Quá lớn (>20 MB)' });
+          continue;
+        }
+      } catch (e) { continue; }
+      const resultsBefore = results.length;
       if (ext === '.txt') {
         lyrics = fs.readFileSync(filePath, 'utf8').replace(/\r\n/g, '\n').trim();
         results.push({ title, lyrics, ext });
@@ -3109,34 +3249,26 @@ app.whenReady().then(() => {
         results.push({ title, lyrics, ext });
       } else if (ext === '.json') {
         try {
-          const content = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+          let content = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+          // Cho phép bọc dạng { "songs": [ ... ] } (khớp file xuất từ các bản cũ)
+          if (content && !Array.isArray(content) && Array.isArray(content.songs)) content = content.songs;
           if (Array.isArray(content)) {
-            // Persistent Save: Merge imported songs into local songs.json
-            const currentItems = JSON.parse(fs.readFileSync(songsFilePath, 'utf8') || '[]');
-            const currentIds = new Set(currentItems.map(s => s.id));
-            let addedCount = 0;
-
-            for (let song of content) {
-              song = migrateItem(song);
-              if (!song.id) song.id = Date.now() + Math.random();
-              if (!currentIds.has(song.id)) {
-                currentItems.push(song);
-                currentIds.add(song.id);
-                addedCount++;
-              }
-            }
-            if (addedCount > 0) {
-              saveAndBackupSync(songsFilePath, currentItems);
-              console.log(`Imported and saved ${addedCount} songs from JSON array.`);
-              if (commServer) commServer.syncLibraryToCloud();
-            }
-            results.push({ type: 'json-array', data: content, imported: true });
-          } else {
+            const summary = importSongArray(content);
+            console.log(`[Import] ${path.basename(filePath)}: thêm ${summary.added}, trùng ${summary.skipped}, lỗi ${summary.invalid}.`);
+            results.push({ type: 'json-array', imported: true, added: summary.added, skipped: summary.skipped, invalid: summary.invalid, total: summary.total, file: path.basename(filePath) });
+          } else if (content && typeof content === 'object') {
             results.push({ type: 'json-object', data: content });
+          } else {
+            results.push({ type: 'rejected', file: path.basename(filePath), reason: 'JSON phải là một bài hát hoặc một mảng các bài hát' });
           }
         } catch (e) {
           console.error('Failed to parse JSON file:', filePath, e);
+          results.push({ type: 'rejected', file: path.basename(filePath), reason: 'File JSON không hợp lệ: ' + (e && e.message || e) });
         }
+      }
+      // Định dạng không hỗ trợ (hoặc .docx mà thư viện đọc không có) → báo, không bỏ qua im lặng
+      if (results.length === resultsBefore) {
+        results.push({ type: 'rejected', file: path.basename(filePath), reason: ext === '.docx' ? 'Không đọc được file .docx' : 'Định dạng không hỗ trợ (chỉ .txt, .docx, .json)' });
       }
     }
     return results;
@@ -3151,6 +3283,17 @@ app.on('window-all-closed', () => {
   cleanupAndExit();
 });
 
-app.on('before-quit', () => {
+app.on('before-quit', (e) => {
+  // app.quit() (menu Thoát…) đi đường này, KHÔNG qua sự kiện 'close' của cửa sổ -> hỏi lưu ở đây.
+  if (!exitConfirmed && !isShuttingDown && mainWindow && !mainWindow.isDestroyed()) {
+    e.preventDefault();
+    if (askingToSaveBeforeExit) return;
+    askingToSaveBeforeExit = true;
+    confirmSaveBeforeExit().then((ok) => ok, () => true).then((ok) => {
+      askingToSaveBeforeExit = false;
+      if (ok) { exitConfirmed = true; app.quit(); }
+    });
+    return;
+  }
   cleanupAndExit();
 });

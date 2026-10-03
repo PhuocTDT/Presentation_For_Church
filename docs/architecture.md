@@ -12,6 +12,7 @@
 - `src/schema.js`: validate/migrate dữ liệu
 - `src/band-comm/`: server (HTTP + **WebSocket**, xem `ws.js`) + store + protocol + mDNS + vendor QR encoder cho Kênh Band
 - `comm/mobile/`: web client cho điện thoại band (server tự phục vụ) — cảnh báo/chat, thư viện ảnh hợp âm, soạn setlist
+- `comm/setlist/`: trang web soạn setlist + tạo bài hát mới (gửi operator duyệt) + xem trước slide, phục vụ ở `channel.worship-official.link/setlist/` — xem `docs/data-contracts.md` mục "Trang `/setlist/`"
 - `cloud/worker/`: Cloudflare Worker + KV — hộp thư setlist khi laptop tắt hẳn. **Không** đóng gói vào app (không có trong `files` của `electron-builder`), chỉ deploy độc lập bằng `wrangler`
 - `cloud/identity/`: Cloudflare Worker "band-identity" (domain `identity.worship-official.link`) — cầu nối duy nhất tới AWS Cognito (đăng nhập tài khoản trung tâm dùng chung nhiều nhà thờ, `authMode='cognito'`, xem `cloud/identity-plan.md`). Cũng **không** đóng gói vào app, deploy độc lập bằng `wrangler`
 - `main.js` **tự spawn `cloudflared`** (bundle sẵn, `scripts/fetch-cloudflared.js`) ngay khi band-comm start — mặc định Quick Tunnel (`*.trycloudflare.com`, đổi mỗi lần chạy), hoặc Named Tunnel domain cố định nếu đã cấu hình `tunnelName` (qua wizard trong app). `cloud/tunnel/start-tunnel.bat` chỉ còn là cách chạy tunnel thủ công/dự phòng, không phải đường chính
@@ -54,6 +55,9 @@
 | `src/band-comm/protocol.js` | Envelope tin nhắn, chuẩn hoá `dedupKey` |
 | `src/band-comm/mdns.js` | mDNS responder cho `<hostname>.local` |
 | `cloud/worker/src/worker.js` | Cloudflare Worker — hộp thư setlist (KV) khi laptop tắt hẳn |
+| `cloud/worker/src/room-relay.js` | Durable Object relay: WebSocket, replay ring, hộp thư bài hát mới chờ duyệt (`songInbox`), manifest ảnh nền (`bgManifest`) |
+| `src/band-comm/relay-client.js` | Client WebSocket của operator + đồng bộ thư viện/ảnh nền lên cloud (debounce, retry) + kéo bài mới chờ duyệt |
+| `comm/setlist/` | Trang web `/setlist/` (xem trên) |
 | `cloud/identity/src/worker.js` | Cloudflare Worker "band-identity" — cầu nối AWS Cognito (SigV4 qua `aws4fetch`) cho đăng nhập tài khoản trung tâm; gửi mail mời qua Resend |
 
 ## Dữ liệu lưu ở userData

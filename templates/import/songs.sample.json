@@ -1,0 +1,25 @@
+[
+  {
+    "id": 900001,
+    "type": "song",
+    "title": "Bài hát mẫu 1 (xóa sau khi thử)",
+    "lyrics": "Dòng lời 1 của slide thứ nhất\nDòng lời 2 của slide thứ nhất\n\nDòng lời 1 của slide thứ hai\nDòng lời 2 của slide thứ hai\n\nDòng lời của slide thứ ba",
+    "style": {
+      "fontFamily": "CMG Sans",
+      "fontSize": "80px",
+      "color": "#ffffff",
+      "textAlign": "center"
+    },
+    "background": null
+  },
+  {
+    "id": 900002,
+    "type": "song",
+    "title": "Bài hát mẫu 2 - có hợp âm và ảnh nền",
+    "lyrics": "[C]Hợp âm đặt trước [G]chữ cần đánh dấu\n[Am]Dòng thứ hai [F]của slide\n\n[C]Slide thứ hai [G]bắt đầu sau một dòng trống",
+    "background": {
+      "mediaName": "ten-file-anh-nen.jpg",
+      "mediaType": "image"
+    }
+  }
+]

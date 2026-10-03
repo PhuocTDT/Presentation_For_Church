@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  FILE MẪU ĐỊNH DẠNG KINH THÁNH (kiểu Zefania XMLBIBLE) — nội dung dưới đây là câu GIẢ để minh họa.
+  Hãy thay bằng bản dịch mà bạn có quyền sử dụng. Đổi tên file theo tên bản dịch, ví dụ: Ban_Dich_Cua_Toi.xml
+-->
+<XMLBIBLE biblename="Bản dịch mẫu" type="x-bible" status="v" version="2.0.1.18">
+  <INFORMATION>
+    <title>Bản dịch mẫu</title>
+    <language>vie</language>
+  </INFORMATION>
+  <!-- bnumber = số thứ tự sách (1 = Sáng thế ký ... 66 = Khải huyền). bname là tùy chọn. -->
+  <BIBLEBOOK bnumber="1" bname="Sáng-thế Ký">
+    <CHAPTER cnumber="1">
+      <VERS vnumber="1">Đây là câu mẫu số một của chương một.</VERS>
+      <VERS vnumber="2">Đây là câu mẫu số hai của chương một.</VERS>
+      <VERS vnumber="3">Đây là câu mẫu số ba của chương một.</VERS>
+    </CHAPTER>
+    <CHAPTER cnumber="2">
+      <VERS vnumber="1">Đây là câu mẫu số một của chương hai.</VERS>
+      <VERS vnumber="2">Đây là câu mẫu số hai của chương hai.</VERS>
+    </CHAPTER>
+  </BIBLEBOOK>
+  <BIBLEBOOK bnumber="43" bname="Giăng">
+    <CHAPTER cnumber="1">
+      <VERS vnumber="1">Đây là câu mẫu số một của sách thứ bốn mươi ba.</VERS>
+      <VERS vnumber="2">Đây là câu mẫu số hai của sách thứ bốn mươi ba.</VERS>
+    </CHAPTER>
+  </BIBLEBOOK>
+</XMLBIBLE>

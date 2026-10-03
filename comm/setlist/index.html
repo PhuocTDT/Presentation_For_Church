@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<!-- CSP chặt: chỉ script/phông/ảnh/API cùng origin (channel.worship-official.link); riêng static.cloudflareinsights.com
+     là beacon analytics do Cloudflare tự chèn vào trang (trang /m/ cũng cho phép, nếu chặn sẽ báo lỗi CSP ồn ào trên console).
+     style-src 'unsafe-inline' vì preview slide đặt cỡ chữ/vị trí bằng JS (CSSOM);
+     img-src có blob:/data: cho ảnh nền tải về. Không CDN, không phông ngoài. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob:; connect-src 'self' https://cloudflareinsights.com; base-uri 'none'; form-action 'none'">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#ffffff">
+<link rel="icon" type="image/png" href="favicon.png">
+<title>Soạn Setlist — Kênh Band</title>
+<link rel="stylesheet" href="setlist.css">
+</head>
+<body>
+
+<!-- ============ Đăng nhập phòng ============ -->
+<section id="login" class="screen hidden">
+  <div class="card narrow">
+    <h1>Soạn Setlist</h1>
+    <p class="muted">Đăng nhập bằng ID phòng và mật khẩu phòng (giống khi vào Kênh Band trên điện thoại).</p>
+    <label for="roomCode">ID phòng</label>
+    <input id="roomCode" autocomplete="off" autocapitalize="characters" maxlength="10" placeholder="VD: ABC123">
+    <label for="roomPassword">Mật khẩu phòng</label>
+    <input id="roomPassword" type="password" autocomplete="off" maxlength="12">
+    <label for="yourName">Tên của bạn</label>
+    <input id="yourName" autocomplete="off" maxlength="40" placeholder="VD: Hoa">
+    <div id="loginErr" class="err" role="alert"></div>
+    <button id="loginBtn" class="btn primary block" type="button">Vào phòng</button>
+  </div>
+</section>
+
+<!-- ============ Ứng dụng chính ============ -->
+<div id="app" class="hidden">
+  <header class="top">
+    <div class="top-l">
+      <a id="backBtn" class="btn small" href="/m/" title="Quay lại Kênh Band (trang điện thoại)">‹ Quay lại</a>
+      <strong id="roomName">Kênh Band</strong>
+      <span id="whoami" class="muted"></span>
+    </div>
+    <div class="top-r">
+      <span id="libInfo" class="muted small"></span>
+      <button id="libRefresh" class="btn small" type="button" title="Tải lại thư viện bài hát từ máy chiếu">Làm mới</button>
+      <button id="logoutBtn" class="btn small" type="button">Thoát</button>
+    </div>
+  </header>
+
+  <nav class="tabs" role="tablist">
+    <button class="tab active" data-tab="setlist" role="tab" type="button">Soạn setlist</button>
+    <button class="tab" data-tab="newsong" role="tab" type="button">Bài mới<span id="pendingBadge" class="badge hidden">0</span></button>
+  </nav>
+
+  <main>
+    <!-- ---- Tab: Soạn setlist ---- -->
+    <section id="tab-setlist" class="panel">
+      <div class="card">
+        <label for="slName">Tên setlist</label>
+        <input id="slName" maxlength="80" placeholder="VD: Chúa nhật 05/10">
+
+        <h2>Danh sách bài <span id="slCount" class="muted small"></span></h2>
+        <ol id="slDraft" class="list"></ol>
+        <div id="slEmpty" class="muted">Chưa chọn bài nào. Tìm bài bên dưới rồi bấm “Thêm”.</div>
+
+        <label for="slSearch">Tìm bài trong thư viện máy chiếu</label>
+        <input id="slSearch" type="search" autocomplete="off" placeholder="Gõ tên bài hoặc một câu trong lời…">
+        <div id="slResults" class="results"></div>
+
+        <div id="slStatus" class="status" role="status"></div>
+        <button id="slSend" class="btn primary block" type="button">Gửi setlist</button>
+      </div>
+    </section>
+
+    <!-- ---- Tab: Bài mới ---- -->
+    <section id="tab-newsong" class="panel hidden">
+      <div class="card">
+        <h2>Tạo bài hát mới</h2>
+        <p class="muted small">Dán hoặc gõ lời bài hát. <strong>Nhấn Enter hai lần (để trống một dòng) để ngắt sang slide mới.</strong>
+          Dòng đầu của slide có thể là nhãn như “Đoạn 1”, “Điệp khúc”, “Kết”. Bài được <strong>lưu vào danh sách ngay</strong> để thêm vào setlist; người vận hành sẽ <strong>duyệt khi nạp setlist</strong> có bài này.</p>
+        <label for="nsTitle">Tên bài hát</label>
+        <input id="nsTitle" maxlength="200" placeholder="VD: Ơn Chúa tuyệt vời">
+        <label for="nsLyrics">Lời bài hát</label>
+        <textarea id="nsLyrics" rows="12" spellcheck="false" placeholder="Đoạn 1&#10;Dòng lời 1&#10;Dòng lời 2&#10;&#10;Điệp khúc&#10;Dòng lời 1&#10;Dòng lời 2"></textarea>
+        <div class="row between">
+          <span id="nsCount" class="muted small"></span>
+          <span id="nsSlideCount" class="muted small"></span>
+        </div>
+        <div id="nsSlides" class="slides-strip"></div>
+        <div id="nsStatus" class="status" role="status"></div>
+        <div class="row">
+          <button id="nsPreview" class="btn" type="button">Xem trước slide</button>
+          <button id="nsCreate" class="btn primary grow" type="button">Tạo bài</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Bài tôi đã tạo</h2>
+        <ul id="mySongs" class="list plain"></ul>
+        <div id="mySongsEmpty" class="muted">Bạn chưa gửi bài nào.</div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<!-- ============ Xem trước slide ============ -->
+<div id="pv" class="modal hidden" role="dialog" aria-modal="true" aria-label="Xem trước slide">
+  <div class="modal-card">
+    <div class="row between">
+      <strong id="pvTitle">Xem trước</strong>
+      <button id="pvClose" class="btn small" type="button">Đóng</button>
+    </div>
+    <div id="pvStage" class="stage">
+      <img id="pvBg" class="stage-bg hidden" alt="">
+      <div id="pvCanvas" class="stage-canvas">
+        <div id="pvBox" class="stage-box"><div id="pvText" class="stage-text"></div></div>
+      </div>
+    </div>
+    <div class="row between pv-nav">
+      <button id="pvPrev" class="btn" type="button">‹ Trước</button>
+      <span id="pvLabel" class="muted"></span>
+      <button id="pvNext" class="btn" type="button">Sau ›</button>
+    </div>
+    <div class="muted small" id="pvNote"></div>
+    <div id="bgSection" class="hidden">
+      <div class="row between"><strong class="small">Nền thử</strong><span class="muted small" id="bgCount"></span></div>
+      <div id="bgGrid" class="bg-grid"></div>
+    </div>
+  </div>
+</div>
+
+<div id="toast" class="toast hidden" role="status"></div>
+
+<script src="slides.js"></script>
+<script src="setlist.js"></script>
+</body>
+</html>

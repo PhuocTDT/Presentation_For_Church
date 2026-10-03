@@ -40,7 +40,38 @@ const RING_MAX = 120;               // số envelope replay được khi phone r
 const TOKEN_MAX_AGE_MS = 12 * 60 * 60 * 1000; // giống TOKEN_MAX_AGE_MS ở server.js cũ
 const DUP_WINDOW_MS = 5000;
 const BLOCK_DURATION_MS = 3 * 24 * 60 * 60 * 1000; // Chặn (operator) tự hết hạn sau 3 ngày
-const MSG_TYPES = ['alert', 'text', 'ack', 'resolve', 'presence', 'gallery', 'room', 'system', 'setlist'];
+const MSG_TYPES = ['alert', 'text', 'ack', 'resolve', 'presence', 'gallery', 'room', 'system', 'setlist', 'songnew'];
+
+// Hộp thư "bài hát mới từ web" (trang /setlist/) — operator duyệt rồi mới nạp
+// vào thư viện desktop. Giới hạn khớp worker.js's /library-sync để bài đã
+// duyệt không bị cắt khi đồng bộ ngược lại lên web.
+const SONG_TITLE_MAX = 200;
+const SONG_LYRICS_MAX = 6000;
+const SONG_INBOX_MAX_PENDING = 50;          // tối đa bài đang chờ duyệt / phòng
+const SONG_SUBMIT_PER_HOUR = 10;            // tối đa bài / thành viên / giờ
+const SONG_RESOLVED_TTL_MS = 7 * 24 * 60 * 60 * 1000; // giữ bản đã duyệt/từ chối để web hiện trạng thái
+const SONG_WEBID_RE = /^[A-Za-z0-9_-]{8,64}$/;
+const SONG_PENDING_TTL_MS = 30 * 24 * 60 * 60 * 1000;   // bài web chưa ai đưa vào setlist: giữ 30 ngày
+
+// Ảnh nền thư viện (desktop đẩy bản thu nhỏ ~960px JPEG) để trang /setlist/ xem trước
+// slide. Bucket R2 RIÊNG (binding BGS) — KHÔNG dùng bucket gallery vì bucket đó
+// tự xoá sau 4 ngày (lifecycle expire-4d), còn nền phải sống lâu.
+const BG_MAX_BYTES = 400 * 1024;
+const BG_MAX_PER_ROOM = 200;
+
+// Chuẩn hoá lời bài hát ĐÚNG như trang web (comm/setlist/slides.js) và desktop
+// (index.html getLyricsFromEditor): CRLF -> LF, cắt khoảng trắng cuối dòng,
+// một hoặc nhiều dòng trống = 1 ngắt slide (\n\n), bỏ khối rỗng.
+function normalizeSongLyrics(raw) {
+  const text = String(raw || '').replace(/\r\n?/g, '\n').replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, '');
+  return text.split(/\n\s*\n/)
+    .map((blk) => blk.split('\n').map((l) => l.replace(/\s+$/, '')).join('\n').trim())
+    .filter(Boolean)
+    .join('\n\n');
+}
+function normalizeSongTitle(raw) {
+  return String(raw || '').replace(/[\u0000-\u001F\u007F<>]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, SONG_TITLE_MAX);
+}
 const PENDING_LOGIN_MAX_AGE_MS = 5 * 60 * 1000; // y hệt server.js cũ
 
 // ---- Web Crypto helpers (Workers runtime không có Node's `crypto` module —
@@ -140,6 +171,8 @@ export class RoomRelay {
       this.profiles = (await ctx.storage.get('profiles')) || {}; // profileId -> {name, updatedAt, buttons}
       this.gallery = (await ctx.storage.get('gallery')) || { images: [], updatedAt: 0 }; // {images:[{id,name,ownerId}], updatedAt}
       this.blocked = (await ctx.storage.get('blocked')) || {}; // profileId -> {name, blockedAt}
+      this.songInbox = (await ctx.storage.get('songInbox')) || []; // bài mới từ web chờ operator duyệt
+      this.bgManifest = (await ctx.storage.get('bgManifest')) || { items: [], updatedAt: 0 }; // ảnh nền: [{id,name,key,size}]
     });
     // Chống brute-force /join, /login — y hệt curve joinAttempts ở LAN
     // server.js cũ, CHỈ khác chỗ lưu (RAM của instance DO, không phải
@@ -271,50 +304,25 @@ export class RoomRelay {
     const authHeader = request.headers.get('Authorization') || '';
     const bearerToken = authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : '';
 
+    // Ai được (tái) đặt adminSecret của phòng? CHỈ:
+    //   1) người đã giữ đúng adminSecret hiện tại, hoặc
+    //   2) CHỦ PHÒNG — Cognito ID token hợp lệ có email == operatorEmail trong bản ghi
+    //      phòng của identity (GLOBAL_USERS 'room:<code>'): bootstrap lần đầu, cài lại
+    //      app, đổi máy.
+    // Đã BỎ (B-19): "mật khẩu phòng khớp" và "DO chưa có config" — mật khẩu phòng mọi
+    // thành viên ban hát đều biết nên bất kỳ ai cũng chiếm được quyền operator và khóa
+    // operator thật ra ngoài; còn nhánh sau cho ai gửi trước thì giữ phòng.
     let isAuthorized = false;
+    const newSecretValid = headerSecret.length >= 16 && headerSecret.length <= 256;
 
-    if (!this.adminSecret) {
-      // Bootstrap lần đầu — client (main.js) tự sinh adminSecret, gửi lên
-      // đây để DO ghim lại; từ lần sau bắt buộc khớp mới sửa được.
-      if (!headerSecret || headerSecret.length < 16) return json({ error: 'Thiếu X-Admin-Secret hợp lệ lúc khởi tạo' }, 400);
-      this.adminSecret = headerSecret;
-      await this.ctx.storage.put('adminSecret', this.adminSecret);
+    if (this.adminSecret && this.checkAdminSecret(request)) {
       isAuthorized = true;
-    } else if (headerSecret === this.adminSecret) {
-      isAuthorized = true;
-    } else {
-      // Khi adminSecret không khớp (ví dụ cài lại app, xoá userData, đổi máy),
-      // kiểm tra xem có xác thực qua Cognito token của operator không:
-      if (bearerToken) {
-        try {
-          if (!this.cognitoVerifier) this.cognitoVerifier = createCognitoVerifier();
-          const payload = await this.cognitoVerifier.verifyIdToken(bearerToken).catch(() => null);
-          if (payload && (payload.email || payload.sub)) {
-            if (headerSecret && headerSecret.length >= 16) {
-              this.adminSecret = headerSecret;
-              await this.ctx.storage.put('adminSecret', this.adminSecret);
-              isAuthorized = true;
-            }
-          }
-        } catch (e) {
-          console.error('Cognito verify error in admin config:', e);
-        }
-      }
-      // Hoặc nếu password phòng gửi lên khớp với password phòng hiện có trong DO:
-      if (!isAuthorized && this.config && body.password && body.password === this.config.password) {
-        if (headerSecret && headerSecret.length >= 16) {
-          this.adminSecret = headerSecret;
-          await this.ctx.storage.put('adminSecret', this.adminSecret);
-          isAuthorized = true;
-        }
-      }
-      // Hoặc nếu DO chưa có config hoàn chỉnh:
-      if (!isAuthorized && (!this.config || !this.config.password)) {
-        if (headerSecret && headerSecret.length >= 16) {
-          this.adminSecret = headerSecret;
-          await this.ctx.storage.put('adminSecret', this.adminSecret);
-          isAuthorized = true;
-        }
+    } else if (newSecretValid && bearerToken) {
+      const roomCodeForOwner = /^[A-Z0-9]{4,10}$/.test(String(body.code || '')) ? String(body.code) : ((this.config && this.config.code) || this.roomCode || '');
+      if (await this.bearerIsRoomOwner(bearerToken, roomCodeForOwner)) {
+        this.adminSecret = headerSecret;
+        await this.ctx.storage.put('adminSecret', this.adminSecret);
+        isAuthorized = true;
       }
     }
 
@@ -339,6 +347,26 @@ export class RoomRelay {
     await this.ctx.storage.put('config', this.config);
     if (passwordChanged) await this.rotateSecret();
     return json({ ok: true, config: this.config });
+  }
+
+  // Cognito ID token hợp lệ VÀ email khớp chủ phòng đã đăng ký ở identity. Thiếu bản ghi
+  // phòng / thiếu operatorEmail (phòng cũ) → từ chối (fail closed); operator vẫn dùng
+  // được adminSecret đã ghim.
+  async bearerIsRoomOwner(bearerToken, roomCode) {
+    try {
+      if (!roomCode || !this.env || !this.env.GLOBAL_USERS) return false;
+      const raw = await this.env.GLOBAL_USERS.get(`room:${roomCode}`);
+      if (!raw) return false;
+      const owner = String((JSON.parse(raw) || {}).operatorEmail || '').trim().toLowerCase();
+      if (!owner) return false;
+      if (!this.cognitoVerifier) this.cognitoVerifier = createCognitoVerifier();
+      const payload = await this.cognitoVerifier.verifyIdToken(bearerToken).catch(() => null);
+      const email = String((payload && payload.email) || '').trim().toLowerCase();
+      return !!email && email === owner;
+    } catch (e) {
+      console.error('bearerIsRoomOwner error:', e);
+      return false;
+    }
   }
 
   async ensureConfig(code) {
@@ -372,7 +400,18 @@ export class RoomRelay {
   // sau các IPC band-accounts-*. ----
   checkAdminSecret(request) {
     const headerSecret = request.headers.get('X-Admin-Secret') || '';
-    return !!this.adminSecret && headerSecret === this.adminSecret;
+    if (!this.adminSecret || !headerSecret || headerSecret.length !== this.adminSecret.length) return false;
+    // So sánh hằng thời gian: không lộ độ dài tiền tố đúng qua thời gian phản hồi.
+    let diff = 0;
+    for (let i = 0; i < headerSecret.length; i++) diff |= headerSecret.charCodeAt(i) ^ this.adminSecret.charCodeAt(i);
+    return diff === 0;
+  }
+
+  // ---- GET/POST /admin/verify: worker.js (KV endpoints dành riêng cho operator:
+  // /library-sync, /setlist/ack, ...) hỏi DO của phòng xem X-Admin-Secret có phải
+  // của operator thật không. Chỉ trả 200/401, không đổi trạng thái, KHÔNG bootstrap. ----
+  handleAdminVerify(request) {
+    return this.checkAdminSecret(request) ? json({ ok: true }) : json({ error: 'unauthorized' }, 401);
   }
 
   async handleAdminAccounts(request, action) {
@@ -436,17 +475,43 @@ export class RoomRelay {
       return json(result.manifest || await this.galleryManifest());
     }
     if (action === 'reorder') {
-      const ids = Array.isArray(body.ids) ? body.ids : [];
-      const map = new Map(this.gallery.images.map((x) => [x.id, x]));
-      const next = ids.map((id) => map.get(id)).filter(Boolean);
-      this.gallery.images.forEach((x) => { if (next.indexOf(x) < 0) next.push(x); });
-      this.gallery.images = next;
-      this.gallery.updatedAt = Date.now();
-      await this.ctx.storage.put('gallery', this.gallery);
-      await this.announceGallery();
+      await this.reorderGallery(Array.isArray(body.ids) ? body.ids : []);
       return json(await this.galleryManifest());
     }
     return json({ error: 'not found' }, 404);
+  }
+
+  // Đặt lại thứ tự ảnh hợp âm theo `ids`. id lạ/trùng bị bỏ qua; ảnh không có trong
+  // `ids` (vd. vừa có người thêm trong lúc đang kéo) được GIỮ và xếp xuống cuối —
+  // không bao giờ làm mất ảnh. Thứ tự dùng chung cả phòng: ai đổi thì mọi điện
+  // thoại + máy chiếu thấy đổi theo (announceGallery).
+  async reorderGallery(ids) {
+    const map = new Map(this.gallery.images.map((x) => [x.id, x]));
+    const seen = new Set();
+    const next = [];
+    for (const id of ids) {
+      const it = map.get(String(id));
+      if (it && !seen.has(it.id)) { seen.add(it.id); next.push(it); }
+    }
+    this.gallery.images.forEach((x) => { if (!seen.has(x.id)) next.push(x); });
+    this.gallery.images = next;
+    this.gallery.updatedAt = Date.now();
+    await this.ctx.storage.put('gallery', this.gallery);
+    await this.announceGallery();
+  }
+
+  // Thành viên (điện thoại) đổi thứ tự — chọn "operator + thành viên đều được". Chỉ ĐỔI
+  // THỨ TỰ, không xoá được ảnh người khác (quyền xoá vẫn theo ownerId ở removeImage).
+  async handleGalleryReorder(request, url) {
+    const ident = await this.verifyToken(url.searchParams.get('token') || '');
+    if (!ident) return json({ error: 'unauthorized' }, 401);
+    const body = await request.json().catch(() => null);
+    if (!body || !Array.isArray(body.ids) || body.ids.length > 500) return json({ error: 'bad json' }, 400);
+    if (!this.checkGalleryAddRateLimit('reorder:' + ident.clientId, 30)) {
+      return json({ error: 'Đổi thứ tự quá nhanh, thử lại sau ít phút' }, 429);
+    }
+    await this.reorderGallery(body.ids.map((x) => String(x).slice(0, 64)));
+    return json(await this.galleryManifest(ident.profileId));
   }
 
   // Đóng ngay 1 kết nối đang mở theo clientId — chỉ ngắt phiên hiện tại,
@@ -869,7 +934,13 @@ export class RoomRelay {
     const items = (Array.isArray(body.items) ? body.items : [])
       .filter((it) => it && it.type === 'song' && it.id != null)
       .slice(0, 60)
-      .map((it) => ({ type: 'song', id: it.id, title: String(it.title || '').replace(/[<>]/g, '').slice(0, 200) }));
+      .map((it) => {
+        const out = { type: 'song', id: it.id, title: String(it.title || '').replace(/[<>]/g, '').slice(0, 200) };
+        // Bài tạo mới trên web: chỉ giữ webId (đã validate). Lời KHÔNG đi theo setlist — desktop
+        // lấy từ /admin/songs/pending của relay lúc operator nạp, nên client không tiêm lời tuỳ ý.
+        if (it.webId != null && SONG_WEBID_RE.test(String(it.webId))) out.webId = String(it.webId);
+        return out;
+      });
     if (!items.length) return json({ error: 'Setlist rỗng' }, 400);
     const sl = {
       id: String(body.id || newId('sl')),
@@ -885,6 +956,175 @@ export class RoomRelay {
     // ở worker.js) hay không — y hệt UX cũ.
     const delivered = this.ctx.getWebSockets().some((ws) => (ws.deserializeAttachment() || {}).isOperator);
     return json({ ok: true, id: sl.id, delivered });
+  }
+
+  // ---- Ảnh nền thư viện cho preview slide ----
+  // Operator (adminSecret) quản lý; thành viên (token) chỉ đọc manifest {id,name}.
+  // Bytes ở R2 BGS key `<roomCode>/<id>`; id ngẫu nhiên (không đoán được) và đổi
+  // mỗi lần ảnh thay đổi nên cache 1 ngày ở Worker không bao giờ phục vụ ảnh cũ.
+  bgPrefix() { return String((this.config && this.config.code) || this.roomCode || ''); }
+
+  async persistBgManifest() {
+    this.bgManifest.updatedAt = Date.now();
+    await this.ctx.storage.put('bgManifest', this.bgManifest);
+  }
+
+  async handleBackgroundsManifest(url) {
+    const ident = await this.verifyToken(url.searchParams.get('token') || '');
+    if (!ident) return json({ error: 'unauthorized' }, 401);
+    return json({ items: this.bgManifest.items.map((b) => ({ id: b.id, name: b.name })), updatedAt: this.bgManifest.updatedAt });
+  }
+
+  async handleAdminBackgrounds(request, action) {
+    if (!this.checkAdminSecret(request)) return json({ error: 'Sai admin secret' }, 403);
+    if (!this.env.BGS) return json({ error: 'Chưa cấu hình bucket ảnh nền (BGS)' }, 503);
+    if (action === 'list' && request.method === 'GET') {
+      return json({ items: this.bgManifest.items, updatedAt: this.bgManifest.updatedAt });
+    }
+    const body = await request.json().catch(() => null);
+    if (!body) return json({ error: 'bad json' }, 400);
+
+    if (action === 'put' && request.method === 'POST') {
+      const name = String(body.name || '').replace(/[\u0000-\u001F\u007F<>]/g, '').trim().slice(0, 120);
+      const key = String(body.key || '').slice(0, 64);
+      if (!name || !key) return json({ error: 'Thiếu name/key' }, 400);
+      const b64 = String(body.dataB64 || '').replace(/^data:[^,]*,/, '');
+      if (!b64 || b64.length > Math.ceil(BG_MAX_BYTES * 4 / 3) + 8) return json({ error: 'Ảnh thiếu hoặc quá lớn (tối đa ' + (BG_MAX_BYTES / 1024) + 'KB)' }, 400);
+      let buf;
+      try { buf = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0)); } catch (e) { return json({ error: 'dataB64 không hợp lệ' }, 400); }
+      if (!buf.length || buf.length > BG_MAX_BYTES) return json({ error: 'Ảnh quá lớn' }, 400);
+      if (!(buf[0] === 0xFF && buf[1] === 0xD8 && buf[2] === 0xFF)) return json({ error: 'Chỉ nhận ảnh JPEG' }, 400);
+      const old = this.bgManifest.items.find((b) => b.name === name);
+      if (!old && this.bgManifest.items.length >= BG_MAX_PER_ROOM) return json({ error: 'Đã đủ ' + BG_MAX_PER_ROOM + ' ảnh nền' }, 400);
+      const id = newId('bg');
+      await this.env.BGS.put(this.bgPrefix() + '/' + id, buf, { httpMetadata: { contentType: 'image/jpeg' } });
+      if (old) {
+        await this.env.BGS.delete(this.bgPrefix() + '/' + old.id).catch(() => {});
+        this.bgManifest.items = this.bgManifest.items.filter((b) => b !== old);
+      }
+      this.bgManifest.items.push({ id, name, key, size: buf.length });
+      await this.persistBgManifest();
+      return json({ ok: true, id });
+    }
+    if (action === 'remove' && request.method === 'POST') {
+      const ids = new Set((Array.isArray(body.ids) ? body.ids : []).map(String));
+      const gone = this.bgManifest.items.filter((b) => ids.has(b.id));
+      await Promise.all(gone.map((b) => this.env.BGS.delete(this.bgPrefix() + '/' + b.id).catch(() => {})));
+      this.bgManifest.items = this.bgManifest.items.filter((b) => !ids.has(b.id));
+      if (gone.length) await this.persistBgManifest();
+      return json({ ok: true, removed: gone.length });
+    }
+    return json({ error: 'not found' }, 404);
+  }
+
+  // ---- Hộp thư bài hát mới từ web ----
+  // Người gửi định danh bằng profileId (ổn định qua reconnect/đổi clientId) rồi
+  // tới clientId. KHÔNG tin tên hiển thị để chống mạo danh.
+  songSubmitterKey(ident) { return ident.profileId || ident.clientId; }
+
+  async persistSongInbox() {
+    const now = Date.now();
+    this.songInbox = this.songInbox.filter((e) => e.status === 'pending'
+      ? (now - e.ts) < SONG_PENDING_TTL_MS
+      : (now - (e.resolvedAt || e.ts)) < SONG_RESOLVED_TTL_MS);
+    await this.ctx.storage.put('songInbox', this.songInbox);
+  }
+
+  publicSongEntry(e) {
+    return { webId: e.webId, title: e.title, slides: e.slides, status: e.status, reason: e.reason || '', songId: e.songId || null, ts: e.ts };
+  }
+
+  async handleSongSubmit(request, url) {
+    const ident = await this.verifyToken(url.searchParams.get('token') || '');
+    if (!ident) return json({ error: 'unauthorized' }, 401);
+    const body = await request.json().catch(() => null);
+    if (!body) return json({ error: 'bad json' }, 400);
+    const webId = String(body.webId || '');
+    if (!SONG_WEBID_RE.test(webId)) return json({ error: 'webId không hợp lệ' }, 400);
+    const who = this.songSubmitterKey(ident);
+
+    // Idempotent: web gửi lại cùng webId (mạng chập chờn, bấm 2 lần) → trả bản đã có, KHÔNG tạo thêm.
+    const existing = this.songInbox.find((e) => e.webId === webId);
+    if (existing) {
+      if (existing.submitter !== who) return json({ error: 'webId đã được dùng' }, 409);
+      return json({ ok: true, duplicate: true, song: this.publicSongEntry(existing) });
+    }
+
+    const title = normalizeSongTitle(body.title);
+    const lyrics = normalizeSongLyrics(body.lyrics);
+    if (!title) return json({ error: 'Thiếu tên bài hát' }, 400);
+    if (!lyrics) return json({ error: 'Lời bài hát đang trống' }, 400);
+    if (lyrics.length > SONG_LYRICS_MAX) return json({ error: 'Lời bài hát quá dài (tối đa ' + SONG_LYRICS_MAX + ' ký tự)' }, 400);
+
+    const now = Date.now();
+    const recent = this.songInbox.filter((e) => e.submitter === who && now - e.ts < 60 * 60 * 1000).length;
+    if (recent >= SONG_SUBMIT_PER_HOUR) return json({ error: 'Bạn gửi quá nhiều bài, thử lại sau ít phút' }, 429, { 'Retry-After': '300' });
+    if (this.songInbox.filter((e) => e.status === 'pending').length >= SONG_INBOX_MAX_PENDING) {
+      return json({ error: 'Hộp chờ duyệt đang đầy, nhờ người vận hành duyệt bớt rồi gửi lại' }, 429);
+    }
+
+    const entry = {
+      webId, title, lyrics, slides: lyrics.split('\n\n').length, ts: now, status: 'pending',
+      submitter: who, from: { name: ident.name, clientId: ident.clientId }
+    };
+    this.songInbox.push(entry);
+    await this.persistSongInbox();
+    // Bài được LƯU NGAY vào danh sách chung của web (xem handleWebSongs). KHÔNG báo/duyệt riêng
+    // lẻ: operator chỉ duyệt lúc NẠP setlist có chứa bài này (desktop kéo /admin/songs/pending).
+    return json({ ok: true, duplicate: false, song: this.publicSongEntry(entry) });
+  }
+
+  // Danh sách bài do thành viên TẠO TRÊN WEB, hiển thị chung trong thư viện của trang /setlist/
+  // để ai cũng thêm được vào setlist: bài chưa duyệt + bài vừa duyệt gần đây (cầu nối cho tới khi
+  // desktop đồng bộ thư viện lên cloud; web khử trùng theo webId). Bài bị từ chối không hiện ở đây.
+  async handleWebSongs(url) {
+    const ident = await this.verifyToken(url.searchParams.get('token') || '');
+    if (!ident) return json({ error: 'unauthorized' }, 401);
+    const who = this.songSubmitterKey(ident);
+    const now = Date.now();
+    const songs = this.songInbox
+      .filter((e) => e.status === 'pending' || (e.status === 'approved' && now - (e.resolvedAt || e.ts) < 10 * 60 * 1000))
+      .slice(-200)
+      .map((e) => ({
+        webId: e.webId, title: e.title, lyrics: e.lyrics, slides: e.slides, status: e.status,
+        ts: e.ts, mine: e.submitter === who, by: (e.from && e.from.name) || ''
+      }));
+    return json({ songs });
+  }
+
+  async handleSongsMine(url) {
+    const ident = await this.verifyToken(url.searchParams.get('token') || '');
+    if (!ident) return json({ error: 'unauthorized' }, 401);
+    const who = this.songSubmitterKey(ident);
+    return json({ songs: this.songInbox.filter((e) => e.submitter === who).map((e) => this.publicSongEntry(e)) });
+  }
+
+  // Operator (adminSecret): xem bài chờ duyệt (kèm lời đầy đủ) và chốt Duyệt/Từ chối.
+  async handleAdminSongs(request, action) {
+    if (!this.checkAdminSecret(request)) return json({ error: 'Sai admin secret' }, 403);
+    if (action === 'pending' && request.method === 'GET') {
+      return json({
+        songs: this.songInbox.filter((e) => e.status === 'pending')
+          .map((e) => ({ ...this.publicSongEntry(e), lyrics: e.lyrics, from: e.from }))
+      });
+    }
+    if (action === 'resolve' && request.method === 'POST') {
+      const body = await request.json().catch(() => null);
+      if (!body) return json({ error: 'bad json' }, 400);
+      const entry = this.songInbox.find((e) => e.webId === String(body.webId || ''));
+      if (!entry) return json({ error: 'Không tìm thấy bài' }, 404);
+      if (body.action !== 'approve' && body.action !== 'reject') return json({ error: 'action không hợp lệ' }, 400);
+      const status = body.action === 'approve' ? 'approved' : 'rejected';
+      // Đã chốt rồi mà gọi lại cùng kết quả → coi như thành công (operator retry sau khi mất mạng); khác kết quả → 409.
+      if (entry.status !== 'pending' && entry.status !== status) return json({ error: 'Bài đã được xử lý: ' + entry.status }, 409);
+      entry.status = status;
+      entry.resolvedAt = Date.now();
+      entry.reason = String(body.reason || '').replace(/[<>]/g, '').slice(0, 200);
+      entry.songId = body.songId != null ? String(body.songId).slice(0, 100) : null;
+      await this.persistSongInbox();
+      return json({ ok: true, song: this.publicSongEntry(entry) });
+    }
+    return json({ error: 'not found' }, 404);
   }
 
   // Không tính operator (laptop) vào — trước đây bao gồm cả kết nối của
@@ -1128,11 +1368,18 @@ export class RoomRelay {
         return this.handleWebSocketUpgrade(request, url);
       }
       if (request.method === 'POST' && p === '/admin/config') return this.handleAdminConfig(request);
+      if (p === '/admin/verify') return this.handleAdminVerify(request);
       if (p.indexOf('/admin/accounts/') === 0) {
         return this.handleAdminAccounts(request, p.slice('/admin/accounts/'.length));
       }
       if (p.indexOf('/admin/gallery/') === 0) {
         return this.handleAdminGallery(request, p.slice('/admin/gallery/'.length));
+      }
+      if (p.indexOf('/admin/backgrounds/') === 0) {
+        return this.handleAdminBackgrounds(request, p.slice('/admin/backgrounds/'.length));
+      }
+      if (p.indexOf('/admin/songs/') === 0) {
+        return this.handleAdminSongs(request, p.slice('/admin/songs/'.length));
       }
       if (p.indexOf('/admin/presence/') === 0) {
         return this.handleAdminPresence(request, p.slice('/admin/presence/'.length));
@@ -1161,7 +1408,12 @@ export class RoomRelay {
       }
       if (request.method === 'POST' && p === '/gallery/add') return this.handleGalleryAdd(request, url);
       if (request.method === 'POST' && p === '/gallery/remove') return this.handleGalleryRemove(request, url);
+      if (request.method === 'POST' && p === '/gallery/reorder') return this.handleGalleryReorder(request, url);
       if (request.method === 'POST' && p === '/setlist') return this.handleSetlistSubmit(request, url);
+      if (request.method === 'POST' && p === '/song-submit') return this.handleSongSubmit(request, url);
+      if (request.method === 'GET' && p === '/songs/mine') return this.handleSongsMine(url);
+      if (request.method === 'GET' && p === '/songs/web') return this.handleWebSongs(url);
+      if (request.method === 'GET' && p === '/backgrounds') return this.handleBackgroundsManifest(url);
 
       return json({ error: 'not found' }, 404);
     } catch (err) {

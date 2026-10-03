@@ -1,15 +1,16 @@
 {
   "name": "easyworship-app",
-  "version": "3.1.9",
+  "version": "3.1.11",
   "description": "Presentation For Church - Worship Presentation App",
   "main": "main.js",
   "scripts": {
-    "postinstall": "node scripts/fetch-cloudflared.js",
     "start": "electron .",
+    "build:css": "tailwindcss -c tailwind.config.js -i src/css/tailwind.input.css -o src/css/tailwind.generated.css --minify",
     "build": "npm run build:all",
-    "build:win": "node scripts/kill-running.js && electron-builder --win",
-    "build:mac": "electron-builder --mac",
-    "build:all": "electron-builder --win --mac"
+    "build:win": "npm run build:css && node scripts/kill-running.js && electron-builder --win",
+    "build:mac": "npm run build:css && electron-builder --mac",
+    "build:all": "npm run build:css && electron-builder --win --mac",
+    "build:store": "npm run build:css && electron-builder --win appx --config electron-builder.store.js"
   },
   "build": {
     "appId": "com.church.presentation",
@@ -23,12 +24,13 @@
       "preload.js",
       "index.html",
       "live.html",
-      "edit-song.html",
       "src/**/*",
       "comm/**/*",
-      "data/**/*",
       "fonts/**/*",
-      "package.json"
+      "templates/**/*",
+      "package.json",
+      "THIRD_PARTY_NOTICES.md",
+      "licenses/**/*"
     ],
     "fileAssociations": [
       {
@@ -44,17 +46,7 @@
         "nsis",
         "portable"
       ],
-      "icon": "icon.ico",
-      "extraResources": [
-        {
-          "from": "vendor/cloudflared/win/cloudflared.exe",
-          "to": "cloudflared/cloudflared.exe"
-        },
-        {
-          "from": "data",
-          "to": "data"
-        }
-      ]
+      "icon": "icon.ico"
     },
     "mac": {
       "target": "dmg",
@@ -70,14 +62,23 @@
     },
     "portable": {
       "artifactName": "Presentation.For.Church.Portable.${version}.${ext}"
+    },
+    "electronFuses": {
+      "runAsNode": false,
+      "enableNodeOptionsEnvironmentVariable": false,
+      "enableNodeCliInspectArguments": false,
+      "enableEmbeddedAsarIntegrityValidation": true,
+      "onlyLoadAppFromAsar": true
     }
   },
   "devDependencies": {
+    "@tailwindcss/container-queries": "^0.1.1",
+    "@tailwindcss/forms": "^0.5.11",
     "electron": "^41.0.2",
-    "electron-builder": "^26.8.1"
+    "electron-builder": "^26.8.1",
+    "tailwindcss": "^3.4.19"
   },
   "dependencies": {
-    "jose": "^6.2.12",
     "mammoth": "^1.12.0"
   }
 }

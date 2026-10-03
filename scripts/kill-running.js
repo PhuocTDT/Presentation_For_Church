@@ -1,7 +1,7 @@
 const { execSync } = require('child_process');
 
 if (process.platform === 'win32') {
-  const procs = ['Presentation For Church.exe', 'electron.exe', 'cloudflared.exe'];
+  const procs = ['Presentation For Church.exe', 'electron.exe'];
   for (const proc of procs) {
     try {
       execSync(`taskkill /F /IM "${proc}" /T`, { stdio: 'ignore' });

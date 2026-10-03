@@ -194,23 +194,22 @@
   }
   .ch-lightbox-dots button.on { background:#fff; transform:scale(1.35); }
 
-  /* setlist */
-  #setlistBlock input { width:100%; box-sizing:border-box; background:#fff; border:1px solid var(--line); border-radius:10px; padding:9px 12px; color:var(--ink); outline:none; margin-top:8px; }
-  #setlistBlock input:focus { border-color:var(--op); }
-  .sl-draft { display:flex; flex-direction:column; gap:4px; }
-  .sl-draft .row { display:flex; align-items:center; gap:6px; background:#fff; border:1px solid var(--line); border-radius:9px; padding:6px 8px; font-size:.86rem; }
-  .sl-draft .row .n { flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-  .sl-draft .row button { border:none; background:var(--panel-2); border-radius:7px; padding:3px 8px; font-size:.9rem; color:var(--ink-soft); }
-  .sl-draft .row button.x { color:var(--danger); }
-  .sl-draft .empty { color:var(--ink-faint); font-size:.8rem; padding:4px 2px; }
-  .sl-results { max-height:44vh; overflow-y:auto; border:1px solid var(--line); border-radius:10px; margin-top:6px; background:#fff; }
-  .sl-results .r { padding:9px 12px; border-bottom:1px solid var(--line); font-size:.86rem; }
-  .sl-results .r:last-child { border-bottom:none; }
-  .sl-results .r .ly { display:block; font-size:.74rem; color:var(--ink-faint); margin-top:2px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-  .sl-results .r.added { background:var(--op-bg); }
-  .sl-foot { display:flex; gap:8px; align-items:flex-end; }
-  .sl-foot input { flex:1; }
-  .sl-foot .send { background:var(--op); border:none; border-radius:10px; padding:0 16px; height:38px; font-weight:700; color:#fff; margin-top:8px; }
+  /* sắp xếp thứ tự ảnh hợp âm */
+  #chOrder { position:fixed; inset:0; z-index:60; background:rgba(20,25,40,.4); display:flex; align-items:flex-end; }
+  #chOrder .sheet { width:100%; max-height:86vh; background:#fff; border-top-left-radius:16px; border-top-right-radius:16px;
+    padding:16px 14px calc(16px + env(safe-area-inset-bottom)); display:flex; flex-direction:column; gap:10px; }
+  #chOrder h3 { margin:0; font-size:1rem; }
+  #chOrder .hint { font-size:.78rem; color:var(--ink-faint); margin:0; }
+  #chOrderList { overflow-y:auto; display:flex; flex-direction:column; gap:6px; }
+  #chOrderList .o { display:flex; align-items:center; gap:8px; background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:6px 8px; }
+  #chOrderList .o img { width:64px; height:44px; object-fit:cover; border-radius:6px; background:#000; flex:none; }
+  #chOrderList .o .n { flex:1; min-width:0; font-size:.84rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  #chOrderList .o .i { color:var(--ink-faint); font-size:.74rem; width:20px; text-align:right; flex:none; }
+  #chOrderList .o button { border:1px solid var(--line); background:#fff; border-radius:8px; width:38px; height:38px; font-size:1rem; color:var(--ink-soft); flex:none; }
+  #chOrderList .o button:disabled { opacity:.3; }
+  #chOrder .row { display:flex; gap:8px; }
+  #chOrder .row button { flex:1; border-radius:10px; padding:12px; border:1px solid var(--line); background:var(--panel); }
+  #chOrder .row .save { background:var(--op); border:none; color:#fff; font-weight:700; }
 
   /* composer */
   .composer {
@@ -312,7 +311,7 @@
     <span class="dot" id="dot"></span>
     <span class="room" id="roomName">Kênh Band</span>
     <span class="count" id="count">0</span>
-    <button class="txtbtn" id="slToggleBtn">📋 Setlist</button>
+    <button class="txtbtn" id="slToggleBtn" title="Mở trang soạn setlist riêng">📋 Setlist</button>
     <button class="txtbtn" id="chToggleBtn" hidden>🎼 Hợp âm<span class="nb" id="chNew" hidden></span></button>
     <button class="txtbtn" id="leaveBtn" title="Rời phòng / Đăng xuất">🚪 Thoát</button>
   </div>
@@ -322,18 +321,9 @@
       <h2>Nút cảnh báo của bạn <button class="link" id="editModeBtn">Sửa</button></h2>
       <div id="buttons"></div>
     </section>
-    <section class="block hidden" id="setlistBlock">
-      <h2>Setlist gửi máy chiếu</h2>
-      <div id="slDraft" class="sl-draft"></div>
-      <input id="slSearch" placeholder="Gõ tên / số bài để thêm…" autocomplete="off">
-      <div id="slResults" class="sl-results hidden"></div>
-      <div class="sl-foot">
-        <input id="slName" placeholder="Tên setlist (VD: CN sáng 09/09)" maxlength="80">
-        <button class="send" id="slSend">Gửi</button>
-      </div>
-    </section>
     <section class="block hidden" id="chords">
       <h2>Hợp âm
+        <button class="link" id="chOrderBtn" type="button" hidden>↕ Sắp xếp</button>
         <label class="link" id="chAddLabel">＋ Thêm ảnh<input type="file" id="chAddInput" accept="image/*" multiple hidden></label>
       </h2>
       <div class="ch-view" id="chView"><div class="ch-track" id="chTrack"></div></div>
@@ -370,6 +360,18 @@
       <button class="del hidden" id="edDelete">Xóa</button>
       <button id="edCancel">Hủy</button>
       <button class="save" id="edSave">Lưu</button>
+    </div>
+  </div>
+</div>
+
+<div id="chOrder" class="hidden">
+  <div class="sheet">
+    <h3>Sắp xếp ảnh hợp âm</h3>
+    <p class="hint">Bấm ▲ ▼ để đổi chỗ. Thứ tự áp dụng cho cả phòng và máy chiếu.</p>
+    <div id="chOrderList"></div>
+    <div class="row">
+      <button id="chOrderCancel" type="button">Hủy</button>
+      <button class="save" id="chOrderSave" type="button">Lưu thứ tự</button>
     </div>
   </div>
 </div>

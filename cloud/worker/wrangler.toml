@@ -8,6 +8,14 @@ compatibility_date = "2026-01-01"
 # sai chỗ sẽ lặng lẽ lọt vào bảng khác (đã tái hiện qua wrangler --dry-run).
 workers_dev = false
 
+# B-17 — xác thực operator cho /library-sync, /setlist (GET), /setlist/ack, /gallery,
+# /gallery/remove bằng X-Admin-Secret (xem worker.js, requireOperator()).
+#   "log"     = giai đoạn chuyển tiếp: thiếu header thì cho qua + ghi log (app cũ
+#               chưa gửi header vẫn chạy); header SAI thì luôn bị từ chối.
+#   "enforce" = bắt buộc. ĐỔI SANG "enforce" SAU KHI mọi máy operator đã cập nhật
+#               app có gửi header (>= bản kế tiếp sau 3.1.9), rồi `wrangler deploy` lại.
+vars = { OPERATOR_AUTH_MODE = "log" }
+
 kv_namespaces = [
   { binding = "SETLISTS", id = "65d8f621e90a400c8e2758bc19ff9bb2" },
   { binding = "GLOBAL_USERS", id = "4024fc79a916429a809baa63dc3beaf4" }
@@ -18,6 +26,13 @@ kv_namespaces = [
 [[r2_buckets]]
 binding = "GALLERY"
 bucket_name = "band-comm-gallery"
+
+# Ảnh nền thư viện (bản thu nhỏ ~960px) cho trang /setlist/ xem trước slide.
+# Bucket RIÊNG, KHÔNG có lifecycle xoá 4 ngày như bucket gallery. Tạo 1 lần:
+#   npx wrangler r2 bucket create band-comm-backgrounds
+[[r2_buckets]]
+binding = "BGS"
+bucket_name = "band-comm-backgrounds"
 
 # GĐ2 — Durable Object relay realtime thay LAN server (xem src/room-relay.js).
 # 1 instance/phòng, định danh bằng cloudRoomId qua idFromName().
@@ -33,7 +48,10 @@ new_sqlite_classes = ["RoomRelay"]
 pattern = "channel.worship-official.link"
 custom_domain = true
 
-# Phục vụ comm/mobile/ (trang join của band) dưới prefix /m/… — mount qua
+# Phục vụ thư mục comm/ — comm/mobile/ (trang join của band) dưới /m/… và
+# comm/setlist/ (soạn setlist + bài mới + preview) dưới /setlist/… Worker tự ánh xạ
+# /m/* -> /mobile/*, /setlist/* -> /setlist/* (xem worker.js). Trước đây (cũ):
+# comm/mobile/ (trang join của band) dưới prefix /m/… — mount qua
 # BINDING (không dùng directory-mount mặc định của Cloudflare Assets, thứ tự
 # TỰ ĐỘNG serve trước cả khi chạm tới Worker) để worker.js toàn quyền kiểm
 # soát URL mapping (/m -> index.html, /m/app.js -> app.js) mà không phải
@@ -42,7 +60,7 @@ custom_domain = true
 # ĐẶT CUỐI FILE — [assets] cũng là 1 table, key=value sau nó cũng bị nuốt y
 # hệt lỗi kv_namespaces gặp phải (đã tái hiện + fix qua wrangler --dry-run).
 [assets]
-directory = "../../comm/mobile"
+directory = "../../comm"
 binding = "MOBILE_ASSETS"
 # "none" -> trả đúng file khớp path, không tự redirect /index.html <-> / (mặc
 # định "auto-trailing-slash" của Cloudflare Assets redirect theo QUY ƯỚC CỦA

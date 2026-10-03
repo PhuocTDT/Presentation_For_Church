@@ -36,7 +36,7 @@ async function phone(name) {
 function makeOperator(label) {
   const events = [];
   const store = { load: () => ({ room: { code: ROOM, name: 'E2E', password: PASS }, relayAdminSecret: ADMIN }) };
-  const c = createRelayClient({
+  const c = createRelayClient({ operatorAuthStore: { load: () => ({ idToken: 'e2e-owner' }) },
     store, onEvent: (e) => events.push(e), onPresence() {}, getLibraryIndex: () => []
   });
   return { label, c, events, real: () => events.filter((e) => ['alert', 'text', 'ack', 'resolve'].includes(e.type)) };

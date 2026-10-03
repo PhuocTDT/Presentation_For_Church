@@ -4,35 +4,10 @@
 
 <head>
     <meta charset="utf-8" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self' file: data:; img-src 'self' data: blob: file: app-media:; media-src 'self' blob: file: app-media:; connect-src 'self' app-media:; object-src 'none'; base-uri 'none'; form-action 'none'; frame-src 'none'" />
     <meta content="width=device-width, initial-scale=1.0" name="viewport" />
     <title>Presentation For Church</title>
-    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap"
-        rel="stylesheet" />
-    <link
-        href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap"
-        rel="stylesheet" />
-    <link
-        href="https://fonts.googleapis.com/css2?family=Open+Sans:ital,wght@0,300..800;1,300..800&family=Roboto:ital,wght@0,100..900;1,100..900&family=Lato:ital,wght@0,100;0,300;0,400;0,700;0,900;1,100;1,300;1,400;1,700;1,900&family=Montserrat:ital,wght@0,100..900;1,100..900&family=Oswald:wght@200..700&family=Raleway:ital,wght@0,100..900;1,100..900&family=Lobster&display=swap"
-        rel="stylesheet" />
-    <script id="tailwind-config">
-        tailwind.config = {
-            darkMode: "class",
-            theme: {
-                extend: {
-                    colors: {
-                        "primary": "#5048e5",
-                        "background-light": "#f6f6f8",
-                        "background-dark": "#121121",
-                    },
-                    fontFamily: {
-                        "display": ["Inter"]
-                    },
-                    borderRadius: { "DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px" },
-                },
-            },
-        }
-    </script>
+    <link rel="stylesheet" href="src/css/google-fonts.css" />
     <style>
         /* CMG Sans font family */
         @font-face {
@@ -1173,6 +1148,12 @@
       #bandPanel .bp-conn .bp-gal .gi .nm { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; color: #1e293b; }
       #bandPanel .bp-conn .bp-gal .gi .rm { border: none; background: none; color: #94a3b8; font-size: 1.1rem; line-height: 1; cursor: pointer; padding: 1px 5px; border-radius: 4px; transition: color 0.15s, background 0.15s; }
       #bandPanel .bp-conn .bp-gal .gi .rm:hover { color: #dc2626; background: #fee2e2; }
+      #bandPanel .bp-conn .bp-gal .gi .mv { border: 1px solid #e2e8f0; background: #fff; color: #64748b; font-size: .68rem; line-height: 1; cursor: pointer; padding: 3px 5px; border-radius: 4px; flex: none; }
+      #bandPanel .bp-conn .bp-gal .gi .mv:hover:not(:disabled) { background: #eef3fa; color: #2563a8; border-color: #93c5fd; }
+      #bandPanel .bp-conn .bp-gal .gi .mv:disabled { opacity: .3; cursor: default; }
+      #bandPanel .bp-conn .bp-gal .gi[draggable=true] { cursor: grab; }
+      #bandPanel .bp-conn .bp-gal .gi.dragging { opacity: .4; }
+      #bandPanel .bp-conn .bp-gal .gi.dragover { border-color: #2563a8; box-shadow: 0 -2px 0 #2563a8; }
       #bandPanel .bp-conn .bp-gal .empty { color: #8a93a3; font-size: .78rem; text-align: center; padding: 12px; background: #f8fafc; border-radius: 6px; border: 1px dashed #cbd5e1; }
       #bandPanel .bp-conn .bp-gal .gi .act { border: 1px solid #e2e8f0; background: #fff; color: #475569; font-size: .7rem; font-weight: 600; padding: 3px 8px; border-radius: 6px; cursor: pointer; flex: none; }
       #bandPanel .bp-conn .bp-gal .gi .act:hover { background: #f1f5f9; }
@@ -1183,6 +1164,12 @@
       #bandPanel .bp-conn .bp-gal .gi .bwhen { font-size: .7rem; color: #94a3b8; flex: none; }
       #bandPanel .bp-slcard { align-self: stretch; border: 1px solid #bcd6f0; background: #eef5fd; border-radius: 9px; padding: 7px 9px; margin: 3px 0; transition: all 0.2s ease; }
       #bandPanel .bp-slcard.loaded { border-color: #a7f3d0; background: #ecfdf5; }
+      /* Hộp duyệt bài mới (gắn vào body, nằm NGOÀI #bandPanel nên không ăn .bp-btn) */
+      .ws-rv-btn { border: 1px solid #cbd5e1; background: #fff; color: #334155; border-radius: 7px; padding: 6px 14px; font-size: 12.5px; line-height: 1.2; cursor: pointer; }
+      .ws-rv-btn:hover { border-color: #94a3b8; background: #f8fafc; }
+      .ws-rv-btn.go { background: #2f8a55; border-color: #2f8a55; color: #fff; font-weight: 700; }
+      .ws-rv-btn.go:hover { background: #277a49; }
+      .ws-rv-btn.stop { background: #c0392f; border-color: #c0392f; color: #fff; font-weight: 700; }
       #bandPanel .bp-slcard.rejected { border-color: #fecaca; background: #fef2f2; }
       #bandPanel .bp-slcard.compact { padding: 5px 8px; }
       #bandPanel .bp-slcard .bp-slcard-compact-row { display: flex; align-items: center; gap: 6px; width: 100%; font-size: 0.78rem; }
@@ -1460,6 +1447,8 @@
       #bandPanel .bp-error pre { margin: 6px 0 0; white-space: pre-wrap; word-break: break-word; font-size: .74rem; color: #94564e; }
       #bandPanel .bp-error .retry { margin-top: 8px; background: #c0392f; border: none; color: #fff; border-radius: 8px; padding: 6px 14px; font-weight: 700; }
     </style>
+    <!-- Đặt CUỐI <head> (sau mọi <style> inline) để giữ đúng thứ tự cascade như Tailwind Play CDN cũ. -->
+    <link rel="stylesheet" href="src/css/tailwind.generated.css" />
 </head>
 
 <body
@@ -2808,7 +2797,10 @@
                       📁 Đổi thư mục...
                     </button>
                   </div>
-                  <div style="margin-top: 12px; padding-top: 10px; border-top: 1px dashed var(--stg-border-soft); display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
+                  <div id="stg-store-data-note" class="stg-help" style="display: none; margin-top: 8px; padding: 8px 10px; border-radius: 6px; background: rgba(245, 158, 11, 0.12); color: #f59e0b; font-weight: 600;">
+                    ⚠ Bạn đang dùng bản Microsoft Store: dữ liệu nằm trong vùng riêng của ứng dụng và sẽ bị XÓA khi gỡ cài đặt. Hãy bấm "Đổi thư mục..." để chuyển sang một thư mục ngoài (ví dụ trong Documents) trước khi gỡ/cài lại. Nếu bạn từng dùng bản cài đặt thường, chọn cùng thư mục dữ liệu đó để dùng lại bài hát và cấu hình.
+                  </div>
+                  <div id="stg-reload-default-block" style="margin-top: 12px; padding-top: 10px; border-top: 1px dashed var(--stg-border-soft); display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
                     <div class="stg-help" style="margin: 0; font-size: 12px;">
                       Nếu thư viện bài hát hoặc Kinh Thánh chưa tải đầy đủ sau khi cài đặt/cập nhật:
                     </div>
@@ -2882,6 +2874,9 @@
                     </button>
                     <button class="stg-btn" type="button" onclick="handleExportLibraryBackup()">
                       💾 Sao lưu thư viện ra file...
+                    </button>
+                    <button class="stg-btn" type="button" onclick="handleExportImportTemplates()" title="Chép file mẫu định dạng bài hát, Kinh Thánh và hướng dẫn ra một thư mục">
+                      📄 Tải file mẫu định dạng nhập dữ liệu...
                     </button>
                   </div>
                   <div id="library-sync-status-msg" class="stg-help" style="margin-top: 10px; font-weight: 600; display: none; padding: 8px 12px; border-radius: 6px; background: rgba(56, 189, 248, 0.1); border: 1px solid rgba(56, 189, 248, 0.25);"></div>
@@ -4533,6 +4528,10 @@
                     if (badgeEl) {
                         badgeEl.textContent = `🎵 ${info.songsCount || 0} bài hát | 📖 ${info.bibleCount || 0} bản dịch`;
                     }
+                    const storeNoteEl = document.getElementById('stg-store-data-note');
+                    if (storeNoteEl) storeNoteEl.style.display = info.isStoreBuild ? 'block' : 'none';
+                    const reloadBlockEl = document.getElementById('stg-reload-default-block');
+                    if (reloadBlockEl) reloadBlockEl.style.display = info.hasBundledData === false ? 'none' : 'flex';
                 }
             } catch (e) {
                 console.error('Failed to load data path info:', e);
@@ -5001,10 +5000,13 @@
                     qr.make();
                     imgEl.src = qr.createDataURL(5, 10);
                 } else {
-                    imgEl.src = 'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=' + encodeURIComponent(url);
+                    // Không gọi dịch vụ QR bên ngoài: URL có Room Code là bí mật vào phòng.
+                    imgEl.removeAttribute('src');
+                    if (titleEl) titleEl.textContent = 'Không tạo được mã QR (thiếu thư viện QR cục bộ)';
                 }
             } catch (e) {
-                imgEl.src = 'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=' + encodeURIComponent(url);
+                imgEl.removeAttribute('src');
+                if (titleEl) titleEl.textContent = 'Không tạo được mã QR';
             }
 
             if (copyBtn) {
@@ -5058,7 +5060,7 @@
                         var elMobile = document.getElementById('stgBandMobileLink');
                         if (elMobile) elMobile.value = roomCode ? ('https://channel.worship-official.link/m/?room=' + encodeURIComponent(roomCode)) : 'https://channel.worship-official.link/m/';
                         var elComposer = document.getElementById('stgBandComposerLink');
-                        if (elComposer) elComposer.value = roomCode ? ('https://channel.worship-official.link/composer?room=' + encodeURIComponent(roomCode)) : '';
+                        if (elComposer) elComposer.value = roomCode ? ('https://channel.worship-official.link/setlist/?room=' + encodeURIComponent(roomCode)) : '';
 
                     }).catch(function () {});
                 }
@@ -5873,7 +5875,9 @@
                 });
 
                 if (sorted.length === 0) {
-                    tbody.innerHTML = '<tr><td class="px-4 py-2 text-[10px] text-slate-400">Library is empty.</td></tr>';
+                    tbody.innerHTML = query
+                        ? '<tr><td class="px-4 py-2 text-[10px] text-slate-400">Không tìm thấy bài hát.</td></tr>'
+                        : emptyLibraryHintHtml('songs');
                     return;
                 }
                 sorted.forEach(({ item, songNumber }) => {
@@ -5921,7 +5925,9 @@
                     : filtered;
 
                 if (sorted.length === 0) {
-                    tbody.innerHTML = '<tr><td class="px-4 py-2 text-[10px] text-slate-400">No chapters found.</td></tr>';
+                    tbody.innerHTML = (!query && (!Array.isArray(bibleVersions) || bibleVersions.length === 0))
+                        ? emptyLibraryHintHtml('bible')
+                        : '<tr><td class="px-4 py-2 text-[10px] text-slate-400">Không tìm thấy chương nào.</td></tr>';
                     return;
                 }
                 sorted.forEach(({ item }) => {
@@ -5956,6 +5962,29 @@
             }
         }
 
+        // Thư viện trống (bản phát hành không kèm sẵn bài hát/Kinh Thánh): hướng dẫn nhập dữ liệu.
+        function emptyLibraryHintHtml(kind) {
+            const what = kind === 'bible'
+                ? 'Chưa có bản dịch Kinh Thánh nào. Bấm <b>Import</b> (nút ở đầu danh sách) để nhập file XML bản dịch của bạn.'
+                : 'Thư viện bài hát đang trống. Bấm <b>Import</b> (nút ở đầu danh sách) để nhập file <code>.json</code>, <code>.txt</code> hoặc <code>.docx</code>.';
+            return '<tr><td class="px-4 py-4 text-[11px] text-slate-400" style="line-height:1.6">' + what +
+                '<br><button type="button" onclick="handleExportImportTemplates()" style="margin-top:8px;padding:4px 10px;border-radius:6px;border:1px solid rgba(148,163,184,.5);background:transparent;color:inherit;cursor:pointer;font-size:11px">📄 Tải file mẫu định dạng</button></td></tr>';
+        }
+
+        async function handleExportImportTemplates() {
+            try {
+                const res = await window.electronAPI.exportImportTemplates();
+                if (!res || res.canceled) return;
+                if (res.success) {
+                    alert('✓ Đã lưu ' + res.files.length + ' file mẫu và hướng dẫn vào:\n' + res.path + '\n\nMở file HUONG-DAN-NHAP-DU-LIEU.md để xem cách chuẩn bị bài hát, Kinh Thánh và ảnh/video nền.');
+                } else {
+                    alert('Không thể lưu file mẫu: ' + (res.error || 'Lỗi không xác định'));
+                }
+            } catch (e) {
+                alert('Lỗi: ' + (e.message || e));
+            }
+        }
+
         async function importSongsFromFile() {
             const result = await window.electronAPI.showOpenDialogMulti({
                 title: 'Import bài hát',
@@ -5963,53 +5992,49 @@
             });
             if (result.canceled || !result.filePaths.length) return;
             const imported = await window.electronAPI.importSongsFromFile(result.filePaths);
-            let count = 0;
+            let count = 0, skipped = 0, invalid = 0;
+            const rejected = [];
+            const norm = (v) => String(v == null ? '' : v).replace(/\s+/g, ' ').trim().toLowerCase();
+            const isDuplicate = (title, lyrics) => songLibrary.some(s => s.type !== 'bible' && norm(s.title) === norm(title) && norm(s.lyrics) === norm(lyrics));
+            const defaultStyle = () => ({ fontSize: '80px', fontFamily: 'CMG Sans', color: '#ffffff' });
             for (const item of imported) {
+                if (item.type === 'rejected') { rejected.push(item.file + ': ' + item.reason); continue; }
                 if (item.imported) {
-                    // Already saved by main process
-                    count += (item.data ? item.data.length : 0);
+                    // JSON dạng mảng: main đã lưu và loại trùng/lỗi, trả số liệu
+                    count += item.added || 0; skipped += item.skipped || 0; invalid += item.invalid || 0;
                     continue;
                 }
-                if (item.type === 'json-array') {
-                    for (const song of item.data) {
-                        if (!song.lyrics || !song.title) continue;
-                        const newSong = {
-                            ...song,
-                            id: song.id || Date.now() + count,
-                            type: song.type || 'song',
-                            style: song.style || { fontSize: '80px', fontFamily: 'CMG Sans', color: '#ffffff' }
-                        };
-                        await window.electronAPI.saveSong(newSong);
-                        count++;
-                    }
-                } else if (item.type === 'json-object') {
+                if (item.type === 'json-object') {
                     const song = item.data;
-                    if (song.lyrics && song.title) {
-                        const newSong = {
-                            ...song,
-                            id: song.id || Date.now() + count,
-                            type: song.type || 'song',
-                            style: song.style || { fontSize: '80px', fontFamily: 'CMG Sans', color: '#ffffff' }
-                        };
-                        await window.electronAPI.saveSong(newSong);
-                        count++;
-                    }
+                    if (!song || typeof song.title !== 'string' || !song.title.trim() || typeof song.lyrics !== 'string') { invalid++; continue; }
+                    if (isDuplicate(song.title, song.lyrics)) { skipped++; continue; }
+                    await window.electronAPI.saveSong({ ...song, id: song.id || Date.now() + count, type: 'song', style: song.style || defaultStyle() });
+                    songLibrary.push({ title: song.title, lyrics: song.lyrics, type: 'song' });
+                    count++;
                 } else if (item.lyrics) {
-                    const newSong = {
+                    if (isDuplicate(item.title, item.lyrics)) { skipped++; continue; }
+                    await window.electronAPI.saveSong({
                         id: Date.now() + count,
                         title: item.title,
                         lyrics: item.lyrics,
                         type: 'song',
-                        style: { fontSize: '80px', fontFamily: 'CMG Sans', color: '#ffffff' },
+                        style: defaultStyle(),
                         background: null
-                    };
-                    await window.electronAPI.saveSong(newSong);
+                    });
+                    songLibrary.push({ title: item.title, lyrics: item.lyrics, type: 'song' });
                     count++;
+                } else {
+                    invalid++; // file .txt/.docx rỗng
                 }
             }
             songLibrary = await window.electronAPI.loadSongs();
             renderLibrary();
-            if (count > 0) alert(`Đã import ${count} bài hát.`);
+            const lines = [];
+            if (count > 0) lines.push('Đã import ' + count + ' bài hát.');
+            if (skipped > 0) lines.push('Bỏ qua ' + skipped + ' bài đã có trong thư viện (trùng tên và lời).');
+            if (invalid > 0) lines.push(invalid + ' mục không hợp lệ (thiếu tên hoặc lời, hoặc file rỗng) đã bị bỏ qua.');
+            rejected.forEach(r => lines.push('Không nhập được: ' + r));
+            if (lines.length) alert(lines.join('\n'));
         }
 
         async function exportSongsToFile() {
@@ -6289,7 +6314,7 @@
                         </div>
                     `;
                 } else {
-                    div.innerHTML = `<img src="${url}" onerror="this.src='https://placehold.co/96x72?text=Error'" />`;
+                    div.innerHTML = `<img src="${url}" onerror="this.style.visibility='hidden'" />`;
                 }
 
                 div.onclick = () => {
@@ -7494,7 +7519,7 @@
                 `;
                 } else {
                     div.innerHTML = `
-                    <img class="w-full h-full object-cover" src="${url}" onerror="this.src='https://placehold.co/96x56?text=Error'"/>
+                    <img class="w-full h-full object-cover" src="${url}" onerror="this.style.visibility='hidden'"/>
                 `;
                 }
                 div.draggable = true;
@@ -7870,16 +7895,17 @@
 
         async function executeAction(action) {
             switch (action) {
-                case 'new-schedule': schedule = []; currentScheduleIndex = -1; currentLiveScheduleIndex = -1; currentScheduleFilePath = null; updateWindowTitleForSchedule(); renderSchedule(); break;
+                case 'new-schedule': if (!(await confirmSaveBeforeLeaving('tạo Schedule mới'))) break; schedule = []; currentScheduleIndex = -1; currentLiveScheduleIndex = -1; currentScheduleFilePath = null; updateWindowTitleForSchedule(); renderSchedule(); markScheduleSaved(); break;
                 case 'new-song': currentEditingSong = null; openSongEditor('Create New Song'); break;
                 case 'import-media': importMedia(); break;
                 case 'import-file': handleMainImport(); break;
                 case 'save-schedule': saveSchedule(); break;
                 case 'open-schedule': openSchedule(); break;
-                case 'close-schedule': schedule = []; currentScheduleIndex = -1; currentLiveScheduleIndex = -1; currentScheduleFilePath = null; updateWindowTitleForSchedule(); renderSchedule(); break;
+                case 'close-schedule': if (!(await confirmSaveBeforeLeaving('đóng Schedule'))) break; schedule = []; currentScheduleIndex = -1; currentLiveScheduleIndex = -1; currentScheduleFilePath = null; updateWindowTitleForSchedule(); renderSchedule(); markScheduleSaved(); break;
                 case 'open-settings': openSettings(); break;
                 case 'sync-previous-library': handleScanAndSyncPreviousLibrary(); break;
                 case 'export-songs': handleExportLibraryBackup(); break;
+                case 'export-import-templates': handleExportImportTemplates(); break;
                 case 'toggle-live-window': await toggleLiveWindow(); break;
                 case 'close-live-window':
                     if (isLiveWindowOpen) {
@@ -7948,6 +7974,57 @@
         // file). Ctrl+S overwrites it in place; null → Save As dialog.
         let currentScheduleFilePath = null;
 
+        // "Chưa lưu" = nội dung Schedule hiện tại KHÁC bản đã lưu/mở/tạo mới gần nhất. So bằng dấu vân tay
+        // JSON (bỏ scheduleId ngẫu nhiên) nên không phải gắn hook vào từng chỗ sửa Schedule (kéo thả, sửa
+        // lời, thêm bài…) và bắt được cả Schedule soạn thủ công chưa từng lưu ra file.
+        function scheduleFingerprint() {
+            try { return JSON.stringify((schedule || []).map(function (it) { var c = Object.assign({}, it); delete c.scheduleId; return c; })); }
+            catch (e) { return String(Math.random()); }
+        }
+        let scheduleSavedFp = '[]';
+        function markScheduleSaved() { scheduleSavedFp = scheduleFingerprint(); }
+        // Schedule rỗng thì không có gì để lưu (saveSchedule cũng từ chối) -> không coi là "chưa lưu".
+        function isScheduleDirty() { return Array.isArray(schedule) && schedule.length > 0 && scheduleFingerprint() !== scheduleSavedFp; }
+        window.__scheduleIsDirty = isScheduleDirty;                       // main.js hỏi lúc đóng cửa sổ/thoát app
+        window.__saveScheduleForExit = async function () { await saveSchedule(); return !isScheduleDirty(); };
+
+        // Hỏi "Lưu Schedule hiện tại trước khi <what>?" khi có thay đổi chưa lưu. Resolve true = cứ tiếp tục
+        // (đã lưu hoặc chọn Không lưu hoặc không có gì để lưu), false = Hủy (ở lại).
+        function confirmSaveBeforeLeaving(what) {
+            if (!isScheduleDirty()) return Promise.resolve(true);
+            return new Promise(function (resolve) {
+                var ov = document.createElement('div');
+                ov.style.cssText = 'position:fixed;inset:0;z-index:100001;background:rgba(15,23,42,.55);display:flex;align-items:center;justify-content:center;padding:16px;';
+                var box = document.createElement('div');
+                box.style.cssText = 'background:#fff;color:#1e293b;border-radius:12px;max-width:460px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.4);padding:18px 18px 14px;font-size:14px;';
+                var h = document.createElement('div'); h.style.cssText = 'font-weight:700;font-size:15px;margin-bottom:6px;'; h.textContent = 'Lưu Schedule hiện tại?';
+                var p = document.createElement('div'); p.style.cssText = 'color:#475569;line-height:1.5;';
+                p.textContent = 'Schedule hiện tại (' + schedule.length + ' mục) có thay đổi chưa lưu. Bạn có muốn lưu trước khi ' + what + '?';
+                var note = document.createElement('div'); note.style.cssText = 'color:#94a3b8;font-size:12px;margin-top:6px;';
+                note.textContent = currentScheduleFilePath ? ('File: ' + currentScheduleFilePath.replace(/^.*[\\/]/, '')) : 'Schedule này chưa lưu thành file — bấm Lưu để chọn nơi lưu.';
+                var row = document.createElement('div'); row.style.cssText = 'display:flex;gap:8px;justify-content:flex-end;margin-top:14px;flex-wrap:wrap;';
+                function mk(label, cls) { var b = document.createElement('button'); b.type = 'button'; b.className = 'ws-rv-btn' + (cls ? ' ' + cls : ''); b.textContent = label; return b; }
+                var bCancel = mk('Hủy'), bNo = mk('Không lưu'), bSave = mk('Lưu', 'go');
+                function close(v) { document.removeEventListener('keydown', onKey, true); ov.remove(); resolve(v); }
+                function onKey(e) { if (e.key === 'Escape') { e.stopPropagation(); close(false); } }
+                document.addEventListener('keydown', onKey, true);
+                bCancel.addEventListener('click', function () { close(false); });
+                bNo.addEventListener('click', function () { close(true); });
+                bSave.addEventListener('click', function () {
+                    [bCancel, bNo, bSave].forEach(function (b) { b.disabled = true; });
+                    // Hủy hộp "Lưu thành…" hoặc lỗi lưu -> vẫn còn chưa lưu -> ở lại hộp này để chọn lại
+                    saveSchedule().then(function () {
+                        if (!isScheduleDirty()) close(true);
+                        else [bCancel, bNo, bSave].forEach(function (b) { b.disabled = false; });
+                    });
+                });
+                row.appendChild(bCancel); row.appendChild(bNo); row.appendChild(bSave);
+                box.appendChild(h); box.appendChild(p); box.appendChild(note); box.appendChild(row); ov.appendChild(box);
+                document.body.appendChild(ov);
+                bSave.focus();
+            });
+        }
+
         function loadScheduleData(data, filePath) {
             console.log('[Schedule] loadScheduleData:', filePath, Array.isArray(data) ? data.length + ' items' : typeof data);
             try {
@@ -7960,6 +8037,7 @@
                 currentScheduleFilePath = filePath || null;
                 renderSchedule();
                 updateWindowTitleForSchedule();
+                markScheduleSaved();
             } catch (error) {
                 console.error('loadScheduleData failed:', error, data);
                 alert('Không đọc được file lịch trình: ' + (error && error.message || error));
@@ -7978,7 +8056,8 @@
 
         // Double-clicked .bcsch → main sends { filePath, data } here.
         window.electronAPI.onOpenScheduleFile((event, payload) => {
-            if (payload && payload.data) loadScheduleData(payload.data, payload.filePath);
+            if (!(payload && payload.data)) return;
+            confirmSaveBeforeLeaving('mở file Schedule khác').then(function (ok) { if (ok) loadScheduleData(payload.data, payload.filePath); });
         });
 
         async function saveSchedule() {
@@ -8002,12 +8081,14 @@
         }
 
         function flashScheduleSaved() {
+            markScheduleSaved();
             const el = document.getElementById('preview-style-template-status');
             if (el) { el.textContent = 'Đã lưu lịch trình' + (currentScheduleFilePath ? ' → ' + currentScheduleFilePath.replace(/^.*[\\/]/, '') : ''); }
         }
 
         async function openSchedule() {
             try {
+                if (!(await confirmSaveBeforeLeaving('mở Schedule khác'))) return;
                 const result = await window.electronAPI.showOpenDialog();
                 if (!result) return;
                 if (result.error) { alert('Không mở được file: ' + result.error); return; }
@@ -8511,16 +8592,17 @@
         }).catch(function () {});
       });
 
-      // Link soạn setlist tĩnh (phục vụ từ chính Worker cloud, /composer?room=)
-      // — hoạt động dù laptop tắt hẳn, xem cloud/worker/src/worker.js. Chỉ cần
-      // đúng cloudRoomId (sinh 1 lần, ổn định), lấy qua getConfig() là đủ,
-      // không cần server đang chạy để hiện link này.
+      // Link trang soạn setlist (/setlist/?room=<MÃ PHÒNG>, phục vụ từ Worker cloud,
+      // xem comm/setlist/) — hoạt động dù laptop tắt hẳn. Dùng MÃ PHÒNG (room.code),
+      // KHÔNG phải cloudRoomId: relay/KV định tuyến theo mã phòng, link cũ dùng
+      // cloudRoomId (UUID) nên mở ra thư viện rỗng. Lấy qua getConfig(), không cần
+      // server đang chạy để hiện link này.
       function refreshComposerLink() {
         var input = $('bpComposerLink');
         if (!input) return;
         api.getConfig().then(function (cfg) {
-          var roomId = cfg && cfg.cloudRoomId;
-          input.value = roomId ? ('https://channel.worship-official.link/composer?room=' + encodeURIComponent(roomId)) : '';
+          var roomId = (cfg && cfg.room && cfg.room.code) || (cfg && cfg.cloudRoomId);
+          input.value = roomId ? ('https://channel.worship-official.link/setlist/?room=' + encodeURIComponent(roomId)) : '';
         }).catch(function () {});
       }
       refreshComposerLink();
@@ -8547,6 +8629,26 @@
           selAllChk.checked = total > 0 && selCount === total;
           selAllChk.indeterminate = selCount > 0 && selCount < total;
         }
+      }
+
+      // Sắp xếp thứ tự ảnh hợp âm (thứ tự dùng chung cả phòng: điện thoại + máy chiếu thấy đổi theo).
+      // Đổi chỗ bằng ▲▼ hoặc kéo-thả; gửi cả danh sách id mới qua IPC galleryReorder (relay
+      // giữ ảnh nào bị thiếu id ở cuối nên không bao giờ làm mất ảnh).
+      function applyGalOrder(ids) {
+        api.galleryReorder(ids).then(function (res) {
+          if (res && res.error) { showOperatorToast('Không đổi được thứ tự: ' + res.error, 'error'); api.galleryList().then(renderGal).catch(function () {}); return; }
+          renderGal(res);
+        }).catch(function (err) {
+          showOperatorToast('Không đổi được thứ tự ảnh: ' + ((err && err.message) || err), 'error');
+          api.galleryList().then(renderGal).catch(function () {});
+        });
+      }
+      function moveGal(fromIdx, toIdx) {
+        if (fromIdx === toIdx || toIdx < 0 || toIdx >= currentGalImages.length) return;
+        var ids = currentGalImages.map(function (x) { return x.id; });
+        var moved = ids.splice(fromIdx, 1)[0];
+        ids.splice(toIdx, 0, moved);
+        applyGalOrder(ids);
       }
 
       function renderGal(m) {
@@ -8620,9 +8722,33 @@
               });
           });
 
+          var mvUp = document.createElement('button');
+          mvUp.className = 'mv'; mvUp.type = 'button'; mvUp.textContent = '▲'; mvUp.title = 'Đưa lên'; mvUp.disabled = idx === 0;
+          mvUp.addEventListener('click', function (e) { e.stopPropagation(); moveGal(idx, idx - 1); });
+          var mvDn = document.createElement('button');
+          mvDn.className = 'mv'; mvDn.type = 'button'; mvDn.textContent = '▼'; mvDn.title = 'Đưa xuống'; mvDn.disabled = idx === imgs.length - 1;
+          mvDn.addEventListener('click', function (e) { e.stopPropagation(); moveGal(idx, idx + 1); });
+
+          // Kéo-thả: kéo hàng này thả lên hàng khác để đổi vị trí
+          row.draggable = true;
+          row.addEventListener('dragstart', function (e) {
+            row.classList.add('dragging');
+            try { e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', String(idx)); } catch (x) {}
+          });
+          row.addEventListener('dragend', function () { row.classList.remove('dragging'); });
+          row.addEventListener('dragover', function (e) { e.preventDefault(); row.classList.add('dragover'); });
+          row.addEventListener('dragleave', function () { row.classList.remove('dragover'); });
+          row.addEventListener('drop', function (e) {
+            e.preventDefault(); row.classList.remove('dragover');
+            var from = parseInt((e.dataTransfer && e.dataTransfer.getData('text/plain')) || '', 10);
+            if (!isNaN(from)) moveGal(from, idx);
+          });
+
           row.appendChild(chk);
           row.appendChild(num);
           row.appendChild(nm);
+          row.appendChild(mvUp);
+          row.appendChild(mvDn);
           row.appendChild(rm);
           list.appendChild(row);
         });
@@ -9058,7 +9184,7 @@
               '<div class="list bp-hidden"></div>';
 
             var listEl = card.querySelector('.list');
-            listEl.textContent = sl.items.map(function (it, i) { return (i + 1) + '. ' + (it.title || it.id); }).join('\n');
+            listEl.textContent = sl.items.map(function (it, i) { return (i + 1) + '. ' + (it.title || it.id) + (it.webId ? '  🆕 bài mới từ web' : ''); }).join('\n');
             card.querySelector('[data-x="view"]').addEventListener('click', function () {
               listEl.classList.toggle('bp-hidden');
             });
@@ -9068,10 +9194,12 @@
           }
 
           // Trạng thái chờ xử lý (Active)
+          var newWebCount = sl.items.filter(function (it) { return it && it.webId && !libHasWebId(it.webId); }).length;
           card.className = 'bp-slcard active';
           card.innerHTML =
             '<div class="t">📋 ' + escHtml(slTitle) + ' <span style="font-size:0.75rem;font-weight:normal;color:#64748b;">(' + sl.items.length + ' bài)</span></div>' +
             '<div class="s">Gửi bởi: <strong>' + escHtml(who) + '</strong></div>' +
+            (newWebCount ? '<div class="s" style="color:#6d28d9;font-weight:600;">🆕 ' + newWebCount + ' bài mới do thành viên tạo — sẽ hỏi duyệt khi bạn bấm Nạp</div>' : '') +
             '<div class="a">' +
               '<button class="bp-btn" data-x="view" title="Xem danh sách bài">Xem bài (' + sl.items.length + ')</button>' +
               '<button class="bp-btn go" data-x="load" title="Nạp vào lịch trình máy chiếu">Nạp</button>' +
@@ -9080,7 +9208,7 @@
             '<div class="list bp-hidden"></div>';
 
           var listEl = card.querySelector('.list');
-          listEl.textContent = sl.items.map(function (it, i) { return (i + 1) + '. ' + (it.title || it.id); }).join('\n');
+          listEl.textContent = sl.items.map(function (it, i) { return (i + 1) + '. ' + (it.title || it.id) + (it.webId ? '  🆕 bài mới từ web' : ''); }).join('\n');
 
           card.querySelector('[data-x="view"]').addEventListener('click', function () {
             listEl.classList.toggle('bp-hidden');
@@ -9148,11 +9276,26 @@
         }
 
         function performLoad(isReload) {
-          if (!confirm((isReload ? 'Nạp lại' : 'Nạp') + ' setlist "' + slTitle + '" — thay thế toàn bộ Schedule hiện tại?')) return;
+          // Nạp = THAY THẾ toàn bộ Schedule. Có thay đổi chưa lưu (kể cả Schedule soạn thủ công chưa từng lưu)
+          // thì hỏi Lưu / Không lưu / Hủy ở bước sau; chưa có gì cần lưu thì hỏi xác nhận như trước.
+          if (!isScheduleDirty() && !confirm((isReload ? 'Nạp lại' : 'Nạp') + ' setlist "' + slTitle + '" — thay thế toàn bộ Schedule hiện tại?')) return;
+          // Bài do thành viên TẠO MỚI trên web chưa có trong thư viện: duyệt ngay lúc nạp
+          // (Duyệt = lưu vào thư viện + đưa vào Schedule; Từ chối = bỏ khỏi Schedule).
+          reviewNewWebSongs(sl, slTitle).then(function (rv) {
+            if (!rv.ok) return; // operator hủy -> không nạp gì
+            // Đặt SAU bước duyệt, ngay trước lúc thay thế: hủy ở đây thì không nạp, setlist vẫn chờ trên thẻ.
+            return confirmSaveBeforeLeaving('nạp setlist “' + slTitle + '” (sẽ thay thế toàn bộ Schedule)').then(function (ok) {
+              if (ok) finishLoad(isReload, rv);
+            });
+          });
+        }
+
+        function finishLoad(isReload, rv) {
           loadSetlistIntoSchedule(sl);
           markSetlistHandled(slId, 'loaded');
           renderCard('loaded');
-          showOperatorToast('Đã nạp thành công ' + sl.items.length + ' bài từ setlist "' + slTitle + '" vào Schedule.', 'success');
+          var loadedCount = sl.items.length - ((rv && rv.skipped) ? rv.skipped.length : 0);
+          showOperatorToast('Đã nạp thành công ' + loadedCount + ' bài từ setlist "' + slTitle + '" vào Schedule.' + ((rv && rv.skipped && rv.skipped.length) ? ' Bỏ qua ' + rv.skipped.length + ' bài mới (từ chối/không còn).' : ''), 'success');
           if (api && typeof api.send === 'function') {
             var loadNotifText = isReload ? ('✅ Operator đã tiếp nhận và nạp lại setlist "' + slTitle + '" vào Schedule.') : ('✅ Operator đã nạp setlist "' + slTitle + '" vào Schedule máy chiếu.');
             Promise.resolve(api.send({ to: 'all', text: loadNotifText })).then(function (ok) {
@@ -9178,11 +9321,132 @@
         if (!isExistingCard && !alreadyHandled) bumpUnread();
       }
 
+      // ===== Duyệt bài mới do thành viên tạo trên web — chỉ lúc operator NẠP setlist =====
+      function libHasWebId(webId) { return (songLibrary || []).some(function (s) { return s && s.origin && s.origin.webId === webId; }); }
+
+      // Trả Promise<{ok:boolean, skipped:string[]}>. ok=false = operator hủy (không nạp gì).
+      function reviewNewWebSongs(sl, slTitle) {
+        var need = (sl.items || []).filter(function (it) { return it && it.webId && !libHasWebId(it.webId); });
+        if (!need.length) return Promise.resolve({ ok: true, skipped: [] });
+        var titles = need.map(function (it) { return it.title || 'Bài mới'; });
+        if (!api || !api.songInboxPending) return Promise.resolve({ ok: true, skipped: titles });
+        return api.songInboxPending().then(function (r) {
+          if (r && r.error) {
+            if (!confirm('Không lấy được ' + need.length + ' bài mới từ web (' + r.error + ').\nNạp setlist KHÔNG có các bài này?')) return { ok: false, skipped: [] };
+            return { ok: true, skipped: titles };
+          }
+          var byId = {}; ((r && r.songs) || []).forEach(function (e) { byId[e.webId] = e; });
+          var entries = [], skipped = [];
+          need.forEach(function (it) { if (byId[it.webId]) entries.push(byId[it.webId]); else skipped.push(it.title || 'Bài mới'); });
+          if (!entries.length) return { ok: true, skipped: skipped };
+          return showWebSongReview(entries, slTitle).then(function (decisions) {
+            if (!decisions) return { ok: false, skipped: [] };
+            var chain = Promise.resolve();
+            entries.forEach(function (e) {
+              chain = chain.then(function () {
+                var d = decisions[e.webId] || { action: 'reject' };
+                if (d.action === 'approve') {
+                  // Đường lưu duy nhất: save-song chống trùng theo origin.webId và tự báo relay "đã duyệt".
+                  return window.electronAPI.saveSong({ id: null, title: e.title, lyrics: e.lyrics, type: 'song', origin: { webId: e.webId, from: (e.from && e.from.name) || '' } })
+                    .then(function (res) { if (res && res.list) songLibrary = res.list; });
+                }
+                skipped.push(e.title);
+                return api.songInboxReject({ webId: e.webId, reason: d.reason || '' });
+              });
+            });
+            return chain.then(function () {
+              if (typeof currentLibraryTab !== 'undefined' && currentLibraryTab === 'songs') renderLibrary();
+              return { ok: true, skipped: skipped };
+            }).catch(function (err) {
+              showOperatorToast('Lỗi khi lưu bài mới: ' + ((err && err.message) || err), 'error');
+              return { ok: false, skipped: [] };
+            });
+          });
+        }).catch(function (err) {
+          showOperatorToast('Không duyệt được bài mới: ' + ((err && err.message) || err), 'error');
+          return { ok: false, skipped: [] };
+        });
+      }
+
+      // Modal duyệt: mỗi bài mặc định "Duyệt"; có thể xem slide, hoặc "Từ chối" kèm lý do (người tạo sẽ thấy).
+      function showWebSongReview(entries, slTitle) {
+        return new Promise(function (resolve) {
+          var decisions = {};
+          var ov = document.createElement('div');
+          ov.style.cssText = 'position:fixed;inset:0;z-index:100000;background:rgba(15,23,42,.55);display:flex;align-items:center;justify-content:center;padding:16px;';
+          var box = document.createElement('div');
+          box.style.cssText = 'background:#fff;color:#1e293b;border-radius:12px;max-width:640px;width:100%;max-height:88vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.4);font-size:14px;';
+          var head = document.createElement('div');
+          head.style.cssText = 'padding:14px 16px 8px;border-bottom:1px solid #e2e8f0;';
+          var h = document.createElement('div'); h.style.cssText = 'font-weight:700;font-size:15px;';
+          h.textContent = 'Duyệt ' + entries.length + ' bài mới trước khi nạp setlist “' + slTitle + '”';
+          var sub = document.createElement('div'); sub.style.cssText = 'color:#64748b;font-size:12px;margin-top:3px;';
+          sub.textContent = 'Bài do thành viên tạo trên web, chưa có trong thư viện. Duyệt = lưu vào thư viện và đưa vào Schedule; Từ chối = bỏ khỏi setlist.';
+          head.appendChild(h); head.appendChild(sub);
+          var body = document.createElement('div'); body.style.cssText = 'padding:10px 16px;overflow:auto;display:flex;flex-direction:column;gap:10px;';
+
+          entries.forEach(function (e) {
+            decisions[e.webId] = { action: 'approve', reason: '' };
+            var card = document.createElement('div'); card.style.cssText = 'border:1px solid #d6c4f0;background:#f6f0fd;border-radius:9px;padding:9px 11px;';
+            var t = document.createElement('div'); t.style.cssText = 'font-weight:700;';
+            t.textContent = '🎵 ' + e.title;
+            var who = document.createElement('div'); who.style.cssText = 'color:#64748b;font-size:12px;';
+            who.textContent = 'Tạo bởi ' + ((e.from && e.from.name) || 'thành viên') + ' · ' + e.slides + ' slide';
+            var slides = document.createElement('div'); slides.style.cssText = 'display:none;margin-top:6px;';
+            String(e.lyrics).split(/\n\s*\n/).filter(function (b2) { return b2.trim() !== ''; }).forEach(function (blk, i) {
+              var p2 = stripLabel(blk.trim());
+              var d = document.createElement('div'); d.style.cssText = 'border-top:1px dashed #d6c4f0;padding:4px 0;font-size:12px;white-space:pre-wrap;';
+              if (p2.label) { var lb = document.createElement('div'); lb.style.cssText = 'font-weight:700;color:#6d28d9;'; lb.textContent = p2.label; d.appendChild(lb); }
+              d.appendChild(document.createTextNode((i + 1) + '. ' + p2.content));
+              slides.appendChild(d);
+            });
+            var row = document.createElement('div'); row.style.cssText = 'display:flex;gap:6px;margin-top:8px;flex-wrap:wrap;align-items:center;';
+            function mkBtn(label, cls) { var b3 = document.createElement('button'); b3.type = 'button'; b3.className = 'ws-rv-btn' + (cls ? ' ' + cls : ''); b3.textContent = label; return b3; }
+            var vBtn = mkBtn('Xem slide'); var aBtn = mkBtn('Duyệt', 'go'); var rBtn = mkBtn('Từ chối');
+            var why = document.createElement('input'); why.type = 'text'; why.maxLength = 200; why.placeholder = 'Lý do (người tạo sẽ thấy)…';
+            why.style.cssText = 'display:none;flex:1;min-width:140px;border:1px solid #fca5a5;border-radius:6px;padding:4px 7px;font-size:12px;';
+            function paint() {
+              var ap = decisions[e.webId].action === 'approve';
+              aBtn.style.opacity = ap ? '1' : '.4'; rBtn.classList.toggle('stop', !ap);
+              why.style.display = ap ? 'none' : 'block';
+            }
+            vBtn.addEventListener('click', function () { slides.style.display = slides.style.display === 'none' ? 'block' : 'none'; });
+            aBtn.addEventListener('click', function () { decisions[e.webId].action = 'approve'; paint(); });
+            rBtn.addEventListener('click', function () { decisions[e.webId].action = 'reject'; paint(); why.focus(); });
+            why.addEventListener('input', function () { decisions[e.webId].reason = why.value.trim(); });
+            row.appendChild(vBtn); row.appendChild(aBtn); row.appendChild(rBtn); row.appendChild(why);
+            card.appendChild(t); card.appendChild(who); card.appendChild(row); card.appendChild(slides);
+            body.appendChild(card);
+            paint();
+          });
+
+          var foot = document.createElement('div'); foot.style.cssText = 'padding:10px 16px;border-top:1px solid #e2e8f0;display:flex;gap:8px;justify-content:flex-end;';
+          var cancel = document.createElement('button'); cancel.type = 'button'; cancel.className = 'ws-rv-btn'; cancel.textContent = 'Hủy (không nạp)';
+          var ok = document.createElement('button'); ok.type = 'button'; ok.className = 'ws-rv-btn go'; ok.textContent = 'Xác nhận & nạp';
+          function close(v) { document.removeEventListener('keydown', onKey, true); ov.remove(); resolve(v); }
+          function onKey(ev) { if (ev.key === 'Escape') { ev.stopPropagation(); close(null); } }
+          document.addEventListener('keydown', onKey, true);
+          cancel.addEventListener('click', function () { close(null); });
+          ok.addEventListener('click', function () { close(decisions); });
+          foot.appendChild(cancel); foot.appendChild(ok);
+          box.appendChild(head); box.appendChild(body); box.appendChild(foot); ov.appendChild(box);
+          document.body.appendChild(ov);
+          ok.focus();
+        });
+      }
+
       function escHtml(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]; }); }
 
       function loadSetlistIntoSchedule(sl) {
         var out = [];
         (sl.items || []).forEach(function (it) {
+          // Bài tạo từ web: id web không có trong thư viện; khớp theo origin.webId (đã duyệt).
+          // Chưa duyệt/bị từ chối/không còn -> bỏ khỏi Schedule (KHÔNG thêm mục rỗng).
+          if (it.webId) {
+            var web = (songLibrary || []).find(function (s) { return s && s.origin && s.origin.webId === it.webId; });
+            if (web) { var wc = JSON.parse(JSON.stringify(web)); delete wc.scheduleId; out.push(normalizeScheduleItem(wc)); }
+            return;
+          }
           var src = (songLibrary || []).find(function (s) { return String(s.id) === String(it.id); });
           if (src) {
             var copy = JSON.parse(JSON.stringify(src));

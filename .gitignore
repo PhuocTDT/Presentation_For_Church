@@ -3,6 +3,7 @@ node_modules/
 .DS_Store
 Thumbs.db
 dist/
+dist-store/
 out/
 
 # Binary cloudflared tải về qua scripts/fetch-cloudflared.js (postinstall) —
@@ -32,3 +33,7 @@ spellcheck_ai.js
 spellcheck_dict.js
 songs_preview.json
 songs_txt/
+
+# relay test local (sinh bởi test/start-test-relay.mjs)
+cloud/worker/wrangler.test.toml
+test/.shots/

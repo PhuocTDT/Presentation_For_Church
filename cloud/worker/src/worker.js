@@ -78,6 +78,59 @@ async function checkRateLimit(env, roomId) {
   await env.SETLISTS.put(key, String(count + 1), { expirationTtl: Math.ceil(RATE_LIMIT_WINDOW_MS / 1000) + 60 });
   return true;
 }
+// ── Xác thực OPERATOR cho các endpoint ghi dành riêng cho laptop (B-17) ──────────
+// Trước đây các endpoint này chỉ kiểm tra roomId (= mã phòng 6 ký tự, mọi thành
+// viên ban hát đều biết) → ai biết mã phòng cũng ghi đè được thư viện, ack/xoá
+// setlist, ghi/xoá ảnh của phòng đó. Giờ operator phải gửi X-Admin-Secret
+// (relayAdminSecret trong band-comm.json — cùng khóa đã dùng cho /admin/config và WS);
+// Worker hỏi Durable Object của phòng (/admin/verify) xem có khớp không.
+//
+// env.OPERATOR_AUTH_MODE (wrangler.toml [vars]):
+//   'enforce' (mặc định nếu thiếu) — thiếu hoặc sai secret → từ chối
+//   'log'     — thiếu secret thì cho qua + ghi log (giai đoạn chuyển tiếp để các bản
+//               app cũ chưa gửi header vẫn chạy). Secret SAI thì luôn bị từ chối.
+//   'off'     — tắt kiểm tra (chỉ để debug)
+// Chỉ request có header X-Admin-Secret mới chạm tới Durable Object (tránh spam tạo DO).
+const AUTH_FAIL_WINDOW_MS = 5 * 60 * 1000;
+const AUTH_FAIL_MAX = 20; // tối đa 20 lần sai secret / IP / 5 phút
+async function authFailureBudget(env, ip) {
+  const raw = await env.SETLISTS.get(`rlf:${ip}:${Math.floor(Date.now() / AUTH_FAIL_WINDOW_MS)}`);
+  return (raw ? (parseInt(raw, 10) || 0) : 0) < AUTH_FAIL_MAX;
+}
+async function recordAuthFailure(env, ip) {
+  const key = `rlf:${ip}:${Math.floor(Date.now() / AUTH_FAIL_WINDOW_MS)}`;
+  const raw = await env.SETLISTS.get(key);
+  await env.SETLISTS.put(key, String((raw ? (parseInt(raw, 10) || 0) : 0) + 1), { expirationTtl: Math.ceil(AUTH_FAIL_WINDOW_MS / 1000) + 60 });
+}
+async function verifyOperatorSecret(env, req, roomId) {
+  if (!isValidRoomCode(roomId)) return false; // DO chỉ định danh theo mã phòng hợp lệ (A-Z0-9, 4-10)
+  const secret = req.headers.get('X-Admin-Secret') || '';
+  if (secret.length < 16 || secret.length > 256) return false;
+  const stub = env.ROOMS.get(env.ROOMS.idFromName(roomId));
+  const res = await stub.fetch(`https://relay.internal/admin/verify?roomCode=${encodeURIComponent(roomId)}`, {
+    method: 'POST',
+    headers: { 'X-Admin-Secret': secret }
+  });
+  return res.status === 200;
+}
+// Trả null nếu được phép; ngược lại trả Response lỗi để caller return ngay.
+async function requireOperator(env, req, roomId, label) {
+  const mode = String(env.OPERATOR_AUTH_MODE || 'enforce').toLowerCase();
+  if (mode === 'off') return null;
+  const ip = req.headers.get('CF-Connecting-IP') || 'unknown';
+  if (req.headers.get('X-Admin-Secret')) {
+    if (!(await authFailureBudget(env, ip))) return json({ error: 'Quá nhiều lần thử, thử lại sau ít phút' }, 429);
+    if (await verifyOperatorSecret(env, req, roomId)) return null;
+    await recordAuthFailure(env, ip);
+    return json({ error: 'Không có quyền operator cho phòng này' }, 403);
+  }
+  if (mode === 'log') {
+    console.warn(`[operator-auth] ${label}: thiếu X-Admin-Secret (room ${roomId}) — chế độ log, cho qua`);
+    return null;
+  }
+  return json({ error: 'Thiếu X-Admin-Secret của operator' }, 401);
+}
+
 const CORS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
@@ -95,251 +148,26 @@ function isValidRoomId(id) {
   return typeof id === 'string' && /^[a-zA-Z0-9_-]{4,64}$/.test(id);
 }
 
-// Trang soạn setlist tĩnh, phục vụ NGAY từ Worker này (cùng origin với API,
-// không cần domain/deploy riêng) — chỗ duy nhất band vào được để soạn+gửi
-// setlist khi laptop operator tắt hẳn (band-comm-plan.md, xem thảo luận về
-// "setlist cloud queue vô nghĩa nếu không ai vào được trang lúc app tắt").
-// Vanilla JS, không backtick/template literal bên trong (đang nằm trong 1
-// template literal ở worker.js — tránh xung đột dấu `).
-const COMPOSER_HTML = `<!DOCTYPE html>
-<html lang="vi">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
-<meta name="theme-color" content="#ffffff">
-<title>Soạn Setlist — Kênh Band</title>
-<style>
-  :root {
-    --bg:#ffffff; --panel:#f4f5f7; --panel-2:#eceef1; --line:#dfe2e7;
-    --ink:#1e2430; --ink-soft:#5b6472; --ink-faint:#8a93a3;
-    --op:#2563a8; --op-bg:#e8f1fb; --ok:#2f8a55; --danger:#c0392f;
-  }
-  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
-  html,body { margin:0; min-height:100%; }
-  body {
-    background:var(--bg); color:var(--ink);
-    font:15px/1.45 -apple-system,"Segoe UI",Roboto,system-ui,sans-serif;
-  }
-  button { font:inherit; color:inherit; cursor:pointer; }
-  input { font:inherit; }
-  .hidden { display:none !important; }
-  .wrap { max-width:480px; margin:0 auto; padding:18px 16px 40px; }
-  h1 { font-size:1.2rem; margin:0 0 4px; }
-  .sub { color:var(--ink-soft); font-size:.85rem; margin:0 0 4px; }
-  .offline-note { background:var(--op-bg); color:var(--op); border-radius:10px; padding:9px 12px; font-size:.8rem; margin:12px 0 18px; }
-  .field { display:flex; flex-direction:column; gap:6px; margin-bottom:12px; }
-  .field label { font-size:.72rem; letter-spacing:.04em; text-transform:uppercase; color:var(--ink-faint); }
-  .field input {
-    background:#fff; border:1px solid var(--line); border-radius:10px;
-    padding:11px 13px; color:var(--ink); outline:none;
-  }
-  .field input:focus { border-color:var(--op); }
-  .sl-draft { display:flex; flex-direction:column; gap:4px; margin-bottom:14px; }
-  .sl-draft .row { display:flex; align-items:center; gap:6px; background:#fff; border:1px solid var(--line); border-radius:9px; padding:7px 9px; font-size:.86rem; }
-  .sl-draft .row .n { flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-  .sl-draft .row button { border:none; background:var(--panel-2); border-radius:7px; padding:4px 9px; font-size:.9rem; color:var(--ink-soft); }
-  .sl-draft .row button.x { color:var(--danger); }
-  .sl-draft .empty { color:var(--ink-faint); font-size:.82rem; padding:6px 2px; }
-  #slResults { max-height:44vh; overflow-y:auto; border:1px solid var(--line); border-radius:10px; margin-top:6px; background:#fff; }
-  #slResults .r { padding:10px 13px; border-bottom:1px solid var(--line); font-size:.86rem; }
-  #slResults .r:last-child { border-bottom:none; }
-  #slResults .r .ly { display:block; font-size:.74rem; color:var(--ink-faint); margin-top:2px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-  #slResults .r.added { background:var(--op-bg); }
-  .send-row { display:flex; justify-content:flex-end; margin-top:16px; }
-  .send-row button {
-    background:var(--op); border:none; border-radius:10px; padding:12px 22px;
-    font-weight:700; color:#fff; font-size:.95rem;
-  }
-  .send-row button:disabled { opacity:.5; }
-  .status { font-size:.85rem; margin-top:10px; min-height:1.2em; text-align:center; }
-  .status.ok { color:var(--ok); }
-  .status.err { color:var(--danger); }
-  .err-screen { text-align:center; padding:60px 20px; color:var(--ink-soft); }
-</style>
-</head>
-<body>
-<div class="wrap" id="app">
-  <h1>Soạn Setlist</h1>
-  <p class="sub">Kênh Band</p>
-  <div class="offline-note">Gửi được ngay cả khi máy trình chiếu đang tắt — danh sách sẽ tự nạp vào lịch trình khi máy mở lại.</div>
+// Style rút gọn của bài hát (chỉ đủ để trang /setlist/ vẽ preview slide) —
+// whitelist từng trường, KHÔNG nhận nguyên object do desktop gửi.
+function sanitizeSongStyle(st) {
+  const out = {};
+  if (!st || typeof st !== 'object') return out;
+  const str = (v, max) => (typeof v === 'string' && v ? v.slice(0, max) : undefined);
+  const num = (v, lo, hi) => { const n = Number(v); return Number.isFinite(n) ? Math.min(hi, Math.max(lo, n)) : undefined; };
+  const put = (k, v) => { if (v !== undefined) out[k] = v; };
+  put('fontFamily', str(st.fontFamily, 60));
+  put('fontSize', str(String(st.fontSize == null ? '' : st.fontSize), 12));
+  put('color', str(st.color, 30));
+  put('textStrokeColor', str(st.textStrokeColor, 30));
+  put('textAlign', ['left', 'center', 'right', 'justify'].includes(st.textAlign) ? st.textAlign : undefined);
+  put('verticalAlign', ['top', 'center', 'middle', 'bottom'].includes(st.verticalAlign) ? st.verticalAlign : undefined);
+  put('textStrokeWidth', num(st.textStrokeWidth, 0, 30));
+  return out;
+}
 
-  <div class="field">
-    <label for="yourName">Tên của bạn</label>
-    <input id="yourName" placeholder="VD: Minh" maxlength="40">
-  </div>
-  <div class="field">
-    <label for="slName">Tên setlist</label>
-    <input id="slName" placeholder="VD: CN sáng 09/09" maxlength="80">
-  </div>
-
-  <div class="sl-draft" id="slDraft"></div>
-
-  <div class="field">
-    <label for="slSearch">Tìm bài hát</label>
-    <input id="slSearch" placeholder="Gõ tên / số bài để thêm…" autocomplete="off">
-  </div>
-  <div id="slResults" class="hidden"></div>
-
-  <div class="send-row"><button type="button" id="slSend">Gửi Setlist</button></div>
-  <div class="status" id="slStatus"></div>
-</div>
-<script>
-(function () {
-  'use strict';
-  var $ = function (id) { return document.getElementById(id); };
-  var params = new URLSearchParams(window.location.search);
-  var roomId = params.get('room') || '';
-
-  if (!roomId) {
-    document.getElementById('app').innerHTML = '<div class="err-screen">Thiếu link phòng.<br>Xin lấy lại link từ người trình chiếu (mục "Kênh Band" trong app).</div>';
-    return;
-  }
-
-  var LS_KEY = 'bandcomposer.v1.' + roomId;
-  var state = {};
-  try { state = JSON.parse(localStorage.getItem(LS_KEY) || '{}') || {}; } catch (e) { state = {}; }
-  if (!Array.isArray(state.draft)) state.draft = [];
-  function saveState() { try { localStorage.setItem(LS_KEY, JSON.stringify(state)); } catch (e) {} }
-
-  if (state.name) $('yourName').value = state.name;
-  $('yourName').addEventListener('change', function () { state.name = this.value.trim().slice(0, 40); saveState(); });
-
-  var songs = [];
-  var libLoaded = false;
-
-  function norm(s) {
-    return String(s || '').normalize('NFD').replace(/[\\u0300-\\u036f]/g, '').replace(/đ/gi, 'd').toLowerCase();
-  }
-
-  function fetchLibrary() {
-    fetch('/library?roomId=' + encodeURIComponent(roomId))
-      .then(function (r) { return r.json(); })
-      .then(function (j) {
-        songs = (j && Array.isArray(j.songs)) ? j.songs : [];
-        libLoaded = true;
-        renderResults($('slSearch').value);
-      })
-      .catch(function () { libLoaded = true; renderResults($('slSearch').value); });
-  }
-  fetchLibrary();
-
-  function renderDraft() {
-    var box = $('slDraft'); box.textContent = '';
-    var d = state.draft;
-    if (!d.length) {
-      var e = document.createElement('div'); e.className = 'empty';
-      e.textContent = 'Chưa có bài. Gõ tìm bên dưới rồi chạm để thêm.';
-      box.appendChild(e); return;
-    }
-    d.forEach(function (it, i) {
-      var row = document.createElement('div'); row.className = 'row';
-      var n = document.createElement('span'); n.className = 'n'; n.textContent = (i + 1) + '. ' + it.title;
-      row.appendChild(n);
-      [['↑', -1], ['↓', 1], ['×', 0]].forEach(function (pair) {
-        var b = document.createElement('button');
-        b.type = 'button'; b.textContent = pair[0];
-        if (pair[1] === 0) b.className = 'x';
-        b.addEventListener('click', function () {
-          if (pair[1] === 0) { state.draft.splice(i, 1); }
-          else { var j = i + pair[1]; if (j < 0 || j >= state.draft.length) return; var t = state.draft[i]; state.draft[i] = state.draft[j]; state.draft[j] = t; }
-          saveState(); renderDraft(); renderResults($('slSearch').value);
-        });
-        row.appendChild(b);
-      });
-      box.appendChild(row);
-    });
-  }
-
-  function renderResults(query) {
-    var wrap = $('slResults');
-    var q = norm(query).trim();
-    if (!q) { wrap.classList.add('hidden'); wrap.textContent = ''; return; }
-    var inDraft = {};
-    state.draft.forEach(function (x) { inDraft[String(x.id)] = 1; });
-    var hits = songs.filter(function (s) {
-      return norm(s.title).indexOf(q) >= 0 || norm(s.lyrics).indexOf(q) >= 0;
-    }).slice(0, 40);
-    wrap.textContent = '';
-    if (!hits.length) {
-      wrap.classList.remove('hidden');
-      var e = document.createElement('div'); e.className = 'r';
-      e.textContent = libLoaded ? 'Không thấy bài nào.' : 'Đang tải thư viện…';
-      wrap.appendChild(e); return;
-    }
-    hits.forEach(function (s) {
-      var r = document.createElement('div'); r.className = 'r' + (inDraft[String(s.id)] ? ' added' : '');
-      var title = document.createElement('span');
-      title.textContent = (inDraft[String(s.id)] ? '✓ ' : '') + s.title;
-      r.appendChild(title);
-      if (s.lyrics) {
-        var ly = document.createElement('span'); ly.className = 'ly';
-        ly.textContent = String(s.lyrics).replace(/\\n+/g, ' · ').slice(0, 90);
-        r.appendChild(ly);
-      }
-      r.addEventListener('click', function () {
-        var k = String(s.id);
-        if (inDraft[k]) { state.draft = state.draft.filter(function (x) { return String(x.id) !== k; }); }
-        else { state.draft.push({ id: s.id, title: s.title }); }
-        saveState(); renderDraft(); renderResults(query);
-      });
-      wrap.appendChild(r);
-    });
-    wrap.classList.remove('hidden');
-  }
-
-  $('slSearch').addEventListener('input', function () { renderResults(this.value); });
-
-  function setStatus(text, kind) {
-    var el = $('slStatus');
-    el.textContent = text || '';
-    el.className = 'status' + (kind ? ' ' + kind : '');
-  }
-
-  $('slSend').addEventListener('click', function () {
-    if (!state.draft.length) { setStatus('Setlist đang trống.', 'err'); return; }
-    var name = $('slName').value.trim() || 'Setlist';
-    var yourName = $('yourName').value.trim();
-    var payload = {
-      roomId: roomId,
-      setlist: {
-        id: 'sl-' + Date.now().toString(16) + Math.random().toString(16).slice(2, 8),
-        name: name,
-        from: { name: yourName },
-        items: state.draft.map(function (x) { return { type: 'song', id: x.id, title: x.title }; })
-      }
-    };
-    var btn = $('slSend');
-    btn.disabled = true;
-    setStatus('Đang gửi…');
-    fetch('/setlist', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    })
-      .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
-      .then(function (res) {
-        btn.disabled = false;
-        if (!res.ok || !res.j || !res.j.ok) {
-          setStatus((res.j && res.j.error) || 'Không gửi được, thử lại sau.', 'err');
-          return;
-        }
-        state.draft = []; saveState();
-        $('slName').value = '';
-        renderDraft(); renderResults('');
-        setStatus('Đã gửi — sẽ tự nạp vào lịch trình khi máy trình chiếu mở lại.', 'ok');
-      })
-      .catch(function () {
-        btn.disabled = false;
-        setStatus('Không có mạng — thử lại khi có kết nối.', 'err');
-      });
-  });
-
-  renderDraft();
-})();
-</script>
-</body>
-</html>
-`;
+// Trang soạn setlist đã tách thành trang riêng comm/setlist/ (phục vụ ở /setlist/
+// qua binding MOBILE_ASSETS, xem route bên dưới). /composer cũ chỉ còn là redirect.
 
 // id sinh sẵn ở server local (newId('img') trong src/band-comm/protocol.js,
 // dạng "img-<hex>") — Worker chỉ chấp nhận lại đúng khuôn đó, không tự sinh,
@@ -384,7 +212,12 @@ export default {
       const items = (Array.isArray(sl.items) ? sl.items : [])
         .filter((it) => it && it.type === 'song' && it.id != null)
         .slice(0, MAX_ITEMS)
-        .map((it) => ({ type: 'song', id: String(it.id).slice(0, 100), title: String(it.title || '').slice(0, 200) }));
+        .map((it) => {
+          const out = { type: 'song', id: String(it.id).slice(0, 100), title: String(it.title || '').slice(0, 200) };
+          // webId = bài tạo mới trên web; lời lấy từ relay lúc operator nạp (không đi theo setlist)
+          if (it.webId != null && /^[A-Za-z0-9_-]{8,64}$/.test(String(it.webId))) out.webId = String(it.webId);
+          return out;
+        });
       if (!items.length) return json({ error: 'Setlist rỗng' }, 400);
       const clean = {
         id: String(sl.id).slice(0, 80),
@@ -411,8 +244,12 @@ export default {
 
     // ---- GET /setlist?roomId= -> mọi setlist còn hạn cho phòng đó ----
     if (p === '/setlist' && req.method === 'GET') {
+      // Người gõ tay /setlist (không có roomId) -> đưa tới trang; có roomId = API hộp thư của desktop.
+      if (!url.searchParams.has('roomId')) return Response.redirect(url.origin + '/setlist/' + url.search, 302);
       const roomId = url.searchParams.get('roomId');
       if (!isValidRoomId(roomId)) return json({ error: 'roomId không hợp lệ' }, 400);
+      const denied = await requireOperator(env, req, roomId, 'GET /setlist');
+      if (denied) return denied;
       const list = await env.SETLISTS.list({ prefix: `sl:${roomId}:`, limit: 100 });
       const out = [];
       for (const k of list.keys) {
@@ -438,6 +275,8 @@ export default {
       const roomId = body && body.roomId;
       const id = body && String(body.id || '').slice(0, 80);
       if (!isValidRoomId(roomId) || !id) return json({ error: 'thiếu roomId/id' }, 400);
+      const denied = await requireOperator(env, req, roomId, 'POST /setlist/ack');
+      if (denied) return denied;
       if (!(await checkRateLimit(env, roomId))) return json({ error: 'Quá nhiều yêu cầu, thử lại sau ít phút' }, 429);
       await env.SETLISTS.put(`ack:${roomId}:${id}`, '1', { expirationTtl: TTL_SECONDS });
       await env.SETLISTS.delete(`sl:${roomId}:${id}`).catch(() => {});
@@ -466,6 +305,8 @@ export default {
       try { body = await req.json(); } catch (e) { return json({ error: 'bad json' }, 400); }
       const roomId = body && body.roomId;
       if (!isValidRoomId(roomId)) return json({ error: 'roomId không hợp lệ' }, 400);
+      const denied = await requireOperator(env, req, roomId, 'POST /library-sync');
+      if (denied) return denied;
       if (!(await checkRateLimit(env, roomId))) return json({ error: 'Quá nhiều yêu cầu, thử lại sau ít phút' }, 429);
       const songs = (Array.isArray(body.songs) ? body.songs : [])
         .filter((s) => s && s.id != null && s.title)
@@ -473,7 +314,11 @@ export default {
         .map((s) => ({
           id: String(s.id).slice(0, 100),
           title: String(s.title).slice(0, 200),
-          lyrics: String(s.lyrics || '').slice(0, MAX_LYRICS_CHARS)
+          lyrics: String(s.lyrics || '').slice(0, MAX_LYRICS_CHARS),
+          style: sanitizeSongStyle(s.style),
+          bg: typeof s.bg === 'string' && s.bg ? s.bg.slice(0, 200) : null,
+          // webId = bài này vốn do thành viên tạo trên web (đã được duyệt) -> web khử trùng với danh sách bài web
+          webId: s.webId != null && /^[A-Za-z0-9_-]{8,64}$/.test(String(s.webId)) ? String(s.webId) : null
         }));
       await env.SETLISTS.put(`lib:${roomId}`, JSON.stringify({ songs, updatedAt: Date.now() }), { expirationTtl: LIBRARY_TTL_SECONDS });
       return json({ ok: true, count: songs.length });
@@ -498,6 +343,8 @@ export default {
       const id = body && body.id;
       if (!isValidRoomId(roomId)) return json({ error: 'roomId không hợp lệ' }, 400);
       if (!isValidImageId(id)) return json({ error: 'id không hợp lệ' }, 400);
+      const denied = await requireOperator(env, req, roomId, 'POST /gallery');
+      if (denied) return denied;
       if (!(await checkRateLimit(env, roomId))) return json({ error: 'Quá nhiều yêu cầu, thử lại sau ít phút' }, 429);
       const ext = /^\.(jpe?g|png|webp)$/i.test(String(body.ext || '')) ? String(body.ext).toLowerCase() : '.jpg';
       const contentType = IMAGE_MIME[ext] || 'image/jpeg';
@@ -538,14 +385,27 @@ export default {
       const roomId = body && body.roomId;
       const id = body && body.id;
       if (!isValidRoomId(roomId) || !isValidImageId(id)) return json({ error: 'không hợp lệ' }, 400);
+      const denied = await requireOperator(env, req, roomId, 'POST /gallery/remove');
+      if (denied) return denied;
       await env.GALLERY.delete(`${roomId}/${id}`);
       return json({ ok: true });
     }
 
-    // ---- GET /composer -> trang soạn setlist tĩnh, không cần laptop operator
-    // đang chạy (?room=<cloudRoomId>, xem COMPOSER_HTML ở trên) ----
+    // ---- GET /backgrounds/image/<roomCode>/<id> -> ảnh nền (R2 BGS) cho preview ở /setlist/.
+    // Giống /gallery/image: id ngẫu nhiên không đoán được là "khoá"; đổi ảnh = đổi id nên cache dài an toàn.
+    if (p.indexOf('/backgrounds/image/') === 0 && req.method === 'GET') {
+      const m = /^\/backgrounds\/image\/([A-Z0-9]{4,10})\/([A-Za-z0-9_-]{4,64})$/.exec(p);
+      if (!m || !env.BGS) return json({ error: 'not found' }, 404);
+      const obj = await env.BGS.get(m[1] + '/' + m[2]);
+      if (!obj) return json({ error: 'not found' }, 404);
+      return new Response(obj.body, {
+        headers: { 'Content-Type': 'image/jpeg', 'Cache-Control': 'public, max-age=86400', 'X-Content-Type-Options': 'nosniff', ...CORS }
+      });
+    }
+
+    // ---- GET /composer (link/QR cũ) -> /setlist/ giữ nguyên ?room=... ----
     if (p === '/composer' && req.method === 'GET') {
-      return new Response(COMPOSER_HTML, { headers: { 'Content-Type': 'text/html; charset=utf-8', ...CORS } });
+      return Response.redirect(url.origin + '/setlist/' + url.search, 302);
     }
 
     // ---- GET /m, /m/, /m/app.js -> trang join Kênh Band (comm/mobile/),
@@ -563,9 +423,16 @@ export default {
     if (req.method === 'GET' && (p === '/' || p === '/m')) {
       return Response.redirect(url.origin + '/m/' + url.search, 302);
     }
+    // ---- GET /setlist/ và /setlist/<file> -> trang soạn setlist (comm/setlist/) ----
+    // Cố ý chỉ khớp có dấu / cuối: GET /setlist?roomId= là API hộp thư (xem trên).
+    if (req.method === 'GET' && p.indexOf('/setlist/') === 0) {
+      const assetUrl = new URL(req.url);
+      assetUrl.pathname = p === '/setlist/' ? '/setlist/index.html' : p;
+      return env.MOBILE_ASSETS.fetch(new Request(assetUrl, req));
+    }
     if (req.method === 'GET' && (p === '/m/' || p.indexOf('/m/') === 0)) {
       const assetUrl = new URL(req.url);
-      assetUrl.pathname = p === '/m/' ? '/index.html' : p.slice('/m'.length);
+      assetUrl.pathname = p === '/m/' ? '/mobile/index.html' : '/mobile' + p.slice('/m'.length);
       const assetRes = await env.MOBILE_ASSETS.fetch(new Request(assetUrl, req));
       // Assets binding trả response gốc (không có CORS header của worker.js
       // này) — không sao vì trang tự tải (same-origin request từ chính nó,

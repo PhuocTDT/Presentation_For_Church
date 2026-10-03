@@ -247,7 +247,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Band URLs (Links always point to ?room=<code> without password)
     const bandUrl = `https://channel.worship-official.link/m/?room=${encodeURIComponent(code)}`;
-    const compUrl = `https://channel.worship-official.link/composer?room=${encodeURIComponent(code)}`;
+    const compUrl = `https://channel.worship-official.link/setlist/?room=${encodeURIComponent(code)}`;
 
     if (metricBandLink) metricBandLink.textContent = bandUrl;
     if (btnOpenBandLink) btnOpenBandLink.href = bandUrl;
@@ -300,7 +300,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   if (btnCopyComposerLink) {
     btnCopyComposerLink.addEventListener('click', () => {
-      const url = `https://channel.worship-official.link/composer?room=${currentRoom.code || ''}`;
+      const url = `https://channel.worship-official.link/setlist/?room=${currentRoom.code || ''}`;
       navigator.clipboard.writeText(url).then(() => {
         showToast('Đã sao chép đường dẫn Soạn Setlist Từ Xa!');
       });

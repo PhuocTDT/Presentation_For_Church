@@ -38,7 +38,10 @@ const RECONNECT_MAX_MS = 30000;
  * @param {(setlist:any)=>void} [opts.onSetlist]
  * @param {()=>Array}[opts.getLibraryIndex]
  */
-function createRelayClient({ store, operatorAuthStore, onEvent, onPresence, onSetlist, getLibraryIndex }) {
+function createRelayClient({ store, operatorAuthStore, refreshOperatorSession, onEvent, onPresence, onSetlist, getLibraryIndex,
+  listBackgroundImages, makeBackgroundThumb, backgroundSyncDelayMs = 5000, backgroundSyncIntervalMs = 10 * 60 * 1000,
+  libraryDebounceMs = 3000,
+  libraryRetryDelaysMs = [5000, 15000, 45000, 120000, 300000] }) {
   let ws = null;
   let wsOpen = false;
   let wantConnected = false; // true giữa start()..stop() — phân biệt "đang cố reconnect" với "đã stop() chủ động"
@@ -74,7 +77,10 @@ function createRelayClient({ store, operatorAuthStore, onEvent, onPresence, onSe
     if (!roomId) return;
     let data;
     try {
-      const r = await fetch(`${relayHttpBase()}/setlist?roomId=${encodeURIComponent(roomId)}`, { signal: AbortSignal.timeout(8000) });
+      const r = await fetch(`${relayHttpBase()}/setlist?roomId=${encodeURIComponent(roomId)}`, {
+        headers: { 'X-Admin-Secret': c.relayAdminSecret },
+        signal: AbortSignal.timeout(8000)
+      });
       if (!r.ok) return;
       data = await r.json();
     } catch (e) { return; }
@@ -88,7 +94,7 @@ function createRelayClient({ store, operatorAuthStore, onEvent, onPresence, onSe
     for (const id of newIds) {
       fetch(`${relayHttpBase()}/setlist/ack`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'X-Admin-Secret': c.relayAdminSecret },
         body: JSON.stringify({ roomId, id })
       }).catch(() => {});
     }
@@ -112,6 +118,9 @@ function createRelayClient({ store, operatorAuthStore, onEvent, onPresence, onSe
     const c = cfg();
     const roomId = (c.room && c.room.code) || c.cloudRoomId;
     const headers = { 'Content-Type': 'application/json', 'X-Admin-Secret': c.relayAdminSecret };
+    // idToken Cognito chỉ sống ~1 giờ; relay dùng nó để cho phép chủ phòng lấy lại quyền
+    // (cài lại app/đổi máy) nên làm mới trước khi gửi nếu sắp/đã hết hạn.
+    if (typeof refreshOperatorSession === 'function') { try { await refreshOperatorSession(); } catch (e) {} }
     if (operatorAuthStore) {
       try {
         const sess = operatorAuthStore.load();
@@ -224,7 +233,8 @@ function createRelayClient({ store, operatorAuthStore, onEvent, onPresence, onSe
     await syncRoomConfig(); // ném lỗi lên cho main.js báo sidebar nếu thất bại (giống commServer.start() cũ)
     reconnectDelay = RECONNECT_MIN_MS;
     await connect();
-    syncLibraryToCloud();
+    syncLibraryToCloud({ immediate: true });
+    startBackgroundSyncLoop();
     pollCloud().catch(() => {});
     clearInterval(cloudPollTimer);
     cloudPollTimer = setInterval(() => { pollCloud().catch(() => {}); }, CLOUD_POLL_MS);
@@ -235,6 +245,12 @@ function createRelayClient({ store, operatorAuthStore, onEvent, onPresence, onSe
   function stop() {
     wantConnected = false;
     clearTimeout(reconnectTimer);
+    clearTimeout(libTimer);
+    libTimer = null;
+    clearTimeout(bgTimer);
+    bgTimer = null;
+    clearInterval(bgIntervalTimer);
+    bgIntervalTimer = null;
     clearInterval(cloudPollTimer);
     cloudPollTimer = null;
     if (ws) { try { ws.close(); } catch (e) {} }
@@ -367,25 +383,177 @@ function createRelayClient({ store, operatorAuthStore, onEvent, onPresence, onSe
     const j = await adminPresenceCall('blocked', 'GET');
     return j.blocked || [];
   }
+  // ---- Hộp thư bài hát mới từ web (/admin/songs/*, X-Admin-Secret) ----
+  // Operator duyệt rồi mới nạp vào thư viện. Relay giữ bản chờ trong DO storage
+  // nên bài gửi lúc laptop tắt vẫn còn khi mở lại.
+  async function fetchPendingSongs() {
+    const j = await adminSongsCall('pending', 'GET');
+    return Array.isArray(j.songs) ? j.songs : [];
+  }
+  async function adminSongsCall(action, method, body) {
+    const c = cfg();
+    const res = await fetch(`${roomBaseUrl()}/admin/songs/${action}`, {
+      method: method || 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Admin-Secret': c.relayAdminSecret },
+      body: method === 'GET' ? undefined : JSON.stringify(body || {}),
+      signal: AbortSignal.timeout(15000)
+    });
+    const j = await res.json().catch(() => ({ error: 'Không đọc được phản hồi từ relay' }));
+    if (!res.ok && !j.error) j.error = `HTTP ${res.status}`;
+    return j;
+  }
+  // action: 'approve' | 'reject'. Trả {ok:true} hoặc {error}.
+  function resolveSong({ webId, action, reason = '', songId = null } = {}) {
+    return adminSongsCall('resolve', 'POST', { webId, action, reason, songId });
+  }
+
+  // ---- Ảnh nền thư viện -> cloud (cho trang /setlist/ xem trước slide) ----
+  // `listBackgroundImages()` -> [{name, key}] (key đổi khi file đổi, vd. sha1(tên+size+mtime));
+  // `makeBackgroundThumb(name)` -> Promise<Buffer JPEG ≤400KB | null>. Cả hai do main.js cấp
+  // (cần Electron nativeImage) nên relay-client vẫn chạy được bằng Node thuần khi test.
+  // Chỉ ẢNH — video bỏ qua. So với manifest trên relay: tải ảnh thiếu/đã đổi, xoá ảnh đã bỏ.
+  let bgTimer = null;
+  let bgIntervalTimer = null;
+  let bgRunning = false;
+  let bgDirty = false;
+  let bgLastSync = { ok: null, at: 0, error: null, uploaded: 0, removed: 0 };
+
+  async function adminBgCall(action, method, body) {
+    const c = cfg();
+    const res = await fetch(`${roomBaseUrl()}/admin/backgrounds/${action}`, {
+      method: method || 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Admin-Secret': c.relayAdminSecret },
+      body: method === 'GET' ? undefined : JSON.stringify(body || {}),
+      signal: AbortSignal.timeout(30000)
+    });
+    const j = await res.json().catch(() => ({ error: 'Không đọc được phản hồi từ relay' }));
+    if (!res.ok && !j.error) j.error = `HTTP ${res.status}`;
+    return j;
+  }
+
+  async function runBackgroundSync() {
+    if (!listBackgroundImages || !makeBackgroundThumb) return;
+    if (bgRunning) { bgDirty = true; return; }
+    bgRunning = true; bgDirty = false;
+    let uploaded = 0, removed = 0, errMsg = null;
+    try {
+      const remote = await adminBgCall('list', 'GET');
+      if (remote.error) throw new Error(remote.error);
+      const remoteItems = Array.isArray(remote.items) ? remote.items : [];
+      const local = (listBackgroundImages() || []).slice(0, 200);
+      const localByName = new Map(local.map((l) => [l.name, l]));
+      const remoteByName = new Map(remoteItems.map((r) => [r.name, r]));
+
+      const staleIds = remoteItems.filter((r) => !localByName.has(r.name)).map((r) => r.id);
+      if (staleIds.length) {
+        const r = await adminBgCall('remove', 'POST', { ids: staleIds });
+        if (r.error) throw new Error(r.error);
+        removed = staleIds.length;
+      }
+      for (const img of local) {
+        const have = remoteByName.get(img.name);
+        if (have && have.key === img.key) continue;
+        let thumb = null;
+        try { thumb = await makeBackgroundThumb(img.name); } catch (e) { thumb = null; }
+        if (!thumb || !thumb.length) continue; // ảnh hỏng/không đọc được -> bỏ qua, không chặn cả đợt
+        const r = await adminBgCall('put', 'POST', { name: img.name, key: img.key, dataB64: Buffer.from(thumb).toString('base64') });
+        if (r.error) { console.warn(`[BandComm] Không đẩy được nền "${img.name}": ${r.error}`); continue; }
+        uploaded++;
+      }
+    } catch (e) {
+      errMsg = String((e && e.message) || e);
+    }
+    bgRunning = false;
+    bgLastSync = { ok: !errMsg, at: Date.now(), error: errMsg, uploaded, removed };
+    if (errMsg) console.warn(`[BandComm] Đồng bộ ảnh nền thất bại: ${errMsg} (sẽ thử lại ở lượt định kỳ).`);
+    else if (uploaded || removed) console.log(`[BandComm] Đồng bộ ảnh nền: +${uploaded} / -${removed}.`);
+    if (bgDirty) scheduleBackgroundSync(backgroundSyncDelayMs);
+  }
+
+  function scheduleBackgroundSync(delayMs) {
+    clearTimeout(bgTimer);
+    bgTimer = setTimeout(() => { bgTimer = null; runBackgroundSync().catch(() => {}); }, delayMs == null ? backgroundSyncDelayMs : delayMs);
+    if (bgTimer && bgTimer.unref) bgTimer.unref();
+  }
+  function syncBackgroundsToCloud() { scheduleBackgroundSync(backgroundSyncDelayMs); }
+  function getBackgroundSyncStatus() { return { ...bgLastSync, pending: !!bgTimer || bgRunning }; }
+  function startBackgroundSyncLoop() {
+    if (!listBackgroundImages) return;
+    scheduleBackgroundSync(backgroundSyncDelayMs);
+    clearInterval(bgIntervalTimer);
+    // Định kỳ: bắt cả ảnh người dùng bỏ thẳng vào thư mục media (không qua nút Import).
+    bgIntervalTimer = setInterval(() => { scheduleBackgroundSync(0); }, backgroundSyncIntervalMs);
+    if (bgIntervalTimer && bgIntervalTimer.unref) bgIntervalTimer.unref();
+  }
+
   // Kick = ngắt kết nối hiện tại, KHÔNG cấm quay lại. Block = ngắt luôn +
   // cấm profileId đó join lại (bền vững, xem room-relay.js's verifyToken()).
   function kickClient(clientId) { return adminPresenceCall('kick', 'POST', { clientId }); }
   function blockClient(clientId) { return adminPresenceCall('block', 'POST', { clientId }); }
   function unblockProfile(profileId) { return adminPresenceCall('unblock', 'POST', { profileId }); }
 
-  // Đẩy chỉ mục thư viện lên Worker (KV theo room code, KHÔNG qua DO) — y
-  // hệt server.js cũ, fire-and-forget, không chặn/ảnh hưởng luồng chính.
-  function syncLibraryToCloud() {
+  // Đẩy chỉ mục thư viện lên Worker (KV theo room code, KHÔNG qua DO).
+  // Gọi sau MỖI lần thư viện đổi (save/delete/import…) nên phải:
+  //  - GOM (debounce, trailing): import 40 bài = 1 lượt đẩy chứ không phải 40
+  //    — Worker giới hạn 30 lượt ghi/5 phút/phòng (chung với setlist/ack),
+  //    vượt là 429 và lượt cuối (đầy đủ nhất) có thể là lượt bị từ chối.
+  //  - THỬ LẠI có lùi dần khi 429/lỗi mạng — trước đây lỗi bị nuốt, cloud cũ mãi.
+  //  - luôn đọc thư viện MỚI NHẤT lúc thực sự gửi (getLibraryIndex đọc đĩa).
+  let libTimer = null;
+  let libAttempt = 0;
+  let libInFlight = false;
+  let libDirty = false;
+  let libLastSync = { ok: null, at: 0, error: null, count: 0 };
+
+  function scheduleLibrarySync(delayMs) {
+    clearTimeout(libTimer);
+    libTimer = setTimeout(() => { libTimer = null; pushLibraryNow().catch(() => {}); }, delayMs);
+    if (libTimer && libTimer.unref) libTimer.unref();
+  }
+
+  async function pushLibraryNow() {
+    if (libInFlight) { libDirty = true; return; } // đang gửi dở → gửi lại bản mới nhất ngay sau đó
     const c = cfg();
     const roomId = (c.room && c.room.code) || c.cloudRoomId;
     if (!roomId || typeof getLibraryIndex !== 'function') return;
-    const idx = getLibraryIndex() || [];
-    fetch(`${relayHttpBase()}/library-sync`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ roomId, songs: idx }),
-      signal: AbortSignal.timeout(15000)
-    }).catch(() => {});
+    libInFlight = true;
+    libDirty = false;
+    let errMsg = null;
+    let count = 0;
+    try {
+      const idx = getLibraryIndex() || [];
+      count = idx.length;
+      const res = await fetch(`${relayHttpBase()}/library-sync`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Admin-Secret': c.relayAdminSecret },
+        body: JSON.stringify({ roomId, songs: idx }),
+        signal: AbortSignal.timeout(15000)
+      });
+      if (!res.ok) errMsg = `HTTP ${res.status}`;
+    } catch (e) {
+      errMsg = String((e && e.message) || e);
+    }
+    libInFlight = false;
+    if (!errMsg) {
+      libAttempt = 0;
+      libLastSync = { ok: true, at: Date.now(), error: null, count };
+      if (libDirty) scheduleLibrarySync(libraryDebounceMs);
+      return;
+    }
+    libLastSync = { ok: false, at: Date.now(), error: errMsg, count };
+    const delay = libraryRetryDelaysMs[Math.min(libAttempt, libraryRetryDelaysMs.length - 1)];
+    libAttempt++;
+    console.warn(`[BandComm] Đồng bộ thư viện lên cloud thất bại (${errMsg}) — thử lại sau ${Math.round(delay / 1000)}s (lần ${libAttempt}).`);
+    if (libAttempt <= libraryRetryDelaysMs.length + 2) scheduleLibrarySync(delay);
   }
+
+  // `immediate` dùng cho start() (đẩy ngay khi vừa kết nối); các nơi khác gọi
+  // không tham số → gom lại. Tên/hình dạng cũ (không tham số) giữ nguyên.
+  function syncLibraryToCloud({ immediate = false } = {}) {
+    libAttempt = 0;
+    if (immediate) { clearTimeout(libTimer); pushLibraryNow().catch(() => {}); return; }
+    scheduleLibrarySync(libraryDebounceMs);
+  }
+  function getLibrarySyncStatus() { return { ...libLastSync, pending: !!libTimer || libInFlight }; }
 
   function announceRoomConfig() { /* no-op có chủ đích — xem comment đầu file */ }
 
@@ -394,9 +562,11 @@ function createRelayClient({ store, operatorAuthStore, onEvent, onPresence, onSe
     operatorSend, operatorAck, operatorResolve,
     rotateSecret,
     galleryManifest, galleryAdd, galleryRemove, galleryRemoveMany, galleryClear, galleryReorder,
-    announceRoomConfig, syncLibraryToCloud,
+    announceRoomConfig, syncLibraryToCloud, getLibrarySyncStatus,
     accountsList, accountsCreate, accountsUpdate, accountsUpdatePassword, accountsSetActive, accountsRemove,
-    presenceList, blockedList, kickClient, blockClient, unblockProfile
+    presenceList, blockedList, kickClient, blockClient, unblockProfile,
+    fetchPendingSongs, resolveSong,
+    syncBackgroundsToCloud, getBackgroundSyncStatus
   };
 }
 

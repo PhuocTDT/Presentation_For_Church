@@ -44,6 +44,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   selectFolder: () => ipcRenderer.invoke('select-folder'),
   showOpenDialogMulti: (opts) => ipcRenderer.invoke('show-open-dialog-multi', opts),
   importSongsFromFile: (filePaths) => ipcRenderer.invoke('import-songs-from-file', filePaths),
+  exportImportTemplates: () => ipcRenderer.invoke('export-import-templates'),
   openLiveWindow: (bounds) => ipcRenderer.invoke('open-live-window', bounds),
   closeLiveWindow: () => ipcRenderer.invoke('close-live-window'),
   liveSendContent: (data) => ipcRenderer.invoke('live-send-content', data),
@@ -91,7 +92,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
     start: () => ipcRenderer.invoke('band-comm-start'),
     stop: () => ipcRenderer.invoke('band-comm-stop'),
     getStatus: () => ipcRenderer.invoke('band-comm-status'),
-    openFirewall: () => ipcRenderer.invoke('band-comm-open-firewall'),
     getConfig: () => ipcRenderer.invoke('band-comm-get-config'),
     saveConfig: (cfg) => ipcRenderer.invoke('band-comm-save-config', cfg),
     send: (payload) => ipcRenderer.invoke('band-comm-send', payload),
@@ -128,9 +128,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
       ipcRenderer.removeAllListeners('band-comm-setlist');
       ipcRenderer.on('band-comm-setlist', callback);
     },
-    tunnelCheckLogin: () => ipcRenderer.invoke('band-comm-tunnel-check-login'),
-    tunnelLogin: () => ipcRenderer.invoke('band-comm-tunnel-login'),
-    tunnelCreate: (payload) => ipcRenderer.invoke('band-comm-tunnel-create', payload),
+    // Bài hát mới do thành viên tạo trên trang web /setlist/: operator duyệt LÚC NẠP SETLIST (index.html reviewNewWebSongs).
+    songInboxPending: () => ipcRenderer.invoke('band-song-pending'),
+    songInboxReject: (payload) => ipcRenderer.invoke('band-song-reject', payload),
     onTunnelLoginUrl: (callback) => {
       ipcRenderer.removeAllListeners('band-comm-tunnel-login-url');
       ipcRenderer.on('band-comm-tunnel-login-url', callback);
