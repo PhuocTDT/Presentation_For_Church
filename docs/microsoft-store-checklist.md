@@ -12,13 +12,16 @@ Ký hiệu: 👤 bạn làm · 🤖 tôi làm được ngay · 🤝 cần cả h
 
 ### Bước 1 — Mở khóa các mục bắt buộc (không có bước này không nộp được)
 - [ ] 👤 1.1 **Pricing and availability:** Free, chọn thị trường (Việt Nam trước nếu muốn), Public, hiển thị trên Store. *(5 phút)*
-- [ ] 🤝 1.2 **Chính sách riêng tư (URL công khai)** — chặn mục Properties.
+- [x] 🤝 1.2 **Chính sách riêng tư (URL công khai)** — chặn mục Properties.  
+  ↳ trang `website/privacy.html` đã viết xong, đã điền email; **chưa đăng**. Điều kiện còn lại: bạn cho phép đăng (loại `website/v2/` khi deploy).
   - 👤 Điền: tên người/tổ chức phát hành, email liên hệ quyền riêng tư, thời hạn lưu dữ liệu, quy trình xóa tài khoản (đề xuất: xóa thủ công khi có email yêu cầu, trả lời trong N ngày).
   - 🤖 Tôi viết bản cuối từ `docs/drafts/privacy-policy.vi.md`, tạo trang `website/privacy.html` (đúng CSP của website), và sau khi bạn đồng ý mới deploy lên `worship-official.link/privacy`.
 - [ ] 👤 1.3 **Properties:** danh mục Productivity, dán URL chính sách riêng tư, website `https://worship-official.link`. (`docs/drafts/store-listing.vi.md` mục 2)
 - [ ] 👤 1.4 **Age ratings:** trả lời bảng IARC; nhớ khai **"người dùng giao tiếp với nhau"** (Kênh Band). (mục 3 của nháp)
-- [ ] 🤖 1.5 **Ảnh chụp màn hình** (ít nhất 1, nên 4–6, ≥ 1366×768): tôi chụp bằng chính app thật, dùng **file mẫu (nội dung giả)** và ảnh nền do chính tôi tạo, che mọi thông tin cá nhân — bạn không cần chụp tay. *(cần bạn đồng ý để tôi chạy app và lưu ảnh vào `docs/drafts/screenshots/`)*
-- [ ] 🤖 1.6 **Store logos** (ảnh vuông 300×300 và các cỡ Partner Center yêu cầu): tôi tạo từ `icon.jpg`, kể cả các scale 125/150/200/400 còn thiếu cho gói.
+- [x] 🤖 1.5 **Ảnh chụp màn hình** (ít nhất 1, nên 4–6, ≥ 1366×768): tôi chụp bằng chính app thật, dùng **file mẫu (nội dung giả)** và ảnh nền do chính tôi tạo, che mọi thông tin cá nhân — bạn không cần chụp tay. *(cần bạn đồng ý để tôi chạy app và lưu ảnh vào `docs/drafts/screenshots/`)*  
+  ↳ xong 2026-10-03: 4 ảnh 1920×1080 ở `docs/drafts/screenshots/` (script `scripts/make-store-screenshots.mjs`), đã soát không lộ thông tin cá nhân.
+- [x] 🤖 1.6 **Store logos** (ảnh vuông 300×300 và các cỡ Partner Center yêu cầu): tôi tạo từ `icon.jpg`, kể cả các scale 125/150/200/400 còn thiếu cho gói.  
+  ↳ xong 2026-10-03: 20 file scale trong `build/appx/` + `docs/drafts/store-assets/store-logo-300x300.png` (nguồn `icon.jpg` chỉ 732px nên không làm cỡ lớn hơn 300).
 - [ ] 👤 1.7 **Store listings (vi-VN và en-US):** dán mô tả, tính năng, từ khóa, "What's new", bản quyền từ `docs/drafts/store-listing.vi.md` mục 4–5; tải ảnh ở 1.5 và logo ở 1.6.
 - [ ] 🤝 1.8 **Tài khoản thử cho Kênh Band** (người duyệt cần đăng nhập thử): bạn tạo một tài khoản operator **riêng cho việc chứng nhận** và một mã phòng; không dùng tài khoản thật.
 - [ ] 👤 1.9 **Submission options:** dán lời giải trình `runFullTrust` và "Notes for certification" (mục 7 của nháp), điền tài khoản thử từ 1.8. → mục này hết "Incomplete".
@@ -45,8 +48,10 @@ Ký hiệu: 👤 bạn làm · 🤖 tôi làm được ngay · 🤝 cần cả h
 - [ ] 🤝 5.2 **Repo GitHub đang public và còn theo dõi `data/*.xml`, `songs.json`:** quyết định gỡ khỏi bản theo dõi (giữ lịch sử) hay xóa cả lịch sử.
 - [ ] 🤖 5.3 Bỏ `script-src 'unsafe-inline'` (chuyển ~124 inline handler sang `addEventListener`).
 - [ ] 🤖 5.4 Đọc nốt ~40% handler IPC còn phân loại theo tên; whitelist khóa cho `save-settings`.
-- [ ] 🤖 5.5 SBOM CycloneDX; file giấy phép riêng của Material Symbols; nâng cấp công cụ build để hết 13 cảnh báo `npm audit` (dev).
-- [ ] 🤖 5.6 Xóa file chết `src/js/core.js`, `utils.js`, `src/css/styles.css`, `edit-song.html`; viết lại `docs/architecture.md`, `README.md`, `band-comm-plan.md` (còn mô tả kiến trúc trước GĐ2).
+- [x] 🤖 5.5 SBOM CycloneDX; file giấy phép riêng của Material Symbols; nâng cấp công cụ build để hết 13 cảnh báo `npm audit` (dev).  
+  ↳ SBOM CycloneDX xong: `sbom/cyclonedx.json` (23 thành phần production). Giấy phép Material Symbols đã nằm trong `licenses/fonts/Apache-2.0.txt`. Còn lại: 13 cảnh báo `npm audit` ở công cụ build (cần nâng bản major).
+- [x] 🤖 5.6 Xóa file chết `src/js/core.js`, `utils.js`, `src/css/styles.css`, `edit-song.html`; viết lại `docs/architecture.md`, `README.md`, `band-comm-plan.md` (còn mô tả kiến trúc trước GĐ2).  
+  ↳ xong 2026-10-03: đã xóa `src/js/core.js`, `utils.js`, `src/css/styles.css`, `edit-song.html`; viết lại `docs/architecture.md`, sửa `README.md`, `band-comm-plan.md` (gắn nhãn lịch sử), `CLAUDE.md`.
 - [ ] 👤 5.7 Hai quyết định nhỏ: `Ctrl+O` có đổi sang "Mở Schedule" theo thông lệ không; thanh menu cấp 1 (File/Edit/View/Channel) có Việt hóa không.
 
 ### Con đường găng (chỉ những việc quyết định bạn nộp được sớm hay muộn)

@@ -1305,6 +1305,7 @@ function createLiveWindow(initialBounds = null) {
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: true,
+      backgroundThrottling: false, // màn hình Live phải luôn vẽ đủ khung hình dù bị che
       autoplayPolicy: 'no-user-gesture-required'
     }
   });
@@ -1459,6 +1460,17 @@ async function confirmSaveBeforeExit() {
   }
 }
 
+// Trả focus bàn phím cho TRANG sau hộp thoại native / mở file từ ngoài: mainWindow.focus() chỉ lo cửa sổ,
+// webContents.focus() mới đưa focus vào trang để ô nhập (lời bài hát, tên bài…) nhận phím ngay.
+function refocusMainWindow() {
+  try {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.focus();
+      if (!mainWindow.webContents.isDestroyed()) mainWindow.webContents.focus();
+    }
+  } catch (e) {}
+}
+
 function cleanupAndExit() {
   if (isShuttingDown) return;
   isShuttingDown = true;
@@ -1594,6 +1606,7 @@ function createWindow() {
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: true,
+      backgroundThrottling: false, // không hạ tốc timer/vẽ khi cửa sổ bị che hay ở nền
       autoplayPolicy: 'no-user-gesture-required'
     }
   });
@@ -1800,12 +1813,22 @@ if (!hasInstanceLock) {
       createWindow();
     }
     deliverSchedulePath(findSchedulePathInArgv(argv));
+    setTimeout(refocusMainWindow, 300); // sau khi renderer nhận file Schedule
   });
   app.on('open-file', (e, p) => { e.preventDefault(); deliverSchedulePath(p); });
   deliverSchedulePath(findSchedulePathInArgv(process.argv));
 }
 
 bootstrapGpuAccelerationPreference();
+
+// Chống "giao diện đứng / không bấm được / không vẽ lại" trên một số máy (máy ảo, điều khiển từ xa, nhiều màn hình,
+// driver đồ họa lạ): Chromium tự đoán cửa sổ đang BỊ CHE rồi ngừng vẽ + giảm tốc timer, nên cửa sổ vẫn nhìn thấy
+// nhưng không phản hồi chuột/phím cho tới khi kéo/đổi cỡ cửa sổ. Với phần mềm trình chiếu càng không được phép: màn
+// hình Live chạy video/slide trên máy chiếu. Tắt hẳn việc đoán che khuất và việc hạ ưu tiên renderer nền.
+app.commandLine.appendSwitch('disable-features', 'CalculateNativeWinOcclusion');
+app.commandLine.appendSwitch('disable-renderer-backgrounding');
+app.commandLine.appendSwitch('disable-backgrounding-occluded-windows');
+
 app.whenReady().then(() => {
   if (!hasInstanceLock) return; // a rival instance — we're already quitting
   installPermissionPolicy();
@@ -2713,7 +2736,7 @@ app.whenReady().then(() => {
     // Parent the dialog to the window — a modeless native dialog on Windows can
     // leave the BrowserWindow without keyboard/mouse focus ("app feels locked").
     const r = await dialog.showOpenDialog(mainWindow, { properties: ['openFile'], filters: [{ name: 'Worship Schedule', extensions: ['bcsch'] }] });
-    if (mainWindow && !mainWindow.isDestroyed()) mainWindow.focus();
+    refocusMainWindow();
     if (!r.canceled && r.filePaths.length > 0) {
       try {
         approvePath(approvedSchedulePaths, r.filePaths[0]);
@@ -2727,7 +2750,7 @@ app.whenReady().then(() => {
 
   ipcMain.handle('show-save-dialog', async (e, d) => {
     const r = await dialog.showSaveDialog(mainWindow, { filters: [{ name: 'Worship Schedule', extensions: ['bcsch'] }] });
-    if (mainWindow && !mainWindow.isDestroyed()) mainWindow.focus();
+    refocusMainWindow();
     if (!r.canceled && r.filePath) { approvePath(approvedSchedulePaths, r.filePath); safeWriteSync(r.filePath, d); return r.filePath; }
     return null;
   });

@@ -369,6 +369,73 @@ export class RoomRelay {
     }
   }
 
+  // ---- POST /admin/purge: XÓA TOÀN BỘ dữ liệu của phòng (quyền được xóa dữ liệu cá nhân, xem
+  // chính sách riêng tư). Gồm: storage của Durable Object (cấu hình, tài khoản thành viên, hồ sơ nút
+  // bấm, tin nhắn gần nhất, danh sách chặn, bài hát chờ duyệt, ảnh), ảnh hợp âm/ảnh nền trên R2,
+  // và các khóa KV của phòng (hộp thư setlist, ack, thư viện đồng bộ). Ngắt mọi kết nối đang mở.
+  // Ai được gọi: (a) đang giữ adminSecret của phòng, (b) chủ phòng bằng Cognito ID token, hoặc
+  // (c) quản trị viên dịch vụ có env.ADMIN_PURGE_KEY (wrangler secret) qua header X-Purge-Key —
+  // dùng khi chủ phòng gửi yêu cầu xóa mà không còn máy/khóa cũ. Chỉ xóa dữ liệu của phòng;
+  // KHÔNG xóa tài khoản đăng nhập (việc đó do identity: DELETE /admin/operator/:email).
+  async handlePurge(request) {
+    const code = this.roomCode || (this.config && this.config.code) || '';
+    if (!/^[A-Z0-9]{4,10}$/.test(code)) return json({ error: 'Mã phòng không hợp lệ' }, 400);
+
+    let allowed = this.checkAdminSecret(request);
+    if (!allowed && this.env && this.env.ADMIN_PURGE_KEY) {
+      const given = request.headers.get('X-Purge-Key') || '';
+      const want = String(this.env.ADMIN_PURGE_KEY);
+      if (given.length === want.length && given.length >= 16) {
+        let diff = 0;
+        for (let i = 0; i < given.length; i++) diff |= given.charCodeAt(i) ^ want.charCodeAt(i);
+        allowed = diff === 0;
+      }
+    }
+    if (!allowed) {
+      const authHeader = request.headers.get('Authorization') || '';
+      const bearer = authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : '';
+      if (bearer && await this.bearerIsRoomOwner(bearer, code)) allowed = true;
+    }
+    if (!allowed) return json({ error: 'unauthorized' }, 403);
+
+    const deleted = { r2Gallery: 0, r2Backgrounds: 0, kvSetlists: 0, kvLibrary: 0 };
+    const purgeR2 = async (bucket, prefix) => {
+      let n = 0, cursor;
+      do {
+        const page = await bucket.list({ prefix, cursor, limit: 1000 });
+        const keys = (page.objects || []).map((o) => o.key);
+        if (keys.length) { await bucket.delete(keys); n += keys.length; }
+        cursor = page.truncated ? page.cursor : undefined;
+      } while (cursor);
+      return n;
+    };
+    const purgeKv = async (kv, prefix) => {
+      let n = 0, cursor;
+      do {
+        const page = await kv.list({ prefix, cursor, limit: 1000 });
+        for (const k of page.keys) { await kv.delete(k.name); n++; }
+        cursor = page.list_complete ? undefined : page.cursor;
+      } while (cursor);
+      return n;
+    };
+    const env = this.env || {};
+    if (env.GALLERY) deleted.r2Gallery = await purgeR2(env.GALLERY, code + '/');
+    if (env.BGS) deleted.r2Backgrounds = await purgeR2(env.BGS, code + '/');
+    if (env.SETLISTS) {
+      deleted.kvSetlists = (await purgeKv(env.SETLISTS, 'sl:' + code + ':')) + (await purgeKv(env.SETLISTS, 'ack:' + code + ':'));
+      if (await env.SETLISTS.get('lib:' + code)) { await env.SETLISTS.delete('lib:' + code); deleted.kvLibrary = 1; }
+    }
+
+    for (const ws of this.ctx.getWebSockets()) { try { ws.close(1000, 'Phòng đã bị xóa'); } catch (e) { /* đã đóng */ } }
+    await this.ctx.storage.deleteAll();
+    // Đưa trạng thái trong RAM về rỗng (instance này có thể còn sống sau khi xóa storage)
+    this.config = null; this.secretHex = null; this.adminSecret = null; this.ring = [];
+    this.accounts = []; this.profiles = {}; this.gallery = { images: [], updatedAt: 0 }; this.blocked = {};
+    this.songInbox = []; this.bgManifest = { items: [], updatedAt: 0 };
+    this.joinAttempts = new Map(); this.galleryAddAttempts = new Map(); this.pendingLogins = new Map();
+    return json({ ok: true, deleted });
+  }
+
   async ensureConfig(code) {
     if (this.config) return this.config;
     const c = code || this.roomCode;
@@ -1369,6 +1436,7 @@ export class RoomRelay {
       }
       if (request.method === 'POST' && p === '/admin/config') return this.handleAdminConfig(request);
       if (p === '/admin/verify') return this.handleAdminVerify(request);
+      if (request.method === 'POST' && p === '/admin/purge') return this.handlePurge(request);
       if (p.indexOf('/admin/accounts/') === 0) {
         return this.handleAdminAccounts(request, p.slice('/admin/accounts/'.length));
       }

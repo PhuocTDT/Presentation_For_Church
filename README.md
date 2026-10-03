@@ -21,8 +21,8 @@ Sidebar `#bandPanel` bên trong `index.html` (menu **Channel** hoặc `Ctrl+Shif
 - Toast đẩy về điện thoại, tự ẩn sau 2–3s, không có khung chat che màn hình
 - Thư viện ảnh hợp âm: điện thoại được cấp quyền "phụ trách ảnh" upload, cả nhóm xem theo yêu cầu (vuốt ngang + dot pager), operator cũng quản lý được từ sidebar
 - Soạn setlist ngay trên điện thoại, gửi về operator để nạp vào Schedule; nếu máy vận hành đang tắt, tin nhắn setlist được giữ tạm trên một relay cloud (Cloudflare Worker) rồi đồng bộ lại khi máy mở lên
-- Tự khởi động server khi mở app, tự quảng bá `<hostname>.local` qua mDNS tự viết, hiện QR + IP LAN để quét, có công cụ mở Windows Firewall
-- Tùy chọn gắn thêm Cloudflare Tunnel để band vào được từ ngoài LAN (4G/mạng khác)
+- Không có server nào chạy trên máy operator: cả máy operator lẫn điện thoại đều kết nối ra relay trên Cloudflare (`channel.worship-official.link`), nên ban hát vào được từ bất kỳ mạng nào (Wi-Fi hay 4G). Operator đăng nhập tài khoản trước khi dùng Kênh Band; mã QR được tạo ngay trên máy.
+- Phần mềm **không kèm sẵn** bài hát, Kinh Thánh hay ảnh/video nền: người dùng tự nhập theo `templates/import/HUONG-DAN-NHAP-DU-LIEU.md` (menu File → Tải file mẫu định dạng nhập dữ liệu).
 
 Chi tiết kiến trúc và giao thức: xem `docs/architecture.md`, `docs/data-contracts.md`, `band-comm-plan.md`.
 

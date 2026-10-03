@@ -1,3 +1,5 @@
+> **TÀI LIỆU LỊCH SỬ** — kế hoạch gốc của Kênh Band theo kiến trúc LAN (server trong app, mDNS, Cloudflare Tunnel). Phần đó đã bị **thay hoàn toàn** ở GĐ2 bằng relay Durable Object trên Cloudflare và đã xóa khỏi code. Kiến trúc hiện tại: `docs/architecture.md`; giao thức và dữ liệu: `docs/data-contracts.md`.
+
 # Kế hoạch: Kênh Band LAN
 
 Kênh liên lạc thời gian thực trong mạng nội bộ giữa **band nhạc**, **người hướng dẫn thờ phượng** và **người trình chiếu**.

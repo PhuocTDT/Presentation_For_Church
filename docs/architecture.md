@@ -1,84 +1,99 @@
 # Kiến Trúc
 
+> Cập nhật 2026-10-03 theo kiến trúc **hiện tại** (sau GĐ2: relay trên Cloudflare, không còn LAN server/mDNS/Cloudflare Tunnel). Các tài liệu `band-comm-plan.md` và mục "Named Tunnel" trong `docs/data-contracts.md` là **lịch sử**, không còn đúng với code.
+
 ## Tổng quan
 
-Đây là ứng dụng Electron desktop cho trình chiếu nhà thờ. Hai cửa sổ renderer (Operator, Live) + một comm server LAN trong main process; Kênh Band là **sidebar bên trong `index.html`**, không phải cửa sổ riêng:
+Ứng dụng Electron desktop cho trình chiếu thờ phượng. Hai cửa sổ renderer (Operator, Live) + một **client relay** trong main process. **Kênh Band** là sidebar bên trong `index.html` (`#bandPanel`), không phải cửa sổ riêng. Cả máy operator lẫn điện thoại ban hát đều là **client kết nối ra ngoài** tới relay trên Cloudflare (`channel.worship-official.link`); không có server nào lắng nghe trên máy operator, không có LAN, không có tunnel.
 
-- `main.js`: main process, tạo cửa sổ, IPC, protocol, file I/O, comm server + mDNS Kênh Band
-- `index.html`: cửa sổ operator (gồm sidebar Kênh Band `#bandPanel`), chứa phần lớn UI và logic renderer
+Bản phát hành **không đóng gói nội dung** (Kinh Thánh, bài hát, media): người dùng tự nhập theo `templates/import/HUONG-DAN-NHAP-DU-LIEU.md`.
+
+### Thành phần chạy trên máy
+
+- `main.js`: main process — cửa sổ, menu, IPC, protocol `app-media://`, file I/O an toàn, client relay Kênh Band, đăng nhập operator, chặn điều hướng/quyền (xem "Mô hình bảo mật")
+- `preload.js`: cầu nối `window.electronAPI` (`contextBridge`)
+- `index.html`: cửa sổ operator (gồm sidebar Kênh Band), chứa phần lớn UI và logic renderer (monolith)
 - `live.html`: cửa sổ trình chiếu
-- `edit-song.html`: modal/editor giao diện bài hát
-- `preload.js`: cầu nối an toàn qua `window.electronAPI`
-- `src/schema.js`: validate/migrate dữ liệu
-- `src/band-comm/`: server (HTTP + **WebSocket**, xem `ws.js`) + store + protocol + mDNS + vendor QR encoder cho Kênh Band
-- `comm/mobile/`: web client cho điện thoại band (server tự phục vụ) — cảnh báo/chat, thư viện ảnh hợp âm, soạn setlist
-- `comm/setlist/`: trang web soạn setlist + tạo bài hát mới (gửi operator duyệt) + xem trước slide, phục vụ ở `channel.worship-official.link/setlist/` — xem `docs/data-contracts.md` mục "Trang `/setlist/`"
-- `cloud/worker/`: Cloudflare Worker + KV — hộp thư setlist khi laptop tắt hẳn. **Không** đóng gói vào app (không có trong `files` của `electron-builder`), chỉ deploy độc lập bằng `wrangler`
-- `cloud/identity/`: Cloudflare Worker "band-identity" (domain `identity.worship-official.link`) — cầu nối duy nhất tới AWS Cognito (đăng nhập tài khoản trung tâm dùng chung nhiều nhà thờ, `authMode='cognito'`, xem `cloud/identity-plan.md`). Cũng **không** đóng gói vào app, deploy độc lập bằng `wrangler`
-- `main.js` **tự spawn `cloudflared`** (bundle sẵn, `scripts/fetch-cloudflared.js`) ngay khi band-comm start — mặc định Quick Tunnel (`*.trycloudflare.com`, đổi mỗi lần chạy), hoặc Named Tunnel domain cố định nếu đã cấu hình `tunnelName` (qua wizard trong app). `cloud/tunnel/start-tunnel.bat` chỉ còn là cách chạy tunnel thủ công/dự phòng, không phải đường chính
+- `src/schema.js`: validate/migrate bài hát/Kinh Thánh
+- `src/library-sync.js`: gộp thư viện từ các bản cài cũ trên cùng máy
+- `src/band-comm/`: `relay-client.js` (WebSocket operator + đồng bộ thư viện/ảnh nền lên cloud, debounce/retry), `store.js` (cấu hình Kênh Band, `relayAdminSecret` mã hóa bằng `safeStorage`), `operator-auth.js` (phiên Cognito của operator, token mã hóa), `vendor/qrcode-generator.js` (QR tạo ngay trên máy)
+- `src/css/`: `tailwind.generated.css` (Tailwind **build tĩnh**, `npm run build:css`), `google-fonts.css` (+ `fonts/google/`, tạo bằng `scripts/fetch-google-fonts.js`) — giao diện chạy offline, không nạp tài nguyên từ Internet
+- `fonts/cmg-sans/`: phông CMG Sans (SIL OFL); giấy phép ở `THIRD_PARTY_NOTICES.md`, `licenses/`
+- `templates/import/`: file mẫu + hướng dẫn định dạng nhập dữ liệu (đóng gói theo app)
+
+### Thành phần chạy trên cloud (deploy độc lập bằng `wrangler`, KHÔNG đóng gói vào app)
+
+- `cloud/worker/` (`channel.worship-official.link`): `worker.js` (KV/R2: hộp thư setlist, đồng bộ thư viện, ảnh hợp âm; phục vụ `comm/mobile/` ở `/m/` và `comm/setlist/` ở `/setlist/`) + `room-relay.js` (**Durable Object** mỗi phòng: WebSocket realtime, replay 120 tin, tài khoản thành viên, hồ sơ nút, hộp thư bài hát mới chờ duyệt, manifest ảnh nền, route `/admin/purge` xóa dữ liệu phòng)
+- `cloud/identity/` (`identity.worship-official.link`): Worker "band-identity" — cầu nối duy nhất tới AWS Cognito (đăng nhập operator), quản lý phòng/thành viên, gửi mail qua Resend
+- `cloud/website/` + `website/`: website tĩnh (landing, portal, admin, `privacy.html`)
+- `comm/mobile/`: web client điện thoại ban hát; `comm/setlist/`: trang soạn setlist + bài mới + xem trước slide
 
 ## Luồng dữ liệu
 
 1. Renderer gọi `window.electronAPI.*`
 2. `preload.js` chuyển sang `ipcRenderer.invoke(...)`
-3. `main.js` xử lý qua `ipcMain.handle(...)`
+3. `main.js` xử lý qua `ipcMain.handle(...)` (mọi handler chỉ nhận lệnh từ `index.html`/`live.html` nạp từ `file://`)
 4. Dữ liệu được đọc/ghi trong `app.getPath('userData')`
 5. Nếu có live window, `main.js` đẩy nội dung sang `live.html`
 
-### Kênh Band (LAN + cloud)
+### Kênh Band
 
-1. Mở app → `main.js` **auto-start** comm server + mDNS; kết quả (chạy / lỗi) đẩy vào sidebar `#bandPanel`.
-2. Điện thoại band quét QR (`http://<hostname>.local:<port>`) hoặc gõ IP → tải `comm/mobile/` từ comm server.
-3. `POST /api/join` (name + mật khẩu phòng) → token; downstream là **WebSocket** `GET /api/ws?token=&since=` (không dùng SSE — Cloudflare Tunnel buffer streaming HTTP nên phía operator→phone không tới được).
-4. Điện thoại gửi lên bằng `fetch` POST; server fan-out qua WebSocket cho các điện thoại khác **và** gọi `onEvent` → `main.js` `webContents.send('band-comm-event', …)` tới sidebar trong `index.html`.
-5. Operator thao tác trong sidebar → `electronAPI.bandComm.*` → `main.js` → `commServer.operator*()` → WebSocket.
-6. Cấu hình + backup hồ sơ nút lưu ở `userData/band-comm.json` (qua `safeWriteSync`), gồm cả `cloudRoomId` (namespace cho hộp thư cloud).
-7. **Ảnh hợp âm**: bất kỳ client nào đã join hợp lệ đều thêm được, chỉ tự xoá được ảnh chính mình đã đăng (`ownerId` so theo `profileId`); ảnh không tự hiện, mỗi user bấm "Xem" mới tải.
-8. **Setlist**: điện thoại chọn bài từ `GET /api/library`, gửi `POST /api/setlist` → operator thấy thẻ trong sidebar, "Nạp" luôn **thay thế** toàn bộ Schedule. Nếu LAN không gửi được (laptop tắt hẳn), điện thoại fallback gửi thẳng lên Cloudflare Worker (`cloud/worker/`) bằng `cloudRoomId`; server local tự vét hộp thư này lúc `start()` + định kỳ khi đang chạy — xem `docs/data-contracts.md` mục Kênh Band để biết đầy đủ endpoint.
+1. Operator đăng nhập Cognito trong app (gate bắt buộc, `operator-auth.js`); chưa đăng nhập thì relay client không khởi động.
+2. `relay-client.js` kết nối WebSocket tới Durable Object của phòng (`/api/room/<mã phòng>/ws?adminSecret=…`), và gọi `POST /admin/config` để đăng ký cấu hình phòng. Quyền đặt/đặt lại `adminSecret`: đang giữ đúng secret, hoặc **chủ phòng** (token Cognito có email trùng `operatorEmail` của phòng).
+3. Điện thoại quét QR hoặc mở link `https://channel.worship-official.link/m/?room=<mã>` → `POST /join` (tên + mật khẩu phòng) → token; downstream là **WebSocket** (không dùng SSE).
+4. Điện thoại gửi bằng `fetch` POST; Durable Object fan-out cho các điện thoại khác và cho operator (client relay gọi `onEvent` → `main.js` gửi `band-comm-event` tới sidebar).
+5. Operator thao tác trong sidebar → `electronAPI.bandComm.*` → `main.js` → `commServer.operator*()` (tên biến giữ nguyên, thực chất là relay client).
+6. Cấu hình lưu ở `userData/band-comm.json` (`relayAdminSecret` được mã hóa), phiên operator ở `band-comm-operator.json` (token mã hóa).
+7. **Ảnh hợp âm**: client đã join thêm được, chỉ tự xóa được ảnh mình đăng (`ownerId` so theo `profileId`); R2 tự xóa sau 4 ngày (lifecycle rule `expire-4d`).
+8. **Setlist**: điện thoại gửi `POST /setlist`; operator nhận (qua WebSocket hoặc kéo từ hộp thư cloud khi vừa mở máy) và "Nạp" thay thế toàn bộ Schedule. Các endpoint ghi dành riêng cho operator (`/library-sync`, `/setlist/ack`, `GET /setlist`, `/gallery*`) yêu cầu `X-Admin-Secret` (chế độ `OPERATOR_AUTH_MODE`, xem `cloud/worker/wrangler.toml`).
+
+## Mô hình bảo mật (tóm tắt)
+
+- **Ranh giới tin cậy:** renderer coi như có thể bị chiếm. `contextIsolation`, `sandbox`, không `nodeIntegration`; CSP trên `index.html`/`live.html` (không nạp script/phông/ảnh từ ngoài); chặn điều hướng/`window.open`/webview; quyền Chromium mặc định từ chối.
+- **IPC:** bọc toàn bộ `ipcMain.handle` kiểm nguồn gọi; đường dẫn do renderer gửi (`save-schedule-to-path`, `import-songs-from-file`, `mediaPath`) chỉ được tin khi đã đi qua dialog của main. Bảng audit: `docs/ipc-audit.md`.
+- **Bí mật trên đĩa:** token Cognito và `relayAdminSecret` mã hóa bằng Electron `safeStorage` (DPAPI trên Windows).
+- **Đóng gói:** Electron fuses (`runAsNode`, `NODE_OPTIONS`, `--inspect` tắt; kiểm toàn vẹn `app.asar`, chỉ nạp từ asar). Dữ liệu import (JSON/XML/DOCX) được kiểm tra kích thước, schema, loại trùng theo nội dung.
+- **Relay:** xem `docs/microsoft-store-readiness.md` (B-17, B-18, B-19) và `docs/runbooks/xoa-du-lieu-nguoi-dung.md`.
 
 ## File chịu trách nhiệm chính
 
 | File | Trách nhiệm |
 |---|---|
-| `main.js` | Cửa sổ, menu, IPC, protocol `app-media://`, lưu file an toàn |
+| `main.js` | Cửa sổ, menu, IPC, protocol `app-media://`, lưu file an toàn, client relay, hardening renderer |
 | `preload.js` | API cầu nối cho renderer |
-| `index.html` | Library, schedule, editor, preview, control live |
+| `index.html` | Library, schedule, editor bài hát (modal `#song-editor-modal`, giao diện kiểu Windows cổ điển có chủ đích), preview, control live, sidebar `#bandPanel` |
 | `live.html` | Hiển thị chữ/background trên màn hình chiếu |
-| `edit-song.html` | UI chỉnh bài hát kiểu Windows cổ điển |
-| `index.html` (sidebar `#bandPanel`) | Kênh Band: QR, bảng cảnh báo gộp, feed, soạn tin |
 | `src/schema.js` | Migrate và validate item |
-| `src/band-comm/server.js` | HTTP + WebSocket, mật khẩu phòng/token, presence, ring buffer, gallery, setlist (LAN + poll cloud) |
-| `src/band-comm/ws.js` | WebSocket server tự viết (RFC 6455), 0 dependency |
-| `src/band-comm/store.js` | Đọc/ghi `band-comm.json` + backup hồ sơ nút + `cloudRoomId` |
-| `src/band-comm/accounts.js` | Đăng nhập tài khoản cục bộ (band-comm-plan.md §11) — `band-comm-accounts.json`, hash password bằng `scryptSync` |
-| `src/band-comm/cognito-jwks.js` | Verify JWT Cognito **offline** (`authMode='cognito'`, cloud/identity-plan.md) — cache JWKS ra `userData/cognito-jwks.json`, dùng `jose` |
-| `src/band-comm/protocol.js` | Envelope tin nhắn, chuẩn hoá `dedupKey` |
-| `src/band-comm/mdns.js` | mDNS responder cho `<hostname>.local` |
-| `cloud/worker/src/worker.js` | Cloudflare Worker — hộp thư setlist (KV) khi laptop tắt hẳn |
-| `cloud/worker/src/room-relay.js` | Durable Object relay: WebSocket, replay ring, hộp thư bài hát mới chờ duyệt (`songInbox`), manifest ảnh nền (`bgManifest`) |
-| `src/band-comm/relay-client.js` | Client WebSocket của operator + đồng bộ thư viện/ảnh nền lên cloud (debounce, retry) + kéo bài mới chờ duyệt |
-| `comm/setlist/` | Trang web `/setlist/` (xem trên) |
-| `cloud/identity/src/worker.js` | Cloudflare Worker "band-identity" — cầu nối AWS Cognito (SigV4 qua `aws4fetch`) cho đăng nhập tài khoản trung tâm; gửi mail mời qua Resend |
+| `src/library-sync.js` | Gộp thư viện từ bản cài cũ / thư mục dữ liệu cũ |
+| `src/band-comm/relay-client.js` | Client WebSocket operator + đồng bộ thư viện/ảnh nền lên cloud + kéo bài mới chờ duyệt |
+| `src/band-comm/store.js` | Đọc/ghi `band-comm.json`, hồ sơ nút, `cloudRoomId`, `relayAdminSecret` (mã hóa) |
+| `src/band-comm/operator-auth.js` | Phiên đăng nhập Cognito của operator (token mã hóa) |
+| `cloud/worker/src/worker.js` | Endpoint HTTP của relay (KV/R2), xác thực operator qua Durable Object |
+| `cloud/worker/src/room-relay.js` | Durable Object: realtime, tài khoản thành viên, hồ sơ, `songInbox`, `bgManifest`, `/admin/verify`, `/admin/purge` |
+| `cloud/identity/src/worker.js` | Cầu nối AWS Cognito (SigV4), quản trị operator/phòng/thành viên, gửi mail |
+| `comm/mobile/`, `comm/setlist/` | Trang web cho điện thoại ban hát / soạn setlist |
+| `scripts/` | `fetch-google-fonts.js`, `make-store-screenshots.mjs`, `check-privacy-page.js`, `kill-running.js` |
+| `test/` | Test unit (`*.test.mjs`) và e2e chạy app Electron thật (`*.e2e.mjs`, helper `_e2e-app.mjs`) |
 
 ## Dữ liệu lưu ở userData
 
-`userData` **không cố định ở `%APPDATA%`** — `main.js` (`applyStoredUserDataLocation()` chạy trước `app.whenReady()`, `promptUserDataLocationIfNeeded()` chạy trong đó) cho phép người dùng chọn ổ khác ngay lần đầu mở app (tránh ổ C đầy làm app không ghi được gì). Lựa chọn ghi vào `%APPDATA%\<appName>\datadir.json` (marker nhỏ, luôn ở vị trí mặc định để app tìm lại được dù `userData` thật nằm ở đâu) — `{"path": "..."}`. Bản cài cũ (đã có `songs.json`/`settings.json` ở mặc định trước khi tính năng này tồn tại) không bị hỏi, tự động coi như đã chọn mặc định. Đổi ổ/thư mục sau khi đã chọn cần sửa tay `datadir.json` (chưa có UI trong app).
+`userData` **không cố định ở `%APPDATA%`** — `main.js` (`applyStoredUserDataLocation()` chạy trước `app.whenReady()`, `promptUserDataLocationIfNeeded()` chạy trong đó) cho phép người dùng chọn ổ khác (marker `datadir.json` ở vị trí mặc định). Bản Microsoft Store (MSIX) ảo hóa `%APPDATA%` nên dữ liệu ở thư mục mặc định bị xóa khi gỡ cài đặt; app cảnh báo trong Cài đặt → Dữ liệu.
 
-- `songs.json`
-- `bible.json`
-- `settings.json`
-- `media/`
-- `bible-versions/` cho XML Kinh Thánh do người dùng import
-- `bible-cache-<xmlName>.json`
-- `.backup.1/.backup.2/.backup.3` cho dữ liệu đã backup
-- `band-comm.json` — cấu hình Kênh Band (mật khẩu phòng, port, câu trả lời nhanh, backup hồ sơ nút, `cloudRoomId`, `publicUrl`)
-- `band-comm-media/` — ảnh hợp âm đã upload
-- `band-comm-gallery.json` — manifest ảnh hợp âm (tên, thứ tự)
+- `songs.json`, `bible.json`, `settings.json`
+- `media/` — ảnh/video nền do người dùng nhập
+- `bible-versions/` — XML Kinh Thánh do người dùng nhập; `bible-versions.json` — sổ đăng ký bản dịch
+- `bible-cache-<xmlName>.json` — cache parse
+- `style-templates.json`, `custom-fonts.json`, `custom-fonts/`
+- `.backup.1/.backup.2/.backup.3` — backup luân phiên
+- `band-comm.json` — cấu hình Kênh Band (mật khẩu phòng, `cloudRoomId`, hồ sơ nút, `relayAdminSecretEnc`…)
+- `band-comm-operator.json` — phiên đăng nhập operator (token mã hóa)
+- `band-comm-media/`, `band-comm-gallery.json` — dữ liệu ảnh hợp âm cục bộ
 
 ## Đặc điểm quan trọng
 
-- Renderer không nên dùng `require()` trực tiếp
-- `index.html` là monolith, nên mỗi thay đổi phải rất có chủ đích
+- Renderer không dùng `require()` trực tiếp
+- `index.html` là monolith, nên mỗi thay đổi phải rất có chủ đích; sau khi đổi class Tailwind phải `npm run build:css`
 - `live.html` dùng virtual canvas và crossfade double-buffer
 - `main.js` có safe write + backup rotation, không được ghi đè trực tiếp kiểu rủi ro
-- Bible XML được parse và cache theo file nguồn
+- Bible XML được parse (regex) và cache theo file nguồn; nhập file qua `validateBibleXmlText`
+- Bản phát hành không kèm dữ liệu; code phải chạy được khi `getBundledDataDirs()` rỗng

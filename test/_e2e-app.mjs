@@ -89,19 +89,44 @@ export async function launchApp({ appDir, instanceId, dialogQueue = [] }) {
   if (!target) { child.kill(); throw new Error('app không mở được cửa sổ\n' + log.slice(-1500)); }
   const ws = new WebSocket(target.webSocketDebuggerUrl);
   await new Promise((r) => { ws.onopen = r; });
-  let id = 0; const pend = new Map(); const exceptions = [];
+  let id = 0; const pend = new Map(); const exceptions = []; const logs = [];
   ws.onmessage = (ev) => {
     const m = JSON.parse(ev.data);
     if (m.id && pend.has(m.id)) { pend.get(m.id)(m); pend.delete(m.id); }
+    else if (m.method === 'Log.entryAdded') logs.push(m.params.entry.level + ': ' + String(m.params.entry.text).slice(0, 300) + ' ' + (m.params.entry.url || ''));
     else if (m.method === 'Runtime.exceptionThrown') exceptions.push(m.params.exceptionDetails.text + ' ' + ((m.params.exceptionDetails.exception || {}).description || '').slice(0, 300));
   };
   const send = (method, params = {}) => new Promise((r) => { const i = ++id; pend.set(i, r); ws.send(JSON.stringify({ id: i, method, params })); });
-  await send('Runtime.enable'); await send('Page.enable');
+  await send('Runtime.enable'); await send('Page.enable'); await send('Log.enable');
   await sleep(5000); // đợi renderer khởi tạo xong (initializeData + autosync chạy trong main trước đó)
 
   return {
     log: () => log,
+    port,
+    raw: send, // gửi lệnh CDP thô tới cửa sổ chính
+    // Nối thêm vào một cửa sổ khác của app (ví dụ live.html) theo regex URL
+    async attach(urlRe, waitMs = 15000) {
+      let t = null;
+      for (let i = 0; i < waitMs / 500 && !t; i++) {
+        try { t = (await (await fetch(`http://127.0.0.1:${port}/json`)).json()).find((x) => x.type === 'page' && urlRe.test(x.url)); } catch (e) { /* chưa sẵn sàng */ }
+        if (!t) await sleep(500);
+      }
+      if (!t) throw new Error('không thấy cửa sổ khớp ' + urlRe);
+      const w2 = new WebSocket(t.webSocketDebuggerUrl);
+      await new Promise((r) => { w2.onopen = r; });
+      let n = 0; const p2 = new Map();
+      w2.onmessage = (ev) => { const m = JSON.parse(ev.data); if (m.id && p2.has(m.id)) { p2.get(m.id)(m); p2.delete(m.id); } };
+      const send2 = (method, params = {}) => new Promise((r) => { const i = ++n; p2.set(i, r); w2.send(JSON.stringify({ id: i, method, params })); });
+      await send2('Runtime.enable'); await send2('Page.enable');
+      return {
+        raw: send2,
+        async ev(expr) { const r = await send2('Runtime.evaluate', { expression: expr, awaitPromise: true, returnByValue: true }); return r.result && r.result.result ? r.result.result.value : undefined; },
+        async screenshot(file) { const s = await send2('Page.captureScreenshot', { format: 'png' }); if (s.result) fs.writeFileSync(file, Buffer.from(s.result.data, 'base64')); },
+        close() { try { w2.close(); } catch (e) { /* đã đóng */ } }
+      };
+    },
     exceptions,
+    logs,
     // chạy biểu thức trong renderer (await được Promise), trả về giá trị JSON
     async ev(expr) {
       const r = await send('Runtime.evaluate', { expression: expr, awaitPromise: true, returnByValue: true });

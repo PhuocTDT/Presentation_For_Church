@@ -7974,6 +7974,113 @@
         // file). Ctrl+S overwrites it in place; null → Save As dialog.
         let currentScheduleFilePath = null;
 
+        // ===== Chẩn đoán (Ctrl+Alt+D) — để máy gặp lỗi "không bấm/sửa được" tự báo lại tình trạng =====
+        // Lỗi kiểu này phụ thuộc máy (màn hình cảm ứng, DPI, GPU, bộ gõ, phông, mạng…) nên không tái hiện được
+        // ở máy khác. Bấm Ctrl+Alt+D NGAY LÚC đang bị lỗi (vd. đang mở Edit Song mà không đặt được con trỏ):
+        // hộp báo cáo hiện ra, bấm "Sao chép" rồi dán gửi lại. Không gửi gì đi đâu, chỉ đọc trạng thái trang.
+        (function installDiagCapture() {
+            var buf = window.__diagErrors = [];
+            function push(kind, msg) {
+                try { buf.push(new Date().toTimeString().slice(0, 8) + ' ' + kind + ': ' + String(msg).slice(0, 300)); if (buf.length > 40) buf.shift(); } catch (e) {}
+            }
+            window.addEventListener('error', function (e) { push('error', (e.message || '') + ' @' + String(e.filename || '').split('/').pop() + ':' + e.lineno); });
+            window.addEventListener('unhandledrejection', function (e) { push('promise', e.reason && (e.reason.message || e.reason)); });
+            var ce = console.error;
+            console.error = function () { try { push('console.error', Array.prototype.slice.call(arguments).join(' ')); } catch (x) {} return ce.apply(console, arguments); };
+        })();
+
+        function describeEl(el) {
+            if (!el) return '(không có)';
+            var cs = getComputedStyle(el);
+            return el.tagName.toLowerCase() + (el.id ? '#' + el.id : '') + (el.className && typeof el.className === 'string' ? '.' + el.className.trim().split(/\s+/).slice(0, 3).join('.') : '') + ' z=' + cs.zIndex + ' pe=' + cs.pointerEvents;
+        }
+        function topAtCenter(el) {
+            if (!el) return 'ô không tồn tại';
+            var r = el.getBoundingClientRect();
+            if (!r.width || !r.height) return 'ô có kích thước 0 (ẩn)';
+            var t = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+            var ok = t === el || el.contains(t);
+            return (ok ? 'OK, nhận chuột' : 'BỊ CHE bởi ' + describeEl(t)) + ' [vị trí ' + Math.round(r.left) + ',' + Math.round(r.top) + ' ' + Math.round(r.width) + 'x' + Math.round(r.height) + ']';
+        }
+        async function buildDiagnosticReport() {
+            var L = [];
+            var add = function (k, v) { L.push(k + ': ' + v); };
+            var ver = '?'; try { ver = await window.electronAPI.getAppVersion(); } catch (e) { ver = 'LỖI IPC: ' + (e && e.message); }
+            add('Phiên bản app', ver);
+            add('Thời điểm', new Date().toString());
+            add('Hệ điều hành/UA', navigator.userAgent);
+            add('Ngôn ngữ', navigator.language + ' | ' + (navigator.languages || []).join(','));
+            add('Màn hình', screen.width + 'x' + screen.height + ' (khả dụng ' + screen.availWidth + 'x' + screen.availHeight + ') DPR=' + window.devicePixelRatio);
+            add('Cửa sổ trang', 'inner ' + innerWidth + 'x' + innerHeight + ' | outer ' + outerWidth + 'x' + outerHeight);
+            add('Cảm ứng', 'maxTouchPoints=' + navigator.maxTouchPoints + ' | pointer:coarse=' + matchMedia('(pointer: coarse)').matches + ' | hover:none=' + matchMedia('(hover: none)').matches);
+            add('CPU/RAM', (navigator.hardwareConcurrency || '?') + ' luồng | ' + (navigator.deviceMemory || '?') + ' GB');
+            add('Trạng thái hiển thị (hidden = Chromium đã ngừng vẽ, giao diện sẽ đứng)', document.visibilityState + ' | hidden=' + document.hidden);
+            add('Trang có focus bàn phím', document.hasFocus());
+            add('Phần tử đang focus', describeEl(document.activeElement) + (document.activeElement && document.activeElement.isContentEditable ? ' [contenteditable]' : ''));
+            add('Tailwind CSS nạp', (function () { var t = document.createElement('div'); t.className = 'hidden'; document.body.appendChild(t); var ok = getComputedStyle(t).display === 'none'; t.remove(); return ok ? 'có' : 'KHÔNG (giao diện có thể vỡ)'; })());
+            add('Phông CMG Sans', document.fonts && document.fonts.check ? document.fonts.check('16px "CMG Sans"') : '?');
+            try { var di = await window.electronAPI.getDataPathInfo(); add('Thư mục dữ liệu', JSON.stringify(di).slice(0, 220)); } catch (e) { add('Thư mục dữ liệu', 'LỖI IPC: ' + (e && e.message)); }
+            add('Schedule', (Array.isArray(schedule) ? schedule.length : '?') + ' mục | file=' + (currentScheduleFilePath || '(chưa lưu)') + ' | chưa lưu=' + isScheduleDirty());
+            var modal = document.getElementById('song-editor-modal');
+            var editorOpen = modal && getComputedStyle(modal).display !== 'none';
+            add('Trình soạn bài', editorOpen ? 'ĐANG MỞ' : 'đóng');
+            if (editorOpen) {
+                add('  ô Tên bài', topAtCenter(document.getElementById('song-title')));
+                add('  khối Lời đầu', topAtCenter(document.querySelector('#lyrics-editor-container [contenteditable]')));
+                add('  nút Apply/OK', topAtCenter([].slice.call(modal.querySelectorAll('button')).filter(function (b) { return /^(apply|ok)$/i.test(b.textContent.trim()); })[0]));
+            }
+            // lớp phủ toàn màn hình đang chặn chuột (nguyên nhân kinh điển của "không bấm được")
+            var covers = [];
+            [].slice.call(document.body.querySelectorAll('*')).forEach(function (el) {
+                var cs = getComputedStyle(el);
+                if ((cs.position === 'fixed' || cs.position === 'absolute') && cs.display !== 'none' && cs.visibility !== 'hidden' && cs.pointerEvents !== 'none') {
+                    var r = el.getBoundingClientRect();
+                    if (r.width >= innerWidth * 0.9 && r.height >= innerHeight * 0.9) covers.push(describeEl(el) + ' op=' + cs.opacity + ' "' + (el.textContent || '').trim().replace(/\s+/g, ' ').slice(0, 40) + '"');
+                }
+            });
+            add('Lớp phủ toàn màn hình', covers.length ? covers.join(' || ') : 'không có');
+            var errs = (window.__diagErrors || []).slice(-15);
+            add('Lỗi JS gần đây (' + (window.__diagErrors || []).length + ')', errs.length ? '\n    ' + errs.join('\n    ') : 'không có');
+            return L.join('\n');
+        }
+        var diagBusy = false;
+        async function showDiagnostics() {
+            if (diagBusy) return;
+            diagBusy = true;
+            // Thu thập số liệu TRƯỚC khi hiện hộp: hộp báo cáo phủ cả trang nên nếu đo sau sẽ báo nhầm "bị che".
+            var reportText;
+            try { reportText = await buildDiagnosticReport(); } catch (err) { reportText = 'Không tạo được báo cáo: ' + (err && err.message); }
+            var ov = document.createElement('div');
+            ov.style.cssText = 'position:fixed;inset:0;z-index:100002;background:rgba(15,23,42,.6);display:flex;align-items:center;justify-content:center;padding:16px;';
+            var box = document.createElement('div');
+            box.style.cssText = 'background:#fff;color:#1e293b;border-radius:12px;max-width:760px;width:100%;max-height:90vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.4);';
+            var h = document.createElement('div'); h.style.cssText = 'padding:12px 16px;font-weight:700;border-bottom:1px solid #e2e8f0;'; h.textContent = 'Báo cáo chẩn đoán (gửi lại cho người hỗ trợ)';
+            var ta = document.createElement('textarea'); ta.readOnly = true; ta.spellcheck = false;
+            ta.style.cssText = 'margin:10px 16px;height:50vh;font:12px/1.45 Consolas,monospace;border:1px solid #cbd5e1;border-radius:8px;padding:8px;resize:none;white-space:pre;overflow:auto;';
+            ta.value = reportText;
+            var row = document.createElement('div'); row.style.cssText = 'padding:10px 16px;border-top:1px solid #e2e8f0;display:flex;gap:8px;justify-content:flex-end;align-items:center;';
+            var msg = document.createElement('span'); msg.style.cssText = 'margin-right:auto;font-size:12px;color:#2f8a55;';
+            function mk(label, cls) { var b = document.createElement('button'); b.type = 'button'; b.className = 'ws-rv-btn' + (cls ? ' ' + cls : ''); b.textContent = label; return b; }
+            var bCopy = mk('Sao chép', 'go'), bClose = mk('Đóng');
+            function close() { document.removeEventListener('keydown', onKey, true); ov.remove(); diagBusy = false; }
+            function onKey(e) { if (e.key === 'Escape') { e.stopPropagation(); close(); } }
+            document.addEventListener('keydown', onKey, true);
+            bClose.addEventListener('click', close);
+            bCopy.addEventListener('click', function () {
+                ta.focus(); ta.select();
+                var done = false;
+                try { done = document.execCommand('copy'); } catch (e) {}
+                if (!done && navigator.clipboard) { navigator.clipboard.writeText(ta.value).then(function () { msg.textContent = 'Đã sao chép.'; }, function () { msg.textContent = 'Không sao chép tự động được — bôi đen rồi Ctrl+C.'; }); return; }
+                msg.textContent = done ? 'Đã sao chép.' : 'Không sao chép tự động được — bôi đen rồi Ctrl+C.';
+            });
+            row.appendChild(msg); row.appendChild(bCopy); row.appendChild(bClose);
+            box.appendChild(h); box.appendChild(ta); box.appendChild(row); ov.appendChild(box);
+            document.body.appendChild(ov);
+        }
+        window.addEventListener('keydown', function (e) {
+            if (e.ctrlKey && e.altKey && !e.shiftKey && !e.metaKey && (e.key === 'd' || e.key === 'D' || e.code === 'KeyD')) { e.preventDefault(); e.stopPropagation(); showDiagnostics(); }
+        }, true);
+
         // "Chưa lưu" = nội dung Schedule hiện tại KHÁC bản đã lưu/mở/tạo mới gần nhất. So bằng dấu vân tay
         // JSON (bỏ scheduleId ngẫu nhiên) nên không phải gắn hook vào từng chỗ sửa Schedule (kéo thả, sửa
         // lời, thêm bài…) và bắt được cả Schedule soạn thủ công chưa từng lưu ra file.
@@ -8013,7 +8120,9 @@
                 bSave.addEventListener('click', function () {
                     [bCancel, bNo, bSave].forEach(function (b) { b.disabled = true; });
                     // Hủy hộp "Lưu thành…" hoặc lỗi lưu -> vẫn còn chưa lưu -> ở lại hộp này để chọn lại
-                    saveSchedule().then(function () {
+                    Promise.resolve().then(function () { return saveSchedule(); }).catch(function (err) {
+                        console.error('saveSchedule failed:', err);
+                    }).then(function () {
                         if (!isScheduleDirty()) close(true);
                         else [bCancel, bNo, bSave].forEach(function (b) { b.disabled = false; });
                     });
@@ -8038,6 +8147,7 @@
                 renderSchedule();
                 updateWindowTitleForSchedule();
                 markScheduleSaved();
+                try { window.focus(); } catch (e) {}
             } catch (error) {
                 console.error('loadScheduleData failed:', error, data);
                 alert('Không đọc được file lịch trình: ' + (error && error.message || error));

@@ -1,0 +1,1577 @@
+{
+  "$schema": "http://cyclonedx.org/schema/bom-1.6.schema.json",
+  "bomFormat": "CycloneDX",
+  "specVersion": "1.6",
+  "version": 1,
+  "serialNumber": "urn:uuid:d19db5ef-7ce3-4c2f-b9f8-13f15644187f",
+  "metadata": {
+    "timestamp": "2026-10-03T14:07:32.126Z",
+    "tools": {
+      "components": [
+        {
+          "type": "application",
+          "name": "npm",
+          "version": "11.6.1"
+        },
+        {
+          "type": "application",
+          "name": "cyclonedx-npm",
+          "group": "@cyclonedx",
+          "version": "6.0.1",
+          "author": "Jan Kowalleck",
+          "description": "Create CycloneDX Software Bill of Materials (SBOM) from NPM projects.",
+          "licenses": [
+            {
+              "license": {
+                "id": "Apache-2.0"
+              }
+            }
+          ],
+          "externalReferences": [
+            {
+              "url": "git+https://github.com/CycloneDX/cyclonedx-node-npm.git",
+              "type": "vcs",
+              "comment": "as detected from PackageJson property \"repository.url\""
+            },
+            {
+              "url": "https://github.com/CycloneDX/cyclonedx-node-npm#readme",
+              "type": "website",
+              "comment": "as detected from PackageJson property \"homepage\""
+            },
+            {
+              "url": "https://github.com/CycloneDX/cyclonedx-node-npm/issues",
+              "type": "issue-tracker",
+              "comment": "as detected from PackageJson property \"bugs.url\""
+            }
+          ],
+          "properties": [
+            {
+              "name": "cdx:npm:package:constraint:engine:node",
+              "value": ">=20.18.0"
+            },
+            {
+              "name": "cdx:npm:package:constraint:engine:npm",
+              "value": ">=9"
+            }
+          ]
+        },
+        {
+          "type": "library",
+          "name": "cyclonedx-library",
+          "group": "@cyclonedx",
+          "version": "10.3.0",
+          "author": "Jan Kowalleck",
+          "description": "Core functionality of CycloneDX for JavaScript (Node.js or WebBrowser).",
+          "licenses": [
+            {
+              "license": {
+                "id": "Apache-2.0"
+              }
+            }
+          ],
+          "externalReferences": [
+            {
+              "url": "git+https://github.com/CycloneDX/cyclonedx-javascript-library.git",
+              "type": "vcs",
+              "comment": "as detected from PackageJson property \"repository.url\""
+            },
+            {
+              "url": "https://github.com/CycloneDX/cyclonedx-javascript-library#readme",
+              "type": "website",
+              "comment": "as detected from PackageJson property \"homepage\""
+            },
+            {
+              "url": "https://github.com/CycloneDX/cyclonedx-javascript-library/issues",
+              "type": "issue-tracker",
+              "comment": "as detected from PackageJson property \"bugs.url\""
+            }
+          ],
+          "properties": [
+            {
+              "name": "cdx:npm:package:constraint:engine:node",
+              "value": ">=20.18.0"
+            }
+          ]
+        }
+      ]
+    },
+    "component": {
+      "type": "application",
+      "name": "easyworship-app",
+      "version": "3.1.11",
+      "bom-ref": "easyworship-app@3.1.11",
+      "description": "Presentation For Church - Worship Presentation App",
+      "purl": "pkg:npm/easyworship-app@3.1.11",
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": ""
+        }
+      ]
+    }
+  },
+  "components": [
+    {
+      "type": "library",
+      "name": "mammoth",
+      "version": "1.12.0",
+      "bom-ref": "easyworship-app@3.1.11|mammoth@1.12.0",
+      "author": "Michael Williamson",
+      "description": "Convert Word documents from docx to simple HTML and Markdown",
+      "licenses": [
+        {
+          "license": {
+            "id": "BSD-2-Clause",
+            "acknowledgement": "declared"
+          }
+        }
+      ],
+      "purl": "pkg:npm/mammoth@1.12.0",
+      "externalReferences": [
+        {
+          "url": "git+https://github.com/mwilliamson/mammoth.js.git",
+          "type": "vcs",
+          "comment": "as detected from PackageJson property \"repository.url\""
+        },
+        {
+          "url": "https://github.com/mwilliamson/mammoth.js#readme",
+          "type": "website",
+          "comment": "as detected from PackageJson property \"homepage\""
+        },
+        {
+          "url": "https://github.com/mwilliamson/mammoth.js/issues",
+          "type": "issue-tracker",
+          "comment": "as detected from PackageJson property \"bugs.url\""
+        },
+        {
+          "url": "https://registry.npmjs.org/mammoth/-/mammoth-1.12.0.tgz",
+          "type": "distribution",
+          "hashes": [
+            {
+              "alg": "SHA-512",
+              "content": "7309cad5121c45d0cc8b61d1c76117198971a88121d0ea376cb868ae09ec5498b65246d7d7e8cac6e04d47d3c2e7e25a5fb124989c453e6a3a9a32e9a92848db"
+            }
+          ],
+          "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
+        }
+      ],
+      "properties": [
+        {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": ">=12.0.0"
+        },
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/mammoth"
+        }
+      ],
+      "components": [
+        {
+          "type": "library",
+          "name": "argparse",
+          "version": "1.0.10",
+          "bom-ref": "easyworship-app@3.1.11|mammoth@1.12.0|argparse@1.0.10",
+          "description": "Very powerful CLI arguments parser. Native port of argparse - python's options parsing library",
+          "licenses": [
+            {
+              "license": {
+                "id": "MIT",
+                "acknowledgement": "declared"
+              }
+            }
+          ],
+          "purl": "pkg:npm/argparse@1.0.10",
+          "externalReferences": [
+            {
+              "url": "git+https://github.com/nodeca/argparse.git",
+              "type": "vcs",
+              "comment": "as detected from PackageJson property \"repository.url\""
+            },
+            {
+              "url": "https://github.com/nodeca/argparse#readme",
+              "type": "website",
+              "comment": "as detected from PackageJson property \"homepage\""
+            },
+            {
+              "url": "https://github.com/nodeca/argparse/issues",
+              "type": "issue-tracker",
+              "comment": "as detected from PackageJson property \"bugs.url\""
+            },
+            {
+              "url": "https://registry.npmjs.org/argparse/-/argparse-1.0.10.tgz",
+              "type": "distribution",
+              "hashes": [
+                {
+                  "alg": "SHA-512",
+                  "content": "a39468cbab4d1b848bfc53a408037a4738e26a4652db944b605adc32db49a9b75df015ab9c0f9f1b3e7b88de4f6f4ea9bc11af979810d01e3c74996c957be84e"
+                }
+              ],
+              "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
+            }
+          ],
+          "properties": [
+            {
+              "name": "cdx:npm:package:path",
+              "value": "node_modules/mammoth/node_modules/argparse"
+            }
+          ]
+        },
+        {
+          "type": "library",
+          "name": "xmlbuilder",
+          "version": "10.1.1",
+          "bom-ref": "easyworship-app@3.1.11|mammoth@1.12.0|xmlbuilder@10.1.1",
+          "author": "Ozgur Ozcitak",
+          "description": "An XML builder for node.js",
+          "licenses": [
+            {
+              "license": {
+                "id": "MIT",
+                "acknowledgement": "declared"
+              }
+            }
+          ],
+          "purl": "pkg:npm/xmlbuilder@10.1.1",
+          "externalReferences": [
+            {
+              "url": "git://github.com/oozcitak/xmlbuilder-js.git",
+              "type": "vcs",
+              "comment": "as detected from PackageJson property \"repository.url\""
+            },
+            {
+              "url": "http://github.com/oozcitak/xmlbuilder-js",
+              "type": "website",
+              "comment": "as detected from PackageJson property \"homepage\""
+            },
+            {
+              "url": "http://github.com/oozcitak/xmlbuilder-js/issues",
+              "type": "issue-tracker",
+              "comment": "as detected from PackageJson property \"bugs.url\""
+            },
+            {
+              "url": "https://registry.npmjs.org/xmlbuilder/-/xmlbuilder-10.1.1.tgz",
+              "type": "distribution",
+              "hashes": [
+                {
+                  "alg": "SHA-512",
+                  "content": "3b2ceb7052cbfe76fa7cc1876e2443b8fba9f658c1c9cb1d0b2a70bb28390001efc96cc67c2849a425cc1bcf0019320c161199f5171c14dd5eea5860de19302a"
+                }
+              ],
+              "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
+            }
+          ],
+          "properties": [
+            {
+              "name": "cdx:npm:package:constraint:engine:node",
+              "value": ">=4.0"
+            },
+            {
+              "name": "cdx:npm:package:path",
+              "value": "node_modules/mammoth/node_modules/xmlbuilder"
+            }
+          ]
+        },
+        {
+          "type": "library",
+          "name": "sprintf-js",
+          "version": "1.0.3",
+          "bom-ref": "easyworship-app@3.1.11|mammoth@1.12.0|sprintf-js@1.0.3",
+          "author": "Alexandru Marasteanu",
+          "description": "JavaScript sprintf implementation",
+          "licenses": [
+            {
+              "license": {
+                "id": "BSD-3-Clause",
+                "acknowledgement": "declared"
+              }
+            }
+          ],
+          "purl": "pkg:npm/sprintf-js@1.0.3",
+          "externalReferences": [
+            {
+              "url": "git+https://github.com/alexei/sprintf.js.git",
+              "type": "vcs",
+              "comment": "as detected from PackageJson property \"repository.url\""
+            },
+            {
+              "url": "https://github.com/alexei/sprintf.js#readme",
+              "type": "website",
+              "comment": "as detected from PackageJson property \"homepage\""
+            },
+            {
+              "url": "https://github.com/alexei/sprintf.js/issues",
+              "type": "issue-tracker",
+              "comment": "as detected from PackageJson property \"bugs.url\""
+            },
+            {
+              "url": "https://registry.npmjs.org/sprintf-js/-/sprintf-js-1.0.3.tgz",
+              "type": "distribution",
+              "hashes": [
+                {
+                  "alg": "SHA-512",
+                  "content": "0fd70f824bcb955deddc8ccbd03d182ef180f40864e0f72f57051b3747521abd5a3f436bb780049d351bb86beab840b4980eb81aab757f38ab951b3989b5f1f2"
+                }
+              ],
+              "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
+            }
+          ],
+          "properties": [
+            {
+              "name": "cdx:npm:package:path",
+              "value": "node_modules/mammoth/node_modules/sprintf-js"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "xmldom",
+      "group": "@xmldom",
+      "version": "0.8.15",
+      "bom-ref": "easyworship-app@3.1.11|@xmldom/xmldom@0.8.15",
+      "description": "A pure JavaScript W3C standard-based (XML DOM Level 2 Core) DOMParser and XMLSerializer module.",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT",
+            "acknowledgement": "declared"
+          }
+        }
+      ],
+      "purl": "pkg:npm/%40xmldom/xmldom@0.8.15",
+      "externalReferences": [
+        {
+          "url": "git://github.com/xmldom/xmldom.git",
+          "type": "vcs",
+          "comment": "as detected from PackageJson property \"repository.url\""
+        },
+        {
+          "url": "https://github.com/xmldom/xmldom",
+          "type": "website",
+          "comment": "as detected from PackageJson property \"homepage\""
+        },
+        {
+          "url": "https://github.com/xmldom/xmldom/issues",
+          "type": "issue-tracker",
+          "comment": "as detected from PackageJson property \"bugs.url\""
+        },
+        {
+          "url": "https://registry.npmjs.org/@xmldom/xmldom/-/xmldom-0.8.15.tgz",
+          "type": "distribution",
+          "hashes": [
+            {
+              "alg": "SHA-512",
+              "content": "ff9355fef0c02d51435e02e67eccbd4d108194ac0ed8b341173a73bdbf62223fa347e79273a0cb618bd539d8af4ff8e6eccb54e9379b62e466cc4388ef0e3450"
+            }
+          ],
+          "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
+        }
+      ],
+      "properties": [
+        {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": ">=10.0.0"
+        },
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/@xmldom/xmldom"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "base64-js",
+      "version": "1.5.1",
+      "bom-ref": "easyworship-app@3.1.11|base64-js@1.5.1",
+      "author": "T. Jameson Little",
+      "description": "Base64 encoding/decoding in pure JS",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT",
+            "acknowledgement": "declared"
+          }
+        }
+      ],
+      "purl": "pkg:npm/base64-js@1.5.1",
+      "externalReferences": [
+        {
+          "url": "git://github.com/beatgammit/base64-js.git",
+          "type": "vcs",
+          "comment": "as detected from PackageJson property \"repository.url\""
+        },
+        {
+          "url": "https://github.com/beatgammit/base64-js",
+          "type": "website",
+          "comment": "as detected from PackageJson property \"homepage\""
+        },
+        {
+          "url": "https://github.com/beatgammit/base64-js/issues",
+          "type": "issue-tracker",
+          "comment": "as detected from PackageJson property \"bugs.url\""
+        },
+        {
+          "url": "https://registry.npmjs.org/base64-js/-/base64-js-1.5.1.tgz",
+          "type": "distribution",
+          "hashes": [
+            {
+              "alg": "SHA-512",
+              "content": "00aa5a6251e7f2de1255b3870b2f9be7e28a82f478bebb03f2f6efadb890269b3b7ca0d3923903af2ea38b4ad42630b49336cd78f2f0cf1abc8b2a68e35a9e58"
+            }
+          ],
+          "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
+        }
+      ],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/base64-js"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "bluebird",
+      "version": "3.4.7",
+      "bom-ref": "easyworship-app@3.1.11|bluebird@3.4.7",
+      "author": "Petka Antonov",
+      "description": "Full featured Promises/A+ implementation with exceptionally good performance",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT",
+            "acknowledgement": "declared"
+          }
+        }
+      ],
+      "purl": "pkg:npm/bluebird@3.4.7",
+      "externalReferences": [
+        {
+          "url": "git://github.com/petkaantonov/bluebird.git",
+          "type": "vcs",
+          "comment": "as detected from PackageJson property \"repository.url\""
+        },
+        {
+          "url": "https://github.com/petkaantonov/bluebird",
+          "type": "website",
+          "comment": "as detected from PackageJson property \"homepage\""
+        },
+        {
+          "url": "http://github.com/petkaantonov/bluebird/issues",
+          "type": "issue-tracker",
+          "comment": "as detected from PackageJson property \"bugs.url\""
+        },
+        {
+          "url": "https://registry.npmjs.org/bluebird/-/bluebird-3.4.7.tgz",
+          "type": "distribution",
+          "hashes": [
+            {
+              "alg": "SHA-512",
+              "content": "883dfcf7c491eec5954476e242ffac1d4b479ccbc2d68de75b9ac072a9eadee3a7d3b0d2029a596149081ac943cfa8170bb1dfba73deed85418281090123dc1c"
+            }
+          ],
+          "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
+        }
+      ],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/bluebird"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "dingbat-to-unicode",
+      "version": "1.0.1",
+      "bom-ref": "easyworship-app@3.1.11|dingbat-to-unicode@1.0.1",
+      "author": "Michael Williamson",
+      "description": "Mapping from Dingbat fonts, such as Symbol, Webdings and Wingdings, to Unicode code points",
+      "licenses": [
+        {
+          "license": {
+            "id": "BSD-2-Clause",
+            "acknowledgement": "declared"
+          }
+        }
+      ],
+      "purl": "pkg:npm/dingbat-to-unicode@1.0.1",
+      "externalReferences": [
+        {
+          "url": "git+https://github.com/mwilliamson/dingbat-to-unicode.git",
+          "type": "vcs",
+          "comment": "as detected from PackageJson property \"repository.url\""
+        },
+        {
+          "url": "https://github.com/mwilliamson/dingbat-to-unicode#readme",
+          "type": "website",
+          "comment": "as detected from PackageJson property \"homepage\""
+        },
+        {
+          "url": "https://github.com/mwilliamson/dingbat-to-unicode/issues",
+          "type": "issue-tracker",
+          "comment": "as detected from PackageJson property \"bugs.url\""
+        },
+        {
+          "url": "https://registry.npmjs.org/dingbat-to-unicode/-/dingbat-to-unicode-1.0.1.tgz",
+          "type": "distribution",
+          "hashes": [
+            {
+              "alg": "SHA-512",
+              "content": "f7c974b16f3b653e7ca54e22eb5c1ad8e1f0c5b89849bbb1b02068cda567617da20a7af76cb3377c87acd7f7a3ee1d5874e2ae2adfcc2ecef4e9356700b03ae7"
+            }
+          ],
+          "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
+        }
+      ],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/dingbat-to-unicode"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "jszip",
+      "version": "3.10.1",
+      "bom-ref": "easyworship-app@3.1.11|jszip@3.10.1",
+      "author": "Stuart Knightley",
+      "description": "Create, read and edit .zip files with JavaScript http://stuartk.com/jszip",
+      "licenses": [
+        {
+          "expression": "(MIT OR GPL-3.0-or-later)",
+          "acknowledgement": "declared"
+        }
+      ],
+      "purl": "pkg:npm/jszip@3.10.1",
+      "externalReferences": [
+        {
+          "url": "git+https://github.com/Stuk/jszip.git",
+          "type": "vcs",
+          "comment": "as detected from PackageJson property \"repository.url\""
+        },
+        {
+          "url": "https://github.com/Stuk/jszip#readme",
+          "type": "website",
+          "comment": "as detected from PackageJson property \"homepage\""
+        },
+        {
+          "url": "https://github.com/Stuk/jszip/issues",
+          "type": "issue-tracker",
+          "comment": "as detected from PackageJson property \"bugs.url\""
+        },
+        {
+          "url": "https://registry.npmjs.org/jszip/-/jszip-3.10.1.tgz",
+          "type": "distribution",
+          "hashes": [
+            {
+              "alg": "SHA-512",
+              "content": "c570ef79cc93a462eba85aef92b512a31c5f248e401fb53ccf1c6d55c969b14b4c0aae09436f742d8f005b973b1a09ebfd8fe82be6d031ba8adaa9ad937a4de2"
+            }
+          ],
+          "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
+        }
+      ],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/jszip"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "lop",
+      "version": "0.4.2",
+      "bom-ref": "easyworship-app@3.1.11|lop@0.4.2",
+      "author": "Michael Williamson",
+      "description": "Create parsers using parser combinators with helpful error messages",
+      "licenses": [
+        {
+          "license": {
+            "id": "BSD-2-Clause",
+            "acknowledgement": "declared"
+          }
+        }
+      ],
+      "purl": "pkg:npm/lop@0.4.2",
+      "externalReferences": [
+        {
+          "url": "git+https://github.com/mwilliamson/lop.git",
+          "type": "vcs",
+          "comment": "as detected from PackageJson property \"repository.url\""
+        },
+        {
+          "url": "https://github.com/mwilliamson/lop#readme",
+          "type": "website",
+          "comment": "as detected from PackageJson property \"homepage\""
+        },
+        {
+          "url": "https://github.com/mwilliamson/lop/issues",
+          "type": "issue-tracker",
+          "comment": "as detected from PackageJson property \"bugs.url\""
+        },
+        {
+          "url": "https://registry.npmjs.org/lop/-/lop-0.4.2.tgz",
+          "type": "distribution",
+          "hashes": [
+            {
+              "alg": "SHA-512",
+              "content": "45e7c82d50d0e032a8459b09e0f8f6d93c44de89833b8ef21699080680cace4a8f4484ace54d5c9c0760ff9e7cdd83e458f68b2181ce2913104af8c5b0edba73"
+            }
+          ],
+          "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
+        }
+      ],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/lop"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "path-is-absolute",
+      "version": "1.0.1",
+      "bom-ref": "easyworship-app@3.1.11|path-is-absolute@1.0.1",
+      "author": "Sindre Sorhus",
+      "description": "Node.js 0.12 path.isAbsolute() ponyfill",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT",
+            "acknowledgement": "declared"
+          }
+        }
+      ],
+      "purl": "pkg:npm/path-is-absolute@1.0.1",
+      "externalReferences": [
+        {
+          "url": "git+https://github.com/sindresorhus/path-is-absolute.git",
+          "type": "vcs",
+          "comment": "as detected from PackageJson property \"repository.url\""
+        },
+        {
+          "url": "https://github.com/sindresorhus/path-is-absolute#readme",
+          "type": "website",
+          "comment": "as detected from PackageJson property \"homepage\""
+        },
+        {
+          "url": "https://github.com/sindresorhus/path-is-absolute/issues",
+          "type": "issue-tracker",
+          "comment": "as detected from PackageJson property \"bugs.url\""
+        },
+        {
+          "url": "https://registry.npmjs.org/path-is-absolute/-/path-is-absolute-1.0.1.tgz",
+          "type": "distribution",
+          "hashes": [
+            {
+              "alg": "SHA-512",
+              "content": "0156f0dd42767bd6eaeb8bd2692f409b47e37b53daf296c6a934ec9977da2223299ebe4394385f24eb8b8fd49ff7964f5430147ab0df124f3c30f98f7bb50242"
+            }
+          ],
+          "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
+        }
+      ],
+      "properties": [
+        {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": ">=0.10.0"
+        },
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/path-is-absolute"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "underscore",
+      "version": "1.13.8",
+      "bom-ref": "easyworship-app@3.1.11|underscore@1.13.8",
+      "author": "Jeremy Ashkenas",
+      "description": "JavaScript's functional programming helper library.",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT",
+            "acknowledgement": "declared"
+          }
+        }
+      ],
+      "purl": "pkg:npm/underscore@1.13.8",
+      "externalReferences": [
+        {
+          "url": "git://github.com/jashkenas/underscore.git",
+          "type": "vcs",
+          "comment": "as detected from PackageJson property \"repository.url\""
+        },
+        {
+          "url": "https://underscorejs.org",
+          "type": "website",
+          "comment": "as detected from PackageJson property \"homepage\""
+        },
+        {
+          "url": "https://github.com/jashkenas/underscore/issues",
+          "type": "issue-tracker",
+          "comment": "as detected from PackageJson property \"bugs.url\""
+        },
+        {
+          "url": "https://registry.npmjs.org/underscore/-/underscore-1.13.8.tgz",
+          "type": "distribution",
+          "hashes": [
+            {
+              "alg": "SHA-512",
+              "content": "0d7b43dd9b4443373b33c9b8717a2dc8747e1404b5f02eb86ac058639bea65ec5f62bc8d3670dcd365b884a837add42ea8e61ab358e4b1e5f4fa76578d35e7bd"
+            }
+          ],
+          "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
+        }
+      ],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/underscore"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "lie",
+      "version": "3.3.0",
+      "bom-ref": "easyworship-app@3.1.11|lie@3.3.0",
+      "description": "A basic but performant promise implementation",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT",
+            "acknowledgement": "declared"
+          }
+        }
+      ],
+      "purl": "pkg:npm/lie@3.3.0",
+      "externalReferences": [
+        {
+          "url": "git+https://github.com/calvinmetcalf/lie.git",
+          "type": "vcs",
+          "comment": "as detected from PackageJson property \"repository.url\""
+        },
+        {
+          "url": "https://github.com/calvinmetcalf/lie#readme",
+          "type": "website",
+          "comment": "as detected from PackageJson property \"homepage\""
+        },
+        {
+          "url": "https://github.com/calvinmetcalf/lie/issues",
+          "type": "issue-tracker",
+          "comment": "as detected from PackageJson property \"bugs.url\""
+        },
+        {
+          "url": "https://registry.npmjs.org/lie/-/lie-3.3.0.tgz",
+          "type": "distribution",
+          "hashes": [
+            {
+              "alg": "SHA-512",
+              "content": "51a88c27379646512e8f302ec392e8918d4be5e70d41864a7e6c99f4bef00c76ffa797ad29ac5786884172bc341186f2f86fcd039daf452378377f5dc47008c1"
+            }
+          ],
+          "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
+        }
+      ],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/lie"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "pako",
+      "version": "1.0.11",
+      "bom-ref": "easyworship-app@3.1.11|pako@1.0.11",
+      "description": "zlib port to javascript - fast, modularized, with browser support",
+      "licenses": [
+        {
+          "expression": "(MIT AND Zlib)",
+          "acknowledgement": "declared"
+        }
+      ],
+      "purl": "pkg:npm/pako@1.0.11",
+      "externalReferences": [
+        {
+          "url": "git+https://github.com/nodeca/pako.git",
+          "type": "vcs",
+          "comment": "as detected from PackageJson property \"repository.url\""
+        },
+        {
+          "url": "https://github.com/nodeca/pako",
+          "type": "website",
+          "comment": "as detected from PackageJson property \"homepage\""
+        },
+        {
+          "url": "https://github.com/nodeca/pako/issues",
+          "type": "issue-tracker",
+          "comment": "as detected from PackageJson property \"bugs.url\""
+        },
+        {
+          "url": "https://registry.npmjs.org/pako/-/pako-1.0.11.tgz",
+          "type": "distribution",
+          "hashes": [
+            {
+              "alg": "SHA-512",
+              "content": "e212c1f0fcb8cd971ee6ce3277d5f3a29ab056fff218d855d4197c353982ab5efadc778adbe130553bfe95e19e2f5dc39e1db07dbaa8c153d70883b4cf8b5a63"
+            }
+          ],
+          "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
+        }
+      ],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/pako"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "readable-stream",
+      "version": "2.3.8",
+      "bom-ref": "easyworship-app@3.1.11|readable-stream@2.3.8",
+      "description": "Streams3, a user-land copy of the stream library from Node.js",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT",
+            "acknowledgement": "declared"
+          }
+        }
+      ],
+      "purl": "pkg:npm/readable-stream@2.3.8",
+      "externalReferences": [
+        {
+          "url": "git://github.com/nodejs/readable-stream.git",
+          "type": "vcs",
+          "comment": "as detected from PackageJson property \"repository.url\""
+        },
+        {
+          "url": "https://github.com/nodejs/readable-stream#readme",
+          "type": "website",
+          "comment": "as detected from PackageJson property \"homepage\""
+        },
+        {
+          "url": "https://github.com/nodejs/readable-stream/issues",
+          "type": "issue-tracker",
+          "comment": "as detected from PackageJson property \"bugs.url\""
+        },
+        {
+          "url": "https://registry.npmjs.org/readable-stream/-/readable-stream-2.3.8.tgz",
+          "type": "distribution",
+          "hashes": [
+            {
+              "alg": "SHA-512",
+              "content": "f29d00524e173838087b04a2d25f04a63b3e1159d688aecda03204194d07844efe67263c0f520c63ba1dbb9951ac55c683bd4bd79286f10acf9ae9b8e514ed74"
+            }
+          ],
+          "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
+        }
+      ],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/readable-stream"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "setimmediate",
+      "version": "1.0.5",
+      "bom-ref": "easyworship-app@3.1.11|setimmediate@1.0.5",
+      "author": "YuzuJS",
+      "description": "A shim for the setImmediate efficient script yielding API",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT",
+            "acknowledgement": "declared"
+          }
+        }
+      ],
+      "purl": "pkg:npm/setimmediate@1.0.5",
+      "externalReferences": [
+        {
+          "url": "git+https://github.com/YuzuJS/setImmediate.git",
+          "type": "vcs",
+          "comment": "as detected from PackageJson property \"repository.url\""
+        },
+        {
+          "url": "https://github.com/YuzuJS/setImmediate#readme",
+          "type": "website",
+          "comment": "as detected from PackageJson property \"homepage\""
+        },
+        {
+          "url": "https://github.com/YuzuJS/setImmediate/issues",
+          "type": "issue-tracker",
+          "comment": "as detected from PackageJson property \"bugs.url\""
+        },
+        {
+          "url": "https://registry.npmjs.org/setimmediate/-/setimmediate-1.0.5.tgz",
+          "type": "distribution",
+          "hashes": [
+            {
+              "alg": "SHA-512",
+              "content": "3004c9759a7cb0ba8397febc2df4266cff3328f2d0355e81219a0882bb1c14343e46cbcafc1c5e0d03a0cb128aa21d32ffc87706a5459c2a90fe077eade8885c"
+            }
+          ],
+          "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
+        }
+      ],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/setimmediate"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "duck",
+      "version": "0.1.12",
+      "bom-ref": "easyworship-app@3.1.11|duck@0.1.12",
+      "author": "Michael Williamson",
+      "description": "Rich matchers inspired by Hamcrest. Useful for generating helpful assertion failure messages in tests.",
+      "licenses": [
+        {
+          "license": {
+            "name": "BSD",
+            "acknowledgement": "declared"
+          }
+        }
+      ],
+      "purl": "pkg:npm/duck@0.1.12",
+      "externalReferences": [
+        {
+          "url": "git+https://github.com/mwilliamson/duck.js.git",
+          "type": "vcs",
+          "comment": "as detected from PackageJson property \"repository.url\""
+        },
+        {
+          "url": "https://github.com/mwilliamson/duck.js#readme",
+          "type": "website",
+          "comment": "as detected from PackageJson property \"homepage\""
+        },
+        {
+          "url": "https://github.com/mwilliamson/duck.js/issues",
+          "type": "issue-tracker",
+          "comment": "as detected from PackageJson property \"bugs.url\""
+        },
+        {
+          "url": "https://registry.npmjs.org/duck/-/duck-0.1.12.tgz",
+          "type": "distribution",
+          "hashes": [
+            {
+              "alg": "SHA-512",
+              "content": "c2472d95ad4ee957cff3d810f89ff20deb0cd12ec1ed72d78ca1b35f130354583bb849fbd3a9e202dc98a2f29bcaad684fd6300dc972ef6d7f8945a873c31546"
+            }
+          ],
+          "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
+        }
+      ],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/duck"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "option",
+      "version": "0.2.4",
+      "bom-ref": "easyworship-app@3.1.11|option@0.2.4",
+      "author": "Michael Williamson",
+      "description": "The option type, also known as the maybe type, for JavaScript",
+      "licenses": [
+        {
+          "license": {
+            "id": "BSD-2-Clause",
+            "acknowledgement": "declared"
+          }
+        }
+      ],
+      "purl": "pkg:npm/option@0.2.4",
+      "externalReferences": [
+        {
+          "url": "git+https://github.com/mwilliamson/node-options.git",
+          "type": "vcs",
+          "comment": "as detected from PackageJson property \"repository.url\""
+        },
+        {
+          "url": "https://github.com/mwilliamson/node-options#readme",
+          "type": "website",
+          "comment": "as detected from PackageJson property \"homepage\""
+        },
+        {
+          "url": "https://github.com/mwilliamson/node-options/issues",
+          "type": "issue-tracker",
+          "comment": "as detected from PackageJson property \"bugs.url\""
+        },
+        {
+          "url": "https://registry.npmjs.org/option/-/option-0.2.4.tgz",
+          "type": "distribution",
+          "hashes": [
+            {
+              "alg": "SHA-512",
+              "content": "a6412a6c3ca5f28bb9729abe56c9d06defd6944cb9a92ef13f3312d54e793821bd28fbf0143e3acc36f14088f77a025215cdc3f9785838f533cf8f73400572ec"
+            }
+          ],
+          "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
+        }
+      ],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/option"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "immediate",
+      "version": "3.0.6",
+      "bom-ref": "easyworship-app@3.1.11|immediate@3.0.6",
+      "description": "A cross browser microtask library",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT",
+            "acknowledgement": "declared"
+          }
+        }
+      ],
+      "purl": "pkg:npm/immediate@3.0.6",
+      "externalReferences": [
+        {
+          "url": "git://github.com/calvinmetcalf/immediate.git",
+          "type": "vcs",
+          "comment": "as detected from PackageJson property \"repository.url\""
+        },
+        {
+          "url": "https://github.com/calvinmetcalf/immediate#readme",
+          "type": "website",
+          "comment": "as detected from PackageJson property \"homepage\""
+        },
+        {
+          "url": "https://github.com/calvinmetcalf/immediate/issues",
+          "type": "issue-tracker",
+          "comment": "as detected from PackageJson property \"bugs.url\""
+        },
+        {
+          "url": "https://registry.npmjs.org/immediate/-/immediate-3.0.6.tgz",
+          "type": "distribution",
+          "hashes": [
+            {
+              "alg": "SHA-512",
+              "content": "5d7385b72a838cd0c043155f631b85ee0f4897f21b5a69a5420d8c60a387f04c484f5aa0eb1738cf24b71da10401382cd5bb5fcf1ab5e5c894898ee08d25d119"
+            }
+          ],
+          "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
+        }
+      ],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/immediate"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "core-util-is",
+      "version": "1.0.2",
+      "bom-ref": "easyworship-app@3.1.11|core-util-is@1.0.2",
+      "author": "Isaac Z. Schlueter",
+      "description": "The `util.is*` functions introduced in Node v0.12.",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT",
+            "acknowledgement": "declared"
+          }
+        }
+      ],
+      "purl": "pkg:npm/core-util-is@1.0.2",
+      "externalReferences": [
+        {
+          "url": "git://github.com/isaacs/core-util-is.git",
+          "type": "vcs",
+          "comment": "as detected from PackageJson property \"repository.url\""
+        },
+        {
+          "url": "https://github.com/isaacs/core-util-is#readme",
+          "type": "website",
+          "comment": "as detected from PackageJson property \"homepage\""
+        },
+        {
+          "url": "https://github.com/isaacs/core-util-is/issues",
+          "type": "issue-tracker",
+          "comment": "as detected from PackageJson property \"bugs.url\""
+        },
+        {
+          "url": "https://registry.npmjs.org/core-util-is/-/core-util-is-1.0.2.tgz",
+          "type": "distribution",
+          "hashes": [
+            {
+              "alg": "SHA-512",
+              "content": "de5ab3e588d64d89d6e9d9436b94cb69309c4a17daaf57b8d2b99c255c020490ba996945ba3d1e0872049661b5839932b89fc60fef169f814509ccf88093df69"
+            }
+          ],
+          "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
+        }
+      ],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/core-util-is"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "inherits",
+      "version": "2.0.4",
+      "bom-ref": "easyworship-app@3.1.11|inherits@2.0.4",
+      "description": "Browser-friendly inheritance fully compatible with standard node.js inherits()",
+      "licenses": [
+        {
+          "license": {
+            "id": "ISC",
+            "acknowledgement": "declared"
+          }
+        }
+      ],
+      "purl": "pkg:npm/inherits@2.0.4",
+      "externalReferences": [
+        {
+          "url": "git://github.com/isaacs/inherits.git",
+          "type": "vcs",
+          "comment": "as detected from PackageJson property \"repository.url\""
+        },
+        {
+          "url": "https://github.com/isaacs/inherits#readme",
+          "type": "website",
+          "comment": "as detected from PackageJson property \"homepage\""
+        },
+        {
+          "url": "https://github.com/isaacs/inherits/issues",
+          "type": "issue-tracker",
+          "comment": "as detected from PackageJson property \"bugs.url\""
+        },
+        {
+          "url": "https://registry.npmjs.org/inherits/-/inherits-2.0.4.tgz",
+          "type": "distribution",
+          "hashes": [
+            {
+              "alg": "SHA-512",
+              "content": "93fbc6697e3f6256b75b3c8c0af4d039761e207bea38ab67a8176ecd31e9ce9419cc0b2428c859d8af849c189233dcc64a820578ca572b16b8758799210a9ec1"
+            }
+          ],
+          "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
+        }
+      ],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/inherits"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "isarray",
+      "version": "1.0.0",
+      "bom-ref": "easyworship-app@3.1.11|isarray@1.0.0",
+      "author": "Julian Gruber",
+      "description": "Array#isArray for older browsers",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT",
+            "acknowledgement": "declared"
+          }
+        }
+      ],
+      "purl": "pkg:npm/isarray@1.0.0",
+      "externalReferences": [
+        {
+          "url": "git://github.com/juliangruber/isarray.git",
+          "type": "vcs",
+          "comment": "as detected from PackageJson property \"repository.url\""
+        },
+        {
+          "url": "https://github.com/juliangruber/isarray",
+          "type": "website",
+          "comment": "as detected from PackageJson property \"homepage\""
+        },
+        {
+          "url": "https://github.com/juliangruber/isarray/issues",
+          "type": "issue-tracker",
+          "comment": "as detected from PackageJson property \"bugs.url\""
+        },
+        {
+          "url": "https://registry.npmjs.org/isarray/-/isarray-1.0.0.tgz",
+          "type": "distribution",
+          "hashes": [
+            {
+              "alg": "SHA-512",
+              "content": "54b82121634ce842d0ce8ef3c26720d0d99357258a623bc878cf37ca3a74c110d39949eb33aefc7d06dc281a3a9f6089105d2cce81bfff2b60f932a56bcf402d"
+            }
+          ],
+          "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
+        }
+      ],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/isarray"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "process-nextick-args",
+      "version": "2.0.1",
+      "bom-ref": "easyworship-app@3.1.11|process-nextick-args@2.0.1",
+      "description": "process.nextTick but always with args",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT",
+            "acknowledgement": "declared"
+          }
+        }
+      ],
+      "purl": "pkg:npm/process-nextick-args@2.0.1",
+      "externalReferences": [
+        {
+          "url": "git+https://github.com/calvinmetcalf/process-nextick-args.git",
+          "type": "vcs",
+          "comment": "as detected from PackageJson property \"repository.url\""
+        },
+        {
+          "url": "https://github.com/calvinmetcalf/process-nextick-args",
+          "type": "website",
+          "comment": "as detected from PackageJson property \"homepage\""
+        },
+        {
+          "url": "https://github.com/calvinmetcalf/process-nextick-args/issues",
+          "type": "issue-tracker",
+          "comment": "as detected from PackageJson property \"bugs.url\""
+        },
+        {
+          "url": "https://registry.npmjs.org/process-nextick-args/-/process-nextick-args-2.0.1.tgz",
+          "type": "distribution",
+          "hashes": [
+            {
+              "alg": "SHA-512",
+              "content": "de8b943a9421b60adb39ad7b27bfaec4e4e92136166863fbfc0868477f80fbfd5ef6c92bcde9468bf757cc4632bdbc6e6c417a5a7db2a6c7132a22891459f56a"
+            }
+          ],
+          "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
+        }
+      ],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/process-nextick-args"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "safe-buffer",
+      "version": "5.1.2",
+      "bom-ref": "easyworship-app@3.1.11|safe-buffer@5.1.2",
+      "author": "Feross Aboukhadijeh",
+      "description": "Safer Node.js Buffer API",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT",
+            "acknowledgement": "declared"
+          }
+        }
+      ],
+      "purl": "pkg:npm/safe-buffer@5.1.2",
+      "externalReferences": [
+        {
+          "url": "git://github.com/feross/safe-buffer.git",
+          "type": "vcs",
+          "comment": "as detected from PackageJson property \"repository.url\""
+        },
+        {
+          "url": "https://github.com/feross/safe-buffer",
+          "type": "website",
+          "comment": "as detected from PackageJson property \"homepage\""
+        },
+        {
+          "url": "https://github.com/feross/safe-buffer/issues",
+          "type": "issue-tracker",
+          "comment": "as detected from PackageJson property \"bugs.url\""
+        },
+        {
+          "url": "https://registry.npmjs.org/safe-buffer/-/safe-buffer-5.1.2.tgz",
+          "type": "distribution",
+          "hashes": [
+            {
+              "alg": "SHA-512",
+              "content": "19dd94641243917958ec66c9c5fb04f3f9ef2a45045351b7f1cd6c88de903fa6bd3d3f4c98707c1a7a6c71298c252a05f0b388aedf2e77fc0fb688f2b381bafa"
+            }
+          ],
+          "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
+        }
+      ],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/safe-buffer"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "string_decoder",
+      "version": "1.1.1",
+      "bom-ref": "easyworship-app@3.1.11|string_decoder@1.1.1",
+      "description": "The string_decoder module from Node core",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT",
+            "acknowledgement": "declared"
+          }
+        }
+      ],
+      "purl": "pkg:npm/string_decoder@1.1.1",
+      "externalReferences": [
+        {
+          "url": "git://github.com/nodejs/string_decoder.git",
+          "type": "vcs",
+          "comment": "as detected from PackageJson property \"repository.url\""
+        },
+        {
+          "url": "https://github.com/nodejs/string_decoder",
+          "type": "website",
+          "comment": "as detected from PackageJson property \"homepage\""
+        },
+        {
+          "url": "https://github.com/nodejs/string_decoder/issues",
+          "type": "issue-tracker",
+          "comment": "as detected from PackageJson property \"bugs.url\""
+        },
+        {
+          "url": "https://registry.npmjs.org/string_decoder/-/string_decoder-1.1.1.tgz",
+          "type": "distribution",
+          "hashes": [
+            {
+              "alg": "SHA-512",
+              "content": "9ff4a19ef0e2e851db6d57ef8aba3e5a88e2173bfeb3c30f30705ccd578f7d4a4324bc282d3d21b759786300426e2f29240bde104767907c8fc933ff9b345fc2"
+            }
+          ],
+          "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
+        }
+      ],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/string_decoder"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "util-deprecate",
+      "version": "1.0.2",
+      "bom-ref": "easyworship-app@3.1.11|util-deprecate@1.0.2",
+      "author": "Nathan Rajlich",
+      "description": "The Node.js `util.deprecate()` function with browser support",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT",
+            "acknowledgement": "declared"
+          }
+        }
+      ],
+      "purl": "pkg:npm/util-deprecate@1.0.2",
+      "externalReferences": [
+        {
+          "url": "git://github.com/TooTallNate/util-deprecate.git",
+          "type": "vcs",
+          "comment": "as detected from PackageJson property \"repository.url\""
+        },
+        {
+          "url": "https://github.com/TooTallNate/util-deprecate",
+          "type": "website",
+          "comment": "as detected from PackageJson property \"homepage\""
+        },
+        {
+          "url": "https://github.com/TooTallNate/util-deprecate/issues",
+          "type": "issue-tracker",
+          "comment": "as detected from PackageJson property \"bugs.url\""
+        },
+        {
+          "url": "https://registry.npmjs.org/util-deprecate/-/util-deprecate-1.0.2.tgz",
+          "type": "distribution",
+          "hashes": [
+            {
+              "alg": "SHA-512",
+              "content": "10f0f9ab5b97c85c49a42acb9c27359c79eade039ae83641a1c008888d93692080ed5089d5424331a802cc891736c5187c3d5d68afff2d3110f318886eb1ed73"
+            }
+          ],
+          "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
+        }
+      ],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/util-deprecate"
+        }
+      ]
+    }
+  ],
+  "dependencies": [
+    {
+      "ref": "easyworship-app@3.1.11",
+      "dependsOn": [
+        "easyworship-app@3.1.11|mammoth@1.12.0"
+      ]
+    },
+    {
+      "ref": "easyworship-app@3.1.11|mammoth@1.12.0",
+      "dependsOn": [
+        "easyworship-app@3.1.11|@xmldom/xmldom@0.8.15",
+        "easyworship-app@3.1.11|mammoth@1.12.0|argparse@1.0.10",
+        "easyworship-app@3.1.11|base64-js@1.5.1",
+        "easyworship-app@3.1.11|bluebird@3.4.7",
+        "easyworship-app@3.1.11|dingbat-to-unicode@1.0.1",
+        "easyworship-app@3.1.11|jszip@3.10.1",
+        "easyworship-app@3.1.11|lop@0.4.2",
+        "easyworship-app@3.1.11|path-is-absolute@1.0.1",
+        "easyworship-app@3.1.11|underscore@1.13.8",
+        "easyworship-app@3.1.11|mammoth@1.12.0|xmlbuilder@10.1.1"
+      ]
+    },
+    {
+      "ref": "easyworship-app@3.1.11|mammoth@1.12.0|argparse@1.0.10",
+      "dependsOn": [
+        "easyworship-app@3.1.11|mammoth@1.12.0|sprintf-js@1.0.3"
+      ]
+    },
+    {
+      "ref": "easyworship-app@3.1.11|mammoth@1.12.0|xmlbuilder@10.1.1"
+    },
+    {
+      "ref": "easyworship-app@3.1.11|mammoth@1.12.0|sprintf-js@1.0.3"
+    },
+    {
+      "ref": "easyworship-app@3.1.11|@xmldom/xmldom@0.8.15"
+    },
+    {
+      "ref": "easyworship-app@3.1.11|base64-js@1.5.1"
+    },
+    {
+      "ref": "easyworship-app@3.1.11|bluebird@3.4.7"
+    },
+    {
+      "ref": "easyworship-app@3.1.11|dingbat-to-unicode@1.0.1"
+    },
+    {
+      "ref": "easyworship-app@3.1.11|jszip@3.10.1",
+      "dependsOn": [
+        "easyworship-app@3.1.11|lie@3.3.0",
+        "easyworship-app@3.1.11|pako@1.0.11",
+        "easyworship-app@3.1.11|readable-stream@2.3.8",
+        "easyworship-app@3.1.11|setimmediate@1.0.5"
+      ]
+    },
+    {
+      "ref": "easyworship-app@3.1.11|lop@0.4.2",
+      "dependsOn": [
+        "easyworship-app@3.1.11|duck@0.1.12",
+        "easyworship-app@3.1.11|option@0.2.4",
+        "easyworship-app@3.1.11|underscore@1.13.8"
+      ]
+    },
+    {
+      "ref": "easyworship-app@3.1.11|path-is-absolute@1.0.1"
+    },
+    {
+      "ref": "easyworship-app@3.1.11|underscore@1.13.8"
+    },
+    {
+      "ref": "easyworship-app@3.1.11|lie@3.3.0",
+      "dependsOn": [
+        "easyworship-app@3.1.11|immediate@3.0.6"
+      ]
+    },
+    {
+      "ref": "easyworship-app@3.1.11|pako@1.0.11"
+    },
+    {
+      "ref": "easyworship-app@3.1.11|readable-stream@2.3.8",
+      "dependsOn": [
+        "easyworship-app@3.1.11|core-util-is@1.0.2",
+        "easyworship-app@3.1.11|inherits@2.0.4",
+        "easyworship-app@3.1.11|isarray@1.0.0",
+        "easyworship-app@3.1.11|process-nextick-args@2.0.1",
+        "easyworship-app@3.1.11|safe-buffer@5.1.2",
+        "easyworship-app@3.1.11|string_decoder@1.1.1",
+        "easyworship-app@3.1.11|util-deprecate@1.0.2"
+      ]
+    },
+    {
+      "ref": "easyworship-app@3.1.11|setimmediate@1.0.5"
+    },
+    {
+      "ref": "easyworship-app@3.1.11|duck@0.1.12",
+      "dependsOn": [
+        "easyworship-app@3.1.11|underscore@1.13.8"
+      ]
+    },
+    {
+      "ref": "easyworship-app@3.1.11|option@0.2.4"
+    },
+    {
+      "ref": "easyworship-app@3.1.11|immediate@3.0.6"
+    },
+    {
+      "ref": "easyworship-app@3.1.11|core-util-is@1.0.2"
+    },
+    {
+      "ref": "easyworship-app@3.1.11|inherits@2.0.4"
+    },
+    {
+      "ref": "easyworship-app@3.1.11|isarray@1.0.0"
+    },
+    {
+      "ref": "easyworship-app@3.1.11|process-nextick-args@2.0.1"
+    },
+    {
+      "ref": "easyworship-app@3.1.11|safe-buffer@5.1.2"
+    },
+    {
+      "ref": "easyworship-app@3.1.11|string_decoder@1.1.1",
+      "dependsOn": [
+        "easyworship-app@3.1.11|safe-buffer@5.1.2"
+      ]
+    },
+    {
+      "ref": "easyworship-app@3.1.11|util-deprecate@1.0.2"
+    }
+  ]
+}
