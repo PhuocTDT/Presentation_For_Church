@@ -1727,6 +1727,13 @@ function setupMenu(win) {
           if (targetWin && !targetWin.isDestroyed()) targetWin.webContents.send('band-comm-toggle-panel');
         } }
       ]
+    },
+    {
+      label: 'Trợ giúp',
+      submenu: [
+        { label: 'Chính sách riêng tư', click: () => openExternalSafe('https://worship-official.link/privacy') },
+        { label: 'Liên hệ hỗ trợ', click: () => openExternalSafe('mailto:tdtp2005@gmail.com') }
+      ]
     }
   ];
   const menu = Menu.buildFromTemplate(template);

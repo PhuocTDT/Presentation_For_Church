@@ -13,15 +13,15 @@ Ký hiệu: 👤 bạn làm · 🤖 tôi làm được ngay · 🤝 cần cả h
 ### Bước 1 — Mở khóa các mục bắt buộc (không có bước này không nộp được)
 - [ ] 👤 1.1 **Pricing and availability:** Free, chọn thị trường (Việt Nam trước nếu muốn), Public, hiển thị trên Store. *(5 phút)*
 - [x] 🤝 1.2 **Chính sách riêng tư (URL công khai)** — chặn mục Properties.  
-  ↳ trang `website/privacy.html` đã viết xong, đã điền email; **chưa đăng**. Điều kiện còn lại: bạn cho phép đăng (loại `website/v2/` khi deploy).
+  ↳ **ĐÃ ĐĂNG 2026-10-03** tại https://worship-official.link/privacy (200, song ngữ, email đã điền, đã kiểm trên mạng). Dùng URL này ở Partner Center → Properties.
   - 👤 Điền: tên người/tổ chức phát hành, email liên hệ quyền riêng tư, thời hạn lưu dữ liệu, quy trình xóa tài khoản (đề xuất: xóa thủ công khi có email yêu cầu, trả lời trong N ngày).
   - 🤖 Tôi viết bản cuối từ `docs/drafts/privacy-policy.vi.md`, tạo trang `website/privacy.html` (đúng CSP của website), và sau khi bạn đồng ý mới deploy lên `worship-official.link/privacy`.
 - [ ] 👤 1.3 **Properties:** danh mục Productivity, dán URL chính sách riêng tư, website `https://worship-official.link`. (`docs/drafts/store-listing.vi.md` mục 2)
 - [ ] 👤 1.4 **Age ratings:** trả lời bảng IARC; nhớ khai **"người dùng giao tiếp với nhau"** (Kênh Band). (mục 3 của nháp)
 - [x] 🤖 1.5 **Ảnh chụp màn hình** (ít nhất 1, nên 4–6, ≥ 1366×768): tôi chụp bằng chính app thật, dùng **file mẫu (nội dung giả)** và ảnh nền do chính tôi tạo, che mọi thông tin cá nhân — bạn không cần chụp tay. *(cần bạn đồng ý để tôi chạy app và lưu ảnh vào `docs/drafts/screenshots/`)*  
   ↳ xong 2026-10-03: 4 ảnh 1920×1080 ở `docs/drafts/screenshots/` (script `scripts/make-store-screenshots.mjs`), đã soát không lộ thông tin cá nhân.
-- [x] 🤖 1.6 **Store logos** (ảnh vuông 300×300 và các cỡ Partner Center yêu cầu): tôi tạo từ `icon.jpg`, kể cả các scale 125/150/200/400 còn thiếu cho gói.  
-  ↳ xong 2026-10-03: 20 file scale trong `build/appx/` + `docs/drafts/store-assets/store-logo-300x300.png` (nguồn `icon.jpg` chỉ 732px nên không làm cỡ lớn hơn 300).
+- [x] 🤖 1.6 **Store logos** (ảnh vuông 1080×1080 và các cỡ Partner Center yêu cầu): tôi tạo từ `icon.jpg`, kể cả các scale 125/150/200/400 còn thiếu cho gói.  
+  ↳ xong 2026-10-03: 20 file scale trong `build/appx/` + `docs/drafts/store-assets/store-logo-1080x1080.png` (Partner Center từ chối 300×300, chỉ nhận PNG 1080×1080 hoặc 2160×2160; nguồn `icon.jpg` 732px nên phóng lên 1080, hơi mềm).
 - [ ] 👤 1.7 **Store listings (vi-VN và en-US):** dán mô tả, tính năng, từ khóa, "What's new", bản quyền từ `docs/drafts/store-listing.vi.md` mục 4–5; tải ảnh ở 1.5 và logo ở 1.6.
 - [ ] 🤝 1.8 **Tài khoản thử cho Kênh Band** (người duyệt cần đăng nhập thử): bạn tạo một tài khoản operator **riêng cho việc chứng nhận** và một mã phòng; không dùng tài khoản thật.
 - [ ] 👤 1.9 **Submission options:** dán lời giải trình `runFullTrust` và "Notes for certification" (mục 7 của nháp), điền tài khoản thử từ 1.8. → mục này hết "Incomplete".
@@ -211,3 +211,5 @@ Song song bạn làm 1.1, 1.4; tôi làm 1.5, 1.6 và viết 1.2. Việc **chậ
 - **B-17 + B-19 (backend relay):** đã sửa trong code + test (xem `docs/microsoft-store-readiness.md`). **Chưa deploy.** Thứ tự: `wrangler deploy` (log mode) → phát hành app mới → đổi `OPERATOR_AUTH_MODE` sang `"enforce"` → deploy lại.
 
 - **Dữ liệu người dùng (2026-10-03):** bản phát hành không đóng gói `data/`, người dùng tự nhập theo `templates/import/`. Đã kiểm trên `.exe` đóng gói: người dùng cũ giữ nguyên dữ liệu và chạy bình thường; luồng import bài hát/Kinh Thánh đã được kiểm tra dữ liệu + test e2e (`test/data-import-flow.e2e.mjs`). Chưa kiểm: đồng bộ dữ liệu từ bản NSIS sang bản MSIX trên máy thật (cần cài gói ký thử).
+
+- **Gói cần nộp (2026-10-03):** `dist-store/Presentation For Church 3.1.12.appx` (SHA-256 `a93cfc9271924c6344b232b4360dd9f82c6a231c9766a2936ed2f1dad0145db8`). Gói 3.1.10 đang ở bản nháp Partner Center phải **xóa và tải lại bằng 3.1.12** (mục Packages).
