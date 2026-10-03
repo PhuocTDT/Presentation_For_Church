@@ -1,0 +1,17 @@
+/* Dynamic Logo Theme Switching — dùng chung cho index.html và portal.html
+   (trước đây bị khai báo trùng lặp trong style.css và portal.css). */
+.logo-dark-theme {
+  display: block;
+}
+
+.logo-light-theme {
+  display: none;
+}
+
+[data-theme="light"] .logo-dark-theme {
+  display: none !important;
+}
+
+[data-theme="light"] .logo-light-theme {
+  display: block !important;
+}

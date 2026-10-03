@@ -360,10 +360,11 @@
 
         function showBackground(background) {
             const next = activeBuffer === 'a' ? 'b' : 'a';
+            const prev = activeBuffer;
             const nextImg = document.getElementById(`bg-img-${next}`);
             const nextVid = document.getElementById(`bg-video-${next}`);
             const nextLayer = document.getElementById(`buffer-${next}`);
-            const currentLayer = document.getElementById(`buffer-${activeBuffer}`);
+            const currentLayer = document.getElementById(`buffer-${prev}`);
 
             nextImg.classList.add('hidden');
             nextVid.classList.add('hidden');
@@ -383,6 +384,17 @@
             nextLayer.style.opacity = '1';
             currentLayer.style.opacity = '0';
             activeBuffer = next;
+
+            // Dừng video của buffer VỪA fade ra, sau khi crossfade xong (khớp
+            // CSS transition .layer 0.3s) — trước đây video nền cũ tiếp tục
+            // play/decode vô thời hạn dù đã ẩn (opacity:0, không display:none),
+            // tốn CPU/GPU nếu buffer đó không được dùng lại trong nhiều giờ.
+            const prevVid = document.getElementById(`bg-video-${prev}`);
+            if (prevVid && !prevVid.paused) {
+                setTimeout(() => {
+                    if (activeBuffer !== prev) prevVid.pause();
+                }, 350);
+            }
         }
 
         function scaleCanvas() {
@@ -425,7 +437,12 @@
             bufferA.style.opacity = '1';
             bufferB.style.opacity = '0';
             activeBuffer = 'a';
-            hideBackgroundBuffers();
+            // hideBackgroundBuffers() thêm class .hidden (display:none) cho
+            // <img>/<video> ngay lập tức — display không animate được nên nền
+            // biến mất ngay khung hình kế tiếp, cắt đứt transition opacity
+            // 0.3s của .layer thay vì crossfade mượt như showBackground().
+            // Đợi hết thời gian transition rồi mới dọn, để opacity kịp chạy.
+            setTimeout(hideBackgroundBuffers, 350);
         }
 
         // --- IPC Listeners ---

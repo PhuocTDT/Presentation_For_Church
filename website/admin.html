@@ -283,21 +283,21 @@
           <label>Mật khẩu hiện tại</label>
           <div class="input-wrap">
             <input type="password" id="cpCurrent" placeholder="Nhập mật khẩu hiện tại" />
-            <button type="button" class="btn-eye" onclick="togglePassVis('cpCurrent',this)">👁️</button>
+            <button type="button" class="btn-eye" data-target="cpCurrent">👁️</button>
           </div>
         </div>
         <div class="edit-form-group">
           <label>Mật khẩu mới (ối thiểu 8 ký tự)</label>
           <div class="input-wrap">
             <input type="password" id="cpNew" placeholder="Nhập mật khẩu mới" />
-            <button type="button" class="btn-eye" onclick="togglePassVis('cpNew',this)">👁️</button>
+            <button type="button" class="btn-eye" data-target="cpNew">👁️</button>
           </div>
         </div>
         <div class="edit-form-group">
           <label>Xác nhận mật khẩu mới</label>
           <div class="input-wrap">
             <input type="password" id="cpConfirm" placeholder="Nhập lại mật khẩu mới" />
-            <button type="button" class="btn-eye" onclick="togglePassVis('cpConfirm',this)">👁️</button>
+            <button type="button" class="btn-eye" data-target="cpConfirm">👁️</button>
           </div>
         </div>
         <p class="cp-error" id="cpError"></p>

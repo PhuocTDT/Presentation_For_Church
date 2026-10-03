@@ -2,6 +2,50 @@
 
 Tất cả các thay đổi và cập nhật quan trọng của dự án được ghi lại tại đây.
 
+## [3.1.9] - Security & code review fixes, fix tin cũ đổ về lại sau reconnect (2026-10-03)
+
+### Tài liệu chuẩn bị Microsoft Store (2026-10-02)
+- **`docs/microsoft-store-readiness.md`** (mới) + dòng trỏ trong `docs/README.md`: quy trình đưa app lên Microsoft Store (MSIX, Partner Center, WACK, hồ sơ listing, ảo hóa dữ liệu MSIX) và đợt review mức enterprise với 15 phát hiện (B-01…B-15) có bằng chứng file/dòng (CDN script + không CSP + IPC không kiểm tra `senderFrame`, token lưu plaintext, QR rò Room Code sang bên thứ ba, `npm audit`, `cloudflared` dead code, nội dung Bible/bài hát/font chưa có giấy phép phân phối, chính sách riêng tư). Chỉ là tài liệu — chưa sửa code nào; các mục trong tài liệu là việc cần làm tiếp.
+
+### Landing page v2 (local preview)
+- **`website/v2/index.html`**: chuyển Hero sang video ghim toàn màn hình, điều khiển theo cuộn 2200px; dùng target time trung gian, chỉ seek khi decoder rảnh và gom cập nhật bằng `requestAnimationFrame` để tránh dồn lệnh khi cuộn nhanh. Có poster dự phòng và hỗ trợ reduced motion.
+- Áp dụng header kính mờ trên video, tông kem ấm/vàng hổ phách, đường nối bo cong, hiệu ứng reveal và thư viện 4 ảnh có lightbox. Giữ nội dung Presentation For Church; chuyển khối đặt phòng thành CTA tải phần mềm và khối review thành giới thiệu ba vai trò trong hội thánh, kèm video ambient có nút tạm dừng/tiếp tục.
+- Mô phỏng lịch trình hỗ trợ kéo thả thủ công và tự đổi thứ tự có hoạt ảnh như v1, nghỉ 0,7 giây giữa các lượt và tạm dừng khi người xem tương tác.
+- Gỡ số liệu/so sánh không có căn cứ; đánh dấu hình ảnh và giao diện minh họa; chỉ phục vụ xem thử local; thêm clip người dùng chọn tại `website/v2/assets/worship-story.mp4`.
+- Không deploy.
+
+Kết quả từ 2 đợt code review toàn diện (website/channel web, rồi toàn bộ app + backend cloud). Backend (`cloud/identity/`, `cloud/worker/`) cần `wrangler deploy` lại mới có hiệu lực trên production.
+
+### Theo dõi lỗi lặp/duplicate (báo cáo theo yêu cầu, sau đợt review)
+- **`test/band-replay.test.mjs`** (mới, `node --test test/band-replay.test.mjs`): 8 test chạy trên `RoomRelay` thật (mock ctx/WebSocketPair) và `createRelayClient` thật (mock WebSocket) — phủ since hợp lệ/lạ/thiếu, `sinceTs` hợp lệ/rác, lọc tin riêng, và cursor client không bị presence/gallery/setlist làm đổi. Đã xác nhận test FAIL trên code cũ (HEAD) và PASS trên code mới.
+- **Điều tra lần 2 — tin cũ đã xử lý đổ về lại sau 5–10 phút trên máy cài mới (2026-10-02)**: nguyên nhân gốc là chuỗi 3 lỗi: (1) bản đã build v3.1.8 vẫn gán `lastEnvelopeId` cho cả envelope `presence` (đổi liên tục khi điện thoại vào/ra), (2) `room-relay.js` thấy `since` không có trong ring thì replay **toàn bộ ring (tối đa 120 tin, gồm cả alert đã `resolve`)**, (3) `seenEnvIds` ở renderer chỉ nằm trong RAM nên máy mới cài không có gì để lọc. WS rớt ~5–10 phút (idle/NAT) → reconnect kèm `since` là id presence → ring đổ về nguyên. Sửa phía server: `since` không còn trong ring thì KHÔNG replay cả ring nữa — chỉ bù tin có `ts > sinceTs` (client gửi kèm), không có `sinceTs` thì không replay gì. `relay-client.js` và `comm/mobile/app.js` gửi thêm `&sinceTs=` (mobile persist `lastTs` cùng `lastId`). Cần `wrangler deploy` trong `cloud/worker/` **và** build/cài lại app mới hết lỗi hẳn; chỉ deploy server cũng đã chặn được cho cả client cũ có gửi id presence (không gửi sinceTs → không replay).
+- **`src/band-comm/relay-client.js` + `comm/mobile/app.js`**: WS reconnect dùng `since=<id tin cuối cùng>` để chỉ đồng bộ tin mới, nhưng code cũ lấy id từ MỌI loại envelope kể cả `gallery`/`presence`/`setlist` — 3 loại này không hề nằm trong ring buffer server-side. Hậu quả: nếu tin cuối cùng nhận được tình cờ là 1 trong 3 loại đó, lần reconnect kế tiếp khiến server replay lại TOÀN BỘ ring (tối đa 120 tin) thay vì chỉ tin mới — tin/alert cũ hiện lại thành trùng lặp. Giờ chỉ dùng id của `alert`/`text`/`ack`/`resolve` (loại thật sự nằm trong ring) làm cursor. Operator side vốn đã có `seenEnvIds` dedup nên không thấy trùng, nhưng mobile không có gì chặn — đã thêm dedup tương tự cho mobile.
+- **`index.html`**: setlist không nằm trong ring buffer (chủ đích, xem room-relay.js) nên có thể bị gửi lại qua hộp thư cloud (ack thất bại + reconnect/restart) — không hỏi lại quyết định (đã lưu đúng ở `localStorage`) nhưng từng hiện thêm 1 thẻ trùng trong feed. `showSetlistCard()` giờ tái dùng thẻ cũ theo `slId` thay vì luôn tạo thẻ mới.
+- Đã audit riêng luồng ảnh hợp âm (gallery) — cả 2 phía (`renderChords()` mobile, `renderGal()` operator) đều idempotent theo thiết kế (so sánh diff / clear-rebuild), không có bug loop/duplicate.
+- Đã audit hardcode/secret trong toàn bộ codebase — không tìm thấy secret nào bị lộ; mọi AWS/Cognito/Resend credential đều qua Worker secrets (`wrangler secret put`), không commit vào repo.
+
+### Tính năng
+- **`index.html` (sidebar Kênh Band)**: thêm nút **Xóa** ở header — xóa toàn bộ tin/thẻ setlist đang hiện trên màn hình operator (chỉ cục bộ, có hỏi xác nhận, reset badge chưa đọc). Giữ nguyên `seenEnvIds` nên tin đã xóa không hiện lại khi relay replay lúc reconnect trong cùng phiên; khởi động lại app thì dựa vào bản vá `sinceTs` ở trên.
+- **`comm/mobile/app.js`**: thêm bộ nút cảnh báo mặc định (13 nút: Tăng/Giảm piano, guitar, mic hướng dẫn; Guitar/Piano mất tiếng, Loa sub có vấn đề; Dạo, Quay lại điệp khúc, Chuyển bài; Ok) — seed cho thiết bị/hồ sơ hoàn toàn mới (không có nút cục bộ VÀ server không khôi phục được hồ sơ cũ theo profileId/tên). Lý do: từ lúc bỏ hệ thống tài khoản đăng nhập sang chỉ join bằng mật khẩu phòng, `profileId` gắn với trình duyệt/thiết bị (localStorage) chứ không phải người dùng thật — đổi máy/xoá cache là mất bộ nút cũ, trước đây phải tạo lại từ đầu (màn hình trắng). Band member vẫn tự sửa/xoá/thêm nút thoải mái sau khi đã có bộ mặc định.
+
+### Critical — bảo mật
+- **`cloud/identity/src/worker.js`**: vá lỗ hổng bypass xác thực hoàn toàn trên mọi endpoint `/operator/*` — trước đây server tin `email` do client tự khai (body/JWT không verify chữ ký/query string). Giờ verify chữ ký ID token Cognito thật (JWKS, RS256, tự viết bằng Web Crypto — xem `cloud/worker/src/cognito-verify.js` làm mẫu). Thêm kiểm tra quyền sở hữu trước khi xoá/đổi mật khẩu band member (`/operator/users/delete`, `/operator/users/update-password` — trước đây endpoint sau hoàn toàn không có auth check nào). Bỏ rate-limit bypass hardcode cho 1 email cụ thể + `@example.com`. Bỏ `stack` trace khỏi response lỗi 500. So sánh `ADMIN_KEY` constant-time + thêm rate-limit cho toàn bộ route `/admin/*`. Chặn ký tự `< >` ở các trường tự do (name/phone/church/area/room name) trước khi lưu.
+- **`main.js`**: gate đăng nhập Cognito bắt buộc cho Kênh Band trước đây chỉ nằm ở UI — gọi trực tiếp IPC `band-comm-start` (vd qua DevTools console) là bỏ qua được. Kiểm tra `isLoggedIn()` ngay trong `startBandComm()` để mọi caller đều bị chặn như nhau. Vá path traversal ở protocol `app-media://` (file `.bcsch` độc hại với `mediaName: "../../..."` có thể đọc file ngoài thư mục media).
+- **`cloud/worker/src/room-relay.js`**: `profileId` (bearer secret client tự sinh) từng bị lộ công khai qua field `ownerId` trong gallery manifest — ai đọc được là tự xưng lại đúng profileId đó để xoá ảnh/ghi đè hồ sơ nút của người khác. Giờ chỉ trả boolean `mine` cá nhân hoá theo người xem, không lộ giá trị gốc (xem `docs/data-contracts.md`). Envelope `text` (tin riêng operator→1 band member) cũng bị broadcast nhầm cho cả phòng giống lỗi `ack` đã fix trước đó — giờ dùng `sendTo()` unicast khi có `to` cụ thể.
+
+### Important
+- `index.html`: 2 lỗi XSS lưu trữ — `renderChordsHTML()` chỉ escape phần khớp regex `[Chord]`, phần lyric còn lại lọt thẳng vào `innerHTML`; `addSlideToEditor()` không escape label/lyrics trước khi ghép `innerHTML`. Cả hai nhận input từ file bài hát/Bible XML import (không tin cậy được).
+- `main.js`/`preload.js`: hoàn thiện 6 IPC handler `band-accounts-*` còn thiếu (đã expose ở preload.js, đã implement ở `relay-client.js`, nhưng chưa wiring ở main.js — sót lại từ lúc migrate GĐ2).
+- `live.html`: video nền không dừng khi chuyển sang background khác (rò rỉ CPU/GPU nếu chạy nhiều giờ); nút Clear/blackout cắt hình đột ngột thay vì crossfade mượt như các chuyển cảnh khác.
+- `index.html`: rò rỉ event listener trên drag-handle của Song Editor (mở/đóng nhiều lần → chồng listener); các thao tác gửi tin/xác nhận cho band member (`doSend`, `ackFeedMsg`, thông báo accept/reject setlist, upload ảnh hợp âm) giờ kiểm tra kết quả gửi thật và báo lỗi thay vì luôn hiển thị "đã gửi" dù WebSocket vừa rớt mạng — gốc rễ nằm ở `relay-client.js`'s `operatorSend()`/`operatorAck()` trước đây luôn trả `true` bất kể `sendRaw()` thành công hay không.
+- `cloud/worker/src/room-relay.js`: khôi phục dedup tin nhắn double-tap bị rớt lúc port từ LAN server cũ (`DUP_WINDOW_MS` khai báo mà không dùng); thêm rate-limit cho `/gallery/add` (trước đây không giới hạn, khác `worker.js`'s `/gallery`).
+
+### Dọn dẹp
+- `index.html`: xoá ~90 dòng dead code (wizard Cloudflare Tunnel cũ, các `id` tham chiếu không còn tồn tại trong HTML từ GĐ2); xoá `escapeHtml()` khai báo trùng; escape `data-filename` cho tên file Bible version.
+- `website/`: xem chi tiết ở đợt review trước — CSP chặn nút admin (chuyển `onclick` sang `addEventListener` + `data-act`), `escHtml()` không escape quote, CSS logo trùng lặp, path traversal ở `serve-website.js`, `refreshToken` không được dùng để làm mới session.
+- `comm/mobile/app.js`: `removeChord()` không check `res.ok` (gallery hiện rỗng khi xoá lỗi); `slDraft` không bị xoá khi đổi phòng.
+- `CLAUDE.md`: sửa "Typical Change Paths" trỏ nhầm `edit-song.html` (dead code — main.js không bao giờ load file này, editor thật là `#song-editor-modal` trong `index.html`).
+
 ## [3.1.8] - 2026-09-20
 
 ### Fix & Stability Enhancements

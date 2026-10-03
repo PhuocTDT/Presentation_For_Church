@@ -1099,9 +1099,19 @@
       }
       #bandPanel .bp-conn .bp-modal-head .bp-btn.support:hover { background: #1d4d85; border-color: #1d4d85; }
       #bandPanel .bp-conn .bp-kv { display: flex; gap: 8px; align-items: baseline; margin-top: 6px; }
-      #bandPanel .bp-conn .k { flex: none; width: 62px; color: #8a93a3; font-size: .7rem; text-transform: uppercase; letter-spacing: .05em; }
+      #bandPanel .bp-conn .k { flex: none; white-space: nowrap; color: #8a93a3; font-size: .7rem; text-transform: uppercase; letter-spacing: .05em; }
       #bandPanel .bp-conn .v { font-family: Consolas, ui-monospace, monospace; font-size: .92rem; user-select: text; overflow-wrap: anywhere; }
       #bandPanel .bp-conn .v.password { font-size: 1.15rem; font-weight: 700; letter-spacing: .06em; color: #b9740f; }
+      /* Nằm trong .qrwrap .u (cột hẹp cạnh QR) -> thu gọn hơn bản đầy đủ bên trên */
+      #bandPanel .bp-conn .qrwrap .bp-kv.compact { margin-top: 5px; gap: 6px; }
+      #bandPanel .bp-conn .qrwrap .bp-kv.compact .k { font-size: .62rem; }
+      #bandPanel .bp-conn .qrwrap .bp-kv.compact .v.password { font-size: .86rem; }
+      #bandPanel .bp-conn .bp-eye-toggle {
+        margin-left: auto; align-self: center; border: none; background: none; color: #8a93a3;
+        font-size: 1rem; line-height: 1; cursor: pointer; padding: 3px 6px; border-radius: 6px; flex: none;
+      }
+      #bandPanel .bp-conn .bp-eye-toggle:hover { color: #2563a8; background: #eef3fa; }
+      #bandPanel .bp-conn .bp-eye-toggle.active { color: #2563a8; }
       #bandPanel .bp-conn .bp-password-reload {
         margin-left: auto; align-self: center; border: none; background: none; color: #8a93a3;
         font-size: .95rem; line-height: 1; cursor: pointer; padding: 3px 5px; border-radius: 6px; flex: none;
@@ -1164,6 +1174,13 @@
       #bandPanel .bp-conn .bp-gal .gi .rm { border: none; background: none; color: #94a3b8; font-size: 1.1rem; line-height: 1; cursor: pointer; padding: 1px 5px; border-radius: 4px; transition: color 0.15s, background 0.15s; }
       #bandPanel .bp-conn .bp-gal .gi .rm:hover { color: #dc2626; background: #fee2e2; }
       #bandPanel .bp-conn .bp-gal .empty { color: #8a93a3; font-size: .78rem; text-align: center; padding: 12px; background: #f8fafc; border-radius: 6px; border: 1px dashed #cbd5e1; }
+      #bandPanel .bp-conn .bp-gal .gi .act { border: 1px solid #e2e8f0; background: #fff; color: #475569; font-size: .7rem; font-weight: 600; padding: 3px 8px; border-radius: 6px; cursor: pointer; flex: none; }
+      #bandPanel .bp-conn .bp-gal .gi .act:hover { background: #f1f5f9; }
+      #bandPanel .bp-conn .bp-gal .gi .act.block { border-color: #fca5a5; color: #b91c1c; }
+      #bandPanel .bp-conn .bp-gal .gi .act.block:hover { background: #fee2e2; }
+      #bandPanel .bp-conn .bp-gal .gi .act.unblock { border-color: #86efac; color: #15803d; }
+      #bandPanel .bp-conn .bp-gal .gi .act.unblock:hover { background: #dcfce7; }
+      #bandPanel .bp-conn .bp-gal .gi .bwhen { font-size: .7rem; color: #94a3b8; flex: none; }
       #bandPanel .bp-slcard { align-self: stretch; border: 1px solid #bcd6f0; background: #eef5fd; border-radius: 9px; padding: 7px 9px; margin: 3px 0; transition: all 0.2s ease; }
       #bandPanel .bp-slcard.loaded { border-color: #a7f3d0; background: #ecfdf5; }
       #bandPanel .bp-slcard.rejected { border-color: #fecaca; background: #fef2f2; }
@@ -1484,6 +1501,7 @@
       <div class="bp-head">
         <span class="bp-dot" id="bpDot"></span>
         <span class="bp-title">Kênh Band</span>
+        <button class="bp-btn" id="bpClear" title="Xóa toàn bộ tin trên màn hình Kênh Band (chỉ máy này)">Xóa</button>
         <button class="bp-btn" id="bpDetailsToggle">Kết nối</button>
         <button class="bp-btn go" id="bpToggle">Bắt đầu</button>
         <button class="bp-x" id="bpClose" title="Đóng">&times;</button>
@@ -1507,12 +1525,27 @@
             <img id="bpQr" alt="Mã QR kết nối" style="display:none;">
             <div class="u">
               <div class="host" id="bpHost">—</div>
+              <div class="bp-kv compact"><span class="k">ID phòng</span><span class="v password" id="bpRoomCode">—</span></div>
+              <div class="bp-kv compact"><span class="k">Mật khẩu</span><span class="v password" id="bpPassword">—</span><button class="bp-password-reload" id="bpPasswordReload" type="button" title="Tạo mật khẩu mới">🔄</button></div>
             </div>
           </div>
-          <div class="bp-kv"><span class="k">ID phòng</span><span class="v password" id="bpRoomCode">—</span></div>
-          <div class="bp-kv"><span class="k">Mật khẩu</span><span class="v password" id="bpPassword">—</span><button class="bp-password-reload" id="bpPasswordReload" type="button" title="Tạo mật khẩu mới">🔄</button></div>
           <div class="bp-password-hint bp-hidden" id="bpPasswordHint"></div>
-          <div class="bp-kv"><span class="k">Đang nối</span><span class="v" id="bpCount">0</span></div>
+          <div class="bp-kv">
+            <span class="k">Đang kết nối</span><span class="v" id="bpCount">0</span>
+            <button class="bp-eye-toggle" id="bpOnlineToggle" type="button" title="Xem danh sách người đang kết nối">👁</button>
+          </div>
+          <div class="bp-gal bp-hidden" id="bpOnlineSection">
+            <div id="bpOnlineList"></div>
+          </div>
+          <div class="bp-gal bp-hidden" id="bpBlockedSection">
+            <div class="bp-gal-head">
+              <div class="bp-gal-title-row">
+                <span class="k" style="font-weight:700;">Đã chặn</span>
+                <span class="bp-gal-count" id="bpBlockedCount">(0)</span>
+              </div>
+            </div>
+            <div id="bpBlockedList"></div>
+          </div>
           <div class="bp-composer-link">
             <span class="k">Link soạn setlist (dùng được cả khi tắt máy)</span>
             <input id="bpComposerLink" type="text" readonly spellcheck="false">
@@ -3778,10 +3811,15 @@
             return text.split('\n').map(line => {
                 if (!line.trim()) return '<div class="chord-line">&nbsp;</div>';
 
-                // Wrap [Chord] and the following text unit (until space or next chord) in a chord-unit span
-                // This ensures the chord and its word stay together on the same line
-                const html = line.replace(/\[(.*?)\]([^\s\[]*)/g, (match, chord, wordPart) => {
-                    return `<span class="chord-unit"><span class="chord-anchor"><span class="chord-mark">${escapeHtml(chord)}</span></span>${escapeHtml(wordPart)}</span>`;
+                // Escape TOÀN BỘ dòng trước, rồi mới bọc [Chord] — trước đây
+                // .replace() chỉ escape phần khớp regex, phần lyric còn lại
+                // của dòng lọt thẳng vào innerHTML chưa escape (XSS qua nội
+                // dung import từ file bài hát/Bible XML). [ ] không nằm
+                // trong tập ký tự escapeHtml() đổi nên regex vẫn khớp đúng
+                // trên chuỗi đã escape.
+                const escapedLine = escapeHtml(line);
+                const html = escapedLine.replace(/\[(.*?)\]([^\s\[]*)/g, (match, chord, wordPart) => {
+                    return `<span class="chord-unit"><span class="chord-anchor"><span class="chord-mark">${chord}</span></span>${wordPart}</span>`;
                 });
 
                 return `<div class="chord-line">${html}</div>`;
@@ -4109,7 +4147,7 @@
                 <div class="border border-slate-200 dark:border-slate-700 rounded-md px-3 py-2 bg-white dark:bg-slate-800 bible-version-item"
                     draggable="${!isEditing}" 
                     data-index="${index}"
-                    data-filename="${version.fileName}"
+                    data-filename="${escapeHtml(version.fileName)}"
                     ${!isEditing ? 'ondragstart="handleBibleVersionDragStart(event)"' : ''}
                     ${!isEditing ? 'ondragover="handleBibleVersionDragOver(event)"' : ''}
                     ${!isEditing ? 'ondrop="handleBibleVersionDrop(event)"' : ''}>
@@ -5472,15 +5510,6 @@
             return getSearchVariants(str)[0] || '';
         }
 
-        function escapeHtml(text) {
-            return String(text || '')
-                .replace(/&/g, '&amp;')
-                .replace(/</g, '&lt;')
-                .replace(/>/g, '&gt;')
-                .replace(/"/g, '&quot;')
-                .replace(/'/g, '&#39;');
-        }
-
         function normalizeSearchToken(token) {
             const base = normalizeSearchBase(token);
             if (!base) return { base: '', alias: '', pronunciation: '' };
@@ -6401,12 +6430,14 @@
                 body = lines.slice(1).join('\n');
             }
 
+            // label/body có thể đến từ lyric import (file bài hát/Bible XML) —
+            // không tin cậy được, phải escape trước khi nhét vào innerHTML/attribute.
             block.innerHTML = `
             <div class="lyrics-slide-header">
                 <div class="lyrics-slide-num">${index + 1}</div>
-                <input class="lyrics-slide-label-input" placeholder="Label (optional)..." value="${label}" spellcheck="false">
+                <input class="lyrics-slide-label-input" placeholder="Label (optional)..." value="${escapeHtml(label)}" spellcheck="false">
             </div>
-            <div class="lyrics-slide-content" contenteditable="true" spellcheck="false">${body.replace(/\n/g, '<br>')}</div>
+            <div class="lyrics-slide-content" contenteditable="true" spellcheck="false">${escapeHtml(body).replace(/\n/g, '<br>')}</div>
         `;
 
             const contentDiv = block.querySelector('.lyrics-slide-content');
@@ -8119,13 +8150,21 @@
                 });
             });
 
-            // Drag via drag-handle
+            // Drag via drag-handle — element này KHÔNG bị remove/recreate
+            // như resize handles ở trên (nó cố định trong HTML), nên phải tự
+            // gỡ listener cũ trước khi gắn lại, nếu không mỗi lần mở Song
+            // Editor sẽ chồng thêm 1 listener 'mousedown' (rò rỉ, mỗi lần kéo
+            // sau đó kích hoạt N lần beginTextBoxDrag chồng nhau).
             const dragHandle = document.getElementById('editor-drag-handle');
             if (dragHandle) {
-                dragHandle.addEventListener('mousedown', (e) => {
+                if (dragHandle._dragMousedownHandler) {
+                    dragHandle.removeEventListener('mousedown', dragHandle._dragMousedownHandler);
+                }
+                dragHandle._dragMousedownHandler = (e) => {
                     e.preventDefault();
                     beginTextBoxDrag(e, textBox, container);
-                });
+                };
+                dragHandle.addEventListener('mousedown', dragHandle._dragMousedownHandler);
             }
         }
 
@@ -8421,98 +8460,6 @@
       }
       $('bpToggle').addEventListener('click', doToggle);
 
-      // Tên Named Tunnel: lưu vào band-comm.json -> main.js tự spawn/dừng
-      // `cloudflared tunnel run <tên>` song song với app (đổi tên = tự restart).
-      var tunnelName = '';
-      function commitTunnelName() {
-        var el = $('bpTunnelName');
-        if (!el) return;
-        var val = el.value.trim();
-        if (val === tunnelName) return;
-        api.getConfig().then(function (cfg) {
-          return api.saveConfig(Object.assign({}, cfg, { tunnelName: val }));
-        }).then(function (saved) {
-          tunnelName = (saved && saved.tunnelName) || '';
-          if ($('bpTunnelName')) $('bpTunnelName').value = tunnelName;
-        }).catch(function () {});
-      }
-      if ($('bpTunnelName')) {
-        $('bpTunnelName').addEventListener('change', commitTunnelName);
-        $('bpTunnelName').addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); $('bpTunnelName').blur(); } });
-      }
-
-
-
-      // Wizard "domain riêng tự động" — an toàn nếu element tồn tại
-      if ($('bpWizOpenBtn')) {
-        $('bpWizOpenBtn').addEventListener('click', function () {
-          var show = $('bpWizard') && $('bpWizard').classList.contains('hidden');
-          if ($('bpWizard')) $('bpWizard').classList.toggle('hidden', !show);
-          if (show && $('bpWizLoginStatus')) {
-            $('bpWizLoginStatus').textContent = '';
-            $('bpWizLoginStatus').className = 'bp-wizard-status';
-            api.tunnelCheckLogin().then(function (r) {
-              var loggedIn = r && r.loggedIn;
-              if ($('bpWizStep1')) $('bpWizStep1').classList.toggle('hidden', loggedIn);
-              if ($('bpWizStep2')) $('bpWizStep2').classList.toggle('hidden', !loggedIn);
-            }).catch(function () {});
-          }
-        });
-      }
-      if ($('bpWizLoginBtn')) {
-        api.onTunnelLoginUrl(function (_e, url) {
-          var st = $('bpWizLoginStatus');
-          if (st) {
-            st.textContent = 'Đang chờ xác nhận trong trình duyệt… Nếu trình duyệt không tự mở, vào link: ' + url;
-            st.className = 'bp-wizard-status';
-          }
-        });
-        $('bpWizLoginBtn').addEventListener('click', function () {
-          $('bpWizLoginBtn').disabled = true;
-          var st = $('bpWizLoginStatus');
-          if (st) { st.textContent = 'Đang mở trình duyệt để đăng nhập Cloudflare…'; st.className = 'bp-wizard-status'; }
-          api.tunnelLogin().then(function (r) {
-            $('bpWizLoginBtn').disabled = false;
-            if (r && r.ok) {
-              if (st) { st.textContent = '✅ Đăng nhập thành công.'; st.className = 'bp-wizard-status ok'; }
-              if ($('bpWizStep1')) $('bpWizStep1').classList.add('hidden');
-              if ($('bpWizStep2')) $('bpWizStep2').classList.remove('hidden');
-            } else {
-              if (st) { st.textContent = '❌ ' + ((r && r.error) || 'Đăng nhập thất bại.'); st.className = 'bp-wizard-status err'; }
-            }
-          }).catch(function (err) {
-            $('bpWizLoginBtn').disabled = false;
-            if (st) { st.textContent = '❌ ' + (err && err.message || err); st.className = 'bp-wizard-status err'; }
-          });
-        });
-      }
-      if ($('bpWizCreateBtn')) {
-        $('bpWizCreateBtn').addEventListener('click', function () {
-          var name = $('bpWizName') ? $('bpWizName').value.trim() : '';
-          var domain = $('bpWizDomain') ? $('bpWizDomain').value.trim() : '';
-          var st = $('bpWizCreateStatus');
-          if (!name || !domain) {
-            if (st) { st.textContent = 'Nhập đủ tên tunnel và domain.'; st.className = 'bp-wizard-status err'; }
-            return;
-          }
-          $('bpWizCreateBtn').disabled = true;
-          if (st) { st.textContent = 'Đang tạo tunnel + trỏ DNS + kết nối… (vài giây)'; st.className = 'bp-wizard-status'; }
-          api.tunnelCreate({ name: name, domain: domain }).then(function (r) {
-            $('bpWizCreateBtn').disabled = false;
-            if (r && r.ok) {
-              if (st) { st.textContent = '✅ Đã tạo tunnel.'; st.className = 'bp-wizard-status ok'; }
-              tunnelName = r.tunnelName || name;
-              if ($('bpTunnelName')) $('bpTunnelName').value = tunnelName;
-            } else {
-              if (st) { st.textContent = '❌ ' + ((r && r.error) || 'Thất bại.'); st.className = 'bp-wizard-status err'; }
-            }
-          }).catch(function (err) {
-            $('bpWizCreateBtn').disabled = false;
-            if (st) { st.textContent = '❌ ' + (err && err.message || err); st.className = 'bp-wizard-status err'; }
-          });
-        });
-      }
-
       // Hỗ trợ kỹ thuật: chỉ hiện 3 kênh liên hệ, người dùng tự chọn —
       // không tự động hoá gì thêm, mình chỉ hỗ trợ khi họ chủ động liên hệ.
       function openExternalLink(url) {
@@ -8772,16 +8719,108 @@
           downscaleImg(f, function (dataUrl) {
             api.galleryAdd({ name: f.name, ext: '.jpg', dataB64: dataUrl })
               .then(function (res) {
+                // fetch() không reject khi server trả lỗi (400 "Ảnh quá lớn"...)
+                // — trước đây .catch() rỗng nên lỗi này (và lỗi mạng thật) đều
+                // bị nuốt im lặng, operator tưởng ảnh đã lên mà thực ra không.
+                if (res && res.error) { showOperatorToast('Không tải lên được "' + f.name + '": ' + res.error, 'error'); return; }
                 renderGal(res);
                 showOperatorToast('Đã thêm ảnh "' + f.name + '".', 'success');
               })
-              .catch(function () {});
+              .catch(function () {
+                showOperatorToast('Không tải lên được "' + f.name + '" (mất kết nối?).', 'error');
+              });
           });
         });
       });
 
+      // Người đang kết nối + kick/block — tách riêng API admin (có profileId)
+      // khỏi envelope 'presence' công khai (chỉ clientId+name, không đủ để
+      // kick/block đúng người) — xem room-relay.js's handleAdminPresence().
+      function renderOnlineList(clients) {
+        var wrap = $('bpOnlineList'); if (!wrap) return;
+        wrap.textContent = '';
+        if (!clients || !clients.length) {
+          var e = document.createElement('div'); e.className = 'empty'; e.textContent = 'Chưa có ai kết nối.';
+          wrap.appendChild(e); return;
+        }
+        clients.forEach(function (c) {
+          var row = document.createElement('div'); row.className = 'gi';
+          var nm = document.createElement('span'); nm.className = 'nm'; nm.textContent = c.name || 'Ẩn danh';
+          row.appendChild(nm);
+          var kickBtn = document.createElement('button');
+          kickBtn.type = 'button'; kickBtn.className = 'act'; kickBtn.textContent = 'Kick';
+          kickBtn.title = 'Ngắt kết nối ngay — vẫn vào lại được sau';
+          kickBtn.addEventListener('click', function () {
+            if (!confirm('Ngắt kết nối "' + (c.name || 'Ẩn danh') + '" khỏi phòng?')) return;
+            api.kickClient(c.clientId).then(function () { refreshOnlineList(); });
+          });
+          row.appendChild(kickBtn);
+          var blockBtn = document.createElement('button');
+          blockBtn.type = 'button'; blockBtn.className = 'act block'; blockBtn.textContent = 'Chặn';
+          blockBtn.title = 'Ngắt kết nối và cấm quay lại phòng này trong 3 ngày';
+          blockBtn.addEventListener('click', function () {
+            if (!confirm('Chặn "' + (c.name || 'Ẩn danh') + '" khỏi phòng này trong 3 ngày? Bạn vẫn bỏ chặn sớm hơn được bất cứ lúc nào.')) return;
+            api.blockClient(c.clientId).then(function () { refreshOnlineList(); refreshBlockedList(); });
+          });
+          row.appendChild(blockBtn);
+          wrap.appendChild(row);
+        });
+      }
+      function refreshOnlineList() {
+        if (!api.presenceList) return;
+        api.presenceList().then(renderOnlineList).catch(function () {});
+      }
+
+      function renderBlockedList(blocked) {
+        var wrap = $('bpBlockedList'); if (!wrap) return;
+        wrap.textContent = '';
+        var section = $('bpBlockedSection');
+        if (section) section.classList.toggle('bp-hidden', !blocked || !blocked.length);
+        if ($('bpBlockedCount')) $('bpBlockedCount').textContent = '(' + ((blocked && blocked.length) || 0) + ')';
+        (blocked || []).forEach(function (b) {
+          var row = document.createElement('div'); row.className = 'gi';
+          var nm = document.createElement('span'); nm.className = 'nm'; nm.textContent = b.name || 'Ẩn danh';
+          row.appendChild(nm);
+          if (b.expiresAt) {
+            var w = document.createElement('span'); w.className = 'bwhen'; w.textContent = 'Hết hạn ' + fmtDateShort(b.expiresAt);
+            row.appendChild(w);
+          }
+          var unblockBtn = document.createElement('button');
+          unblockBtn.type = 'button'; unblockBtn.className = 'act unblock'; unblockBtn.textContent = 'Bỏ chặn';
+          unblockBtn.addEventListener('click', function () {
+            api.unblockProfile(b.profileId).then(function () { refreshBlockedList(); });
+          });
+          row.appendChild(unblockBtn);
+          wrap.appendChild(row);
+        });
+      }
+      function refreshBlockedList() {
+        if (!api.blockedList) return;
+        api.blockedList().then(renderBlockedList).catch(function () {});
+      }
+      function fmtDateShort(ts) {
+        try { var d = new Date(ts); return d.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' }); } catch (e) { return ''; }
+      }
+
+      // Danh sách "Đang kết nối" thu gọn mặc định (tiết kiệm không gian) —
+      // bấm icon mắt để mở/đóng, chỉ fetch lúc thật sự mở ra xem.
+      $('bpOnlineToggle') && $('bpOnlineToggle').addEventListener('click', function () {
+        var show = $('bpOnlineSection').classList.contains('bp-hidden');
+        $('bpOnlineSection').classList.toggle('bp-hidden', !show);
+        $('bpOnlineToggle').classList.toggle('active', show);
+        if (show) refreshOnlineList();
+      });
+
       // "Kết nối" opens the connection info as a popup over the whole app.
-      function openConnModal() { refreshQr(); api.galleryList().then(renderGal).catch(function () {}); $('bpConn').classList.remove('bp-hidden'); }
+      function openConnModal() {
+        refreshQr(); api.galleryList().then(renderGal).catch(function () {});
+        refreshBlockedList();
+        // Luôn đóng lại danh sách "Đang kết nối" mỗi lần mở popup — nhất quán,
+        // không giữ trạng thái mở/đóng lần trước.
+        if ($('bpOnlineSection')) $('bpOnlineSection').classList.add('bp-hidden');
+        if ($('bpOnlineToggle')) $('bpOnlineToggle').classList.remove('active');
+        $('bpConn').classList.remove('bp-hidden');
+      }
       function closeConnModal() { $('bpConn').classList.add('bp-hidden'); }
       $('bpDetailsToggle').addEventListener('click', openConnModal);
       $('bpConnClose').addEventListener('click', closeConnModal);
@@ -8869,11 +8908,6 @@
           }
         })();
 
-        if (typeof st.tunnelName === 'string' && $('bpTunnelName')) {
-          tunnelName = st.tunnelName;
-          if (document.activeElement !== $('bpTunnelName')) $('bpTunnelName').value = tunnelName;
-        }
-
         currentRoomCode = st.code || '';
         if (running) {
           refreshQr();
@@ -8902,14 +8936,40 @@
       function doSend(text) {
         text = String(text || '').trim();
         if (!text || !running) return;
-        api.send({ to: 'all', text: text });
         addFeed('op', 'Bạn', text);
+        // api.send() giờ trả về true/false thật (đã fix relay-client.js) —
+        // trước đây luôn coi như gửi thành công dù WebSocket vừa rớt mạng.
+        Promise.resolve(api.send({ to: 'all', text: text })).then(function (ok) {
+          if (!ok) showOperatorToast('Gửi tin không thành công (mất kết nối?). Vui lòng thử lại.', 'error');
+        }).catch(function () {
+          showOperatorToast('Gửi tin không thành công (mất kết nối?). Vui lòng thử lại.', 'error');
+        });
       }
 
       api.onMessage(function (_e, env) { handle(env); });
-      api.onPresence(function (_e, list) { $('bpCount').textContent = (list ? list.length : 0); });
+      api.onPresence(function (_e, list) {
+        $('bpCount').textContent = (list ? list.length : 0);
+        // Danh sách "Đang kết nối" đang mở (bấm icon mắt) -> có người vào/
+        // rời/bị kick thì cập nhật luôn, không cần đóng mở lại mới thấy đúng.
+        if ($('bpOnlineSection') && !$('bpOnlineSection').classList.contains('bp-hidden')) refreshOnlineList();
+      });
       api.onServerStatus(function (_e, st) { applyStatus(st); });
       api.onSetlist && api.onSetlist(function (_e, sl) { showSetlistCard(sl); });
+
+      // Xóa feed CHỈ trên màn hình operator này — không đụng relay/điện thoại.
+      // Cố ý GIỮ seenEnvIds để tin vừa xóa không hiện lại nếu relay replay lúc
+      // reconnect trong cùng phiên chạy.
+      $('bpClear').addEventListener('click', function () {
+        var feed = $('bpFeed');
+        var empty = $('bpEmpty');
+        if (!feed.querySelector('.bp-fr, .bp-msg, .bp-slcard')) return;
+        if (!confirm('Xóa toàn bộ tin trên màn hình Kênh Band? (chỉ xóa trên máy này)')) return;
+        Array.prototype.slice.call(feed.children).forEach(function (n) { if (n !== empty) n.remove(); });
+        empty.textContent = running ? 'Đã xóa. Tin mới sẽ hiện ở đây.' : 'Bấm "Bắt đầu" rồi cho band mở địa chỉ + nhập mật khẩu phòng.';
+        empty.classList.remove('bp-hidden');
+        tab.classList.remove('has-unread', 'has-alert'); unread = 0;
+        $('bandPanelTabCount').textContent = '0';
+      });
 
       function showOperatorToast(msg, type) {
         var isErr = type === 'error' || type === 'reject';
@@ -8945,10 +9005,22 @@
         if (!sl || !Array.isArray(sl.items)) return;
         var feed = $('bpFeed');
         $('bpEmpty').classList.add('bp-hidden');
-        var card = document.createElement('div');
         var who = (sl.from && sl.from.name) ? sl.from.name : 'Ban Hát';
         var slTitle = (sl.name && sl.name.trim()) ? sl.name.trim() : ('Setlist ' + sl.items.length + ' bài');
         var slId = sl.id || (slTitle + '_' + sl.items.length + '_' + who);
+
+        // setlist KHÔNG nằm trong ring buffer (xem room-relay.js) nên không bị
+        // dedup bằng seenEnvIds như alert/text — nhưng vẫn có thể tới 2 lần
+        // (hộp thư cloud redeliver do ack thất bại, hoặc app restart trước khi
+        // ack kịp gửi). Tái dùng card cũ thay vì luôn appendChild() card mới,
+        // tránh hiện 2 thẻ trùng cho cùng 1 setlist trong feed.
+        var card = null;
+        for (var ci = 0; ci < feed.children.length; ci++) {
+          if (feed.children[ci].dataset && feed.children[ci].dataset.slId === slId) { card = feed.children[ci]; break; }
+        }
+        var isExistingCard = !!card;
+        if (!card) card = document.createElement('div');
+        card.dataset.slId = slId;
 
         function renderCard(status, reason) {
           if (status === 'rejected') {
@@ -9049,7 +9121,11 @@
 
               var notifText = '❌ Operator đã từ chối setlist "' + slTitle + '"' + (reason ? ' (Lý do: ' + reason + ')' : '.');
               if (api && typeof api.send === 'function') {
-                api.send({ to: 'all', text: notifText });
+                Promise.resolve(api.send({ to: 'all', text: notifText })).then(function (ok) {
+                  if (!ok) showOperatorToast('Đã từ chối, nhưng chưa báo được cho band (mất kết nối?).', 'error');
+                }).catch(function () {
+                  showOperatorToast('Đã từ chối, nhưng chưa báo được cho band (mất kết nối?).', 'error');
+                });
               }
               addFeed('sys', '', 'Đã từ chối setlist "' + slTitle + '" từ ' + who + (reason ? ' — Lý do: ' + reason : '') + '.');
             };
@@ -9078,11 +9154,17 @@
           renderCard('loaded');
           showOperatorToast('Đã nạp thành công ' + sl.items.length + ' bài từ setlist "' + slTitle + '" vào Schedule.', 'success');
           if (api && typeof api.send === 'function') {
-            api.send({ to: 'all', text: isReload ? ('✅ Operator đã tiếp nhận và nạp lại setlist "' + slTitle + '" vào Schedule.') : ('✅ Operator đã nạp setlist "' + slTitle + '" vào Schedule máy chiếu.') });
+            var loadNotifText = isReload ? ('✅ Operator đã tiếp nhận và nạp lại setlist "' + slTitle + '" vào Schedule.') : ('✅ Operator đã nạp setlist "' + slTitle + '" vào Schedule máy chiếu.');
+            Promise.resolve(api.send({ to: 'all', text: loadNotifText })).then(function (ok) {
+              if (!ok) showOperatorToast('Đã nạp Schedule, nhưng chưa báo được cho band (mất kết nối?).', 'error');
+            }).catch(function () {
+              showOperatorToast('Đã nạp Schedule, nhưng chưa báo được cho band (mất kết nối?).', 'error');
+            });
           }
         }
 
-        if (handledSetlistIds[slId]) {
+        var alreadyHandled = !!handledSetlistIds[slId];
+        if (alreadyHandled) {
           var prev = handledSetlistIds[slId];
           renderCard(prev.status, prev.reason);
         } else {
@@ -9090,7 +9172,10 @@
         }
         feed.appendChild(card);
         feed.scrollTop = feed.scrollHeight;
-        bumpUnread();
+        // Chỉ tính "có hoạt động mới" khi đây thật sự là card mới VÀ còn cần
+        // operator xử lý — card bị redeliver (đã xử lý từ trước, hoặc đang
+        // update lại card đang hiện) không nên bump unread badge.
+        if (!isExistingCard && !alreadyHandled) bumpUnread();
       }
 
       function escHtml(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]; }); }
@@ -9174,7 +9259,20 @@
         mk.textContent = 'đã tiếp nhận';
         el.appendChild(mk);
         if (el.dataset.sender) {
-          api.ackAlert({ clientIds: [el.dataset.sender], label: el.dataset.label || '' });
+          // api.ackAlert() giờ trả mảng rỗng nếu gửi thất bại thật sự (đã fix
+          // relay-client.js) — trước đây UI luôn đánh dấu "đã tiếp nhận" kể
+          // cả khi WebSocket rớt mạng ngay lúc bấm, band member không hề
+          // nhận được xác nhận mà operator không biết.
+          Promise.resolve(api.ackAlert({ clientIds: [el.dataset.sender], label: el.dataset.label || '' })).then(function (targets) {
+            if (!targets || !targets.length) {
+              showOperatorToast('Không gửi được xác nhận (mất kết nối?). Vui lòng thử lại.', 'error');
+              el.classList.remove('alert-acked');
+              el.classList.add('alert-pending');
+              if (mk.parentElement) mk.remove();
+            }
+          }).catch(function () {
+            showOperatorToast('Không gửi được xác nhận (mất kết nối?). Vui lòng thử lại.', 'error');
+          });
         }
       }
 

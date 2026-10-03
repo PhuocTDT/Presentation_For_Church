@@ -45,6 +45,7 @@ function createRelayClient({ store, operatorAuthStore, onEvent, onPresence, onSe
   let reconnectTimer = null;
   let reconnectDelay = RECONNECT_MIN_MS;
   let lastEnvelopeId = null;
+  let lastEnvelopeTs = 0; // gửi kèm `sinceTs` để server vẫn bù đúng tin mới nếu id không còn trong ring
   let clientsCache = [];
   let lastError = null;
   const seenSetlistIds = new Set();
@@ -149,7 +150,7 @@ function createRelayClient({ store, operatorAuthStore, onEvent, onPresence, onSe
   function connect() {
     if (!wantConnected) return Promise.resolve();
     const c = cfg();
-    const since = lastEnvelopeId ? `&since=${encodeURIComponent(lastEnvelopeId)}` : '';
+    const since = lastEnvelopeId ? `&since=${encodeURIComponent(lastEnvelopeId)}&sinceTs=${lastEnvelopeTs}` : '';
     const url = `${relayWsBase()}/api/room/${encodeURIComponent(c.room.code)}/ws?adminSecret=${encodeURIComponent(c.relayAdminSecret)}${since}`;
 
     let socket;
@@ -168,7 +169,16 @@ function createRelayClient({ store, operatorAuthStore, onEvent, onPresence, onSe
       try { msg = JSON.parse(String(ev.data)); } catch (e) { return; }
       if (msg.kind !== 'envelope' || !msg.envelope) return;
       const envelope = msg.envelope;
-      lastEnvelopeId = envelope.id;
+      // CHỈ cập nhật cursor `since` bằng id của loại envelope THẬT SỰ có nằm
+      // trong ring (alert/text/ack/resolve — xem room-relay.js's pushRing()
+      // call sites). `gallery`/`presence`/`setlist` không hề được pushRing(),
+      // nên nếu lỡ dùng id của chúng làm `since` lúc reconnect, server không
+      // tìm thấy trong ring (`idx === -1`) và replay lại TOÀN BỘ ring — hiện
+      // lại các alert/tin nhắn đã thấy rồi thành trùng lặp trên feed.
+      if (envelope.id && ['alert', 'text', 'ack', 'resolve'].includes(envelope.type)) {
+        lastEnvelopeId = envelope.id;
+        lastEnvelopeTs = Number(envelope.ts) || lastEnvelopeTs;
+      }
       if (envelope.type === 'presence') {
         clientsCache = (envelope.meta && envelope.meta.clients) || [];
         try { onPresence && onPresence(clientsCache); } catch (e) {}
@@ -253,17 +263,19 @@ function createRelayClient({ store, operatorAuthStore, onEvent, onPresence, onSe
     try { ws.send(JSON.stringify(payload)); return true; } catch (e) { return false; }
   }
 
+  // sendRaw() trả false khi socket đang đóng/gửi lỗi — TRƯỚC ĐÂY 2 hàm dưới
+  // bỏ qua kết quả đó và luôn báo thành công, khiến sidebar hiện "đã gửi"/
+  // "đã tiếp nhận" dù tin không hề tới nơi lúc WebSocket rớt mạng thoáng qua.
   function operatorSend({ to = 'all', text } = {}) {
     const body = String(text || '').trim().slice(0, 500);
     if (!body) return null;
-    sendRaw({ kind: 'text', to, text: body });
-    return true;
+    return sendRaw({ kind: 'text', to, text: body });
   }
 
   function operatorAck({ clientIds = [], label = '' } = {}) {
     const targets = Array.isArray(clientIds) ? clientIds : [clientIds];
-    sendRaw({ kind: 'ack', clientIds: targets.filter(Boolean), label: String(label || '').trim() });
-    return targets;
+    const ok = sendRaw({ kind: 'ack', clientIds: targets.filter(Boolean), label: String(label || '').trim() });
+    return ok ? targets : [];
   }
 
   function operatorResolve({ label = '', dedupKey = null } = {}) {
@@ -333,6 +345,34 @@ function createRelayClient({ store, operatorAuthStore, onEvent, onPresence, onSe
   function galleryClear() { return adminGalleryCall('clear', {}); }
   function galleryReorder(ids) { return adminGalleryCall('reorder', { ids }); }
 
+  // ---- Ai đang online + kick/block (sidebar, popup "Kết nối") — gọi
+  // /admin/presence/* mới (X-Admin-Secret). Tách riêng khỏi WS envelope
+  // 'presence' công khai (chỉ clientId+name): route này có profileId để
+  // kick/block đúng người, an toàn vì chỉ operator gọi được (adminSecret).
+  async function adminPresenceCall(action, method, body) {
+    const c = cfg();
+    const res = await fetch(`${roomBaseUrl()}/admin/presence/${action}`, {
+      method: method || 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Admin-Secret': c.relayAdminSecret },
+      body: method === 'GET' ? undefined : JSON.stringify(body || {}),
+      signal: AbortSignal.timeout(15000)
+    });
+    return res.json().catch(() => ({ error: 'Không đọc được phản hồi từ relay' }));
+  }
+  async function presenceList() {
+    const j = await adminPresenceCall('list', 'GET');
+    return j.clients || [];
+  }
+  async function blockedList() {
+    const j = await adminPresenceCall('blocked', 'GET');
+    return j.blocked || [];
+  }
+  // Kick = ngắt kết nối hiện tại, KHÔNG cấm quay lại. Block = ngắt luôn +
+  // cấm profileId đó join lại (bền vững, xem room-relay.js's verifyToken()).
+  function kickClient(clientId) { return adminPresenceCall('kick', 'POST', { clientId }); }
+  function blockClient(clientId) { return adminPresenceCall('block', 'POST', { clientId }); }
+  function unblockProfile(profileId) { return adminPresenceCall('unblock', 'POST', { profileId }); }
+
   // Đẩy chỉ mục thư viện lên Worker (KV theo room code, KHÔNG qua DO) — y
   // hệt server.js cũ, fire-and-forget, không chặn/ảnh hưởng luồng chính.
   function syncLibraryToCloud() {
@@ -355,7 +395,8 @@ function createRelayClient({ store, operatorAuthStore, onEvent, onPresence, onSe
     rotateSecret,
     galleryManifest, galleryAdd, galleryRemove, galleryRemoveMany, galleryClear, galleryReorder,
     announceRoomConfig, syncLibraryToCloud,
-    accountsList, accountsCreate, accountsUpdate, accountsUpdatePassword, accountsSetActive, accountsRemove
+    accountsList, accountsCreate, accountsUpdate, accountsUpdatePassword, accountsSetActive, accountsRemove,
+    presenceList, blockedList, kickClient, blockClient, unblockProfile
   };
 }
 

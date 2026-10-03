@@ -1209,6 +1209,17 @@ function bandStartupHint(err) {
 // auto-start khi mở app lẫn khi bấm "Thử lại". GĐ2: không còn mDNS/tunnel —
 // relay-client.js tự nối ra ngoài, không có gì để announce/tunnel cả.
 async function startBandComm() {
+  // Gate bắt buộc: KHÔNG khởi động Kênh Band nếu operator chưa đăng nhập
+  // Cognito (band-comm-plan.md, operator-auth.js). Trước đây gate này chỉ
+  // được thực thi ở lúc app boot (xem app.whenReady) — ipcMain.handle
+  // 'band-comm-start' gọi thẳng hàm này không qua check, nên gọi IPC trực
+  // tiếp (vd từ DevTools console) là bỏ qua được đăng nhập hoàn toàn. Kiểm
+  // tra ngay trong hàm dùng chung này để MỌI caller đều bị chặn như nhau.
+  if (!bandOperatorAuthStore || !bandOperatorAuthStore.isLoggedIn()) {
+    const detail = { code: 'NOT_LOGGED_IN', message: 'Chưa đăng nhập tài khoản operator.', hint: 'Đăng nhập ở sidebar Kênh Band trước khi mở kênh.' };
+    lastBandStartError = detail;
+    return { running: false, error: detail };
+  }
   initBandComm();
   try {
     const st = await commServer.start();
@@ -1674,7 +1685,14 @@ app.whenReady().then(() => {
       const match = request.url.match(/^app-media:\/\/+(.+)$/);
       if (!match) return new Response('Invalid URL', { status: 400 });
       const fileName = decodeURIComponent(match[1]).split(/[?#]/)[0].replace(/\/+$/, '');
-      const fullPath = path.join(getMediaFolderPath(), fileName);
+      const mediaRoot = path.resolve(getMediaFolderPath());
+      const fullPath = path.resolve(path.join(mediaRoot, fileName));
+      // background.mediaName trong file .bcsch (lịch trình, người dùng chia sẻ
+      // qua email/USB giữa các máy) không được validate nội dung — chặn "../"
+      // thoát ra ngoài thư mục media, không chỉ dựa vào path.join().
+      if (fullPath !== mediaRoot && !fullPath.startsWith(mediaRoot + path.sep)) {
+        return new Response('Forbidden', { status: 403 });
+      }
       if (!fs.existsSync(fullPath) || !fs.statSync(fullPath).isFile()) return new Response('Not Found', { status: 404 });
       return net.fetch(pathToFileURL(fullPath).toString());
     } catch (e) { return new Response('Error', { status: 500 }); }
@@ -2676,7 +2694,46 @@ app.whenReady().then(() => {
   });
 
   // ---- Đăng nhập tài khoản (band-comm-plan.md §11) — operator (laptop) là
-  // nơi DUY NHẤT tạo/sửa/xoá tài khoản; band member chỉ đăng nhập qua
+  // nơi DUY NHẤT tạo/sửa/xoá tài khoản; band member chỉ đăng nhập qua tài
+  // khoản này ở comm/mobile. relay-client.js đã có sẵn accountsList/Create/
+  // Update/UpdatePassword/SetActive/Remove gọi thẳng room-relay.js's
+  // /admin/accounts/* — preload.js cũng đã expose electronAPI.bandComm.accounts.*
+  // từ trước, chỉ thiếu wiring ipcMain.handle ở đây (sót lại từ lúc migrate GĐ2).
+  ipcMain.handle('band-accounts-list', async () => {
+    initBandComm();
+    if (!commServer) return [];
+    return commServer.accountsList();
+  });
+
+  ipcMain.handle('band-accounts-create', async (e, payload) => {
+    initBandComm();
+    if (!commServer) return { error: 'Kênh Band chưa khởi động' };
+    return commServer.accountsCreate(payload);
+  });
+
+  ipcMain.handle('band-accounts-update', async (e, payload) => {
+    initBandComm();
+    if (!commServer) return { error: 'Kênh Band chưa khởi động' };
+    return commServer.accountsUpdate(payload);
+  });
+
+  ipcMain.handle('band-accounts-update-password', async (e, payload) => {
+    initBandComm();
+    if (!commServer) return { error: 'Kênh Band chưa khởi động' };
+    return commServer.accountsUpdatePassword(payload);
+  });
+
+  ipcMain.handle('band-accounts-set-active', async (e, payload) => {
+    initBandComm();
+    if (!commServer) return { error: 'Kênh Band chưa khởi động' };
+    return commServer.accountsSetActive(payload);
+  });
+
+  ipcMain.handle('band-accounts-remove', async (e, id) => {
+    initBandComm();
+    if (!commServer) return { error: 'Kênh Band chưa khởi động' };
+    return commServer.accountsRemove(id);
+  });
 
   // ---- Ảnh hợp âm (Gallery) — kết nối với relay-client (Durable Object & R2) ----
   ipcMain.handle('band-comm-gallery-list', async () => {
@@ -2713,6 +2770,37 @@ app.whenReady().then(() => {
     initBandComm();
     if (!commServer) return { images: [], updatedAt: 0 };
     return commServer.galleryReorder(ids);
+  });
+
+  // ---- Ai đang online + kick/block (sidebar, popup "Kết nối") ----
+  ipcMain.handle('band-comm-presence-list', async () => {
+    initBandComm();
+    if (!commServer) return [];
+    return commServer.presenceList();
+  });
+
+  ipcMain.handle('band-comm-blocked-list', async () => {
+    initBandComm();
+    if (!commServer) return [];
+    return commServer.blockedList();
+  });
+
+  ipcMain.handle('band-comm-kick', async (e, clientId) => {
+    initBandComm();
+    if (!commServer) return { error: 'Kênh Band chưa khởi động' };
+    return commServer.kickClient(clientId);
+  });
+
+  ipcMain.handle('band-comm-block', async (e, clientId) => {
+    initBandComm();
+    if (!commServer) return { error: 'Kênh Band chưa khởi động' };
+    return commServer.blockClient(clientId);
+  });
+
+  ipcMain.handle('band-comm-unblock', async (e, profileId) => {
+    initBandComm();
+    if (!commServer) return { error: 'Kênh Band chưa khởi động' };
+    return commServer.unblockProfile(profileId);
   });
 
   // ---- Đăng nhập CỦA OPERATOR (gate mở Kênh Band, bắt buộc mọi bản cài) ----

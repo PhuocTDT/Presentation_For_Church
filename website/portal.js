@@ -3,7 +3,7 @@
  * Dedicated Modern Dashboard Controller
  */
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
   const IDENTITY_API_BASE = 'https://identity.worship-official.link';
   const OP_SESSION_KEY = 'kenhband_operator_session';
 
@@ -44,11 +44,38 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  // Guard: If not logged in or token expired, redirect to login page
+  // idToken Cognito hết hạn ~1h — trước khi bắt operator đăng nhập lại giữa
+  // buổi lễ, thử làm mới im lặng bằng refreshToken đã lưu (POST /refresh,
+  // xem cloud/identity/src/worker.js) rồi mới quyết định có phải bắt đăng
+  // nhập lại hay không.
+  async function tryRefreshSession(sess) {
+    if (!sess || !sess.refreshToken || !sess.email) return null;
+    try {
+      const res = await fetch(`${IDENTITY_API_BASE}/refresh`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: sess.email, refreshToken: sess.refreshToken })
+      });
+      if (!res.ok) return null;
+      const data = await res.json().catch(() => null);
+      if (!data || !data.idToken) return null;
+      const next = Object.assign({}, sess, { idToken: data.idToken, accessToken: data.accessToken || sess.accessToken });
+      setSession(next);
+      return next;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  // Guard: If not logged in or token expired, try a silent refresh; only
+  // redirect to login if that also fails (or there's no session at all).
   if (!session || !session.idToken || isSessionExpired(session)) {
-    clearSession();
-    window.location.href = 'index.html#get-account';
-    return;
+    session = await tryRefreshSession(session);
+    if (!session || isSessionExpired(session)) {
+      clearSession();
+      window.location.href = 'index.html#get-account';
+      return;
+    }
   }
 
   // State

@@ -7,7 +7,7 @@ const IDENTITY_API = 'https://identity.worship-official.link';
 const ADMIN_KEY_STORAGE = 'worship_admin_key';
 
 // ============================================================
-// Helpers — Toggle password visibility (used in inline onclick)
+// Helpers — Toggle password visibility
 // ============================================================
 function togglePassVis(inputId, btn) {
   const inp = document.getElementById(inputId);
@@ -15,6 +15,11 @@ function togglePassVis(inputId, btn) {
   inp.type = inp.type === 'password' ? 'text' : 'password';
   btn.textContent = inp.type === 'password' ? '👁️' : '🔒';
 }
+// CSP (script-src 'self', không unsafe-inline) chặn onclick="..." inline,
+// nên wire các nút mắt ẩn/hiện mật khẩu ở đây thay vì trong HTML.
+document.querySelectorAll('.btn-eye[data-target]').forEach((btn) => {
+  btn.addEventListener('click', () => togglePassVis(btn.getAttribute('data-target'), btn));
+});
 
 // ============================================================
 // State
@@ -68,7 +73,11 @@ function toast(msg, type = 'success', dur = 3500) {
 }
 
 function escHtml(s) {
-  const d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML;
+  const d = document.createElement('div'); d.textContent = s || '';
+  // textContent->innerHTML chỉ escape & < > — không escape ' " , nhưng output
+  // của hàm này bị nhét cả vào attribute (onclick='...', value="...") nên
+  // phải tự escape thêm quote để không bị phá vỡ attribute.
+  return d.innerHTML.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
 function fmtDate(ts) {
@@ -196,34 +205,33 @@ btnMenuToggle.addEventListener('click', () => {
 btnRefresh.addEventListener('click', () => { loadAllData(); toast('Đang làm mới...', 'info', 1500); });
 
 // ============================================================
+// Row/action-button clicks (event delegation)
+// CSP ở admin.html là script-src 'self' (không unsafe-inline), nên các nút
+// dựng động qua innerHTML KHÔNG được dùng onclick="..." trực tiếp — dùng
+// data-act + 1 listener chung ở document, đọc từ closest('[data-act]') để
+// vẫn giữ đúng hành vi "click nút trong hàng không kích hoạt click cả hàng".
+// ============================================================
+document.addEventListener('click', (e) => {
+  const el = e.target.closest('[data-act]');
+  if (!el) return;
+  const email = el.getAttribute('data-email');
+  const username = el.getAttribute('data-username');
+  const opEmail = el.getAttribute('data-op-email') || '';
+  switch (el.getAttribute('data-act')) {
+    case 'open-detail': openOperatorDetail(email); break;
+    case 'edit-operator': openEditOperator(email); break;
+    case 'reset-op-pass': resetOpPass(email); break;
+    case 'delete-operator': deleteOperator(email); break;
+    case 'edit-member': openEditMember(username); break;
+    case 'reset-member-pass': resetMemberPass(username); break;
+    case 'delete-member': deleteMember(username, opEmail); break;
+    case 'edit-room': openEditRoom(email); break;
+  }
+});
+
+// ============================================================
 // Load All Data
 // ============================================================
-async function loadAllData() {
-  try {
-    const data = await adminFetch('/admin/operators');
-    allOperators = data.operators || [];
-    // Build flat member list
-    allMembers = [];
-    for (const op of allOperators) {
-      if (op.members) {
-        for (const m of op.members) {
-          allMembers.push({ ...m, operatorEmail: op.email, operatorName: op.name, roomCode: op.room?.code, roomName: op.room?.name });
-        }
-      }
-    }
-    renderDashboard();
-    renderOperatorsTable();
-    renderMembersTable();
-    renderRoomsTable();
-    updateSidebarBadges();
-  } catch (e) {
-    toast('Lỗi tải dữ liệu: ' + e.message, 'error');
-    if (e.message === 'Unauthorized') {
-      sessionStorage.removeItem(ADMIN_KEY_STORAGE);
-      btnAdminLogout.click();
-    }
-  }
-}
 
 // Need member detail per operator — fetch them
 async function loadOperatorsWithMembers() {
@@ -289,7 +297,7 @@ function renderDashboard() {
   const recent = [...allOperators].slice(0, 10);
   if (!recent.length) { tbody.innerHTML = '<tr><td colspan="6" class="table-empty">Chưa có dữ liệu</td></tr>'; return; }
   tbody.innerHTML = recent.map(op => `
-    <tr onclick="openOperatorDetail('${escHtml(op.email)}')">
+    <tr data-act="open-detail" data-email="${escHtml(op.email)}">
       <td><strong>${escHtml(op.name || '—')}</strong></td>
       <td class="cell-muted">${escHtml(op.email)}</td>
       <td>${escHtml(op.church || '—')}</td>
@@ -321,10 +329,10 @@ function renderOperatorsTable(filter = '') {
       <td class="cell-muted">${fmtDate(op.createdAt)}</td>
       <td>
         <div class="action-btns">
-          <button class="btn-action primary" onclick="openOperatorDetail('${escHtml(op.email)}');event.stopPropagation()">👁 Chi tiết</button>
-          <button class="btn-action" onclick="openEditOperator('${escHtml(op.email)}');event.stopPropagation()">✏️ Sửa</button>
-          <button class="btn-action" onclick="resetOpPass('${escHtml(op.email)}');event.stopPropagation()">🔑 Reset</button>
-          <button class="btn-action danger" onclick="deleteOperator('${escHtml(op.email)}');event.stopPropagation()">🗑 Xoá</button>
+          <button class="btn-action primary" data-act="open-detail" data-email="${escHtml(op.email)}">👁 Chi tiết</button>
+          <button class="btn-action" data-act="edit-operator" data-email="${escHtml(op.email)}">✏️ Sửa</button>
+          <button class="btn-action" data-act="reset-op-pass" data-email="${escHtml(op.email)}">🔑 Reset</button>
+          <button class="btn-action danger" data-act="delete-operator" data-email="${escHtml(op.email)}">🗑 Xoá</button>
         </div>
       </td>
     </tr>`).join('');
@@ -354,9 +362,9 @@ function renderMembersTable(filterOp = '', filterText = '') {
       <td class="cell-muted">${fmtDate(m.createdAt)}</td>
       <td>
         <div class="action-btns">
-          <button class="btn-action" onclick="openEditMember('${escHtml(m.username)}');event.stopPropagation()">✏️ Sửa</button>
-          <button class="btn-action" onclick="resetMemberPass('${escHtml(m.username)}');event.stopPropagation()">🔑 Reset</button>
-          <button class="btn-action danger" onclick="deleteMember('${escHtml(m.username)}','${escHtml(m.operatorEmail||'')}');event.stopPropagation()">🗑 Xoá</button>
+          <button class="btn-action" data-act="edit-member" data-username="${escHtml(m.username)}">✏️ Sửa</button>
+          <button class="btn-action" data-act="reset-member-pass" data-username="${escHtml(m.username)}">🔑 Reset</button>
+          <button class="btn-action danger" data-act="delete-member" data-username="${escHtml(m.username)}" data-op-email="${escHtml(m.operatorEmail||'')}">🗑 Xoá</button>
         </div>
       </td>
     </tr>`).join('');
@@ -403,8 +411,8 @@ function renderRoomsTable(filter = '') {
       <td><span class="badge-active">${op.memberCount || 0} members</span></td>
       <td>
         <div class="action-btns">
-          <button class="btn-action" onclick="openEditRoom('${escHtml(op.email)}');event.stopPropagation()">✏️ Sửa</button>
-          <button class="btn-action primary" onclick="openOperatorDetail('${escHtml(op.email)}');event.stopPropagation()">👥 Members</button>
+          <button class="btn-action" data-act="edit-room" data-email="${escHtml(op.email)}">✏️ Sửa</button>
+          <button class="btn-action primary" data-act="open-detail" data-email="${escHtml(op.email)}">👥 Members</button>
         </div>
       </td>
     </tr>`).join('');
@@ -472,10 +480,10 @@ async function openOperatorDetail(email) {
       <div class="detail-section">
         <div class="detail-section-title">Thao Tác</div>
         <div class="detail-actions">
-          <button class="btn-detail-action" onclick="openEditOperator('${escHtml(op.email)}')">✏️ Chỉnh sửa thông tin</button>
-          ${room.code ? `<button class="btn-detail-action" onclick="openEditRoom('${escHtml(op.email)}')">🏠 Sửa thông tin phòng</button>` : ''}
-          <button class="btn-detail-action" onclick="resetOpPass('${escHtml(op.email)}')">🔑 Reset mật khẩu Cognito</button>
-          <button class="btn-detail-action danger" onclick="deleteOperator('${escHtml(op.email)}')">🗑️ Xoá operator này</button>
+          <button class="btn-detail-action" data-act="edit-operator" data-email="${escHtml(op.email)}">✏️ Chỉnh sửa thông tin</button>
+          ${room.code ? `<button class="btn-detail-action" data-act="edit-room" data-email="${escHtml(op.email)}">🏠 Sửa thông tin phòng</button>` : ''}
+          <button class="btn-detail-action" data-act="reset-op-pass" data-email="${escHtml(op.email)}">🔑 Reset mật khẩu Cognito</button>
+          <button class="btn-detail-action danger" data-act="delete-operator" data-email="${escHtml(op.email)}">🗑️ Xoá operator này</button>
         </div>
       </div>`;
   } catch (e) {

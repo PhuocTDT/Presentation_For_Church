@@ -31,6 +31,14 @@ function normalizeEmail(v) {
 function isValidEmail(v) {
   return typeof v === 'string' && v.length <= 254 && EMAIL_RE.test(v);
 }
+// name/phone/church/area/room-name trước đây chỉ bị .slice() giới hạn độ
+// dài, không giới hạn ký tự — dữ liệu này bị hiển thị lại ở cả 3 frontend
+// (website/admin.js, portal.js, email HTML trong sendAccessEmail) nên
+// không nên coi client-side escaping là tuyến phòng thủ duy nhất; chặn
+// </> ngay từ server, không đụng dấu tiếng Việt.
+function stripHtmlChars(s) {
+  return String(s == null ? '' : s).replace(/[<>]/g, '');
+}
 function normalizeUsername(u) {
   return String(u || '').trim().toLowerCase();
 }
@@ -99,30 +107,109 @@ async function verifyUserPassword(password, passwordHash, passwordSalt) {
   return timingSafeEqualHex(candidate, passwordHash);
 }
 
-// Trích xuất email operator từ body, Bearer JWT token (IdToken), hoặc query parameter
-function extractOperatorEmail(req, body) {
-  if (body && body.email) return normalizeEmail(body.email);
-  const auth = req.headers.get('authorization') || req.headers.get('Authorization') || '';
-  if (auth.toLowerCase().startsWith('bearer ')) {
-    const token = auth.slice(7).trim();
-    try {
-      const parts = token.split('.');
-      if (parts.length === 3) {
-        let payloadStr = parts[1].replace(/-/g, '+').replace(/_/g, '/');
-        while (payloadStr.length % 4) payloadStr += '=';
-        const payload = JSON.parse(atob(payloadStr));
-        if (payload && payload.email) return normalizeEmail(payload.email);
-      }
-    } catch (e) {}
+// ---- Verify chữ ký Cognito ID token (JWKS, RS256) — xem
+// cloud/worker/src/cognito-verify.js cho bản gốc đối chiếu (cùng thuật
+// toán, cùng User Pool, chỉ khác chỗ lấy region/pool/client id từ `env`
+// thay vì hardcode vì file này vốn đã nhận 3 giá trị đó qua wrangler.toml
+// [vars] để gọi Cognito). Cache JWKS trong RAM (per-Worker-isolate) với
+// TTL — Workers luôn có mạng nên không cần cache ra đĩa như bản Node cũ. ----
+let jwksCache = null; // { keys, fetchedAt }
+const jwksImportedKeys = new Map(); // kid -> CryptoKey
+const JWKS_TTL_MS = 24 * 60 * 60 * 1000;
+
+function b64urlToBytes(s) {
+  s = String(s).replace(/-/g, '+').replace(/_/g, '/');
+  while (s.length % 4) s += '=';
+  const bin = atob(s);
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return bytes;
+}
+function b64urlToJson(s) {
+  return JSON.parse(new TextDecoder().decode(b64urlToBytes(s)));
+}
+
+async function fetchJwks(env) {
+  const issuer = `https://cognito-idp.${env.AWS_REGION}.amazonaws.com/${env.COGNITO_USER_POOL_ID}`;
+  const res = await fetch(`${issuer}/.well-known/jwks.json`, { signal: AbortSignal.timeout(5000) });
+  if (!res.ok) throw new Error('Không tải được JWKS Cognito (HTTP ' + res.status + ')');
+  const data = await res.json();
+  if (!data || !Array.isArray(data.keys) || !data.keys.length) throw new Error('JWKS Cognito rỗng');
+  jwksCache = { keys: data.keys, fetchedAt: Date.now() };
+  jwksImportedKeys.clear();
+  return jwksCache;
+}
+
+async function ensureJwks(env) {
+  if (jwksCache && Date.now() - jwksCache.fetchedAt < JWKS_TTL_MS) return jwksCache;
+  try {
+    return await fetchJwks(env);
+  } catch (e) {
+    if (jwksCache) return jwksCache;
+    throw e;
   }
-  const url = new URL(req.url);
-  if (url.searchParams.has('email')) return normalizeEmail(url.searchParams.get('email'));
-  return '';
+}
+
+async function importKeyForKid(env, kid) {
+  if (jwksImportedKeys.has(kid)) return jwksImportedKeys.get(kid);
+  let current = await ensureJwks(env);
+  let jwk = current.keys.find((k) => k.kid === kid);
+  if (!jwk) {
+    current = await fetchJwks(env);
+    jwk = current.keys.find((k) => k.kid === kid);
+    if (!jwk) throw new Error('Không tìm thấy khoá ký (kid) phù hợp');
+  }
+  const key = await crypto.subtle.importKey('jwk', jwk, { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' }, false, ['verify']);
+  jwksImportedKeys.set(kid, key);
+  return key;
+}
+
+// Verify chữ ký + claim chuẩn (iss/aud/token_use/exp/nbf) của Cognito ID
+// token, trả về payload đã xác minh. Ném Error nếu bất hợp lệ.
+async function verifyCognitoIdToken(env, token) {
+  if (typeof token !== 'string' || !token) throw new Error('Thiếu token');
+  const parts = token.split('.');
+  if (parts.length !== 3) throw new Error('Token không đúng định dạng');
+  const [headerB64, payloadB64, sigB64] = parts;
+  const header = b64urlToJson(headerB64);
+  if (header.alg !== 'RS256') throw new Error('Thuật toán ký không được hỗ trợ');
+  const payload = b64urlToJson(payloadB64);
+
+  const issuer = `https://cognito-idp.${env.AWS_REGION}.amazonaws.com/${env.COGNITO_USER_POOL_ID}`;
+  if (payload.iss !== issuer) throw new Error('iss không khớp');
+  if (payload.token_use !== 'id') throw new Error('Không phải ID token');
+  if (payload.aud !== env.COGNITO_CLIENT_ID) throw new Error('aud không khớp');
+  if (!payload.exp || Date.now() >= payload.exp * 1000) throw new Error('Token đã hết hạn');
+  if (payload.nbf && Date.now() < payload.nbf * 1000) throw new Error('Token chưa có hiệu lực');
+
+  const key = await importKeyForKid(env, header.kid);
+  const signature = b64urlToBytes(sigB64);
+  const signedData = new TextEncoder().encode(`${headerB64}.${payloadB64}`);
+  const ok = await crypto.subtle.verify('RSASSA-PKCS1-v1_5', key, signature, signedData);
+  if (!ok) throw new Error('Chữ ký không hợp lệ');
+  return payload;
+}
+
+// Xác thực operator TỪ Bearer ID token đã verify chữ ký — KHÔNG BAO GIỜ tin
+// email do client tự khai trong body/query nữa (đó là lỗ hổng leo thang/IDOR
+// đã bị khai thác được: bất kỳ ai gửi {"email":"nan-nhan@..."} hoặc
+// ?email=... đều "trở thành" operator đó mà không cần mật khẩu). Mọi caller
+// hợp lệ (website/app.js, website/portal.js, src/band-comm/operator-auth.js)
+// đã gửi sẵn `Authorization: Bearer <idToken>` trên các call này từ trước.
+async function verifyOperatorEmail(req, env) {
+  const auth = req.headers.get('authorization') || req.headers.get('Authorization') || '';
+  if (!auth.toLowerCase().startsWith('bearer ')) return '';
+  const token = auth.slice(7).trim();
+  try {
+    const payload = await verifyCognitoIdToken(env, token);
+    return payload && payload.email ? normalizeEmail(payload.email) : '';
+  } catch (e) {
+    return '';
+  }
 }
 
 // Đếm bằng KV rate-limit
 async function checkRateLimit(env, key, max, windowMs) {
-  if (key.includes('tdtp2005@gmail.com') || key.includes('@example.com')) return true;
   const bucket = Math.floor(Date.now() / windowMs);
   const kvKey = `rl:${key}:${bucket}`;
   const raw = await env.IDENTITY_RL.get(kvKey);
@@ -239,10 +326,15 @@ export default {
       // ADMIN ROUTES — Bảo vệ bằng ADMIN_KEY (Bearer token)
       // =========================================================================
       if (p.startsWith('/admin')) {
-        // Auth middleware
+        // Auth middleware — rate-limit trước (chặn brute-force ADMIN_KEY) rồi
+        // mới so constant-time (khoá full CRUD operator/member/room nên
+        // không so sánh bằng !== như trước, dù ADMIN_KEY đủ entropy).
+        if (!(await checkRateLimit(env, `admin-auth:${ip}`, 20, 10 * 60 * 1000))) {
+          return json({ error: 'Quá nhiều yêu cầu, thử lại sau ít phút' }, 429);
+        }
         const authHeader = req.headers.get('authorization') || '';
         const adminKey = authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : '';
-        if (!env.ADMIN_KEY || adminKey !== env.ADMIN_KEY) {
+        if (!env.ADMIN_KEY || !timingSafeEqualHex(adminKey, env.ADMIN_KEY)) {
           return json({ error: 'Unauthorized' }, 401);
         }
 
@@ -306,10 +398,10 @@ export default {
           let body;
           try { body = await req.json(); } catch (e) { return json({ error: 'bad json' }, 400); }
           const op = JSON.parse(opRaw);
-          if (body.name !== undefined) op.name = String(body.name).trim().slice(0, 60);
-          if (body.phone !== undefined) op.phone = String(body.phone).trim().slice(0, 20);
-          if (body.church !== undefined) op.church = String(body.church).trim().slice(0, 100);
-          if (body.area !== undefined) op.area = String(body.area).trim().slice(0, 80);
+          if (body.name !== undefined) op.name = stripHtmlChars(String(body.name).trim().slice(0, 60));
+          if (body.phone !== undefined) op.phone = stripHtmlChars(String(body.phone).trim().slice(0, 20));
+          if (body.church !== undefined) op.church = stripHtmlChars(String(body.church).trim().slice(0, 100));
+          if (body.area !== undefined) op.area = stripHtmlChars(String(body.area).trim().slice(0, 80));
           op.updatedAt = Date.now();
           await env.IDENTITY_RL.put(`op:${email}`, JSON.stringify(op));
           return json({ ok: true, operator: op });
@@ -345,7 +437,7 @@ export default {
           let body;
           try { body = await req.json(); } catch (e) { return json({ error: 'bad json' }, 400); }
           const room = JSON.parse(roomRaw);
-          if (body.name !== undefined) room.name = String(body.name).trim().slice(0, 60);
+          if (body.name !== undefined) room.name = stripHtmlChars(String(body.name).trim().slice(0, 60));
           if (body.password !== undefined) room.password = String(body.password).trim().slice(0, 40);
           room.updatedAt = Date.now();
           await env.IDENTITY_RL.put(`room:${roomCode}`, JSON.stringify(room));
@@ -384,7 +476,7 @@ export default {
           let body;
           try { body = await req.json(); } catch (e) { return json({ error: 'bad json' }, 400); }
           const ud = JSON.parse(uRaw);
-          if (body.name !== undefined) ud.name = String(body.name).trim().slice(0, 60);
+          if (body.name !== undefined) ud.name = stripHtmlChars(String(body.name).trim().slice(0, 60));
           ud.updatedAt = Date.now();
           await env.IDENTITY_RL.put(`user:${username}`, JSON.stringify(ud));
           return json({ ok: true });
@@ -456,26 +548,13 @@ export default {
 
           // Bước 2: Đổi sang mật khẩu mới dùng AccessToken
           try {
-            const aws = cognitoClient(env);
-            const endpoint = `https://cognito-idp.${env.AWS_REGION}.amazonaws.com/`;
-            const res = await aws.fetch(endpoint, {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/x-amz-json-1.1',
-                'X-Amz-Target': 'AWSCognitoIdentityProviderService.ChangePassword'
-              },
-              body: JSON.stringify({
-                AccessToken: accessToken,
-                PreviousPassword: currentPassword,
-                ProposedPassword: newPassword
-              })
+            await cognitoCall(env, 'ChangePassword', {
+              AccessToken: accessToken,
+              PreviousPassword: currentPassword,
+              ProposedPassword: newPassword
             });
-            if (!res.ok) {
-              const err = await res.json().catch(() => ({}));
-              return json({ error: err.message || 'Đổi mật khẩu thất bại' }, 400);
-            }
           } catch (e) {
-            return json({ error: 'Lỗi đổi mật khẩu: ' + e.message }, 500);
+            return json({ error: e.message || 'Đổi mật khẩu thất bại' }, e.status && e.status < 500 ? 400 : 500);
           }
 
           return json({ ok: true, message: 'Đổi mật khẩu thành công!' });
@@ -493,10 +572,10 @@ export default {
       const email = normalizeEmail(body && body.email);
       if (!isValidEmail(email)) return json({ error: 'Email không hợp lệ' }, 400);
 
-      const name = String(body && body.name || '').trim().slice(0, 60);
-      const phone = String(body && body.phone || '').trim().slice(0, 20);
-      const church = String(body && body.church || '').trim().slice(0, 100);
-      const area = String(body && body.area || '').trim().slice(0, 80);
+      const name = stripHtmlChars(String(body && body.name || '').trim().slice(0, 60));
+      const phone = stripHtmlChars(String(body && body.phone || '').trim().slice(0, 20));
+      const church = stripHtmlChars(String(body && body.church || '').trim().slice(0, 100));
+      const area = stripHtmlChars(String(body && body.area || '').trim().slice(0, 80));
 
       if (p === '/operator/register') {
         if (!name) return json({ error: 'Vui lòng nhập Họ và Tên' }, 400);
@@ -670,10 +749,10 @@ export default {
     if (p === '/operator/room' && req.method === 'POST') {
       let body;
       try { body = await req.json(); } catch (e) { return json({ error: 'bad json' }, 400); }
-      const email = extractOperatorEmail(req, body);
-      if (!isValidEmail(email)) return json({ error: 'Email không hợp lệ hoặc thiếu phiên đăng nhập' }, 400);
+      const email = await verifyOperatorEmail(req, env);
+      if (!isValidEmail(email)) return json({ error: 'Phiên đăng nhập không hợp lệ hoặc đã hết hạn' }, 401);
 
-      const roomName = String((body && (body.roomName || body.name)) || '').trim().slice(0, 60);
+      const roomName = stripHtmlChars(String((body && (body.roomName || body.name)) || '').trim().slice(0, 60));
       const roomPassword = String((body && (body.roomPassword || body.password)) || '').trim();
 
       if (!roomName) return json({ error: 'Vui lòng nhập Tên phòng' }, 400);
@@ -727,8 +806,8 @@ export default {
     if (p === '/operator/room/update' && req.method === 'POST') {
       let body;
       try { body = await req.json(); } catch (e) { return json({ error: 'bad json' }, 400); }
-      const email = extractOperatorEmail(req, body);
-      if (!isValidEmail(email)) return json({ error: 'Email không hợp lệ hoặc thiếu phiên đăng nhập' }, 400);
+      const email = await verifyOperatorEmail(req, env);
+      if (!isValidEmail(email)) return json({ error: 'Phiên đăng nhập không hợp lệ hoặc đã hết hạn' }, 401);
 
       const roomCode = await env.IDENTITY_RL.get(`operator_room:${email}`);
       if (!roomCode) return json({ error: 'Chưa có phòng nào được tạo cho tài khoản này' }, 404);
@@ -737,7 +816,7 @@ export default {
       if (!roomRaw) return json({ error: 'Không tìm thấy dữ liệu phòng' }, 404);
       const room = JSON.parse(roomRaw);
 
-      const roomName = String((body && (body.roomName || body.name)) || '').trim().slice(0, 60);
+      const roomName = stripHtmlChars(String((body && (body.roomName || body.name)) || '').trim().slice(0, 60));
       const roomPassword = String((body && (body.roomPassword || body.password)) || '').trim();
 
       if (roomName) room.name = roomName;
@@ -752,8 +831,8 @@ export default {
 
     // ---- GET /operator/room: Đọc phòng cố định của Operator ----
     if (p === '/operator/room' && req.method === 'GET') {
-      const email = extractOperatorEmail(req, null);
-      if (!isValidEmail(email)) return json({ error: 'Email không hợp lệ hoặc thiếu phiên đăng nhập' }, 400);
+      const email = await verifyOperatorEmail(req, env);
+      if (!isValidEmail(email)) return json({ error: 'Phiên đăng nhập không hợp lệ hoặc đã hết hạn' }, 401);
       const roomCode = await env.IDENTITY_RL.get(`operator_room:${email}`);
       if (!roomCode) return json({ ok: true, room: null });
       const roomRaw = await env.IDENTITY_RL.get(`room:${roomCode}`);
@@ -764,11 +843,11 @@ export default {
     if (p === '/operator/users/create' && req.method === 'POST') {
       let body;
       try { body = await req.json(); } catch (e) { return json({ error: 'bad json' }, 400); }
-      const email = extractOperatorEmail(req, body);
-      if (!isValidEmail(email)) return json({ error: 'Email operator không hợp lệ hoặc thiếu phiên đăng nhập' }, 400);
+      const email = await verifyOperatorEmail(req, env);
+      if (!isValidEmail(email)) return json({ error: 'Phiên đăng nhập không hợp lệ hoặc đã hết hạn' }, 401);
 
       const username = normalizeUsername(body && body.username);
-      const name = String(body && body.name || '').trim().slice(0, 40);
+      const name = stripHtmlChars(String(body && body.name || '').trim().slice(0, 40));
       const password = String(body && body.password || '');
 
       if (!isValidUsername(username)) {
@@ -812,8 +891,8 @@ export default {
 
     // ---- GET /operator/users: Danh sách user do Operator quản lý ----
     if (p === '/operator/users' && req.method === 'GET') {
-      const email = extractOperatorEmail(req, null);
-      if (!isValidEmail(email)) return json({ error: 'Email không hợp lệ hoặc thiếu phiên đăng nhập' }, 400);
+      const email = await verifyOperatorEmail(req, env);
+      if (!isValidEmail(email)) return json({ error: 'Phiên đăng nhập không hợp lệ hoặc đã hết hạn' }, 401);
 
       const opUsersRaw = await env.IDENTITY_RL.get(`op_users:${email}`);
       const usernames = opUsersRaw ? JSON.parse(opUsersRaw) : [];
@@ -833,14 +912,18 @@ export default {
     if (p === '/operator/users/delete' && req.method === 'POST') {
       let body;
       try { body = await req.json(); } catch (e) { return json({ error: 'bad json' }, 400); }
-      const email = extractOperatorEmail(req, body);
+      const email = await verifyOperatorEmail(req, env);
+      if (!isValidEmail(email)) return json({ error: 'Phiên đăng nhập không hợp lệ hoặc đã hết hạn' }, 401);
       const username = normalizeUsername(body && body.username);
-      if (!isValidEmail(email) || !username) return json({ error: 'Thiếu email hoặc username' }, 400);
+      if (!username) return json({ error: 'Thiếu username' }, 400);
 
-      await env.IDENTITY_RL.delete(`user:${username}`);
-
+      // Chỉ xoá được user thuộc chính operator này quản lý — trước đây không
+      // kiểm tra gì, ai gọi được endpoint cũng xoá được username bất kỳ.
       const opUsersRaw = await env.IDENTITY_RL.get(`op_users:${email}`);
       let opUsers = opUsersRaw ? JSON.parse(opUsersRaw) : [];
+      if (!opUsers.includes(username)) return json({ error: 'Tài khoản này không thuộc quyền quản lý của bạn' }, 403);
+
+      await env.IDENTITY_RL.delete(`user:${username}`);
       opUsers = opUsers.filter((u) => u !== username);
       await env.IDENTITY_RL.put(`op_users:${email}`, JSON.stringify(opUsers));
 
@@ -851,9 +934,18 @@ export default {
     if (p === '/operator/users/update-password' && req.method === 'POST') {
       let body;
       try { body = await req.json(); } catch (e) { return json({ error: 'bad json' }, 400); }
+      // Trước đây endpoint này KHÔNG kiểm tra danh tính người gọi hay quyền
+      // sở hữu gì cả — bất kỳ ai đoán/biết được 1 username là đổi được mật
+      // khẩu tài khoản đó, hoàn toàn ẩn danh.
+      const email = await verifyOperatorEmail(req, env);
+      if (!isValidEmail(email)) return json({ error: 'Phiên đăng nhập không hợp lệ hoặc đã hết hạn' }, 401);
       const username = normalizeUsername(body && body.username);
       const newPassword = String(body && body.newPassword || '');
       if (!username || newPassword.length < 6) return json({ error: 'Mật khẩu mới tối thiểu 6 ký tự' }, 400);
+
+      const opUsersRaw = await env.IDENTITY_RL.get(`op_users:${email}`);
+      const opUsers = opUsersRaw ? JSON.parse(opUsersRaw) : [];
+      if (!opUsers.includes(username)) return json({ error: 'Tài khoản này không thuộc quyền quản lý của bạn' }, 403);
 
       const uRaw = await env.IDENTITY_RL.get(`user:${username}`);
       if (!uRaw) return json({ error: 'Không tìm thấy tài khoản người dùng' }, 404);
@@ -900,7 +992,7 @@ export default {
     return json({ error: 'not found' }, 404);
     } catch (err) {
       console.error('Unhandled worker error:', err);
-      return json({ error: err.message || 'Lỗi hệ thống', stack: err.stack }, 500);
+      return json({ error: err.message || 'Lỗi hệ thống' }, 500);
     }
   }
 };

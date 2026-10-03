@@ -69,18 +69,18 @@ document.addEventListener('DOMContentLoaded', () => {
         </div>
         <div class="alert-text-body">${escapeHtml(text)}</div>
       </div>
-      <button class="alert-ack-btn" onclick="ackAlert(this)">Đã tiếp nhận</button>
+      <button class="alert-ack-btn">Đã tiếp nhận</button>
     `;
 
     simFeedList.insertBefore(alertCard, simFeedList.firstChild);
   }
 
   // Operator Ack Handler
-  window.ackAlert = function(btn) {
+  function ackAlert(btn) {
     if (btn.classList.contains('acknowledged')) return;
     btn.classList.add('acknowledged');
     btn.textContent = '✓ Đã xác nhận';
-    
+
     if (unreadCount > 0) {
       unreadCount--;
       if (feedCounter) feedCounter.textContent = unreadCount;
@@ -88,7 +88,23 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Feedback back to phone toast
     showPhoneToast('Operator đã tiếp nhận yêu cầu!', true);
-  };
+  }
+
+  // CSP (script-src 'self', không unsafe-inline) chặn onclick="..." inline
+  // trên các nút dựng động trong feed -> dùng event delegation ở đây.
+  // Nút setlist (data-setlist-action) kiểm tra trước vì cũng mang class
+  // .alert-ack-btn để dùng chung style.
+  if (simFeedList) {
+    simFeedList.addEventListener('click', (e) => {
+      const slBtn = e.target.closest('[data-setlist-action]');
+      if (slBtn) {
+        handleSetlistAction(slBtn, slBtn.getAttribute('data-setlist-action') === 'accept', slBtn.getAttribute('data-name') || '');
+        return;
+      }
+      const ackBtn = e.target.closest('.alert-ack-btn');
+      if (ackBtn) ackAlert(ackBtn);
+    });
+  }
 
   // Operator Reply Send
   if (btnOpSendReply && opReplyInput) {
@@ -178,15 +194,15 @@ document.addEventListener('DOMContentLoaded', () => {
         </div>
       </div>
       <div style="display:flex; gap:6px; margin-top:8px; width:100%;" class="setlist-actions">
-        <button class="alert-ack-btn" style="background:linear-gradient(135deg,#059669,#10b981); color:#fff; border:none; flex:1; padding:6px 10px; border-radius:6px; cursor:pointer;" onclick="handleSetlistAction(this, true, '${escapeHtml(name)}')">Nạp vào Schedule</button>
-        <button class="alert-ack-btn" style="background:rgba(239,68,68,0.15); border:1px solid rgba(239,68,68,0.4); color:#fca5a5; flex:1; padding:6px 10px; border-radius:6px; cursor:pointer;" onclick="handleSetlistAction(this, false, '${escapeHtml(name)}')">Từ chối</button>
+        <button class="alert-ack-btn" data-setlist-action="accept" data-name="${escapeHtml(name)}" style="background:linear-gradient(135deg,#059669,#10b981); color:#fff; border:none; flex:1; padding:6px 10px; border-radius:6px; cursor:pointer;">Nạp vào Schedule</button>
+        <button class="alert-ack-btn" data-setlist-action="reject" data-name="${escapeHtml(name)}" style="background:rgba(239,68,68,0.15); border:1px solid rgba(239,68,68,0.4); color:#fca5a5; flex:1; padding:6px 10px; border-radius:6px; cursor:pointer;">Từ chối</button>
       </div>
     `;
 
     simFeedList.insertBefore(alertCard, simFeedList.firstChild);
   }
 
-  window.handleSetlistAction = function(btn, isAccept, name) {
+  function handleSetlistAction(btn, isAccept, name) {
     const parent = btn.closest('.setlist-actions');
     if (!parent) return;
     if (isAccept) {
@@ -200,7 +216,7 @@ document.addEventListener('DOMContentLoaded', () => {
       unreadCount--;
       if (feedCounter) feedCounter.textContent = unreadCount;
     }
-  };
+  }
 
   const btnSendSetlistSim = document.getElementById('btnSendSetlistSim');
   if (btnSendSetlistSim) {

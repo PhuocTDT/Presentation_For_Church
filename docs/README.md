@@ -19,3 +19,4 @@ Mục tiêu của bộ tài liệu này là giữ cho việc debug, thêm tính 
 - Muốn dò lỗi: `docs/debugging-playbook.md`
 - Muốn chỉnh giao diện: `docs/ui-guidelines.md`
 - Muốn đổi format dữ liệu: `docs/data-contracts.md`
+- Muốn phát hành lên Microsoft Store / review bảo mật mức enterprise: `docs/microsoft-store-readiness.md`

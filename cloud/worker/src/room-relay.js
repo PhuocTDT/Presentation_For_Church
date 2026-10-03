@@ -39,6 +39,7 @@ import { createCognitoVerifier } from './cognito-verify.js';
 const RING_MAX = 120;               // số envelope replay được khi phone reconnect
 const TOKEN_MAX_AGE_MS = 12 * 60 * 60 * 1000; // giống TOKEN_MAX_AGE_MS ở server.js cũ
 const DUP_WINDOW_MS = 5000;
+const BLOCK_DURATION_MS = 3 * 24 * 60 * 60 * 1000; // Chặn (operator) tự hết hạn sau 3 ngày
 const MSG_TYPES = ['alert', 'text', 'ack', 'resolve', 'presence', 'gallery', 'room', 'system', 'setlist'];
 const PENDING_LOGIN_MAX_AGE_MS = 5 * 60 * 1000; // y hệt server.js cũ
 
@@ -138,6 +139,7 @@ export class RoomRelay {
       this.accounts = (await ctx.storage.get('accounts')) || [];
       this.profiles = (await ctx.storage.get('profiles')) || {}; // profileId -> {name, updatedAt, buttons}
       this.gallery = (await ctx.storage.get('gallery')) || { images: [], updatedAt: 0 }; // {images:[{id,name,ownerId}], updatedAt}
+      this.blocked = (await ctx.storage.get('blocked')) || {}; // profileId -> {name, blockedAt}
     });
     // Chống brute-force /join, /login — y hệt curve joinAttempts ở LAN
     // server.js cũ, CHỈ khác chỗ lưu (RAM của instance DO, không phải
@@ -146,6 +148,13 @@ export class RoomRelay {
     // qua evict, và ghi storage mỗi lần thử sẽ tốn 1 lượt storage write/
     // request không cần thiết.
     this.joinAttempts = new Map(); // key -> { fails, blockUntil, lastAt }
+    // Chống spam /gallery/add — không có gì chặn trước đây (khác hẳn worker.js's
+    // /gallery vốn có checkRateLimit), 1 client hợp lệ (biết mật khẩu phòng)
+    // có thể gọi liên tục ảnh ~8MB, tốn R2 storage/request cost, và cuối cùng
+    // làm mảng metadata ctx.storage.put('gallery', …) vượt giới hạn 1 key
+    // (~128KiB) khiến upload hỏng cho CẢ phòng. Cùng kiểu lưu RAM-only như
+    // joinAttempts — reset khi DO evict là chấp nhận được.
+    this.galleryAddAttempts = new Map(); // key -> number[] (timestamps trong cửa sổ)
     // accountId/name đã xác thực xong bước 1 (/login), chờ mật khẩu phòng
     // bước 2 (/join-room) nếu config.passwordRequiredWithAccounts bật — y hệt
     // pendingLogins ở server.js cũ. KHÔNG cần sống sót qua evict (TTL 5 phút,
@@ -186,6 +195,27 @@ export class RoomRelay {
   }
   clearJoinAttempts(key) { this.joinAttempts.delete(key); }
 
+  // Block tự hết hạn sau BLOCK_DURATION_MS (3 ngày) — không xoá storage
+  // ngay ở đây (hot path, gọi mỗi lần verifyToken()/join), entry hết hạn chỉ
+  // nằm im vô hại; dọn thật sự xảy ra lúc operator xem danh sách "Đã chặn"
+  // (handleAdminPresence's action 'blocked').
+  isProfileBlocked(profileId) {
+    const b = this.blocked[profileId];
+    return !!b && (Date.now() - b.blockedAt) < BLOCK_DURATION_MS;
+  }
+
+  // true nếu được phép thêm ảnh (chưa vượt `max` lần trong `windowMs` gần
+  // nhất) — sliding window đơn giản bằng mảng timestamp, đủ dùng cho quy mô
+  // 1 phòng/band nhỏ, không cần chính xác tuyệt đối như KV bucket-count.
+  checkGalleryAddRateLimit(key, max = 20, windowMs = 5 * 60 * 1000) {
+    const now = Date.now();
+    const hits = (this.galleryAddAttempts.get(key) || []).filter((t) => now - t < windowMs);
+    if (hits.length >= max) { this.galleryAddAttempts.set(key, hits); return false; }
+    hits.push(now);
+    this.galleryAddAttempts.set(key, hits);
+    return true;
+  }
+
   async ensureSecret() {
     if (this.secretHex) return this.secretHex;
     this.secretHex = randomHex(32);
@@ -214,7 +244,13 @@ export class RoomRelay {
     const key = await importHmacKey(secretHex);
     const expected = await hmacSign(key, parts.slice(0, 4).join('.'));
     if (expected !== sig) return null;
-    return { clientId, name: b64urlDecodeToStr(nameB64), profileId: b64urlDecodeToStr(profileB64) || null };
+    const profileId = b64urlDecodeToStr(profileB64) || null;
+    // Token cấp TRƯỚC lúc bị block vẫn còn hạn (tới 12h) — chặn NGAY Ở ĐÂY
+    // (điểm xác thực token DUY NHẤT, mọi route /whoami, /gallery/*, /profile,
+    // /setlist, WS upgrade... đều gọi verifyToken()) để 1 người bị block mất
+    // quyền truy cập ngay lập tức, không chỉ riêng lúc /join lại từ đầu.
+    if (profileId && this.isProfileBlocked(profileId)) return null;
+    return { clientId, name: b64urlDecodeToStr(nameB64), profileId };
   }
 
   // Đổi secret -> mọi token đang tồn tại verify-fail ngay (y hệt
@@ -413,6 +449,91 @@ export class RoomRelay {
     return json({ error: 'not found' }, 404);
   }
 
+  // Đóng ngay 1 kết nối đang mở theo clientId — chỉ ngắt phiên hiện tại,
+  // KHÔNG cấm quay lại (khác block bên dưới). Code 4001 tự đặt (không phải
+  // mã chuẩn CloseEvent) để phân biệt "bị kick" với rớt mạng thường trên
+  // client nếu sau này cần hiển thị khác đi.
+  kickWebSocketsByClientId(clientId) {
+    let found = false;
+    for (const ws of this.ctx.getWebSockets()) {
+      const a = ws.deserializeAttachment() || {};
+      if (a.clientId === clientId) {
+        found = true;
+        try { ws.close(4001, 'Kicked by operator'); } catch (e) {}
+      }
+    }
+    return found;
+  }
+
+  // Operator xem ai đang online (kèm profileId để kick/block đúng người),
+  // và quản lý danh sách chặn — TÁCH RIÊNG khỏi `presenceList()`/envelope
+  // `presence` public (chỉ có clientId+name): profileId là bearer secret
+  // của band member, không được lộ cho ai khác ngoài chính chủ và operator
+  // (xem galleryManifest()'s comment cho lý do đầy đủ) — route này có
+  // checkAdminSecret() nên an toàn để trả thêm profileId.
+  async handleAdminPresence(request, action) {
+    if (!this.checkAdminSecret(request)) return json({ error: 'Sai admin secret' }, 403);
+
+    if (action === 'list' && request.method === 'GET') {
+      const clients = this.ctx.getWebSockets().map((ws) => {
+        const a = ws.deserializeAttachment() || {};
+        return { clientId: a.clientId, name: a.name, profileId: a.profileId || null, isOperator: !!a.isOperator };
+      }).filter((c) => !c.isOperator);
+      return json({ clients });
+    }
+
+    if (action === 'blocked' && request.method === 'GET') {
+      // Dọn thật sự (xoá khỏi storage) các entry đã quá BLOCK_DURATION_MS —
+      // chỗ duy nhất persist việc dọn, vì đây là action operator chủ động
+      // xem, tần suất thấp, không tốn write ở hot path như verifyToken().
+      const now = Date.now();
+      let changed = false;
+      for (const profileId of Object.keys(this.blocked)) {
+        if (now - this.blocked[profileId].blockedAt >= BLOCK_DURATION_MS) {
+          delete this.blocked[profileId];
+          changed = true;
+        }
+      }
+      if (changed) await this.ctx.storage.put('blocked', this.blocked);
+      const blocked = Object.keys(this.blocked).map((profileId) => ({
+        profileId, ...this.blocked[profileId],
+        expiresAt: this.blocked[profileId].blockedAt + BLOCK_DURATION_MS
+      }));
+      blocked.sort((a, b) => (b.blockedAt || 0) - (a.blockedAt || 0));
+      return json({ blocked });
+    }
+
+    const body = await request.json().catch(() => ({}));
+
+    if (action === 'kick') {
+      const clientId = String(body.clientId || '');
+      if (!clientId) return json({ error: 'Thiếu clientId' }, 400);
+      const ok = this.kickWebSocketsByClientId(clientId);
+      return json({ ok: ok });
+    }
+
+    if (action === 'block') {
+      const clientId = String(body.clientId || '');
+      if (!clientId) return json({ error: 'Thiếu clientId' }, 400);
+      const target = this.ctx.getWebSockets().map((ws) => ws.deserializeAttachment() || {}).find((a) => a.clientId === clientId);
+      if (!target || !target.profileId) return json({ error: 'Không tìm thấy người dùng này (đã rời phòng?)' }, 404);
+      this.blocked[target.profileId] = { name: target.name || 'Ẩn danh', blockedAt: Date.now() };
+      await this.ctx.storage.put('blocked', this.blocked);
+      this.kickWebSocketsByClientId(clientId);
+      return json({ ok: true, profileId: target.profileId, name: target.name });
+    }
+
+    if (action === 'unblock') {
+      const profileId = String(body.profileId || '');
+      if (!profileId) return json({ error: 'Thiếu profileId' }, 400);
+      delete this.blocked[profileId];
+      await this.ctx.storage.put('blocked', this.blocked);
+      return json({ ok: true });
+    }
+
+    return json({ error: 'not found' }, 404);
+  }
+
   // Cấp token đầy đủ, cùng shape /join — dùng chung cho /login (không cần
   // thêm mật khẩu phòng) và /join-room (bước 2, sau khi đã qua mật khẩu
   // phòng). `account.mustChangePassword` chỉ có ý nghĩa cho tài khoản local
@@ -429,7 +550,7 @@ export class RoomRelay {
       mustChangePassword: !!account.mustChangePassword,
       profile: restored ? { profileId: account.id, ...restored } : null,
       cloudRoomId: this.config.cloudRoomId || this.roomCode || '',
-      gallery: await this.galleryManifest(),
+      gallery: await this.galleryManifest(account.id),
       setlistEnabled: true
     };
   }
@@ -591,7 +712,10 @@ export class RoomRelay {
     if (!ident) return json({ error: 'unauthorized' }, 401);
     const body = await request.json().catch(() => null);
     if (!body) return json({ error: 'bad json' }, 400);
-    const profileId = (typeof body.profileId === 'string' && body.profileId) ? body.profileId : ident.profileId;
+    // LUÔN dùng profileId trong token đã verify (từ lúc /join) — trước đây
+    // body.profileId có thể ghi đè, nghĩa là ai gọi request cũng tự chọn
+    // được sẽ ghi đè hồ sơ nút của profileId nào (kể cả của người khác).
+    const profileId = ident.profileId;
     if (!profileId) return json({ error: 'Thiếu profileId' }, 400);
     const buttons = Array.isArray(body.buttons) ? body.buttons.slice(0, 60).map((b) => ({
       id: String(b && b.id || '').slice(0, 40),
@@ -610,13 +734,31 @@ export class RoomRelay {
   // nên GET /gallery/image/<cloudRoomId>/<id> (route cũ, không đổi) vẫn phục
   // vụ đúng ảnh không cần sửa gì. Không còn khái niệm "1 người phụ trách" —
   // ai join hợp lệ cũng thêm được, chỉ tự xoá được ảnh mình đăng (y hệt LAN cũ). ----
-  async galleryManifest() {
-    return { images: this.gallery.images.map((x) => ({ id: x.id, name: x.name, ownerId: x.ownerId || null })), updatedAt: this.gallery.updatedAt || 0 };
+  // `ownerId` (== profileId người đăng) KHÔNG được trả thẳng cho ai khác
+  // ngoài chính chủ nữa — profileId là bearer secret client tự sinh (128-bit
+  // random, comm/mobile/app.js) để "nhận lại" ảnh/hồ sơ của mình qua các lần
+  // join lại, KHÔNG có xác thực nào khác ràng buộc nó. Trả thẳng ownerId cho
+  // cả phòng (broadcast gallery envelope, và cả response /join) từng khiến
+  // BẤT KỲ member nào đọc được profileId của người khác rồi tự xưng lại
+  // đúng profileId đó ở /join để "trở thành" họ — xoá ảnh hoặc ghi đè hồ sơ
+  // nút của người khác. Chỉ trả boolean `mine` (đúng bằng viewerProfileId
+  // của NGƯỜI ĐANG HỎI) — không rò rỉ giá trị ownerId gốc ra ngoài nữa.
+  async galleryManifest(viewerProfileId) {
+    return {
+      images: this.gallery.images.map((x) => ({ id: x.id, name: x.name, mine: !!(viewerProfileId && x.ownerId === viewerProfileId) })),
+      updatedAt: this.gallery.updatedAt || 0
+    };
   }
 
+  // Broadcast KHÔNG dùng chung 1 payload nữa — "mine" phụ thuộc người nhận,
+  // nên phải dựng manifest riêng cho từng socket đang mở (đọc profileId từ
+  // chính attachment của socket đó, y hệt cách sendTo() định danh client).
   async announceGallery() {
-    const env = makeEnvelope({ type: 'gallery', from: { clientId: 'server', name: 'Kênh Band' }, meta: await this.galleryManifest() });
-    this.broadcast(env);
+    for (const ws of this.ctx.getWebSockets()) {
+      const a = ws.deserializeAttachment() || {};
+      const envelope = makeEnvelope({ type: 'gallery', from: { clientId: 'server', name: 'Kênh Band' }, meta: await this.galleryManifest(a.profileId) });
+      try { ws.send(JSON.stringify({ kind: 'envelope', envelope })); } catch (e) {}
+    }
   }
 
   // Lõi thêm/xoá dùng chung cho CẢ band member (token, chỉ tự xoá ảnh mình)
@@ -641,7 +783,7 @@ export class RoomRelay {
     this.gallery.updatedAt = Date.now();
     await this.ctx.storage.put('gallery', this.gallery);
     await this.announceGallery();
-    return { manifest: await this.galleryManifest() };
+    return { manifest: await this.galleryManifest(ownerId) };
   }
 
   // `enforceOwnership` là CỜ RIÊNG, tách khỏi `callerProfileId` — band member
@@ -661,12 +803,12 @@ export class RoomRelay {
     await this.ctx.storage.put('gallery', this.gallery);
     if (this.config.cloudRoomId) await this.env.GALLERY.delete(`${this.config.cloudRoomId}/${id}`).catch(() => {});
     await this.announceGallery();
-    return { manifest: await this.galleryManifest() };
+    return { manifest: await this.galleryManifest(callerProfileId) };
   }
 
   async removeImages(ids, { enforceOwnership, callerProfileId } = {}) {
     const list = Array.isArray(ids) ? ids.map(String) : [];
-    if (!list.length) return { manifest: await this.galleryManifest() };
+    if (!list.length) return { manifest: await this.galleryManifest(callerProfileId) };
     const idSet = new Set(list);
     const toDeleteIds = [];
     this.gallery.images = this.gallery.images.filter((x) => {
@@ -687,12 +829,15 @@ export class RoomRelay {
       }
       await this.announceGallery();
     }
-    return { manifest: await this.galleryManifest(), deletedCount: toDeleteIds.length };
+    return { manifest: await this.galleryManifest(callerProfileId), deletedCount: toDeleteIds.length };
   }
 
   async handleGalleryAdd(request, url) {
     const ident = await this.verifyToken(url.searchParams.get('token') || '');
     if (!ident) return json({ error: 'unauthorized' }, 401);
+    if (!this.checkGalleryAddRateLimit(ident.clientId)) {
+      return json({ error: 'Tải ảnh lên quá nhanh, vui lòng thử lại sau ít phút' }, 429);
+    }
     const body = await request.json().catch(() => null);
     if (!body) return json({ error: 'bad json' }, 400);
     const result = await this.addImage({ name: body.name, ext: body.ext, dataB64: body.dataB64, ownerId: ident.profileId });
@@ -742,11 +887,14 @@ export class RoomRelay {
     return json({ ok: true, id: sl.id, delivered });
   }
 
+  // Không tính operator (laptop) vào — trước đây bao gồm cả kết nối của
+  // chính operator, khiến "Đang kết nối" luôn thừa 1 so với số band member
+  // thật sự (2 hiện, mở ra chỉ thấy 1 người) — public list này lẫn số đếm
+  // ở sidebar phải khớp với danh sách chi tiết bên admin đã lọc đúng.
   presenceList() {
-    return this.ctx.getWebSockets().map((ws) => {
-      const a = ws.deserializeAttachment() || {};
-      return { clientId: a.clientId, name: a.name };
-    });
+    return this.ctx.getWebSockets().map((ws) => ws.deserializeAttachment() || {})
+      .filter((a) => !a.isOperator)
+      .map((a) => ({ clientId: a.clientId, name: a.name }));
   }
 
   async pushRing(envelope) {
@@ -760,6 +908,18 @@ export class RoomRelay {
     for (const ws of this.ctx.getWebSockets()) {
       const a = ws.deserializeAttachment() || {};
       if (exceptClientId && a.clientId === exceptClientId) continue;
+      try { ws.send(payload); } catch (e) { /* socket đã chết, dọn ở webSocketClose */ }
+    }
+  }
+
+  // Gửi riêng cho đúng 1 clientId (vd. ack cá nhân) — KHÔNG spray cho cả
+  // phòng như broadcast(). Không throw nếu client đó hiện không có socket
+  // nào mở (đã pushRing() trước đó rồi nên khi reconnect vẫn replay được).
+  sendTo(clientId, envelope) {
+    const payload = JSON.stringify({ kind: 'envelope', envelope });
+    for (const ws of this.ctx.getWebSockets()) {
+      const a = ws.deserializeAttachment() || {};
+      if (a.clientId !== clientId) continue;
       try { ws.send(payload); } catch (e) { /* socket đã chết, dọn ở webSocketClose */ }
     }
   }
@@ -793,6 +953,9 @@ export class RoomRelay {
     this.clearJoinAttempts(ip);
     const name = sanitizeName(body.name);
     const profileId = (typeof body.profileId === 'string' && body.profileId && body.profileId.length <= 64) ? body.profileId : null;
+    if (profileId && this.isProfileBlocked(profileId)) {
+      return json({ error: 'Bạn đã bị chặn khỏi phòng này bởi người vận hành' }, 403);
+    }
     const clientId = newId('c');
     const token = await this.makeToken(clientId, name, profileId);
     const restored = (profileId && this.profiles[profileId]) || this.findProfileByName(name);
@@ -801,7 +964,7 @@ export class RoomRelay {
       room: { name: this.config.name },
       since: this.ring.length ? this.ring[this.ring.length - 1].id : null,
       profile: restored ? { profileId: profileId, ...restored } : null,
-      gallery: await this.galleryManifest(),
+      gallery: await this.galleryManifest(profileId),
       cloudRoomId: this.config.cloudRoomId || this.roomCode || '',
       setlistEnabled: true
     });
@@ -838,8 +1001,20 @@ export class RoomRelay {
     const since = url.searchParams.get('since');
     if (since) {
       const idx = this.ring.findIndex((e) => e.id === since);
-      const replay = idx >= 0 ? this.ring.slice(idx + 1) : this.ring;
+      // `since` không còn trong ring (id không phải loại pushRing(), ring đã
+      // xoay quá 120 tin, hoặc client phiên bản cũ gửi id presence/gallery) —
+      // TUYỆT ĐỐI không replay cả ring: đó là nguồn lỗi "tin cũ đã xử lý đổ
+      // về lại sau vài phút" (xem changelog). Chỉ bù các tin MỚI HƠN mốc
+      // `sinceTs` client gửi kèm; không có sinceTs thì không replay gì.
+      let replay;
+      if (idx >= 0) {
+        replay = this.ring.slice(idx + 1);
+      } else {
+        const sinceTs = Number(url.searchParams.get('sinceTs')) || 0;
+        replay = sinceTs ? this.ring.filter((e) => e.ts > sinceTs) : [];
+      }
       for (const envelope of replay) {
+        if (envelope.to && envelope.to !== 'all' && envelope.to !== ident.clientId) continue;
         try { server.send(JSON.stringify({ kind: 'envelope', envelope })); } catch (e) {}
       }
     }
@@ -866,6 +1041,15 @@ export class RoomRelay {
     if (body.kind === 'message') {
       const text = String(body.text || body.label || '').trim().slice(0, 500);
       if (!text) return;
+      // Dedup double-tap (y hệt server.js cũ's client.dupMap) — bị rớt lúc
+      // port sang relay: DUP_WINDOW_MS khai báo mà không dùng ở đâu, nút
+      // chạm 2 lần liên tiếp (rất dễ xảy ra trên màn hình điện thoại) tạo ra
+      // 2 alert/toast riêng biệt cho cùng 1 lần bấm. State dedup lưu ngay
+      // trong attachment của socket (không dùng biến ngoài — Hibernation API).
+      const dedupKey = String(body.buttonId || text).toLowerCase();
+      const now = Date.now();
+      if (a.lastMsgKey === dedupKey && now - (a.lastMsgAt || 0) < DUP_WINDOW_MS) return;
+      ws.serializeAttachment(Object.assign({}, a, { lastMsgKey: dedupKey, lastMsgAt: now }));
       const envelope = makeEnvelope({
         type: 'alert', from: { clientId: a.clientId, name: a.name },
         to: 'all', buttonId: body.buttonId || null, text
@@ -883,9 +1067,13 @@ export class RoomRelay {
     if (body.kind === 'text') {
       const text = String(body.text || '').trim().slice(0, 500);
       if (!text) return;
-      const envelope = makeEnvelope({ type: 'text', from: { clientId: a.clientId, name: a.name }, to: body.to || 'all', text });
+      const to = body.to || 'all';
+      const envelope = makeEnvelope({ type: 'text', from: { clientId: a.clientId, name: a.name }, to, text });
       await this.pushRing(envelope);
-      this.broadcast(envelope);
+      // Cùng lỗi đã fix ở 'ack': to !== 'all' nghĩa là tin nhắn riêng, phải
+      // sendTo() unicast, không broadcast() cho cả phòng.
+      if (to === 'all') this.broadcast(envelope);
+      else this.sendTo(to, envelope);
       return;
     }
 
@@ -899,7 +1087,7 @@ export class RoomRelay {
           meta: { label }
         });
         await this.pushRing(envelope);
-        this.broadcast(envelope);
+        this.sendTo(cid, envelope);
       }
       return;
     }
@@ -946,6 +1134,9 @@ export class RoomRelay {
       if (p.indexOf('/admin/gallery/') === 0) {
         return this.handleAdminGallery(request, p.slice('/admin/gallery/'.length));
       }
+      if (p.indexOf('/admin/presence/') === 0) {
+        return this.handleAdminPresence(request, p.slice('/admin/presence/'.length));
+      }
       if (request.method === 'GET' && p === '/mode') {
         if (!this.config) return json({ configured: false });
         return json({
@@ -964,7 +1155,10 @@ export class RoomRelay {
       }
       if (request.method === 'GET' && p === '/profile') return this.handleProfileGet(url);
       if (request.method === 'POST' && p === '/profile') return this.handleProfileSave(request, url);
-      if (request.method === 'GET' && p === '/gallery') return json(await this.galleryManifest());
+      if (request.method === 'GET' && p === '/gallery') {
+        const ident = await this.verifyToken(url.searchParams.get('token') || '');
+        return json(await this.galleryManifest(ident ? ident.profileId : null));
+      }
       if (request.method === 'POST' && p === '/gallery/add') return this.handleGalleryAdd(request, url);
       if (request.method === 'POST' && p === '/gallery/remove') return this.handleGalleryRemove(request, url);
       if (request.method === 'POST' && p === '/setlist') return this.handleSetlistSubmit(request, url);

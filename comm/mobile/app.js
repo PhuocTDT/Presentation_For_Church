@@ -13,12 +13,36 @@
   'use strict';
 
   var LS_KEY = 'bandcomm.v1';
+  // Bộ nút mặc định — trước đây (khi còn hệ thống tài khoản đăng nhập) mỗi
+  // người có 1 hồ sơ cố định nên tự tạo nút 1 lần là đủ. Từ lúc chuyển hẳn
+  // sang chỉ-join-bằng-mật-khẩu-phòng, hồ sơ (profileId) gắn với TRÌNH
+  // DUYỆT/THIẾT BỊ cụ thể (localStorage) chứ không phải người dùng — máy
+  // mới/xoá cache/đổi trình duyệt là mất bộ nút cũ, phải tự tạo lại từ đầu.
+  // Seed sẵn bộ nút này cho THIẾT BỊ MỚI (state.buttons rỗng VÀ không khôi
+  // phục được hồ sơ cũ từ server — xem finalizeJoin) để có sẵn điểm khởi đầu
+  // thay vì màn hình trắng; band member vẫn sửa/xoá/thêm tự do sau đó.
+  var DEFAULT_BUTTONS = [
+    { id: 'b-def-piano-up', label: 'Tăng piano', group: 'Âm lượng' },
+    { id: 'b-def-piano-down', label: 'Giảm piano', group: 'Âm lượng' },
+    { id: 'b-def-guitar-up', label: 'Tăng guitar', group: 'Âm lượng' },
+    { id: 'b-def-guitar-down', label: 'Giảm guitar', group: 'Âm lượng' },
+    { id: 'b-def-mic-up', label: 'Tăng mic hướng dẫn', group: 'Âm lượng' },
+    { id: 'b-def-mic-down', label: 'Giảm mic hướng dẫn', group: 'Âm lượng' },
+    { id: 'b-def-guitar-mute', label: 'Guitar mất tiếng', group: 'Sự cố' },
+    { id: 'b-def-piano-mute', label: 'Piano mất tiếng', group: 'Sự cố' },
+    { id: 'b-def-sub-issue', label: 'Loa sub có vấn đề', group: 'Sự cố' },
+    { id: 'b-def-intro', label: 'Dạo', group: 'Nhạc' },
+    { id: 'b-def-repeat-chorus', label: 'Quay lại điệp khúc', group: 'Nhạc' },
+    { id: 'b-def-next-song', label: 'Chuyển bài', group: 'Nhạc' },
+    { id: 'b-def-ok', label: 'Ok', group: '' }
+  ];
   // Cùng 1 Worker phục vụ CẢ trang này (mount /m/) LẪN toàn bộ API/relay —
   // xem cloud/worker/src/worker.js + room-relay.js.
   var CLOUD_API_BASE = 'https://channel.worship-official.link';
 
   var state = loadState();
   var ws = null;
+  var lastTs = state.lastTs || 0;     // kèm `sinceTs` để server bù đúng tin mới nếu lastId không còn trong ring
   var lastId = state.lastId || null;  // persist qua reload — tránh replay ring buffer khi mố lại trang
   var reconnTimer = null;
   var reconnDelay = 1000;
@@ -27,6 +51,17 @@
   var toastShowing = false;
   var editingId = null;
   var saveLastIdTimer = null;  // debounce ghi localStorage
+  // Chặn hiện trùng 1 envelope 2 lần (vd. `lastId` lưu debounce 500ms chưa
+  // kịp ghi lúc app bị đóng/crash đúng lúc đó, reconnect sau replay lại vài
+  // tin cuối đã thấy rồi) — bounded, tự dọn khi quá 200 id.
+  var seenEnvIds = [];
+  function isDupEnvelope(id) {
+    if (!id) return false;
+    if (seenEnvIds.indexOf(id) !== -1) return true;
+    seenEnvIds.push(id);
+    if (seenEnvIds.length > 200) seenEnvIds.splice(0, seenEnvIds.length - 200);
+    return false;
+  }
 
 
   var $ = function (id) { return document.getElementById(id); };
@@ -157,8 +192,16 @@
     state.operatorReplies = j.operatorReplies || [];
     state.cloudRoomId = j.cloudRoomId || '';
     $('slToggleBtn').hidden = !j.setlistEnabled;
-    if ((!state.buttons || !state.buttons.length) && j.profile && j.profile.buttons && j.profile.buttons.length) {
-      state.buttons = j.profile.buttons;
+    if (!state.buttons || !state.buttons.length) {
+      if (j.profile && j.profile.buttons && j.profile.buttons.length) {
+        // Máy này chưa có nút, nhưng server nhận ra hồ sơ cũ (profileId khớp,
+        // hoặc trùng tên hiển thị) — khôi phục đúng bộ nút người này đã tạo.
+        state.buttons = j.profile.buttons;
+      } else {
+        // Thiết bị/hồ sơ hoàn toàn mới, không có gì để khôi phục — seed bộ
+        // nút mặc định thay vì để trống.
+        state.buttons = DEFAULT_BUTTONS.map(function (b) { return { id: b.id, label: b.label, group: b.group }; });
+      }
     }
     saveState();
     try { window.history.replaceState({}, document.title, location.pathname); } catch (e) {}
@@ -177,6 +220,9 @@
     if (pingTimer) { clearInterval(pingTimer); pingTimer = null; }
     state.token = null;
     state.clientId = null;
+    // Nháp setlist gắn với phòng vừa rời — không mang sang phòng khác
+    // (khác nhà thờ/buổi lễ) kẻo gửi nhầm bài không thuộc phòng mới.
+    state.slDraft = [];
     saveState();
     setDot('');
     $('main').classList.add('hidden');
@@ -208,7 +254,7 @@
     if (ws) { try { ws.onclose = null; ws.close(); } catch (e) {} ws = null; }
     setDot('');
     var url = roomWsUrl('/ws?token=' + encodeURIComponent(state.token) +
-              (lastId ? '&since=' + encodeURIComponent(lastId) : ''));
+              (lastId ? '&since=' + encodeURIComponent(lastId) + '&sinceTs=' + lastTs : ''));
     try { ws = new WebSocket(url); } catch (e) { scheduleReconnect(); return; }
 
     ws.onopen = function () { setDot('on'); reconnDelay = 1000; };
@@ -219,9 +265,17 @@
       if (msg.kind === 'pong') return;
       if (msg.kind !== 'envelope' || !msg.envelope) return;
       var env = msg.envelope;
-      if (env.id && env.type !== 'presence') {
+      // CHỈ cập nhật cursor `since` bằng id của loại envelope THẬT SỰ nằm
+      // trong ring (alert/text/ack/resolve — xem room-relay.js's pushRing()
+      // call sites). `gallery`/`presence`/`setlist` không được pushRing(),
+      // nên dùng id của chúng làm `since` lúc reconnect khiến server không
+      // tìm thấy trong ring và replay lại TOÀN BỘ ring — các alert/tin nhắn
+      // đã hiện rồi (toast) bị hiện lại thành trùng lặp.
+      if (env.id && (env.type === 'alert' || env.type === 'text' || env.type === 'ack' || env.type === 'resolve')) {
         lastId = env.id;
-        state.lastId = lastId;   // persist: có hiệu lực qua reload/reconnect
+        lastTs = Number(env.ts) || lastTs;
+        state.lastId = lastId;
+        state.lastTs = lastTs;   // persist: có hiệu lực qua reload/reconnect
         // Debounce ghi localStorage — nhiều messages đến liên tục chỉ ghi 1 lần
         clearTimeout(saveLastIdTimer);
         saveLastIdTimer = setTimeout(saveState, 500);
@@ -229,9 +283,22 @@
       handleEnvelope(env);
     };
     ws.onerror = function () { /* onclose fires right after */ };
-    ws.onclose = function () {
+    ws.onclose = function (e) {
       setDot('off');
       ws = null;
+      // 4001 = operator bấm "Kick" (xem room-relay.js's kickWebSocketsByClientId) —
+      // KHÔNG tự reconnect lại (token vẫn còn hạn, tự nối lại ngay sẽ vô
+      // hiệu hoá hẳn nút Kick). Reload thẳng trang (giống hệt luồng token hết
+      // hạn/401 ở dưới) thay vì chỉ chuyển màn hình bằng leaveRoom() — đảm
+      // bảo mọi state/timer JS được dọn sạch hoàn toàn, không chỉ ẩn UI.
+      if (e && e.code === 4001) {
+        state.token = null;
+        state.clientId = null;
+        saveState();
+        try { sessionStorage.setItem('bandcomm_kicked', '1'); } catch (err) {}
+        location.reload();
+        return;
+      }
       scheduleReconnect();
     };
   }
@@ -268,6 +335,9 @@
 
   function handleEnvelope(env) {
     if (!env || !env.type) return;
+    // Envelope nhắm riêng 1 clientId (vd. ack cá nhân) -> bỏ qua nếu không
+    // phải của mình, phòng khi relay lỡ gửi rộng hơn phạm vi (defense in depth).
+    if (env.to && env.to !== 'all' && env.to !== state.clientId) return;
     if (env.type === 'presence') {
       var list = (env.meta && env.meta.clients) || [];
       $('count').textContent = list.length + ' người';
@@ -285,6 +355,10 @@
       return;
     }
 
+    // alert/ack/text là one-shot (toast/đánh dấu đã gửi) — hiện lại 2 lần vì
+    // replay overlap là 1 bug thấy được (toast/rung lặp lại), khác gallery/
+    // presence ở trên vốn idempotent (ghi đè state, không tích luỹ).
+    if (isDupEnvelope(env.id)) return;
     var mine = env.from && env.from.clientId === state.clientId;
     var label = env.meta && env.meta.label ? env.meta.label : '';
     if (env.type === 'alert') {
@@ -356,6 +430,17 @@
     renderButtons();
   });
 
+  // Màu ổn định theo tên nhóm (hash đơn giản, giống cách operator tô màu tên
+  // người gửi) — chỉ để PHÂN BIỆT trực quan giữa các nhóm nút, KHÔNG mang
+  // nghĩa mức độ khẩn cấp (đúng chủ đích "No severity" của cả hệ thống: mọi
+  // tin xử lý như nhau). Nhóm rỗng (không đặt tên) giữ nguyên màu viền mặc
+  // định, không tô.
+  function groupHsl(group) {
+    var k = String(group || ''), h = 0;
+    for (var i = 0; i < k.length; i++) h = (h * 31 + k.charCodeAt(i)) >>> 0;
+    return 'hsl(' + (h % 360) + ', 55%, 48%)';
+  }
+
   function renderButtons() {
     var wrap = $('buttons');
     wrap.textContent = '';
@@ -381,7 +466,11 @@
       if (g) {
         var gl = document.createElement('div');
         gl.className = 'group-label';
-        gl.textContent = g;
+        gl.style.setProperty('--group-color', groupHsl(g));
+        var dot = document.createElement('span');
+        dot.className = 'dot';
+        gl.appendChild(dot);
+        gl.appendChild(document.createTextNode(g));
         wrap.appendChild(gl);
       }
       var grid = document.createElement('div');
@@ -397,6 +486,10 @@
     el.className = 'qbtn';
     el.dataset.id = b.id;
     el.textContent = b.label;
+    if (b.group) {
+      el.style.setProperty('--group-color', groupHsl(b.group));
+      el.style.setProperty('--group-text', '#fff');
+    }
     el.addEventListener('click', function () {
       if (editMode) { openEditor(b); return; }
       sendButton(b, el);
@@ -509,10 +602,14 @@
       // không còn "server local" nào để rớt về nữa, chỉ 1 nguồn duy nhất.
       im.src = CLOUD_API_BASE + '/gallery/image/' + encodeURIComponent(state.cloudRoomId) + '/' + encodeURIComponent(id);
       wrap.appendChild(im);
-      // Chỉ chủ ảnh (ownerId === profileId của chính điện thoại này, ổn định
-      // qua các lần join lại) mới thấy nút Xoá — ai cũng thêm được nhưng chỉ
-      // tự xoá ảnh mình đăng, tránh 1 người xoá nhầm/cố ý ảnh người khác.
-      if (item.ownerId && item.ownerId === state.profileId) {
+      // Chạm vào ảnh -> mở xem phóng to (lightbox), lướt qua lại không cần
+      // thoát. Nút Xoá bên trong tự stopPropagation() nên không kích hoạt
+      // luôn lightbox khi bấm Xoá.
+      wrap.addEventListener('click', function () { openLightbox(i); });
+      // Chỉ chủ ảnh mới thấy nút Xoá — ai cũng thêm được nhưng chỉ tự xoá ảnh
+      // mình đăng. Server tính sẵn `mine` (không trả ownerId thật của ai cả
+      // nữa, tránh lộ profileId — bearer secret — cho người khác trong phòng).
+      if (item.mine) {
         var rm = document.createElement('button');
         rm.type = 'button'; rm.textContent = 'Xoá';
         rm.style.cssText = 'position:absolute;top:6px;right:6px;background:#c0392f;color:#fff;border:none;border-radius:8px;padding:4px 10px;font-weight:700;z-index:2;';
@@ -522,12 +619,10 @@
       track.appendChild(wrap);
       var d = document.createElement('button');
       d.type = 'button';
-      d.addEventListener('click', function () { goChord(i); });
+      d.addEventListener('click', function () { chCarousel.goTo(i); });
       dots.appendChild(d);
     });
-    currentChordIdx = 0;
-    updateTrackPosition(false);
-    setActiveDot(0);
+    chCarousel.goTo(0, false);
   }
 
   function updateChToggle() {
@@ -552,8 +647,14 @@
     fetch(roomUrl('/gallery/remove?token=' + encodeURIComponent(state.token || '')), {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: id })
     })
-      .then(function (r) { return r.json(); })
-      .then(function (m) { renderChords(m); })
+      .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+      .then(function (res) {
+        // Cùng lỗi đã fix ở luồng thêm ảnh phía trên: fetch() không coi status
+        // lỗi (403/404...) là promise reject, gọi thẳng renderChords() với body
+        // lỗi {error:...} sẽ bị hiểu nhầm thành gallery rỗng.
+        if (res.ok) { renderChords(res.j); }
+        else { toast('band', '', (res.j && res.j.error) || 'Xoá không được.'); }
+      })
       .catch(function () { toast('band', '', 'Xoá không được.'); });
   }
 
@@ -593,106 +694,135 @@
     });
   });
 
-  var currentChordIdx = 0;
+  // Carousel vuốt ngang dùng chung cho CẢ khung inline (#chView) LẪN lightbox
+  // phóng to (#chLightboxView) — 2 nơi cần y hệt 1 kiểu cơ chế (drag + snap +
+  // dot pager), tách ra đây để không lặp code, mỗi instance tự giữ state
+  // riêng (idx/dragging/...) qua closure, không đụng nhau.
+  function makeSwipeCarousel(viewEl, getTrackEl, dotsEl) {
+    var idx = 0, startX = 0, startY = 0, isHorizontal = null, dragging = false;
 
-  function updateTrackPosition(animate) {
-    var track = $('chTrack') || $('chView');
-    if (!track) return;
-    track.style.transition = animate ? 'transform 0.22s cubic-bezier(0.25, 1, 0.5, 1)' : 'none';
-    track.style.transform = 'translate3d(-' + (currentChordIdx * 100) + '%, 0, 0)';
-  }
+    function position(animate) {
+      var track = getTrackEl();
+      if (!track) return;
+      track.style.transition = animate ? 'transform 0.22s cubic-bezier(0.25, 1, 0.5, 1)' : 'none';
+      track.style.transform = 'translate3d(-' + (idx * 100) + '%, 0, 0)';
+    }
+    function setActiveDot() {
+      if (!dotsEl) return;
+      var ds = dotsEl.children;
+      for (var k = 0; k < ds.length; k++) ds[k].classList.toggle('on', k === idx);
+    }
+    function goTo(i, animate) {
+      var track = getTrackEl();
+      var total = track ? track.children.length : 0;
+      if (total <= 0) return;
+      idx = Math.max(0, Math.min(i, total - 1));
+      position(animate !== false);
+      setActiveDot();
+    }
 
-  function goChord(i) {
-    var track = $('chTrack') || $('chView');
-    var total = track ? track.children.length : 0;
-    if (total <= 0) return;
-    currentChordIdx = Math.max(0, Math.min(i, total - 1));
-    updateTrackPosition(true);
-    setActiveDot(currentChordIdx);
-  }
+    viewEl.addEventListener('touchstart', function (e) {
+      if (!e.touches || e.touches.length !== 1) return;
+      var track = getTrackEl();
+      if (!track || track.children.length <= 1) return;
+      startX = e.touches[0].clientX;
+      startY = e.touches[0].clientY;
+      isHorizontal = null;
+      dragging = true;
+      track.style.transition = 'none';
+    }, { passive: true });
 
-  function setActiveDot(i) {
-    var ds = $('chDots').children;
-    for (var k = 0; k < ds.length; k++) ds[k].classList.toggle('on', k === i);
-  }
+    viewEl.addEventListener('touchmove', function (e) {
+      if (!dragging || !e.touches || !e.touches.length) return;
+      var dx = e.touches[0].clientX - startX;
+      var dy = e.touches[0].clientY - startY;
 
-  var chTouchStartX = 0;
-  var chTouchStartY = 0;
-  var chIsHorizontal = null;
-  var chIsDragging = false;
-
-  var chViewEl = $('chView');
-  chViewEl.addEventListener('touchstart', function (e) {
-    if (!e.touches || e.touches.length !== 1) return;
-    var track = $('chTrack') || $('chView');
-    if (!track || track.children.length <= 1) return;
-    chTouchStartX = e.touches[0].clientX;
-    chTouchStartY = e.touches[0].clientY;
-    chIsHorizontal = null;
-    chIsDragging = true;
-    track.style.transition = 'none';
-  }, { passive: true });
-
-  chViewEl.addEventListener('touchmove', function (e) {
-    if (!chIsDragging || !e.touches || !e.touches.length) return;
-    var dx = e.touches[0].clientX - chTouchStartX;
-    var dy = e.touches[0].clientY - chTouchStartY;
-
-    if (chIsHorizontal === null) {
-      if (Math.abs(dx) > 6 || Math.abs(dy) > 6) {
-        chIsHorizontal = Math.abs(dx) >= Math.abs(dy);
-        if (!chIsHorizontal) {
-          chIsDragging = false;
+      if (isHorizontal === null) {
+        if (Math.abs(dx) > 6 || Math.abs(dy) > 6) {
+          isHorizontal = Math.abs(dx) >= Math.abs(dy);
+          if (!isHorizontal) { dragging = false; return; }
+        } else {
           return;
         }
-      } else {
-        return;
       }
-    }
 
-    if (!chIsHorizontal) return;
-    if (e.cancelable) e.preventDefault();
+      if (!isHorizontal) return;
+      if (e.cancelable) e.preventDefault();
 
-    var track = $('chTrack') || $('chView');
-    var w = chViewEl.clientWidth || 1;
-    var total = track.children.length;
-    var baseOffset = -currentChordIdx * w;
+      var track = getTrackEl();
+      var w = viewEl.clientWidth || 1;
+      var total = track.children.length;
+      var baseOffset = -idx * w;
 
-    // Resistance at edges
-    if ((currentChordIdx === 0 && dx > 0) || (currentChordIdx === total - 1 && dx < 0)) {
-      dx = dx * 0.3;
-    }
-    track.style.transform = 'translate3d(' + (baseOffset + dx) + 'px, 0, 0)';
-  }, { passive: false });
+      // Resistance at edges
+      if ((idx === 0 && dx > 0) || (idx === total - 1 && dx < 0)) {
+        dx = dx * 0.3;
+      }
+      track.style.transform = 'translate3d(' + (baseOffset + dx) + 'px, 0, 0)';
+    }, { passive: false });
 
-  chViewEl.addEventListener('touchend', function (e) {
-    if (!chIsDragging) return;
-    chIsDragging = false;
-    if (!chIsHorizontal) return;
-    var dx = (e.changedTouches && e.changedTouches.length ? e.changedTouches[0].clientX : 0) - chTouchStartX;
-    var w = chViewEl.clientWidth || 1;
-    var threshold = Math.min(w * 0.15, 45);
-    var track = $('chTrack') || $('chView');
-    var total = track ? track.children.length : 0;
+    viewEl.addEventListener('touchend', function (e) {
+      if (!dragging) return;
+      dragging = false;
+      if (!isHorizontal) return;
+      var dx = (e.changedTouches && e.changedTouches.length ? e.changedTouches[0].clientX : 0) - startX;
+      var w = viewEl.clientWidth || 1;
+      var threshold = Math.min(w * 0.15, 45);
+      var track = getTrackEl();
+      var total = track ? track.children.length : 0;
+      var next = idx;
+      if (dx < -threshold && idx < total - 1) next = idx + 1;
+      else if (dx > threshold && idx > 0) next = idx - 1;
+      goTo(next, true);
+    }, { passive: true });
 
-    if (dx < -threshold && currentChordIdx < total - 1) {
-      currentChordIdx++;
-    } else if (dx > threshold && currentChordIdx > 0) {
-      currentChordIdx--;
-    }
-    updateTrackPosition(true);
-    setActiveDot(currentChordIdx);
-  }, { passive: true });
+    viewEl.addEventListener('touchcancel', function () {
+      if (!dragging) return;
+      dragging = false;
+      position(true);
+    }, { passive: true });
 
-  chViewEl.addEventListener('touchcancel', function () {
-    if (!chIsDragging) return;
-    chIsDragging = false;
-    updateTrackPosition(true);
-  }, { passive: true });
+    window.addEventListener('resize', function () { position(false); });
 
-  window.addEventListener('resize', function () {
-    updateTrackPosition(false);
-  });
+    return { goTo: goTo };
+  }
+
+  var chCarousel = makeSwipeCarousel($('chView'), function () { return $('chTrack'); }, $('chDots'));
+  var chLightboxCarousel = makeSwipeCarousel($('chLightboxView'), function () { return $('chLightboxTrack'); }, $('chLightboxDots'));
+
+  // Phóng to xem chi tiết + lướt qua lại không thoát — mở đúng ảnh vừa chạm
+  // trong khung inline, dựng lại track riêng cho lightbox từ chIMgs hiện tại.
+  // z-index lightbox (40) THẤP HƠN #toasts (50) nên cảnh báo/tin nhắn mới vẫn
+  // đè lên trên được, không bị che mất khi đang xem ảnh phóng to.
+  function openLightbox(startIndex) {
+    if (!chImgs.length) return;
+    var track = $('chLightboxTrack');
+    track.textContent = '';
+    chImgs.forEach(function (item, i) {
+      var wrap = document.createElement('div');
+      wrap.className = 'ch-lightbox-slide';
+      var im = document.createElement('img');
+      im.loading = 'lazy';
+      im.alt = 'Hợp âm ' + (i + 1);
+      im.src = CLOUD_API_BASE + '/gallery/image/' + encodeURIComponent(state.cloudRoomId) + '/' + encodeURIComponent(item.id);
+      wrap.appendChild(im);
+      track.appendChild(wrap);
+    });
+    var dotsEl = $('chLightboxDots');
+    dotsEl.textContent = '';
+    chImgs.forEach(function (_, i) {
+      var d = document.createElement('button');
+      d.type = 'button';
+      d.addEventListener('click', function () { chLightboxCarousel.goTo(i); });
+      dotsEl.appendChild(d);
+    });
+    $('chLightbox').classList.remove('hidden');
+    chLightboxCarousel.goTo(startIndex, false);
+  }
+  function closeLightbox() {
+    $('chLightbox').classList.add('hidden');
+  }
+  $('chLightboxClose') && $('chLightboxClose').addEventListener('click', closeLightbox);
 
   /* ---------------- setlist (soạn danh sách bài gửi máy chiếu) ---------------- */
 
@@ -895,6 +1025,14 @@
     // Mặc định luôn hiện màn hình Đăng nhập (Join Gate)
     $('join').classList.remove('hidden');
     $('main').classList.add('hidden');
+    // Vừa bị operator kick (xem 'onclose' ở trên) -> báo lý do sau khi
+    // location.reload() đã xoá sạch mọi state JS trong bộ nhớ.
+    try {
+      if (sessionStorage.getItem('bandcomm_kicked')) {
+        sessionStorage.removeItem('bandcomm_kicked');
+        $('joinErr').textContent = 'Bạn đã bị ngắt kết nối khỏi phòng bởi người vận hành.';
+      }
+    } catch (e) {}
     // Tự động focus vào ô Tên (field đầu tiên) nếu chưa có tên
     // hoặc vào ô Mật khẩu nếu đã có cả Tên và ID phòng
     setTimeout(function () {

@@ -116,17 +116,20 @@
 
   .grid { display:grid; grid-template-columns:repeat(2, 1fr); gap:8px; }
   .qbtn {
-    background:#fff; border:1px solid var(--line); border-radius:10px;
+    background:var(--group-color, #fff); border:1px solid var(--group-color, var(--line));
+    color:var(--group-text, var(--ink)); border-radius:10px;
     min-height:52px; padding:10px 8px; display:flex; align-items:center;
     justify-content:center; text-align:center; line-height:1.2; font-size:.92rem;
+    font-weight:700;
   }
-  .qbtn:active { background:var(--panel-2); }
-  .qbtn.sent { border-color:var(--ok); background:#e9f5ee; }
-  .qbtn.failed { border-color:var(--danger); }
-  .qbtn.add { color:var(--ink-faint); border-style:dashed; }
+  .qbtn:active { filter:brightness(0.92); }
+  .qbtn.sent { border-color:var(--ok); background:var(--ok); color:#fff; }
+  .qbtn.failed { border-color:var(--danger); background:var(--danger); color:#fff; }
+  .qbtn.add { background:#fff; color:var(--ink-faint); border-color:var(--line); border-style:dashed; }
 
-  .group-label { margin:12px 0 6px; font-size:.75rem; color:var(--ink-faint); }
+  .group-label { margin:12px 0 6px; font-size:.75rem; color:var(--ink-faint); display:flex; align-items:center; gap:6px; }
   .group-label:first-child { margin-top:0; }
+  .group-label .dot { width:7px; height:7px; border-radius:50%; background:var(--group-color, var(--ink-faint)); flex:none; }
 
   /* chord-sheet gallery — horizontal swipe carousel with snappy 0.22s transform */
   .ch-view {
@@ -143,6 +146,7 @@
   }
   .ch-slide {
     flex:0 0 100%; width:100%; position:relative; display:flex; justify-content:center; align-items:center;
+    cursor:zoom-in;
   }
   .ch-slide img {
     width:100%; height:auto; max-height:64vh; object-fit:contain; background:#fff; display:block;
@@ -154,6 +158,41 @@
     background:var(--line); cursor:pointer; transition:transform .15s, background-color .15s;
   }
   .ch-dots button.on { background:var(--op); transform:scale(1.35); }
+
+  /* chord lightbox — xem phóng to, lướt qua lại không thoát; z-index THẤP
+     HƠN #toasts (50) và #editor (60) để thông báo/toast vẫn đè lên trên
+     được khi đang xem ảnh, không bị lightbox che mất. */
+  .ch-lightbox {
+    position:fixed; inset:0; z-index:40; background:rgba(8,10,16,.97);
+    display:flex; flex-direction:column;
+  }
+  .ch-lightbox-view {
+    flex:1; min-height:0; overflow:hidden; position:relative;
+    touch-action:pan-y pinch-zoom; user-select:none; -webkit-user-select:none;
+  }
+  .ch-lightbox-track {
+    display:flex; width:100%; height:100%; will-change:transform;
+    transition:transform 0.22s cubic-bezier(0.25, 1, 0.5, 1);
+  }
+  .ch-lightbox-slide {
+    flex:0 0 100%; width:100%; height:100%; display:flex;
+    justify-content:center; align-items:center; padding:14px; box-sizing:border-box;
+  }
+  .ch-lightbox-slide img {
+    max-width:100%; max-height:100%; object-fit:contain;
+    pointer-events:none; -webkit-user-drag:none;
+  }
+  .ch-lightbox-close {
+    position:absolute; top:calc(10px + env(safe-area-inset-top)); right:12px; z-index:2;
+    width:38px; height:38px; border-radius:50%; border:none;
+    background:rgba(255,255,255,.15); color:#fff; font-size:1.05rem; line-height:1; cursor:pointer;
+  }
+  .ch-lightbox-dots { display:flex; justify-content:center; gap:7px; padding:10px 0 calc(10px + env(safe-area-inset-bottom)); flex:none; }
+  .ch-lightbox-dots button {
+    width:8px; height:8px; padding:0; border-radius:50%; border:none;
+    background:rgba(255,255,255,.35); cursor:pointer; transition:transform .15s, background-color .15s;
+  }
+  .ch-lightbox-dots button.on { background:#fff; transform:scale(1.35); }
 
   /* setlist */
   #setlistBlock input { width:100%; box-sizing:border-box; background:#fff; border:1px solid var(--line); border-radius:10px; padding:9px 12px; color:var(--ink); outline:none; margin-top:8px; }
@@ -309,6 +348,12 @@
 </div>
 
 <div id="toasts"></div>
+
+<div class="ch-lightbox hidden" id="chLightbox">
+  <button type="button" class="ch-lightbox-close" id="chLightboxClose">✕</button>
+  <div class="ch-lightbox-view" id="chLightboxView"><div class="ch-lightbox-track" id="chLightboxTrack"></div></div>
+  <div class="ch-lightbox-dots" id="chLightboxDots"></div>
+</div>
 
 <div id="editor" class="hidden">
   <div class="sheet">
