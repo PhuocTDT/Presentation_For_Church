@@ -220,31 +220,116 @@
     });
   }
 
+  // Gửi 1 setlist: đường có token của relay trước (máy chiếu mở thì nạp ngay; relay cũng lưu vào
+  // lịch sử "Đã gửi"), không tới được máy chiếu -> hộp thư cloud. resendOf = id lịch sử của setlist
+  // được gửi lại (id gửi đi luôn MỚI vì desktop khử trùng theo id).
+  function deliverSetlist(sl, resendOf) {
+    var body = { id: sl.id, name: sl.name, items: sl.items };
+    if (resendOf) body.resendOf = resendOf;
+    return callRoom('/setlist', { method: 'POST', body: body }).then(function (r) {
+      if (r.ok && r.body && r.body.delivered) return { mode: 'live' };
+      if (!r.ok && r.body && r.body.error && r.status < 500 && r.status !== 429) throw new Error(r.body.error);
+      // Máy chiếu tắt / relay lỗi -> hộp thư cloud (tự nạp khi máy chiếu mở lại).
+      return fetch(API + '/setlist', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ roomId: state.cloudRoomId || state.roomCode, setlist: { id: sl.id, name: sl.name, from: { name: state.name }, ts: Date.now(), items: sl.items } })
+      }).then(function (r2) { return r2.ok ? { mode: 'mailbox' } : r2.json().then(function (j) { throw new Error(j.error || ('HTTP ' + r2.status)); }); });
+    });
+  }
+  function newSetlistId() { return 'sl-' + Date.now().toString(16) + randHex(3); }
+  function cleanItems(items) {
+    return items.map(function (it) { return it.webId ? { type: 'song', id: String(it.id), title: it.title, webId: it.webId } : { type: 'song', id: String(it.id), title: it.title }; });
+  }
+
   var sending = false;
   function sendSetlist() {
     if (sending) return;
     if (!state.slDraft.length) { setStatus('slStatus', 'Setlist đang trống.', 'err'); return; }
     sending = true; $('slSend').disabled = true;
     setStatus('slStatus', 'Đang gửi…', 'info');
-    var sl = {
-      id: 'sl-' + Date.now().toString(16) + randHex(3),
-      name: $('slName').value.trim() || 'Setlist',
-      items: state.slDraft.map(function (it) { return it.webId ? { type: 'song', id: it.id, title: it.title, webId: it.webId } : { type: 'song', id: it.id, title: it.title }; })
-    };
-    // 1) Đường có xác thực qua relay: máy chiếu đang mở thì nạp ngay.
-    callRoom('/setlist', { method: 'POST', body: sl }).then(function (r) {
-      if (r.ok && r.body && r.body.delivered) return { mode: 'live' };
-      // 2) Máy chiếu tắt / relay lỗi -> hộp thư cloud (tự nạp khi máy chiếu mở lại).
-      return fetch(API + '/setlist', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ roomId: state.cloudRoomId || state.roomCode, setlist: { id: sl.id, name: sl.name, from: { name: state.name }, ts: Date.now(), items: sl.items } })
-      }).then(function (r2) { return r2.ok ? { mode: 'mailbox' } : r2.json().then(function (j) { throw new Error(j.error || ('HTTP ' + r2.status)); }); });
-    }).then(function (res) {
+    var sl = { id: newSetlistId(), name: $('slName').value.trim() || 'Setlist', items: cleanItems(state.slDraft) };
+    deliverSetlist(sl, null).then(function (res) {
       state.slDraft = []; $('slName').value = ''; save(); renderDraft(); renderResults();
-      setStatus('slStatus', res.mode === 'live' ? 'Đã gửi — máy chiếu đang mở, setlist hiện ngay để người vận hành nạp.' : 'Đã gửi vào hộp thư — sẽ hiện khi máy chiếu mở Kênh Band.', 'ok');
+      setStatus('slStatus', (res.mode === 'live' ? 'Đã gửi — máy chiếu đang mở, setlist hiện ngay để người vận hành nạp.' : 'Đã gửi vào hộp thư — sẽ hiện khi máy chiếu mở Kênh Band.') + ' Xem lại ở tab “Đã gửi”.', 'ok');
+      refreshSent(true);
     }).catch(function (e) {
       setStatus('slStatus', 'Gửi không thành công: ' + ((e && e.message) || 'lỗi mạng') + '. Setlist vẫn được giữ, thử lại nhé.', 'err');
     }).then(function () { sending = false; $('slSend').disabled = false; });
+  }
+
+  /* ---------------- tab Đã gửi (lịch sử setlist của phòng) ---------------- */
+  var sentLists = [];
+  var resending = {};
+  function fmtTime(ts) { return new Date(ts).toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' }); }
+  function refreshSent(quiet) {
+    return callRoom('/setlists/history').then(function (r) {
+      if (!r.ok) { if (!quiet) setStatus('sentStatus', (r.body && r.body.error) || 'Không tải được danh sách đã gửi.', 'err'); return; }
+      sentLists = Array.isArray(r.body.setlists) ? r.body.setlists : [];
+      if (!quiet) setStatus('sentStatus', '');
+      renderSent();
+    }).catch(function () { if (!quiet) setStatus('sentStatus', 'Không kết nối được máy chủ.', 'err'); });
+  }
+  function renderSent() {
+    var ul = $('sentList'); ul.textContent = '';
+    sentLists.forEach(function (sl) {
+      var li = el('li', 'sent-item');
+      var head = el('div', 'sent-head');
+      head.appendChild(el('b', null, sl.name));
+      head.appendChild(el('span', 'muted small', sl.items.length + ' bài'));
+      li.appendChild(head);
+      var meta = 'Gửi bởi ' + (sl.by || '?') + ' · ' + fmtTime(sl.ts);
+      if (sl.sendCount > 1) meta += ' · đã gửi ' + sl.sendCount + ' lần, gần nhất ' + fmtTime(sl.lastSentAt) + (sl.lastBy && sl.lastBy !== sl.by ? ' (' + sl.lastBy + ')' : '');
+      li.appendChild(el('div', 'sent-meta', meta));
+      var ol = el('ol', 'sent-songs');
+      sl.items.forEach(function (it) {
+        var li2 = el('li', null, it.title);
+        if (library.length && !findSong(it.id)) { li2.className = 'gone'; li2.textContent = it.title + ' — không còn trong thư viện'; }
+        ol.appendChild(li2);
+      });
+      li.appendChild(ol);
+      var acts = el('div', 'sent-actions');
+      var rs = el('button', 'btn small primary', resending[sl.id] ? 'Đang gửi…' : 'Gửi lại'); rs.type = 'button'; rs.disabled = !!resending[sl.id];
+      rs.addEventListener('click', function () { resendSetlist(sl); });
+      var ed = el('button', 'btn small', 'Mở để sửa'); ed.type = 'button';
+      ed.addEventListener('click', function () { loadSentIntoDraft(sl); });
+      acts.appendChild(rs); acts.appendChild(ed);
+      if (sl.mine) {
+        var del = el('button', 'btn small', 'Xoá'); del.type = 'button';
+        del.addEventListener('click', function () { deleteSent(sl); });
+        acts.appendChild(del);
+      }
+      li.appendChild(acts);
+      ul.appendChild(li);
+    });
+    $('sentEmpty').classList.toggle('hidden', sentLists.length > 0);
+    var b = $('sentBadge'); b.textContent = String(sentLists.length); b.classList.toggle('hidden', sentLists.length === 0);
+  }
+  function resendSetlist(sl) {
+    if (resending[sl.id]) return;
+    if (!window.confirm('Gửi lại setlist “' + sl.name + '” (' + sl.items.length + ' bài) cho người vận hành?')) return;
+    resending[sl.id] = true; renderSent();
+    setStatus('sentStatus', 'Đang gửi lại…', 'info');
+    deliverSetlist({ id: newSetlistId(), name: sl.name, items: cleanItems(sl.items) }, sl.id).then(function (res) {
+      setStatus('sentStatus', 'Đã gửi lại “' + sl.name + '” — ' + (res.mode === 'live' ? 'máy chiếu đang mở, setlist hiện ngay để người vận hành nạp.' : 'đã vào hộp thư, sẽ hiện khi máy chiếu mở Kênh Band.'), 'ok');
+      return refreshSent(true);
+    }).catch(function (e) {
+      setStatus('sentStatus', 'Gửi lại không thành công: ' + ((e && e.message) || 'lỗi mạng') + '.', 'err');
+    }).then(function () { delete resending[sl.id]; renderSent(); });
+  }
+  function loadSentIntoDraft(sl) {
+    if (state.slDraft.length && !window.confirm('Thay danh sách đang soạn bằng setlist “' + sl.name + '”?')) return;
+    state.slDraft = sl.items.map(function (it) { return it.webId ? { id: String(it.id), title: it.title, webId: it.webId } : { id: String(it.id), title: it.title }; });
+    $('slName').value = sl.name;
+    save(); renderDraft(); renderResults(); switchTab('setlist');
+    setStatus('slStatus', 'Đã mở “' + sl.name + '” để sửa — chỉnh xong bấm “Gửi setlist”.', 'info');
+  }
+  function deleteSent(sl) {
+    if (!window.confirm('Xoá “' + sl.name + '” khỏi danh sách đã gửi của phòng? (Không ảnh hưởng setlist đã nạp ở máy chiếu.)')) return;
+    callRoom('/setlists/history/delete', { method: 'POST', body: { id: sl.id } }).then(function (r) {
+      if (!r.ok && r.status !== 404) { setStatus('sentStatus', (r.body && r.body.error) || 'Không xoá được.', 'err'); return; }
+      setStatus('sentStatus', 'Đã xoá.', 'ok');
+      return refreshSent(true);
+    }).catch(function () { setStatus('sentStatus', 'Lỗi mạng, chưa xoá được.', 'err'); });
   }
 
   /* ---------------- tab Bài mới ---------------- */
@@ -470,6 +555,7 @@
     loadLibrary(true);
     loadBackgrounds();
     refreshMySongs();
+    refreshSent(true);
     // Thư viện tự làm mới: bài vừa tạo/sửa ở máy tính hiện lên đây không cần F5.
     clearInterval(libTimer);
     libTimer = setInterval(function () { if (!document.hidden && state.token) loadLibrary(true); }, 60000);
@@ -478,13 +564,16 @@
   function switchTab(name) {
     Array.prototype.forEach.call(document.querySelectorAll('.tab'), function (t) { t.classList.toggle('active', t.dataset.tab === name); });
     $('tab-setlist').classList.toggle('hidden', name !== 'setlist');
+    $('tab-sent').classList.toggle('hidden', name !== 'sent');
     $('tab-newsong').classList.toggle('hidden', name !== 'newsong');
     if (name === 'newsong') refreshMySongs();
+    if (name === 'sent') refreshSent(false);
   }
 
   $('loginBtn').addEventListener('click', doLogin);
   ['roomCode', 'roomPassword', 'yourName'].forEach(function (id) { $(id).addEventListener('keydown', function (e) { if (e.key === 'Enter') doLogin(); }); });
   $('logoutBtn').addEventListener('click', function () { logout(''); });
+  $('sentRefresh').addEventListener('click', function () { refreshSent(false); });
   $('libRefresh').addEventListener('click', function () { loadLibrary(false); loadBackgrounds(); });
   Array.prototype.forEach.call(document.querySelectorAll('.tab'), function (t) { t.addEventListener('click', function () { switchTab(t.dataset.tab); }); });
   $('slSearch').addEventListener('input', renderResults);

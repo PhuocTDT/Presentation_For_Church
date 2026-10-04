@@ -48,6 +48,7 @@
 
   <nav class="tabs" role="tablist">
     <button class="tab active" data-tab="setlist" role="tab" type="button">Soạn setlist</button>
+    <button class="tab" data-tab="sent" role="tab" type="button">Đã gửi<span id="sentBadge" class="badge info hidden">0</span></button>
     <button class="tab" data-tab="newsong" role="tab" type="button">Bài mới<span id="pendingBadge" class="badge hidden">0</span></button>
   </nav>
 
@@ -68,6 +69,20 @@
 
         <div id="slStatus" class="status" role="status"></div>
         <button id="slSend" class="btn primary block" type="button">Gửi setlist</button>
+      </div>
+    </section>
+
+    <!-- ---- Tab: Đã gửi (lịch sử setlist của phòng, gửi lại được) ---- -->
+    <section id="tab-sent" class="panel hidden">
+      <div class="card">
+        <div class="row between" style="margin-top:0">
+          <h2 style="margin:0">Setlist đã gửi của phòng</h2>
+          <button id="sentRefresh" class="btn small" type="button">Làm mới</button>
+        </div>
+        <p class="muted small">Mọi setlist thành viên đã gửi được lưu lại (tối đa 50, giữ 90 ngày). Bấm <strong>Gửi lại</strong> để đẩy lại cho người vận hành, hoặc <strong>Mở để sửa</strong> để đưa vào tab Soạn setlist chỉnh rồi gửi tiếp.</p>
+        <div id="sentStatus" class="status" role="status"></div>
+        <ul id="sentList" class="sent-list"></ul>
+        <div id="sentEmpty" class="muted hidden">Chưa có setlist nào được gửi.</div>
       </div>
     </section>
 

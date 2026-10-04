@@ -2,6 +2,13 @@
 
 Tất cả các thay đổi và cập nhật quan trọng của dự án được ghi lại tại đây.
 
+## [Chưa phát hành] - Trang `/setlist/`: tab "Đã gửi" (lưu + gửi lại setlist của phòng)
+
+- **Tab mới "Đã gửi"** (`comm/setlist/`), nằm giữa "Soạn setlist" và "Bài mới": liệt kê mọi setlist thành viên trong phòng đã gửi (tên, người gửi, giờ gửi, số lần gửi, danh sách bài; bài không còn trong thư viện bị đánh dấu). Mỗi bản có **Gửi lại** (hỏi xác nhận, đẩy lại cho người vận hành qua cùng đường gửi — relay trực tiếp, máy chiếu tắt thì hộp thư cloud), **Mở để sửa** (đưa vào tab Soạn setlist, hỏi trước khi thay nháp đang có) và **Xoá** (chỉ người đã gửi). Huy hiệu trên tab = số setlist đã lưu.
+- **Relay** (`cloud/worker/src/room-relay.js`, cần `wrangler deploy`): Durable Object lưu `slHistory` (≤50 bản/phòng, giữ 90 ngày); `POST /setlist` có token tự ghi lịch sử và nhận `resendOf` — gửi lại dùng **id mới** (desktop khử trùng setlist theo `id`, gửi lại cùng id sẽ bị bỏ qua) nhưng cập nhật bản cũ (`sendCount`, `lastSentAt`) thay vì nhân đôi. Endpoint mới: `GET /setlists/history`, `POST /setlists/history/delete` (cùng token thành viên). Xoá phòng cũng dọn lịch sử. Lời bài web không bao giờ được lưu trong lịch sử.
+- Tách `deliverSetlist()` trong `setlist.js` dùng chung cho Gửi setlist và Gửi lại; lỗi validate 4xx từ relay giờ báo thẳng thay vì rơi sang hộp thư.
+- Test: `test/setlist-history.test.mjs` (6 ca: auth, lưu/riêng tư, setlist rỗng, gửi lại không nhân đôi, quyền xoá, giới hạn 50 + bền qua evict). Docs: `docs/data-contracts.md`.
+
 ## [3.1.12] - Gia cố "không sửa được sau khi mở file" + chế độ chẩn đoán + chống ngừng vẽ khi bị che
 
 - **Triệu chứng báo cáo**: mở file `.bcsch` bằng double-click rồi Edit Song (chuột phải bài trong Schedule) thì **không đặt được con trỏ vào ô**; trên máy phát triển sửa được, trên máy khác thì không. Không tái hiện được ở phía mã: đã thử bản dev và bản đóng gói (mở bằng tham số như file association, mở lần 2 khi app đang chạy, khởi động lại), đường dẫn cài có dấu tiếng Việt + khoảng trắng, bản Portable (giải nén vào thư mục tạm), 5 loại mục (bài + nền, Kinh Thánh, chỉ media, lời rỗng không id, bài thường), gõ phím THẬT của hệ điều hành sau alert/confirm/hộp Lưu/Mở — tất cả đều gõ và lưu được, không có IPC nào bị `[security]` từ chối. Kết luận: lỗi phụ thuộc máy (cảm ứng, DPI, GPU, bộ gõ, lớp phủ…) nên cần thu thập dữ liệu ngay trên máy lỗi.

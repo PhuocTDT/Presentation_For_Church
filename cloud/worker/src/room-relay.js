@@ -53,6 +53,10 @@ const SONG_RESOLVED_TTL_MS = 7 * 24 * 60 * 60 * 1000; // giữ bản đã duyệ
 const SONG_WEBID_RE = /^[A-Za-z0-9_-]{8,64}$/;
 const SONG_PENDING_TTL_MS = 30 * 24 * 60 * 60 * 1000;   // bài web chưa ai đưa vào setlist: giữ 30 ngày
 
+// Lịch sử setlist đã gửi của phòng (tab "Đã gửi" ở trang /setlist/): lưu để xem lại + gửi lại.
+const SL_HISTORY_MAX = 50;                                // tối đa setlist lưu / phòng (cũ nhất bị dọn)
+const SL_HISTORY_TTL_MS = 90 * 24 * 60 * 60 * 1000;       // quá 90 ngày kể từ lần gửi cuối thì dọn
+
 // Ảnh nền thư viện (desktop đẩy bản thu nhỏ ~960px JPEG) để trang /setlist/ xem trước
 // slide. Bucket R2 RIÊNG (binding BGS) — KHÔNG dùng bucket gallery vì bucket đó
 // tự xoá sau 4 ngày (lifecycle expire-4d), còn nền phải sống lâu.
@@ -173,6 +177,7 @@ export class RoomRelay {
       this.blocked = (await ctx.storage.get('blocked')) || {}; // profileId -> {name, blockedAt}
       this.songInbox = (await ctx.storage.get('songInbox')) || []; // bài mới từ web chờ operator duyệt
       this.bgManifest = (await ctx.storage.get('bgManifest')) || { items: [], updatedAt: 0 }; // ảnh nền: [{id,name,key,size}]
+      this.slHistory = (await ctx.storage.get('slHistory')) || []; // setlist đã gửi: [{id,name,items,by,submitter,ts,lastSentAt,sendCount}]
     });
     // Chống brute-force /join, /login — y hệt curve joinAttempts ở LAN
     // server.js cũ, CHỈ khác chỗ lưu (RAM của instance DO, không phải
@@ -431,7 +436,7 @@ export class RoomRelay {
     // Đưa trạng thái trong RAM về rỗng (instance này có thể còn sống sau khi xóa storage)
     this.config = null; this.secretHex = null; this.adminSecret = null; this.ring = [];
     this.accounts = []; this.profiles = {}; this.gallery = { images: [], updatedAt: 0 }; this.blocked = {};
-    this.songInbox = []; this.bgManifest = { items: [], updatedAt: 0 };
+    this.songInbox = []; this.bgManifest = { items: [], updatedAt: 0 }; this.slHistory = [];
     this.joinAttempts = new Map(); this.galleryAddAttempts = new Map(); this.pendingLogins = new Map();
     return json({ ok: true, deleted });
   }
@@ -1014,6 +1019,9 @@ export class RoomRelay {
       name: String(body.name || '').trim().slice(0, 80) || 'Setlist',
       from: { name: ident.name }, ts: Date.now(), items
     };
+    // Lưu vào lịch sử của phòng để tab "Đã gửi" xem lại/gửi lại. body.resendOf = id lịch sử của setlist
+    // được gửi lại (id gửi đi vẫn MỚI vì desktop khử trùng theo id) -> cập nhật bản cũ thay vì thêm bản sao.
+    await this.recordSetlistHistory(ident, sl, body.resendOf);
     const env = makeEnvelope({ type: 'setlist', from: { clientId: ident.clientId, name: ident.name }, meta: sl });
     this.broadcast(env); // KHÔNG pushRing — setlist không cần replay lúc reconnect (đã gửi 1 lần là đủ, operator xử lý ngay lúc online)
     // Operator (laptop) có đang online không lúc gửi — khác LAN cũ (network
@@ -1023,6 +1031,63 @@ export class RoomRelay {
     // ở worker.js) hay không — y hệt UX cũ.
     const delivered = this.ctx.getWebSockets().some((ws) => (ws.deserializeAttachment() || {}).isOperator);
     return json({ ok: true, id: sl.id, delivered });
+  }
+
+  // ---- Lịch sử setlist đã gửi (chung cả phòng) ----
+  async persistSlHistory() {
+    const now = Date.now();
+    this.slHistory = this.slHistory.filter((e) => now - e.lastSentAt < SL_HISTORY_TTL_MS);
+    if (this.slHistory.length > SL_HISTORY_MAX) {
+      this.slHistory.sort((a, b) => a.lastSentAt - b.lastSentAt);
+      this.slHistory = this.slHistory.slice(this.slHistory.length - SL_HISTORY_MAX);
+    }
+    await this.ctx.storage.put('slHistory', this.slHistory);
+  }
+
+  async recordSetlistHistory(ident, sl, resendOf) {
+    const who = this.songSubmitterKey(ident);
+    const now = Date.now();
+    const prev = typeof resendOf === 'string' && resendOf
+      ? this.slHistory.find((e) => e.id === resendOf.slice(0, 80)) : null;
+    if (prev) {
+      prev.lastSentAt = now;
+      prev.sendCount = (prev.sendCount || 1) + 1;
+      prev.lastBy = ident.name;
+    } else {
+      this.slHistory.push({
+        id: sl.id, name: sl.name, items: sl.items, by: ident.name, submitter: who,
+        ts: now, lastSentAt: now, sendCount: 1, lastBy: ident.name
+      });
+    }
+    await this.persistSlHistory();
+  }
+
+  async handleSetlistHistory(url) {
+    const ident = await this.verifyToken(url.searchParams.get('token') || '');
+    if (!ident) return json({ error: 'unauthorized' }, 401);
+    const who = this.songSubmitterKey(ident);
+    const setlists = this.slHistory.slice()
+      .sort((a, b) => b.lastSentAt - a.lastSentAt)
+      .map((e) => ({
+        id: e.id, name: e.name, items: e.items, by: e.by, ts: e.ts, lastSentAt: e.lastSentAt,
+        sendCount: e.sendCount || 1, lastBy: e.lastBy || e.by, mine: e.submitter === who
+      }));
+    return json({ setlists });
+  }
+
+  // Chỉ người đã gửi (cùng profileId/clientId) mới xoá được bản lưu của mình.
+  async handleSetlistHistoryDelete(request, url) {
+    const ident = await this.verifyToken(url.searchParams.get('token') || '');
+    if (!ident) return json({ error: 'unauthorized' }, 401);
+    const body = await request.json().catch(() => null);
+    if (!body) return json({ error: 'bad json' }, 400);
+    const id = String(body.id || '').slice(0, 80);
+    const entry = this.slHistory.find((e) => e.id === id);
+    if (!entry) return json({ error: 'Không tìm thấy setlist' }, 404);
+    if (entry.submitter !== this.songSubmitterKey(ident)) return json({ error: 'Chỉ người đã gửi mới xoá được' }, 403);
+    this.slHistory = this.slHistory.filter((e) => e !== entry);
+    await this.persistSlHistory();
+    return json({ ok: true });
   }
 
   // ---- Ảnh nền thư viện cho preview slide ----
@@ -1478,6 +1543,8 @@ export class RoomRelay {
       if (request.method === 'POST' && p === '/gallery/remove') return this.handleGalleryRemove(request, url);
       if (request.method === 'POST' && p === '/gallery/reorder') return this.handleGalleryReorder(request, url);
       if (request.method === 'POST' && p === '/setlist') return this.handleSetlistSubmit(request, url);
+      if (request.method === 'GET' && p === '/setlists/history') return this.handleSetlistHistory(url);
+      if (request.method === 'POST' && p === '/setlists/history/delete') return this.handleSetlistHistoryDelete(request, url);
       if (request.method === 'POST' && p === '/song-submit') return this.handleSongSubmit(request, url);
       if (request.method === 'GET' && p === '/songs/mine') return this.handleSongsMine(url);
       if (request.method === 'GET' && p === '/songs/web') return this.handleWebSongs(url);
