@@ -8015,7 +8015,7 @@
             add('Cảm ứng', 'maxTouchPoints=' + navigator.maxTouchPoints + ' | pointer:coarse=' + matchMedia('(pointer: coarse)').matches + ' | hover:none=' + matchMedia('(hover: none)').matches);
             add('CPU/RAM', (navigator.hardwareConcurrency || '?') + ' luồng | ' + (navigator.deviceMemory || '?') + ' GB');
             add('Trạng thái hiển thị (hidden = Chromium đã ngừng vẽ, giao diện sẽ đứng)', document.visibilityState + ' | hidden=' + document.hidden);
-            add('Trang có focus bàn phím', document.hasFocus());
+            add('Trang có focus bàn phím', document.hasFocus() + ' | số lần tự chữa focus: ' + (window.__focusHeals || 0));
             add('Phần tử đang focus', describeEl(document.activeElement) + (document.activeElement && document.activeElement.isContentEditable ? ' [contenteditable]' : ''));
             add('Tailwind CSS nạp', (function () { var t = document.createElement('div'); t.className = 'hidden'; document.body.appendChild(t); var ok = getComputedStyle(t).display === 'none'; t.remove(); return ok ? 'có' : 'KHÔNG (giao diện có thể vỡ)'; })());
             add('Phông CMG Sans', document.fonts && document.fonts.check ? document.fonts.check('16px "CMG Sans"') : '?');
@@ -8079,6 +8079,34 @@
         }
         window.addEventListener('keydown', function (e) {
             if (e.ctrlKey && e.altKey && !e.shiftKey && !e.metaKey && (e.key === 'd' || e.key === 'D' || e.code === 'KeyD')) { e.preventDefault(); e.stopPropagation(); showDiagnostics(); }
+        }, true);
+
+        // ===== Tự chữa mất focus bàn phím =====
+        // Electron/Windows: sau alert()/confirm()/prompt() gốc (hoặc hộp thoại hệ thống) cửa sổ vẫn vẽ và chuột vẫn trúng ô, nhưng
+        // trang không còn focus bàn phím → Edit Song mở được mà không đặt được con trỏ/không gõ được. (1) Bọc 3 hộp thoại để trả
+        // focus ngay khi đóng; (2) nếu người dùng BẤM CHUỘT mà trang không có focus → xin main trả focus rồi đặt lại vào ô vừa bấm.
+        window.__focusHeals = 0;
+        function healPageFocus(target) {
+            try {
+                if (!window.electronAPI || !window.electronAPI.refocusPage) return Promise.resolve();
+                window.__focusHeals++;
+                return window.electronAPI.refocusPage().then(function () {
+                    var el = target && target.nodeType === 1 ? target : null;
+                    if (el && document.contains(el) && document.activeElement !== el && (el.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName))) { try { el.focus(); } catch (e) {} }
+                }, function () {});
+            } catch (e) { return Promise.resolve(); }
+        }
+        ['alert', 'confirm', 'prompt'].forEach(function (name) {
+            var orig = window[name];
+            if (typeof orig !== 'function') return;
+            window[name] = function () {
+                var r = orig.apply(window, arguments);
+                setTimeout(function () { healPageFocus(null); }, 0);
+                return r;
+            };
+        });
+        document.addEventListener('mousedown', function (e) {
+            if (!document.hasFocus()) healPageFocus(e.target);
         }, true);
 
         // "Chưa lưu" = nội dung Schedule hiện tại KHÁC bản đã lưu/mở/tạo mới gần nhất. So bằng dấu vân tay
@@ -9549,18 +9577,34 @@
 
       function loadSetlistIntoSchedule(sl) {
         var out = [];
+        // Nền tuỳ chọn trong setlist: it.bg (riêng bài) ưu tiên hơn sl.bg (chung cả list); = TÊN file trong thư viện media.
+        // Chỉ ảnh; không có file đó trên máy này -> bỏ qua (bài giữ nền mặc định), đếm để báo.
+        var bgApplied = 0, bgMissing = 0;
+        function withSetlistBg(item, names) {
+          if (!item) return item;
+          names = names.filter(Boolean);
+          if (!names.length) return item;
+          for (var i = 0; i < names.length; i++) {   // nền riêng của bài trước, không có trên máy này thì thử nền chung
+            var key = String(names[i]).toLowerCase();
+            var m = (mediaLibrary || []).find(function (x) { return x && x.type !== 'video' && String(x.name || '').toLowerCase() === key; });
+            if (m) { item.background = normalizeSlideBackground(m); bgApplied++; return item; }
+          }
+          bgMissing++;
+          return item;
+        }
         (sl.items || []).forEach(function (it) {
           // Bài tạo từ web: id web không có trong thư viện; khớp theo origin.webId (đã duyệt).
           // Chưa duyệt/bị từ chối/không còn -> bỏ khỏi Schedule (KHÔNG thêm mục rỗng).
           if (it.webId) {
             var web = (songLibrary || []).find(function (s) { return s && s.origin && s.origin.webId === it.webId; });
-            if (web) { var wc = JSON.parse(JSON.stringify(web)); delete wc.scheduleId; out.push(normalizeScheduleItem(wc)); }
+            if (web) { var wc = JSON.parse(JSON.stringify(web)); delete wc.scheduleId; withSetlistBg(wc, [it.bg, sl.bg]); out.push(normalizeScheduleItem(wc)); }
             return;
           }
           var src = (songLibrary || []).find(function (s) { return String(s.id) === String(it.id); });
           if (src) {
             var copy = JSON.parse(JSON.stringify(src));
             delete copy.scheduleId;
+            withSetlistBg(copy, [it.bg, sl.bg]);
             out.push(normalizeScheduleItem(copy));
           } else {
             out.push(normalizeScheduleItem({ type: 'song', title: it.title || 'Bài không có trong thư viện', lyrics: '' }));
@@ -9574,7 +9618,9 @@
         currentScheduleFilePath = null;
         if (typeof updateWindowTitleForSchedule === 'function') updateWindowTitleForSchedule();
         renderSchedule();
-        addFeed('sys', '', 'Đã nạp setlist "' + sl.name + '" — ' + out.length + ' bài vào Schedule.');
+        addFeed('sys', '', 'Đã nạp setlist "' + sl.name + '" — ' + out.length + ' bài vào Schedule.'
+          + (bgApplied ? ' ' + bgApplied + ' bài có nền theo setlist.' : '')
+          + (bgMissing ? ' (' + bgMissing + ' bài chọn nền không có trên máy này — giữ nền mặc định.)' : ''));
       }
 
       // isAlert = true cho cảnh báo band bấm nút (khẩn) -> tab đỏ + pulse, khác

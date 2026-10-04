@@ -169,19 +169,50 @@
       var t = el('span', 't', it.title);
       if (it.webId && inLib && inLib.isWeb) { var np2 = el('span', 'pill pending', 'Mới · duyệt khi nạp'); np2.style.marginLeft = '6px'; t.appendChild(np2); }
       if (!inLib && library.length) { t.appendChild(el('span', 'sub', it.webId ? ' — bài mới đã bị từ chối hoặc không còn' : ' — không còn trong thư viện')); }
+      if (it.bg) { var bp = el('span', 'pill bgtag', '🖼 ' + it.bg); bp.style.marginLeft = '6px'; t.appendChild(bp); }
       li.appendChild(t);
-      [['👁', 'Xem slide', function () { openSongPreview(it.id); }, !inLib],
+      [['👁', 'Xem slide', function () { openSongPreview(it.id, it.bg || state.slBg); }, !inLib],
+       ['🖼', it.bg ? 'Nền riêng: ' + it.bg + ' (bấm để đổi/bỏ)' : 'Chọn nền riêng cho bài này (tuỳ chọn)', function () {
+         pickBackground(it.bg || '', 'Nền cho “' + it.title + '”', function (name) { if (name) it.bg = name; else delete it.bg; save(); renderDraft(); });
+       }, !backgrounds.length],
        ['↑', 'Lên', function () { moveDraft(i, -1); }, i === 0],
        ['↓', 'Xuống', function () { moveDraft(i, 1); }, i === state.slDraft.length - 1],
        ['×', 'Bỏ', function () { state.slDraft.splice(i, 1); save(); renderDraft(); renderResults(); }, false]
       ].forEach(function (b) {
         var btn = el('button', 'btn small', b[0]); btn.type = 'button'; btn.title = b[1]; btn.disabled = !!b[3];
+        if (b[0] === '🖼' && it.bg) btn.classList.add('on');
         btn.addEventListener('click', b[2]); li.appendChild(btn);
       });
       ol.appendChild(li);
     });
     $('slEmpty').classList.toggle('hidden', state.slDraft.length > 0);
     $('slCount').textContent = state.slDraft.length ? '(' + state.slDraft.length + ' bài)' : '';
+    renderListBg();
+  }
+  // Nền chung cho cả list (tuỳ chọn): bài nào có nền riêng thì dùng nền riêng, còn lại dùng nền chung.
+  function renderListBg() {
+    $('slBgRow').classList.toggle('hidden', !backgrounds.length && !state.slBg);
+    $('slBgBtn').disabled = !backgrounds.length;
+    $('slBgName').textContent = state.slBg ? '🖼 ' + state.slBg : 'Không chọn — mỗi bài giữ nền mặc định';
+    $('slBgClear').classList.toggle('hidden', !state.slBg);
+  }
+  // Chọn 1 ảnh nền từ thư viện máy chiếu (danh sách đã đồng bộ lên cloud). cb(tên) — '' = bỏ chọn/mặc định.
+  function pickBackground(current, title, cb) {
+    $('bgPickTitle').textContent = title;
+    var grid = $('bgPickGrid'); grid.textContent = '';
+    function choose(name) { $('bgPick').classList.add('hidden'); cb(name); }
+    var none = el('button', 'bg-item' + (!current ? ' sel' : '')); none.type = 'button';
+    none.appendChild(el('span', null, 'Mặc định')); none.addEventListener('click', function () { choose(''); });
+    grid.appendChild(none);
+    backgrounds.forEach(function (b) {
+      var btn = el('button', 'bg-item' + (b.name === current ? ' sel' : '')); btn.type = 'button'; btn.title = b.name;
+      var im = el('img'); im.loading = 'lazy'; im.alt = b.name;
+      im.src = API + '/backgrounds/image/' + encodeURIComponent(state.roomCode) + '/' + encodeURIComponent(b.id);
+      btn.appendChild(im); btn.appendChild(el('span', null, b.name));
+      btn.addEventListener('click', function () { choose(b.name); });
+      grid.appendChild(btn);
+    });
+    $('bgPick').classList.remove('hidden');
   }
   function moveDraft(i, d) {
     var j = i + d; if (j < 0 || j >= state.slDraft.length) return;
@@ -225,6 +256,7 @@
   // được gửi lại (id gửi đi luôn MỚI vì desktop khử trùng theo id).
   function deliverSetlist(sl, resendOf) {
     var body = { id: sl.id, name: sl.name, items: sl.items };
+    if (sl.bg) body.bg = sl.bg;
     if (resendOf) body.resendOf = resendOf;
     return callRoom('/setlist', { method: 'POST', body: body }).then(function (r) {
       if (r.ok && r.body && r.body.delivered) return { mode: 'live' };
@@ -232,13 +264,18 @@
       // Máy chiếu tắt / relay lỗi -> hộp thư cloud (tự nạp khi máy chiếu mở lại).
       return fetch(API + '/setlist', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ roomId: state.cloudRoomId || state.roomCode, setlist: { id: sl.id, name: sl.name, from: { name: state.name }, ts: Date.now(), items: sl.items } })
+        body: JSON.stringify({ roomId: state.cloudRoomId || state.roomCode, setlist: { id: sl.id, name: sl.name, from: { name: state.name }, ts: Date.now(), items: sl.items, bg: sl.bg || undefined } })
       }).then(function (r2) { return r2.ok ? { mode: 'mailbox' } : r2.json().then(function (j) { throw new Error(j.error || ('HTTP ' + r2.status)); }); });
     });
   }
   function newSetlistId() { return 'sl-' + Date.now().toString(16) + randHex(3); }
   function cleanItems(items) {
-    return items.map(function (it) { return it.webId ? { type: 'song', id: String(it.id), title: it.title, webId: it.webId } : { type: 'song', id: String(it.id), title: it.title }; });
+    return items.map(function (it) {
+      var o = { type: 'song', id: String(it.id), title: it.title };
+      if (it.webId) o.webId = it.webId;
+      if (it.bg) o.bg = it.bg;
+      return o;
+    });
   }
 
   var sending = false;
@@ -248,8 +285,9 @@
     sending = true; $('slSend').disabled = true;
     setStatus('slStatus', 'Đang gửi…', 'info');
     var sl = { id: newSetlistId(), name: $('slName').value.trim() || 'Setlist', items: cleanItems(state.slDraft) };
+    if (state.slBg) sl.bg = state.slBg;
     deliverSetlist(sl, null).then(function (res) {
-      state.slDraft = []; $('slName').value = ''; save(); renderDraft(); renderResults();
+      state.slDraft = []; state.slBg = ''; $('slName').value = ''; save(); renderDraft(); renderResults();
       setStatus('slStatus', (res.mode === 'live' ? 'Đã gửi — máy chiếu đang mở, setlist hiện ngay để người vận hành nạp.' : 'Đã gửi vào hộp thư — sẽ hiện khi máy chiếu mở Kênh Band.') + ' Xem lại ở tab “Đã gửi”.', 'ok');
       refreshSent(true);
     }).catch(function (e) {
@@ -278,12 +316,14 @@
       head.appendChild(el('span', 'muted small', sl.items.length + ' bài'));
       li.appendChild(head);
       var meta = 'Gửi bởi ' + (sl.by || '?') + ' · ' + fmtTime(sl.ts);
+      if (sl.bg) meta += ' · nền chung: ' + sl.bg;
       if (sl.sendCount > 1) meta += ' · đã gửi ' + sl.sendCount + ' lần, gần nhất ' + fmtTime(sl.lastSentAt) + (sl.lastBy && sl.lastBy !== sl.by ? ' (' + sl.lastBy + ')' : '');
       li.appendChild(el('div', 'sent-meta', meta));
       var ol = el('ol', 'sent-songs');
       sl.items.forEach(function (it) {
         var li2 = el('li', null, it.title);
         if (library.length && !findSong(it.id)) { li2.className = 'gone'; li2.textContent = it.title + ' — không còn trong thư viện'; }
+        if (it.bg) li2.appendChild(el('span', 'sub', ' · 🖼 ' + it.bg));
         ol.appendChild(li2);
       });
       li.appendChild(ol);
@@ -309,7 +349,7 @@
     if (!window.confirm('Gửi lại setlist “' + sl.name + '” (' + sl.items.length + ' bài) cho người vận hành?')) return;
     resending[sl.id] = true; renderSent();
     setStatus('sentStatus', 'Đang gửi lại…', 'info');
-    deliverSetlist({ id: newSetlistId(), name: sl.name, items: cleanItems(sl.items) }, sl.id).then(function (res) {
+    deliverSetlist({ id: newSetlistId(), name: sl.name, items: cleanItems(sl.items), bg: sl.bg }, sl.id).then(function (res) {
       setStatus('sentStatus', 'Đã gửi lại “' + sl.name + '” — ' + (res.mode === 'live' ? 'máy chiếu đang mở, setlist hiện ngay để người vận hành nạp.' : 'đã vào hộp thư, sẽ hiện khi máy chiếu mở Kênh Band.'), 'ok');
       return refreshSent(true);
     }).catch(function (e) {
@@ -318,7 +358,13 @@
   }
   function loadSentIntoDraft(sl) {
     if (state.slDraft.length && !window.confirm('Thay danh sách đang soạn bằng setlist “' + sl.name + '”?')) return;
-    state.slDraft = sl.items.map(function (it) { return it.webId ? { id: String(it.id), title: it.title, webId: it.webId } : { id: String(it.id), title: it.title }; });
+    state.slDraft = sl.items.map(function (it) {
+      var o = { id: String(it.id), title: it.title };
+      if (it.webId) o.webId = it.webId;
+      if (it.bg) o.bg = it.bg;
+      return o;
+    });
+    state.slBg = sl.bg || '';
     $('slName').value = sl.name;
     save(); renderDraft(); renderResults(); switchTab('setlist');
     setStatus('slStatus', 'Đã mở “' + sl.name + '” để sửa — chỉnh xong bấm “Gửi setlist”.', 'info');
@@ -511,6 +557,7 @@
     return callRoom('/backgrounds').then(function (r) {
       backgrounds = (r.ok && Array.isArray(r.body.items)) ? r.body.items : [];
       renderBgGrid();
+      renderDraft(); // bật/tắt các nút 🖼 theo việc máy chiếu đã đồng bộ ảnh nền hay chưa
     }).catch(function () {});
   }
 
@@ -532,10 +579,10 @@
       document.fonts.load('bold 80px "CMG Sans"').then(function () { if (!$('pv').classList.contains('hidden')) renderSlide(); }).catch(function () {});
     }
   }
-  function openSongPreview(id) {
+  function openSongPreview(id, bgName) {
     var s = findSong(id);
     if (!s) { toast('Bài này không còn trong thư viện.', 'err'); return; }
-    openPreview(s.title, s.lyrics || '', s.style, s.bg);
+    openPreview(s.title, s.lyrics || '', s.style, bgName || s.bg);
   }
   function closePreview() { $('pv').classList.add('hidden'); }
 
@@ -578,6 +625,11 @@
   Array.prototype.forEach.call(document.querySelectorAll('.tab'), function (t) { t.addEventListener('click', function () { switchTab(t.dataset.tab); }); });
   $('slSearch').addEventListener('input', renderResults);
   $('slSend').addEventListener('click', sendSetlist);
+  $('slBgBtn').addEventListener('click', function () {
+    pickBackground(state.slBg || '', 'Nền cho cả list', function (name) { state.slBg = name || ''; save(); renderListBg(); });
+  });
+  $('slBgClear').addEventListener('click', function () { state.slBg = ''; save(); renderListBg(); });
+  $('bgPickClose').addEventListener('click', function () { $('bgPick').classList.add('hidden'); });
   $('nsTitle').addEventListener('input', onNewSongInput);
   $('nsLyrics').addEventListener('input', onNewSongInput);
   $('nsCreate').addEventListener('click', createSong);

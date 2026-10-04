@@ -51,6 +51,12 @@ const SONG_INBOX_MAX_PENDING = 50;          // tối đa bài đang chờ duyệ
 const SONG_SUBMIT_PER_HOUR = 10;            // tối đa bài / thành viên / giờ
 const SONG_RESOLVED_TTL_MS = 7 * 24 * 60 * 60 * 1000; // giữ bản đã duyệt/từ chối để web hiện trạng thái
 const SONG_WEBID_RE = /^[A-Za-z0-9_-]{8,64}$/;
+// Nền ĐÍNH KÈM setlist (tuỳ chọn) = TÊN file ảnh trong thư viện media của máy chiếu. Chỉ là chuỗi để khớp tên,
+// không phải đường dẫn: bỏ ký tự điều khiển và < > / \\ : * ? " | để không thành path/HTML. Rỗng = không có nền.
+function cleanBgName(v) {
+  if (typeof v !== 'string') return '';
+  return v.replace(/[\u0000-\u001f\u007f<>\/\\:*?"|]/g, '').trim().slice(0, 200);
+}
 const SONG_PENDING_TTL_MS = 30 * 24 * 60 * 60 * 1000;   // bài web chưa ai đưa vào setlist: giữ 30 ngày
 
 // Lịch sử setlist đã gửi của phòng (tab "Đã gửi" ở trang /setlist/): lưu để xem lại + gửi lại.
@@ -1011,6 +1017,8 @@ export class RoomRelay {
         // Bài tạo mới trên web: chỉ giữ webId (đã validate). Lời KHÔNG đi theo setlist — desktop
         // lấy từ /admin/songs/pending của relay lúc operator nạp, nên client không tiêm lời tuỳ ý.
         if (it.webId != null && SONG_WEBID_RE.test(String(it.webId))) out.webId = String(it.webId);
+        const itemBg = cleanBgName(it.bg); // nền riêng của bài (tuỳ chọn)
+        if (itemBg) out.bg = itemBg;
         return out;
       });
     if (!items.length) return json({ error: 'Setlist rỗng' }, 400);
@@ -1019,6 +1027,8 @@ export class RoomRelay {
       name: String(body.name || '').trim().slice(0, 80) || 'Setlist',
       from: { name: ident.name }, ts: Date.now(), items
     };
+    const listBg = cleanBgName(body.bg); // nền chung cho cả list (tuỳ chọn)
+    if (listBg) sl.bg = listBg;
     // Lưu vào lịch sử của phòng để tab "Đã gửi" xem lại/gửi lại. body.resendOf = id lịch sử của setlist
     // được gửi lại (id gửi đi vẫn MỚI vì desktop khử trùng theo id) -> cập nhật bản cũ thay vì thêm bản sao.
     await this.recordSetlistHistory(ident, sl, body.resendOf);
@@ -1055,7 +1065,7 @@ export class RoomRelay {
       prev.lastBy = ident.name;
     } else {
       this.slHistory.push({
-        id: sl.id, name: sl.name, items: sl.items, by: ident.name, submitter: who,
+        id: sl.id, name: sl.name, items: sl.items, bg: sl.bg || '', by: ident.name, submitter: who,
         ts: now, lastSentAt: now, sendCount: 1, lastBy: ident.name
       });
     }
@@ -1069,7 +1079,7 @@ export class RoomRelay {
     const setlists = this.slHistory.slice()
       .sort((a, b) => b.lastSentAt - a.lastSentAt)
       .map((e) => ({
-        id: e.id, name: e.name, items: e.items, by: e.by, ts: e.ts, lastSentAt: e.lastSentAt,
+        id: e.id, name: e.name, items: e.items, bg: e.bg || '', by: e.by, ts: e.ts, lastSentAt: e.lastSentAt,
         sendCount: e.sendCount || 1, lastBy: e.lastBy || e.by, mine: e.submitter === who
       }));
     return json({ setlists });

@@ -1612,6 +1612,9 @@ function createWindow() {
   });
 
   mainWindow = win;
+  // Tự chữa "cửa sổ vẽ bình thường, chuột trúng ô nhưng không gõ/không có con trỏ": sau hộp thoại native
+  // (alert/confirm/dialog.*), cửa sổ lấy lại focus Win32 nhưng TRANG (webContents) vẫn chưa được nhận focus bàn phím.
+  win.on('focus', () => { setTimeout(() => { try { if (!win.isDestroyed() && !win.webContents.isDestroyed() && !win.webContents.isFocused()) win.webContents.focus(); } catch (e) {} }, 0); });
   win.setTitle(fullBaseTitle);
   win.on('page-title-updated', (e, title) => {
     e.preventDefault();
@@ -1877,6 +1880,8 @@ app.whenReady().then(() => {
 
   // --- IPC Handlers ---
   ipcMain.handle('get-app-version', () => app.getVersion());
+  // Renderer phát hiện trang không có focus bàn phím lúc người dùng bấm chuột / vừa đóng alert-confirm → xin lấy lại.
+  ipcMain.handle('refocus-page', () => { refocusMainWindow(); return mainWindow && !mainWindow.isDestroyed() ? { win: mainWindow.isFocused(), page: mainWindow.webContents.isFocused() } : null; });
   ipcMain.handle('select-folder', async () => {
     const r = await dialog.showOpenDialog({ properties: ['openDirectory'] });
     if (!r.canceled && r.filePaths.length > 0) {

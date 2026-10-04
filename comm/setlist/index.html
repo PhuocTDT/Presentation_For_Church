@@ -59,6 +59,15 @@
         <label for="slName">Tên setlist</label>
         <input id="slName" maxlength="80" placeholder="VD: Chúa nhật 05/10">
 
+        <div id="slBgRow" class="bgrow hidden">
+          <label>Nền cho cả list <span class="muted small">(tuỳ chọn — hoặc chọn riêng từng bài bằng nút 🖼)</span></label>
+          <div class="row bgrow-ctl">
+            <button id="slBgBtn" class="btn small" type="button">🖼 Chọn nền…</button>
+            <span id="slBgName" class="muted small"></span>
+            <button id="slBgClear" class="btn small hidden" type="button">Bỏ</button>
+          </div>
+        </div>
+
         <h2>Danh sách bài <span id="slCount" class="muted small"></span></h2>
         <ol id="slDraft" class="list"></ol>
         <div id="slEmpty" class="muted">Chưa chọn bài nào. Tìm bài bên dưới rồi bấm “Thêm”.</div>
@@ -140,6 +149,18 @@
       <div class="row between"><strong class="small">Nền thử</strong><span class="muted small" id="bgCount"></span></div>
       <div id="bgGrid" class="bg-grid"></div>
     </div>
+  </div>
+</div>
+
+<!-- ============ Chọn nền cho list / cho 1 bài (tuỳ chọn) ============ -->
+<div id="bgPick" class="modal hidden" role="dialog" aria-modal="true" aria-label="Chọn nền">
+  <div class="modal-card">
+    <div class="row between">
+      <strong id="bgPickTitle">Chọn nền</strong>
+      <button id="bgPickClose" class="btn small" type="button">Đóng</button>
+    </div>
+    <div class="muted small" style="margin:6px 0">Nền chỉ áp khi người vận hành nạp setlist; “Mặc định” = bài giữ nền vốn có trên máy chiếu.</div>
+    <div id="bgPickGrid" class="bg-grid"></div>
   </div>
 </div>
 

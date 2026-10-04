@@ -107,6 +107,50 @@ try {
   await sleep(1200);
   check('Operator nhận setlist đúng tên + 1 bài + id chuỗi khớp thư viện', gotSetlists.length === 1 && gotSetlists[0].name === 'Chúa nhật 05/10' && gotSetlists[0].items.length === 1 && String(gotSetlists[0].items[0].id) === '1778231805071', JSON.stringify(gotSetlists[0] && gotSetlists[0].items));
 
+  // 3b. Nền TUỲ CHỌN trong setlist: nền chung cả list + nền riêng 1 bài; bài không chọn thì không có bg
+  await page.$eval('#slSearch', (e) => { e.value = ''; });
+  await page.type('#slSearch', 'chua');
+  await sleep(300);
+  await page.$$eval('#slResults .res', (rows) => rows[0].querySelector('.btn.ok').click());
+  await sleep(150);
+  await page.$$eval('#slResults .res', (rows) => rows[1].querySelector('.btn.ok').click());
+  await sleep(150);
+  check('Có ảnh nền từ máy chiếu -> hiện ô “Nền cho cả list” và nút 🖼 từng bài', await visible('#slBgRow') && (await page.$$eval('#slDraft li button[title^="Chọn nền riêng"]', (b) => b.filter((x) => !x.disabled).length)) === 2);
+  await page.click('#slBgBtn');
+  const open = (sel) => page.$eval(sel, (e) => !e.classList.contains('hidden')); // .modal là position:fixed -> offsetParent null, không dùng visible()
+  check('Bấm “Chọn nền…” mở hộp chọn nền (Mặc định + 2 ảnh)', await open('#bgPick') && (await page.$$eval('#bgPickGrid .bg-item', (n) => n.length)) === 3);
+  await page.$$eval('#bgPickGrid .bg-item', (n) => n.find((x) => x.title === 'forest.jpg').click());
+  check('Chọn nền chung forest.jpg: hộp đóng, tên hiện bên cạnh', !(await open('#bgPick')) && /forest\.jpg/.test(await $text('#slBgName')), await $text('#slBgName'));
+  await page.$$eval('#slDraft li', (lis) => lis[0].querySelector('button[title^="Chọn nền riêng"]').click());
+  await page.$$eval('#bgPickGrid .bg-item', (n) => n.find((x) => x.title === 'sunset.jpg').click());
+  const li0 = await page.$$eval('#slDraft li', (lis) => ({ pill: (lis[0].querySelector('.bgtag') || {}).textContent || '', on: !!lis[0].querySelector('button.on'), pill1: !!lis[1].querySelector('.bgtag') }));
+  check('Nền riêng bài 1 = sunset.jpg (nhãn + nút sáng), bài 2 không có nhãn', /sunset\.jpg/.test(li0.pill) && li0.on && !li0.pill1, JSON.stringify(li0));
+  await page.$eval('#slName', (e) => { e.value = ''; });
+  await page.type('#slName', 'Có nền');
+  await page.click('#slSend');
+  check('Gửi setlist có nền: báo thành công', await waitText('#slStatus', /Đã gửi/));
+  const slBg = await (async () => { const t0 = Date.now(); while (Date.now() - t0 < 6000) { const x = gotSetlists.find((q) => q.name === 'Có nền'); if (x) return x; await sleep(100); } return null; })();
+  check('Operator nhận: bg chung = forest.jpg, bài 1 bg = sunset.jpg, bài 2 KHÔNG có trường bg', !!slBg && slBg.bg === 'forest.jpg' && slBg.items[0].bg === 'sunset.jpg' && slBg.items.length === 2 && !('bg' in slBg.items[1]), JSON.stringify(slBg));
+  check('Gửi xong: nền chung được dọn (không dính sang list sau)', /Không chọn/.test(await $text('#slBgName')));
+  await page.click('.tab[data-tab="sent"]');
+  await sleep(500);
+  const sentTxt = await $text('#sentList');
+  check('Tab Đã gửi hiện nền chung + nền riêng', /nền chung: forest\.jpg/.test(sentTxt) && /sunset\.jpg/.test(sentTxt), sentTxt.slice(0, 160));
+  await page.$$eval('#sentList .sent-item', (items) => { const it = items.find((x) => /Có nền/.test(x.textContent)); [...it.querySelectorAll('button')].find((b) => b.textContent === 'Mở để sửa').click(); });
+  await sleep(300);
+  const back = await page.$$eval('#slDraft li', (lis) => lis.map((l) => (l.querySelector('.bgtag') || {}).textContent || ''));
+  check('“Mở để sửa” khôi phục cả nền chung lẫn nền riêng', /forest\.jpg/.test(await $text('#slBgName')) && /sunset\.jpg/.test(back[0]) && back[1] === '', JSON.stringify(back) + ' | ' + await $text('#slBgName'));
+  await page.click('#slBgClear');
+  check('Bấm “Bỏ” gỡ nền chung', /Không chọn/.test(await $text('#slBgName')) && !(await visible('#slBgClear')));
+  await page.$$eval('#slDraft li', (lis) => lis[0].querySelector('button[title^="Nền riêng"]').click());
+  await page.$$eval('#bgPickGrid .bg-item', (n) => n[0].click());
+  check('Chọn “Mặc định” trong hộp nền riêng gỡ nền của bài', (await page.$$eval('#slDraft li .bgtag', (n) => n.length)) === 0);
+  // dọn nháp để các bước sau (gửi setlist có bài mới…) bắt đầu từ danh sách rỗng
+  for (let k = 0; k < 2; k++) await page.$$eval('#slDraft li', (lis) => { const b = [...lis[0].querySelectorAll('button')].find((x) => x.textContent === '×'); if (b) b.click(); });
+  await page.$eval('#slName', (e) => { e.value = ''; });
+  await page.click('.tab[data-tab="setlist"]');
+  await page.$eval('#slSearch', (e) => { e.value = ''; });
+
   // 4. Preview bài trong thư viện (dùng style của bài)
   await page.$eval('#slSearch', (e) => { e.value = ''; });
   await page.type('#slSearch', 'anh sang');

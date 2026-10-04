@@ -56,6 +56,12 @@ const LIBRARY_TTL_SECONDS = 30 * 24 * 60 * 60;
 const MAX_LIBRARY_SONGS = 3000;
 const MAX_LYRICS_CHARS = 6000; // đủ cho bài dài nhất thực tế, chặn payload rác phình to
 const MAX_ITEMS = 60;
+// Nền ĐÍNH KÈM setlist (tuỳ chọn) = TÊN file ảnh trong thư viện media của máy chiếu. Chỉ là chuỗi để khớp tên,
+// không phải đường dẫn: bỏ ký tự điều khiển và < > / \\ : * ? " | để không thành path/HTML. Rỗng = không có nền.
+function cleanBgName(v) {
+  if (typeof v !== 'string') return '';
+  return v.replace(/[\u0000-\u001f\u007f<>\/\\:*?"|]/g, '').trim().slice(0, 200);
+}
 // Worker này dùng CHUNG cho mọi bản cài app (roomId hardcode làm namespace,
 // không auth thật) — cap cứng số setlist tồn tại/phòng để 1 roomId bị
 // spam/đoán trúng không thể ghi vô hạn vào KV chung. Cũ nhất bị dọn trước.
@@ -216,9 +222,12 @@ export default {
           const out = { type: 'song', id: String(it.id).slice(0, 100), title: String(it.title || '').slice(0, 200) };
           // webId = bài tạo mới trên web; lời lấy từ relay lúc operator nạp (không đi theo setlist)
           if (it.webId != null && /^[A-Za-z0-9_-]{8,64}$/.test(String(it.webId))) out.webId = String(it.webId);
+          const itemBg = cleanBgName(it.bg); // nền riêng của bài (tuỳ chọn)
+          if (itemBg) out.bg = itemBg;
           return out;
         });
       if (!items.length) return json({ error: 'Setlist rỗng' }, 400);
+      const listBg = cleanBgName(sl.bg); // nền chung cho cả list (tuỳ chọn)
       const clean = {
         id: String(sl.id).slice(0, 80),
         name: String(sl.name || 'Setlist').trim().slice(0, 80) || 'Setlist',
@@ -226,6 +235,7 @@ export default {
         ts: Date.now(),
         items
       };
+      if (listBg) clean.bg = listBg;
 
       // Cap cứng/phòng: dọn bớt key cũ nhất nếu đã đầy trước khi ghi thêm.
       // Tên key mang id dạng "sl-<hex timestamp>..." (sinh ở app.js) nên sort

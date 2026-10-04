@@ -67,6 +67,8 @@ function createRelayClient({ store, operatorAuthStore, refreshOperatorSession, o
       ts: Number(raw.ts || raw.createdAt) || Date.now(),
       items: Array.isArray(raw.items) ? raw.items : []
     };
+    // Nền chung cả list (tuỳ chọn, tên file ảnh; relay/worker đã làm sạch). Nền riêng từng bài nằm trong items[].bg.
+    if (typeof raw.bg === 'string' && raw.bg.trim()) sl.bg = raw.bg.trim().slice(0, 200);
     if (onSetlist) { try { onSetlist(sl); } catch (e) {} }
     return true;
   }

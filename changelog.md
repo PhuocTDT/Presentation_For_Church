@@ -2,7 +2,19 @@
 
 Tất cả các thay đổi và cập nhật quan trọng của dự án được ghi lại tại đây.
 
-## [Chưa phát hành] - Trang `/setlist/`: tab "Đã gửi" (lưu + gửi lại setlist của phòng)
+## [Chưa phát hành] - Nền tuỳ chọn trong setlist + tự chữa mất focus bàn phím + tab "Đã gửi"
+
+### Nền tuỳ chọn trong setlist (không bắt buộc)
+- **Trang `/setlist/`**: ô **"Nền cho cả list"** và nút **🖼 từng bài** (hộp chọn nền dùng ảnh thư viện máy chiếu đã đồng bộ; "Mặc định" = bỏ chọn). Nhãn `🖼 tên-ảnh` hiện cạnh bài; nút 👁 xem trước slide với đúng nền đã chọn. Không chọn gì thì hành vi y như cũ (bài giữ nền vốn có). Ô nền ẩn nếu máy chiếu chưa đồng bộ ảnh nền nào.
+- **Giao thức**: `setlist.bg` (nền chung) và `setlist.items[].bg` (nền riêng) = **tên file ảnh** trong thư viện media của máy chiếu (không phải đường dẫn). Relay (`room-relay.js`) và hộp thư KV (`worker.js`) làm sạch bằng `cleanBgName` (bỏ ký tự điều khiển và `< > / \ : * ? " |`, ≤200 ký tự); lịch sử "Đã gửi" lưu + gửi lại đủ cả hai, "Mở để sửa" khôi phục. `relay-client.js` `ingestSetlist` trước đây chép đúng 5 trường nên sẽ làm rơi `bg` chung — đã giữ lại.
+- **Desktop** (`loadSetlistIntoSchedule`, `index.html`): khi nạp, mỗi bài lấy nền riêng, không có/không tìm thấy trên máy này thì rơi về nền chung (khớp tên không phân biệt hoa thường; chỉ **ảnh**, bỏ qua video) và gán vào `item.background` như khi kéo ảnh vào mục Schedule. Feed báo "N bài có nền theo setlist" và "M bài chọn nền không có trên máy này".
+- Test: `test/setlist-bg.test.mjs` (làm sạch, phát envelope, lịch sử), `test/setlist-page.e2e.mjs` (+13 ca UI thật: chọn nền chung/riêng, operator nhận đúng, tab Đã gửi, mở để sửa). Cần `wrangler deploy` ở `cloud/worker/` (relay + trang `/setlist/`).
+
+### Tự chữa mất focus bàn phím ("sửa bài không đặt được con trỏ" còn thỉnh thoảng sau v3.1.12)
+- **Dấu vết thu được** từ báo cáo Ctrl+Alt+D trên máy lỗi: `visibilityState=visible` (không còn là lỗi che khuất), chuột trúng đúng ô, không lỗi JS, nhưng **`document.hasFocus()=false`** — cửa sổ vẫn vẽ bình thường nhưng trang không có focus bàn phím. Đây là lỗi Electron/Windows quen thuộc sau hộp thoại native (`alert/confirm/prompt` gốc, `dialog.*`). `index.html` có ~65 `alert()`, 14 `confirm()`, 1 `prompt()` nên vá từng chỗ là không đủ.
+- **Sửa ở tầng chung**: (1) `main.js`: cửa sổ nhận lại focus thì đẩy focus vào trang (`win.on('focus')` → `webContents.focus()`); (2) `index.html`: bọc `window.alert/confirm/prompt` để trả focus ngay sau khi đóng; (3) `index.html`: nếu người dùng **bấm chuột mà trang không có focus** thì xin main trả focus (IPC mới `refocus-page` ↔ `electronAPI.refocusPage()`, `main.js` + `preload.js` đổi cùng lúc) rồi đặt lại focus vào đúng ô vừa bấm. Báo cáo chẩn đoán có thêm "số lần tự chữa focus" để biết cơ chế có chạy không.
+
+### Trang `/setlist/`: tab "Đã gửi" (lưu + gửi lại setlist của phòng)
 
 - **Tab mới "Đã gửi"** (`comm/setlist/`), nằm giữa "Soạn setlist" và "Bài mới": liệt kê mọi setlist thành viên trong phòng đã gửi (tên, người gửi, giờ gửi, số lần gửi, danh sách bài; bài không còn trong thư viện bị đánh dấu). Mỗi bản có **Gửi lại** (hỏi xác nhận, đẩy lại cho người vận hành qua cùng đường gửi — relay trực tiếp, máy chiếu tắt thì hộp thư cloud), **Mở để sửa** (đưa vào tab Soạn setlist, hỏi trước khi thay nháp đang có) và **Xoá** (chỉ người đã gửi). Huy hiệu trên tab = số setlist đã lưu.
 - **Relay** (`cloud/worker/src/room-relay.js`, cần `wrangler deploy`): Durable Object lưu `slHistory` (≤50 bản/phòng, giữ 90 ngày); `POST /setlist` có token tự ghi lịch sử và nhận `resendOf` — gửi lại dùng **id mới** (desktop khử trùng setlist theo `id`, gửi lại cùng id sẽ bị bỏ qua) nhưng cập nhật bản cũ (`sendCount`, `lastSentAt`) thay vì nhân đôi. Endpoint mới: `GET /setlists/history`, `POST /setlists/history/delete` (cùng token thành viên). Xoá phòng cũng dọn lịch sử. Lời bài web không bao giờ được lưu trong lịch sử.
