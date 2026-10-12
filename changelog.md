@@ -2,7 +2,7 @@
 
 Tất cả các thay đổi và cập nhật quan trọng của dự án được ghi lại tại đây.
 
-## [Chưa phát hành] - Giảm tải KV (hạn mức Cloudflare) + nền tuỳ chọn trong setlist + tự chữa mất focus bàn phím + tab "Đã gửi"
+## [3.1.13] - Giảm tải KV (hạn mức Cloudflare) + nền tuỳ chọn trong setlist + tự chữa mất focus bàn phím + tab "Đã gửi"
 
 ### Giảm tải Workers KV (email Cloudflare "đã dùng 50% hạn mức")
 - **Nguyên nhân**: app operator poll hộp thư setlist `GET /setlist` **mỗi 60 giây** (`CLOUD_POLL_MS`), mỗi lượt = 1 `list` KV; hạn mức free chỉ ~1.000 lượt `list`/ngày chung cho mọi nhà thờ, mà 1 máy mở cả ngày = 1.440 lượt. Hộp thư KV chỉ có tin khi lúc gửi máy operator **offline** (online thì setlist đi thẳng qua WebSocket).
