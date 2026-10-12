@@ -75,6 +75,20 @@ const MAX_SETLISTS_PER_ROOM = 40;
 // đủ để chặn lạm dụng thay vì không có gì).
 const RATE_LIMIT_WINDOW_MS = 5 * 60 * 1000; // 5 phút
 const RATE_LIMIT_MAX = 30; // tối đa 30 lượt ghi / roomId / cửa sổ 5 phút
+// ── Giảm tải KV cho GET /setlist (poll của app operator) ─────────────────────────────────
+// Hạn mức free của KV: ~1.000 lượt `list`/ngày CHUNG cho mọi nhà thờ; các bản app cũ poll mỗi 60s (=1.440 lượt list/ngày/máy
+// đang mở) nên cạn hạn mức. Hộp thư gần như luôn trống → ghi nhớ "đã list thấy trống" bằng marker `emp:<room>` (giá trị = thời
+// điểm BẮT ĐẦU lần list đó) và trả luôn {setlists:[]} cho các lần poll sau — chỉ tốn 2 lượt `get` (hạn mức 100.000/ngày),
+// không tốn `list`. Marker chỉ được tin khi hộp thư trống đã được xác nhận SAU lần ghi hộp thư gần nhất (`slpost:<room>`)
+// cộng thời gian KV đồng bộ giữa các điểm biên → không bao giờ che setlist mới (kể cả khi `list` ngay sau `put` chưa thấy nó).
+const MAILBOX_EMPTY_TTL_SECONDS = 6 * 3600;
+const MAILBOX_KV_GRACE_MS = 70 * 1000;
+async function mailboxKnownEmpty(env, roomId) {
+  const [empRaw, postRaw] = await Promise.all([env.SETLISTS.get(`emp:${roomId}`), env.SETLISTS.get(`slpost:${roomId}`)]);
+  const empAt = empRaw ? (parseInt(empRaw, 10) || 0) : 0;
+  const lastPost = postRaw ? (parseInt(postRaw, 10) || 0) : 0;
+  return empAt > 0 && empAt >= lastPost + MAILBOX_KV_GRACE_MS;
+}
 async function checkRateLimit(env, roomId) {
   const bucket = Math.floor(Date.now() / RATE_LIMIT_WINDOW_MS);
   const key = `rl:${roomId}:${bucket}`;
@@ -249,6 +263,8 @@ export default {
       }
 
       await env.SETLISTS.put(`sl:${roomId}:${clean.id}`, JSON.stringify(clean), { expirationTtl: TTL_SECONDS });
+      // Báo cho GET /setlist biết hộp thư vừa có tin (vô hiệu marker "trống", xem mailboxKnownEmpty). TTL >= TTL setlist.
+      await env.SETLISTS.put(`slpost:${roomId}`, String(Date.now()), { expirationTtl: TTL_SECONDS });
       return json({ ok: true, id: clean.id });
     }
 
@@ -260,6 +276,8 @@ export default {
       if (!isValidRoomId(roomId)) return json({ error: 'roomId không hợp lệ' }, 400);
       const denied = await requireOperator(env, req, roomId, 'GET /setlist');
       if (denied) return denied;
+      if (await mailboxKnownEmpty(env, roomId)) return json({ setlists: [] });
+      const listStartedAt = Date.now();
       const list = await env.SETLISTS.list({ prefix: `sl:${roomId}:`, limit: 100 });
       const out = [];
       for (const k of list.keys) {
@@ -275,6 +293,7 @@ export default {
         if (v) { try { out.push(JSON.parse(v)); } catch (e) {} }
       }
       out.sort((a, b) => a.ts - b.ts);
+      if (!out.length) await env.SETLISTS.put(`emp:${roomId}`, String(listStartedAt), { expirationTtl: MAILBOX_EMPTY_TTL_SECONDS }).catch(() => {});
       return json({ setlists: out });
     }
 

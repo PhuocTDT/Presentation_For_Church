@@ -41,6 +41,7 @@ const RECONNECT_MAX_MS = 30000;
 function createRelayClient({ store, operatorAuthStore, refreshOperatorSession, onEvent, onPresence, onSetlist, getLibraryIndex,
   listBackgroundImages, makeBackgroundThumb, backgroundSyncDelayMs = 5000, backgroundSyncIntervalMs = 10 * 60 * 1000,
   libraryDebounceMs = 3000,
+  cloudPollOnlineMs = 15 * 60 * 1000, cloudPollOfflineMs = 5 * 60 * 1000, cloudPollMinGapMs = 2 * 60 * 1000,
   libraryRetryDelaysMs = [5000, 15000, 45000, 120000, 300000] }) {
   let ws = null;
   let wsOpen = false;
@@ -53,7 +54,13 @@ function createRelayClient({ store, operatorAuthStore, refreshOperatorSession, o
   let lastError = null;
   const seenSetlistIds = new Set();
   let cloudPollTimer = null;
-  const CLOUD_POLL_MS = 60000;
+  let lastCloudPollAt = 0;
+  // Hộp thư setlist trên KV chỉ có tin khi lúc gửi máy này KHÔNG online (điện thoại gửi qua relay, relay báo
+  // delivered=false thì mới rơi xuống KV). Lúc đang online setlist tới thẳng qua WebSocket nên KHÔNG cần hỏi KV mỗi
+  // phút. Mỗi lần hỏi = 1 lượt `list` của KV mà hạn mức free chỉ 1.000 lượt/NGÀY chung cho mọi nhà thờ (poll 60s =
+  // 1.440/ngày/máy mở, từng làm cạn hạn mức). Giờ: hỏi 1 lần lúc (kết nối lại) + vòng an toàn thưa (cloudPollOnlineMs khi
+  // đang kết nối — vét trường hợp socket chết ngầm; cloudPollOfflineMs khi mất kết nối). cloudPollMinGapMs chặn dồn
+  // lượt hỏi khi mạng chập chờn làm socket mở/đóng liên tục.
 
   function ingestSetlist(raw) {
     if (!raw || typeof raw !== 'object') return false;
@@ -73,7 +80,22 @@ function createRelayClient({ store, operatorAuthStore, refreshOperatorSession, o
     return true;
   }
 
-  async function pollCloud() {
+  function scheduleCloudPoll() {
+    clearTimeout(cloudPollTimer);
+    if (!wantConnected) { cloudPollTimer = null; return; }
+    cloudPollTimer = setTimeout(() => { pollCloud().catch(() => {}); }, wsOpen ? cloudPollOnlineMs : cloudPollOfflineMs);
+    if (cloudPollTimer && cloudPollTimer.unref) cloudPollTimer.unref();
+  }
+
+  // force=true (lúc start()) bỏ qua khoảng cách tối thiểu; còn lại bị chặn nếu vừa hỏi chưa lâu.
+  async function pollCloud(force) {
+    const now = Date.now();
+    if (!force && now - lastCloudPollAt < cloudPollMinGapMs) { scheduleCloudPoll(); return; }
+    lastCloudPollAt = now;
+    try { await pollCloudOnce(); } finally { scheduleCloudPoll(); }
+  }
+
+  async function pollCloudOnce() {
     const c = cfg();
     const roomId = (c.room && c.room.code) || c.cloudRoomId;
     if (!roomId) return;
@@ -217,6 +239,8 @@ function createRelayClient({ store, operatorAuthStore, refreshOperatorSession, o
         reconnectDelay = RECONNECT_MIN_MS;
         lastError = null;
         if (!settled) { settled = true; resolve(); }
+        // Mỗi lần socket mở (lần đầu lẫn kết nối lại): vét hộp thư KV những setlist gửi lúc máy này offline.
+        pollCloud(false).catch(() => {});
       });
       // 'close' (đăng ký ở trên) luôn bắn theo sau 'error' cho WebSocket, lo
       // dọn dẹp/reconnect ở đó — ở đây chỉ cần bắt để start() không treo mãi
@@ -234,13 +258,11 @@ function createRelayClient({ store, operatorAuthStore, refreshOperatorSession, o
     wantConnected = true;
     await syncRoomConfig(); // ném lỗi lên cho main.js báo sidebar nếu thất bại (giống commServer.start() cũ)
     reconnectDelay = RECONNECT_MIN_MS;
-    await connect();
+    lastCloudPollAt = 0; // phiên mới: lần hỏi đầu không bị chặn bởi khoảng cách tối thiểu của phiên trước
+    await connect(); // lúc socket mở sẽ tự vét hộp thư (xem 'open' ở connect())
     syncLibraryToCloud({ immediate: true });
     startBackgroundSyncLoop();
-    pollCloud().catch(() => {});
-    clearInterval(cloudPollTimer);
-    cloudPollTimer = setInterval(() => { pollCloud().catch(() => {}); }, CLOUD_POLL_MS);
-    if (cloudPollTimer && cloudPollTimer.unref) cloudPollTimer.unref();
+    pollCloud(false).catch(() => {}); // thường bị chặn (vừa hỏi lúc 'open'), chỉ để chắc có lịch hỏi tiếp
     return getStatus();
   }
 
@@ -253,7 +275,7 @@ function createRelayClient({ store, operatorAuthStore, refreshOperatorSession, o
     bgTimer = null;
     clearInterval(bgIntervalTimer);
     bgIntervalTimer = null;
-    clearInterval(cloudPollTimer);
+    clearTimeout(cloudPollTimer);
     cloudPollTimer = null;
     if (ws) { try { ws.close(); } catch (e) {} }
     ws = null;

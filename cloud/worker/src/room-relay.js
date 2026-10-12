@@ -435,6 +435,9 @@ export class RoomRelay {
     if (env.SETLISTS) {
       deleted.kvSetlists = (await purgeKv(env.SETLISTS, 'sl:' + code + ':')) + (await purgeKv(env.SETLISTS, 'ack:' + code + ':'));
       if (await env.SETLISTS.get('lib:' + code)) { await env.SETLISTS.delete('lib:' + code); deleted.kvLibrary = 1; }
+      // marker hộp thư (xem mailboxKnownEmpty ở worker.js): dọn cùng phòng để không còn dữ liệu của phòng đã xoá
+      await env.SETLISTS.delete('emp:' + code).catch(() => {});
+      await env.SETLISTS.delete('slpost:' + code).catch(() => {});
     }
 
     for (const ws of this.ctx.getWebSockets()) { try { ws.close(1000, 'Phòng đã bị xóa'); } catch (e) { /* đã đóng */ } }

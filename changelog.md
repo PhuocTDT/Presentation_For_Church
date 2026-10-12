@@ -2,7 +2,15 @@
 
 Tất cả các thay đổi và cập nhật quan trọng của dự án được ghi lại tại đây.
 
-## [Chưa phát hành] - Nền tuỳ chọn trong setlist + tự chữa mất focus bàn phím + tab "Đã gửi"
+## [Chưa phát hành] - Giảm tải KV (hạn mức Cloudflare) + nền tuỳ chọn trong setlist + tự chữa mất focus bàn phím + tab "Đã gửi"
+
+### Giảm tải Workers KV (email Cloudflare "đã dùng 50% hạn mức")
+- **Nguyên nhân**: app operator poll hộp thư setlist `GET /setlist` **mỗi 60 giây** (`CLOUD_POLL_MS`), mỗi lượt = 1 `list` KV; hạn mức free chỉ ~1.000 lượt `list`/ngày chung cho mọi nhà thờ, mà 1 máy mở cả ngày = 1.440 lượt. Hộp thư KV chỉ có tin khi lúc gửi máy operator **offline** (online thì setlist đi thẳng qua WebSocket).
+- **Client** (`src/band-comm/relay-client.js`): bỏ `setInterval` 60s; hỏi hộp thư **mỗi khi WebSocket mở** (lần đầu và mỗi lần kết nối lại — vét tin gửi lúc offline) + vòng an toàn thưa (`cloudPollOnlineMs` 15 phút khi đang kết nối — vét trường hợp socket chết ngầm; `cloudPollOfflineMs` 5 phút khi mất kết nối) + khoảng cách tối thiểu `cloudPollMinGapMs` 2 phút giữa 2 lượt hỏi (mạng chập chờn không đốt KV). ~1.440 → ~100 lượt/ngày/máy.
+- **Worker** (`cloud/worker/src/worker.js`) — có tác dụng ngay cả với các bản app cũ chưa cập nhật (vẫn poll 60s): `GET /setlist` ghi nhớ "hộp thư trống" bằng marker KV `emp:<room>` và trả `{setlists:[]}` mà **không `list`** (chỉ 2 lượt `get`, hạn mức đọc 100.000/ngày). Marker chỉ được tin khi hộp thư trống đã được xác nhận SAU lần ghi hộp thư gần nhất (`slpost:<room>`, ghi trong `POST /setlist`) cộng 70 giây chờ KV đồng bộ giữa các điểm biên → không bao giờ che setlist mới, kể cả khi `list` ngay sau `put` chưa thấy tin. Marker TTL 6 giờ, dọn cùng phòng khi xoá phòng (`room-relay.js`).
+- Test: `test/cloud-poll.test.mjs` (WebSocket giả: 1 lượt lúc start, không hỏi liên tục, hỏi lại khi reconnect, chống dồn), `test/mailbox-empty.test.mjs` (50 lần poll = 1 list; tin mới thấy ngay; kịch bản race KV; marker có hiệu lực lại sau 70s). Cần `wrangler deploy` ở `cloud/worker/` (phần Worker) + build app mới (phần client).
+- Các điểm KV còn lại: `POST /setlist` (hộp thư dự phòng) vẫn tốn 1 `list` + 3 `put` mỗi lần gửi (hiếm); đồng bộ thư viện 2 `put`/lần thay đổi (đã gom 3 giây).
+
 
 ### Nền tuỳ chọn trong setlist (không bắt buộc)
 - **Trang `/setlist/`**: ô **"Nền cho cả list"** và nút **🖼 từng bài** (hộp chọn nền dùng ảnh thư viện máy chiếu đã đồng bộ; "Mặc định" = bỏ chọn). Nhãn `🖼 tên-ảnh` hiện cạnh bài; nút 👁 xem trước slide với đúng nền đã chọn. Không chọn gì thì hành vi y như cũ (bài giữ nền vốn có). Ô nền ẩn nếu máy chiếu chưa đồng bộ ảnh nền nào.
