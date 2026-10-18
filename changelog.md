@@ -2,7 +2,7 @@
 
 Tất cả các thay đổi và cập nhật quan trọng của dự án được ghi lại tại đây.
 
-## [Chưa phát hành] - Sửa tận gốc "popup Edit mở được nhưng bấm vào ô không có con trỏ"
+## [3.1.14] - Sửa tận gốc "popup Edit mở được nhưng bấm vào ô không có con trỏ"
 
 - **Nguyên nhân cơ chế tự chữa ở v3.1.13 không ăn**: trong trạng thái lỗi, cửa sổ được chọn và `webContents.isFocused()` vẫn báo **`true`**, chỉ có trong trang `document.hasFocus()` là **`false`**. `win.on('focus')` của v3.1.13 chỉ chữa khi `isFocused()` = `false` → không làm gì; còn `win.focus()` + `webContents.focus()` (IPC `refocus-page`, sau hộp Lưu/Mở) là no-op vì phía trình duyệt tưởng trang đã có focus. Đã tái hiện trạng thái này trên app thật và xác nhận cả hai cách cũ đều không chữa được.
 - **Sửa** (`main.js`): hàm mới `ensurePageFocus()` **hỏi thẳng trang** (`document.hasFocus()`) sau mỗi bước và leo thang tới khi trang thật sự có focus: (1) `focus()`, (2) `blurWebView()` + `focusOnWebView()` ép chuyển trạng thái, (3) `blur()` + `focus()` cả cửa sổ — chỉ dùng khi người dùng vừa bấm vào trang hoặc vừa đóng hộp thoại (cửa sổ có thể chớp), kèm bước kéo cửa sổ lên lại nếu Windows từ chối. Chỉ chạy khi cửa sổ chính đang được chọn (không giành focus khi người dùng đã sang app khác), chống chạy chồng. Dùng cho `win.on('focus')`, IPC `refocus-page` (trả kèm mức đã chữa + số liệu lũy kế) và `refocusMainWindow()`. Thử trên app thật: chữa được ở mức 2 qua cả ba đường (bấm chuột, cửa sổ nhận focus, sau hộp thoại).
