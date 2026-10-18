@@ -2,6 +2,15 @@
 
 Tất cả các thay đổi và cập nhật quan trọng của dự án được ghi lại tại đây.
 
+## [3.1.14] - Sửa tận gốc "popup Edit mở được nhưng bấm vào ô không có con trỏ"
+
+- **Nguyên nhân cơ chế tự chữa ở v3.1.13 không ăn**: trong trạng thái lỗi, cửa sổ được chọn và `webContents.isFocused()` vẫn báo **`true`**, chỉ có trong trang `document.hasFocus()` là **`false`**. `win.on('focus')` của v3.1.13 chỉ chữa khi `isFocused()` = `false` → không làm gì; còn `win.focus()` + `webContents.focus()` (IPC `refocus-page`, sau hộp Lưu/Mở) là no-op vì phía trình duyệt tưởng trang đã có focus. Đã tái hiện trạng thái này trên app thật và xác nhận cả hai cách cũ đều không chữa được.
+- **Sửa** (`main.js`): hàm mới `ensurePageFocus()` **hỏi thẳng trang** (`document.hasFocus()`) sau mỗi bước và leo thang tới khi trang thật sự có focus: (1) `focus()`, (2) `blurWebView()` + `focusOnWebView()` ép chuyển trạng thái, (3) `blur()` + `focus()` cả cửa sổ — chỉ dùng khi người dùng vừa bấm vào trang hoặc vừa đóng hộp thoại (cửa sổ có thể chớp), kèm bước kéo cửa sổ lên lại nếu Windows từ chối. Chỉ chạy khi cửa sổ chính đang được chọn (không giành focus khi người dùng đã sang app khác), chống chạy chồng. Dùng cho `win.on('focus')`, IPC `refocus-page` (trả kèm mức đã chữa + số liệu lũy kế) và `refocusMainWindow()`. Thử trên app thật: chữa được ở mức 2 qua cả ba đường (bấm chuột, cửa sổ nhận focus, sau hộp thoại).
+- **Cửa sổ Live không còn giành focus** (`main.js`): Live chỉ để chiếu (không xử lý phím nào) nhưng là cửa sổ nhận focus được, luôn nằm trên cùng; khi đồng bộ màn hình (máy chiếu bật/tắt, cắm lại HDMI, đổi DPI) `show()`/`setFullScreen()`/`moveTop()` có thể chuyển focus sang nó trong khi cửa sổ điều khiển trông vẫn bình thường — có thể là lý do lỗi chỉ xảy ra "lâu lâu". Nay hiện Live bằng `showInactive()` khi cửa sổ chính đang hiện, và nếu Live lỡ nhận focus **ngay sau khi cửa sổ chính mất focus** thì trả về cửa sổ chính (Live lấy focus từ app khác thì không kéo cửa sổ chính lên).
+- **Đặt con trỏ đúng chỗ bấm** (`index.html`): sau khi tự chữa lúc bấm chuột, khối lời đặt con trỏ tại điểm vừa bấm (`caretRangeFromPoint`) thay vì về đầu khối; ô nhập thường vẫn được focus như trước.
+- **Chẩn đoán**: báo cáo Ctrl+Alt+D thêm "lần cuối: chữa được ở mức N / CHƯA chữa được" và lũy kế của main; log main ghi `[Focus] …`. `docs/debugging-playbook.md` có mục mới cho lỗi này.
+- Chưa thử trên Windows (môi trường kiểm thử là Linux); cần xác nhận trên máy từng bị lỗi.
+
 ## [3.1.13] - Giảm tải KV (hạn mức Cloudflare) + nền tuỳ chọn trong setlist + tự chữa mất focus bàn phím + tab "Đã gửi"
 
 ### Giảm tải Workers KV (email Cloudflare "đã dùng 50% hạn mức")

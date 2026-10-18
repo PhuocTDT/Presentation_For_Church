@@ -37,6 +37,12 @@
 - Kiểm tra `app-media://` có trỏ đúng file không
 - Kiểm tra scale/canvas và style text
 
+### Nếu "mở được popup Edit nhưng bấm vào ô không có con trỏ / không gõ được"
+
+- Bấm **Ctrl+Alt+D** ngay lúc đang lỗi. Dòng "Trang có focus bàn phím" = `false` là lỗi mất focus (Electron/Windows): cửa sổ được chọn, `webContents.isFocused()` báo `true` nhưng trong trang `document.hasFocus()` = `false`, nên `webContents.focus()` không có tác dụng.
+- Cơ chế chữa: `ensurePageFocus()` trong `main.js` hỏi lại trang sau mỗi bước và leo thang (1) `focus()` → (2) `blurWebView()`+`focusOnWebView()` → (3) `blur()`+`focus()`. Chạy khi cửa sổ chính nhận focus, khi cửa sổ Live lỡ nhận focus, sau hộp thoại, và khi bấm chuột lúc trang mất focus (IPC `refocus-page`). Báo cáo Ctrl+Alt+D ghi "lần cuối: chữa được ở mức N"; log main có dòng `[Focus] …`.
+- Nếu báo cáo ghi "CHƯA chữa được" hoặc focus = `true` mà vẫn không gõ được: lỗi khác (lớp phủ che ô — xem dòng "Lớp phủ toàn màn hình", bộ gõ tiếng Việt…), gửi kèm báo cáo.
+
 ### Nếu lỗi media
 
 - Kiểm tra file có nằm trong `userData/media`

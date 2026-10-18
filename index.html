@@ -8015,7 +8015,7 @@
             add('Cảm ứng', 'maxTouchPoints=' + navigator.maxTouchPoints + ' | pointer:coarse=' + matchMedia('(pointer: coarse)').matches + ' | hover:none=' + matchMedia('(hover: none)').matches);
             add('CPU/RAM', (navigator.hardwareConcurrency || '?') + ' luồng | ' + (navigator.deviceMemory || '?') + ' GB');
             add('Trạng thái hiển thị (hidden = Chromium đã ngừng vẽ, giao diện sẽ đứng)', document.visibilityState + ' | hidden=' + document.hidden);
-            add('Trang có focus bàn phím', document.hasFocus() + ' | số lần tự chữa focus: ' + (window.__focusHeals || 0));
+            add('Trang có focus bàn phím', document.hasFocus() + ' | số lần tự chữa focus: ' + (window.__focusHeals || 0) + (window.__focusHealLast ? ' | lần cuối: ' + window.__focusHealLast : ''));
             add('Phần tử đang focus', describeEl(document.activeElement) + (document.activeElement && document.activeElement.isContentEditable ? ' [contenteditable]' : ''));
             add('Tailwind CSS nạp', (function () { var t = document.createElement('div'); t.className = 'hidden'; document.body.appendChild(t); var ok = getComputedStyle(t).display === 'none'; t.remove(); return ok ? 'có' : 'KHÔNG (giao diện có thể vỡ)'; })());
             add('Phông CMG Sans', document.fonts && document.fonts.check ? document.fonts.check('16px "CMG Sans"') : '?');
@@ -8086,13 +8086,25 @@
         // trang không còn focus bàn phím → Edit Song mở được mà không đặt được con trỏ/không gõ được. (1) Bọc 3 hộp thoại để trả
         // focus ngay khi đóng; (2) nếu người dùng BẤM CHUỘT mà trang không có focus → xin main trả focus rồi đặt lại vào ô vừa bấm.
         window.__focusHeals = 0;
-        function healPageFocus(target) {
+        window.__focusHealLast = '';
+        // main.js (ensurePageFocus) tự hỏi lại trang sau mỗi bước và leo thang tới khi document.hasFocus() = true.
+        function healPageFocus(target, x, y) {
             try {
                 if (!window.electronAPI || !window.electronAPI.refocusPage) return Promise.resolve();
                 window.__focusHeals++;
-                return window.electronAPI.refocusPage().then(function () {
-                    var el = target && target.nodeType === 1 ? target : null;
-                    if (el && document.contains(el) && document.activeElement !== el && (el.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName))) { try { el.focus(); } catch (e) {} }
+                return window.electronAPI.refocusPage().then(function (r) {
+                    window.__focusHealLast = r ? ((r.ok ? 'chữa được ở mức ' + r.level : (r.skipped ? 'bỏ qua (' + r.skipped + ')' : 'CHƯA chữa được (mức ' + r.level + ')')) + ' | lũy kế main: ' + (r.stats ? r.stats.healed + ' được / ' + r.stats.failed + ' không' : '?')) : '(không có kết quả)';
+                    var el = target && target.nodeType === 1 ? target : (target && target.parentElement) || null;
+                    if (!el || !document.contains(el)) return;
+                    if (el.isContentEditable) {
+                        // Đặt con trỏ ĐÚNG chỗ vừa bấm (el.focus() đơn thuần đưa con trỏ về đầu khối lời).
+                        var host = el; while (host.parentElement && host.parentElement.isContentEditable) host = host.parentElement;
+                        if (document.activeElement !== host) { try { host.focus(); } catch (e) {} }
+                        var rg = (x != null && document.caretRangeFromPoint) ? document.caretRangeFromPoint(x, y) : null;
+                        if (rg && host.contains(rg.startContainer)) { var sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(rg); }
+                    } else if (/^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName) && document.activeElement !== el) {
+                        try { el.focus(); } catch (e) {}
+                    }
                 }, function () {});
             } catch (e) { return Promise.resolve(); }
         }
@@ -8106,7 +8118,7 @@
             };
         });
         document.addEventListener('mousedown', function (e) {
-            if (!document.hasFocus()) healPageFocus(e.target);
+            if (!document.hasFocus()) healPageFocus(e.target, e.clientX, e.clientY);
         }, true);
 
         // "Chưa lưu" = nội dung Schedule hiện tại KHÁC bản đã lưu/mở/tạo mới gần nhất. So bằng dấu vân tay

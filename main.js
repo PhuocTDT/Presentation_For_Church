@@ -918,7 +918,9 @@ function syncLiveWindowToPreferredDisplay(reason = 'manual', force = false) {
     }
 
     if (!wasVisible) {
-      liveWindow.show();
+      // showInactive: màn chiếu hiện lên mà KHÔNG lấy focus của cửa sổ điều khiển (Live không nhận phím nào).
+      if (mainWindow && !mainWindow.isDestroyed() && mainWindow.isVisible()) liveWindow.showInactive();
+      else liveWindow.show();
     }
 
     if (!wasVisible || displayChanged || monitorCountChanged) {
@@ -1312,6 +1314,22 @@ function createLiveWindow(initialBounds = null) {
 
   liveWindow.setAlwaysOnTop(true, 'screen-saver');
   liveWindow.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
+  // Màn Live chỉ để chiếu (live.html không xử lý phím nào) nhưng vẫn là cửa sổ nhận focus được: mỗi lần
+  // setFullScreen/moveTop (máy chiếu bật/tắt, cắm lại HDMI, đổi DPI…) Windows có thể chuyển focus sang nó,
+  // còn cửa sổ điều khiển trông vẫn bình thường — bấm vào Edit Song không có con trỏ. Trả focus về ngay.
+  liveWindow.on('focus', () => {
+    setTimeout(() => {
+      try {
+        if (!mainWindow || mainWindow.isDestroyed() || !mainWindow.isVisible() || mainWindow.isMinimized()) return;
+        if (!liveWindow || liveWindow.isDestroyed() || !liveWindow.isFocused()) return;
+        // Chỉ trả lại khi focus vừa bị lấy từ CỬA SỔ CHÍNH; Live lấy từ app khác thì không kéo cửa sổ chính lên.
+        if (Date.now() - mainWindowBlurAt > 1500) return;
+        mainWindow.focus();
+        if (!mainWindow.webContents.isDestroyed()) mainWindow.webContents.focus();
+        setTimeout(() => ensurePageFocus('live-window-focus'), 60);
+      } catch (e) {}
+    }, 0);
+  });
   liveWindow.setMenuBarVisibility(false);
   liveWindow.loadFile('live.html');
 
@@ -1469,6 +1487,56 @@ function refocusMainWindow() {
       if (!mainWindow.webContents.isDestroyed()) mainWindow.webContents.focus();
     }
   } catch (e) {}
+  ensurePageFocus('refocus', true);
+}
+
+// Lỗi Electron/Windows "popup Edit mở được nhưng bấm vào ô không có con trỏ": cửa sổ đang active, phía
+// trình duyệt tưởng trang đã có focus (webContents.isFocused() = true) nhưng trong trang document.hasFocus()
+// = false → webContents.focus() thành no-op, tự chữa ở v3.1.13 không ăn. Ở đây HỎI LẠI chính trang sau mỗi
+// bước và leo thang tới khi trang thật sự có focus: (1) focus thường, (2) blurWebView + focusOnWebView ép
+// chuyển trạng thái, (3) blur rồi focus lại cả cửa sổ (mẹo quen thuộc cho lỗi này sau hộp thoại native) —
+// mức 3 làm cửa sổ chớp nên chỉ dùng khi người dùng vừa bấm vào trang / vừa đóng hộp thoại (allowHard).
+let pageFocusHealing = null;
+let mainWindowBlurAt = 0; // lúc cửa sổ chính mất focus gần nhất (để biết Live có vừa "cướp" focus của nó không)
+const pageFocusStats = { runs: 0, healed: 0, failed: 0, lastLevel: 0, lastReason: '' };
+function ensurePageFocus(reason, allowHard = false) {
+  if (pageFocusHealing) return pageFocusHealing;
+  const win = mainWindow;
+  if (!win || win.isDestroyed() || win.webContents.isDestroyed() || !win.isVisible() || win.isMinimized()) return Promise.resolve(null);
+  const wc = win.webContents;
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  const pageHasFocus = () => wc.executeJavaScript('document.hasFocus()', true).then((v) => v === true, () => null);
+  const steps = [
+    () => { win.focus(); wc.focus(); },
+    () => { win.blurWebView(); win.focusOnWebView(); },
+    () => {
+      win.blur(); win.focus(); wc.focus();
+      // Windows có thể từ chối đưa cửa sổ lên lại (foreground lock) → đừng để cửa sổ tụt ra sau app khác.
+      setTimeout(() => { try { if (!win.isDestroyed() && !win.isFocused()) { win.show(); win.moveTop(); win.focus(); } } catch (e) {} }, 80);
+    }
+  ];
+  pageFocusHealing = (async () => {
+    // Chỉ chữa khi CỬA SỔ đang được chọn — không giành focus khi người dùng đã chuyển sang app khác.
+    if (!win.isFocused()) return { ok: false, level: 0, skipped: 'window-not-focused' };
+    const before = await pageHasFocus();
+    if (before !== false) return { ok: before === true, level: 0 };
+    pageFocusStats.runs++;
+    const maxSteps = allowHard ? steps.length : steps.length - 1;
+    for (let i = 0; i < maxSteps; i++) {
+      if (win.isDestroyed() || wc.isDestroyed()) return null;
+      try { steps[i](); } catch (e) {}
+      await sleep(i === 2 ? 150 : 50);
+      if ((await pageHasFocus()) === true) {
+        pageFocusStats.healed++; pageFocusStats.lastLevel = i + 1; pageFocusStats.lastReason = reason;
+        console.log(`[Focus] Trang mất focus bàn phím (${reason}) — đã chữa ở mức ${i + 1}.`);
+        return { ok: true, level: i + 1 };
+      }
+    }
+    pageFocusStats.failed++; pageFocusStats.lastLevel = -1; pageFocusStats.lastReason = reason;
+    console.warn(`[Focus] Trang mất focus bàn phím (${reason}) — chưa chữa được sau ${maxSteps} mức.`);
+    return { ok: false, level: maxSteps };
+  })().finally(() => { pageFocusHealing = null; });
+  return pageFocusHealing;
 }
 
 function cleanupAndExit() {
@@ -1614,7 +1682,9 @@ function createWindow() {
   mainWindow = win;
   // Tự chữa "cửa sổ vẽ bình thường, chuột trúng ô nhưng không gõ/không có con trỏ": sau hộp thoại native
   // (alert/confirm/dialog.*), cửa sổ lấy lại focus Win32 nhưng TRANG (webContents) vẫn chưa được nhận focus bàn phím.
-  win.on('focus', () => { setTimeout(() => { try { if (!win.isDestroyed() && !win.webContents.isDestroyed() && !win.webContents.isFocused()) win.webContents.focus(); } catch (e) {} }, 0); });
+  // Không tin webContents.isFocused() (chính nó có thể báo sai) — ensurePageFocus hỏi thẳng trang.
+  win.on('focus', () => { setTimeout(() => ensurePageFocus('window-focus'), 0); });
+  win.on('blur', () => { mainWindowBlurAt = Date.now(); });
   win.setTitle(fullBaseTitle);
   win.on('page-title-updated', (e, title) => {
     e.preventDefault();
@@ -1881,7 +1951,12 @@ app.whenReady().then(() => {
   // --- IPC Handlers ---
   ipcMain.handle('get-app-version', () => app.getVersion());
   // Renderer phát hiện trang không có focus bàn phím lúc người dùng bấm chuột / vừa đóng alert-confirm → xin lấy lại.
-  ipcMain.handle('refocus-page', () => { refocusMainWindow(); return mainWindow && !mainWindow.isDestroyed() ? { win: mainWindow.isFocused(), page: mainWindow.webContents.isFocused() } : null; });
+  ipcMain.handle('refocus-page', async () => {
+    if (!mainWindow || mainWindow.isDestroyed()) return null;
+    if (!mainWindow.isFocused()) { try { mainWindow.focus(); } catch (e) {} } // người dùng vừa bấm vào cửa sổ này
+    const r = await ensurePageFocus('renderer', true);
+    return Object.assign({ win: mainWindow.isFocused(), page: mainWindow.webContents.isFocused() }, r || {}, { stats: pageFocusStats });
+  });
   ipcMain.handle('select-folder', async () => {
     const r = await dialog.showOpenDialog({ properties: ['openDirectory'] });
     if (!r.canceled && r.filePaths.length > 0) {
