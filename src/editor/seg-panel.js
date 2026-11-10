@@ -177,7 +177,10 @@
         lg.setAttribute('id', 'sp-pg'); [['0', pr.color], ['1', RR.gradientEnd(pr.color)]].forEach(function (s) { var t = document.createElementNS(svgNS, 'stop'); t.setAttribute('offset', s[0]); t.setAttribute('stop-color', s[1]); lg.appendChild(t); });
         d.appendChild(lg); svg.appendChild(d);
         var r = document.createElementNS(svgNS, 'rect'); r.setAttribute('width', W); r.setAttribute('height', H); r.setAttribute('rx', 13); r.setAttribute('fill', 'url(#sp-pg)'); svg.appendChild(r);
-      } else path(RR.brushPath(W, H, seed, pr.id === 'brush-b' ? 1 : 0), pr.color);
+      } else {   // hình mẫu có sợi/đuôi tràn ngoài hộp chữ → vẽ hộp nhỏ ở giữa để thấy trọn vệt
+        path(RR.brushPath(W * 0.66, H * 0.5, seed, pr.id === 'brush-b' ? 1 : 0), pr.color);
+        svg.lastChild.setAttribute('transform', 'translate(' + (W * 0.17) + ',' + (H * 0.25) + ')');
+      }
       box.appendChild(svg); return box;
     }
 

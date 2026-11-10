@@ -17,7 +17,7 @@ test('đường viền: hợp lệ, nằm trong khung, xác định theo hạt g
   const multi = /^M[-\d. LZM]+Z$/;                                   // brush: nhiều đường con (M … Z), chỉ có lệnh M/L/Z
   const smooth = /^M-?[\d.]+ -?[\d.]+( [QL]-?[\d. ]+)+ Z$/;           // marker / paper: một đường liền
   const cases = [
-    ['brush-a', (sd) => RR.brushPath(W, H, sd, 0), multi, 8],
+    ['brush-a', (sd) => RR.brushPath(W, H, sd, 0), multi, 1],
     ['brush-b', (sd) => RR.brushPath(W, H, sd, 1), multi, 8],
     ['marker', (sd) => RR.markerPath(W, 30, sd), smooth, 1],
     ['paper', (sd) => RR.paperPath(W, H, sd, 0), smooth, 1]
@@ -26,28 +26,34 @@ test('đường viền: hợp lệ, nằm trong khung, xác định theo hạt g
     const d = fn(12345);
     assert.match(d, re, name);
     assert.equal(fn(12345), d, name + ' xác định theo hạt giống');
-    assert.notEqual(fn(777), d, name + ' đổi hạt giống → đổi hình');
+    assert.notEqual(fn(12346), d, name + ' đổi hạt giống → đổi hình');
     const b2 = bounds(d);
-    const tail = name.startsWith('brush') ? 0.25 : 0;   // brush: phần đuôi được kéo ra ngoài bề ngang vùng chữ (tối đa +25%), lông cọ trái tối đa -5%
-    assert.ok(b2.minX >= -1 - (name.startsWith('brush') ? W * 0.05 : 0) && b2.maxX <= W * (1 + tail) + 8 && b2.minY >= -1 && b2.maxY <= H + 1, name + ' trong khung: ' + JSON.stringify(b2));
+    const brush = name.startsWith('brush');   // brush: sợi/đuôi/mảnh vụn của hình mẫu nằm ngoài hộp chữ (ngang -20%..+40%, dọc -40%..+40%)
+    assert.ok(b2.minX >= -1 - (brush ? W * 0.2 : 0) && b2.maxX <= W * (1 + (brush ? 0.4 : 0)) + 8 && b2.minY >= (brush ? -H * 0.4 : -1) && b2.maxY <= (brush ? H * 1.4 : H + 1), name + ' trong khung: ' + JSON.stringify(b2));
     assert.ok(!/NaN|Infinity|undefined/.test(d), name);
     assert.ok((d.match(/M/g) || []).length >= minSub, name + ' đủ đường con');
   }
-  // vệt sơn gồm NHIỀU dải ngang (lông cọ), thân đặc phủ gần hết chiều cao, đuôi kéo ra gần mép phải
-  const sub = (d) => (d.match(/M/g) || []).length;
-  assert.ok(sub(RR.brushPath(W, H, 5, 0)) >= 14, 'nhiều dải lông cọ');
-  const bb = bounds(RR.brushPath(W, H, 5, 0));
-  assert.ok(bb.maxY - bb.minY > H * 0.85, 'thân phủ gần hết chiều cao');
-  const reach = Math.max(...[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((sd) => bounds(RR.brushPath(W, H, sd, 0)).maxX));
-  assert.ok(reach > W * 0.9, 'đuôi vệt (vài dải kéo dài thành sợi mảnh) ra gần mép phải: ' + reach);
-  assert.ok(Math.max(...[1, 2, 3, 4, 5, 6].map((sd) => bounds(RR.brushPath(W, H, sd, 1)).maxX)) <= W * 1.25, 'đuôi không dài quá 25%');
-  // THÂN phủ trọn bề ngang vùng chữ (để che hết chữ): nhiều dải ở giữa dài gần bằng cả bề ngang, bắt đầu sát mép trái và kết thúc sát mép phải
-  for (const variant of [0, 1]) for (const sd of [1, 2, 3, 4, 5, 6, 7, 8]) {
-    const subs = RR.brushPath(W, H, sd, variant).split('M').filter(Boolean).map((p) => bounds('M' + p));
-    const wide = subs.filter((b3) => b3.maxX - b3.minX >= W * 0.9);
-    assert.ok(wide.length >= 5, 'variant ' + variant + ' seed ' + sd + ': đủ dải phủ trọn bề ngang, có ' + wide.length);
-    assert.ok(Math.min(...wide.map((b3) => b3.minX)) <= W * 0.04 && Math.max(...wide.map((b3) => b3.maxX)) >= W * 0.96, 'thân chạm cả hai mép');
+  // ---- vệt sơn = HÌNH THẬT từ bộ vector mẫu (src/editor/brush-shapes.js): 5 vệt mềm + 4 vệt cọ khô ----
+  const poly = (d) => { const first = d.split('Z')[0]; return [...first.matchAll(/(-?\d+(?:\.\d+)?) (-?\d+(?:\.\d+)?)/g)].map((m) => [+m[1], +m[2]]); };
+  const inside = (pt, P) => { let c = false; for (let i = 0, j = P.length - 1; i < P.length; j = i++) { const [xi, yi] = P[i], [xj, yj] = P[j]; if ((yi > pt[1]) !== (yj > pt[1]) && pt[0] < ((xj - xi) * (pt[1] - yi)) / (yj - yi) + xi) c = !c; } return c; };
+  assert.equal(RR.brushCount(0), 5); assert.equal(RR.brushCount(1), 4);
+  const seen = new Set();
+  for (const variant of [0, 1]) for (let i = 0; i < RR.brushCount(variant); i++) {
+    const d = RR.brushPath(W, H, i, variant), P = poly(d);
+    seen.add(d);
+    assert.ok(P.length > 100, 'hình mẫu đủ chi tiết (' + P.length + ' điểm)');
+    // THÂN che TRỌN hộp chữ [0,W]x[0,H] (lấy mẫu lưới sát mép, chỉ chừa 1%)
+    let tot = 0, hit = 0;
+    for (let x = W * 0.01; x <= W * 0.99; x += W / 80) for (let y = H * 0.01; y <= H * 0.99; y += H / 25) { tot++; if (inside([x, y], P)) hit++; }
+    assert.equal(hit, tot, 'variant ' + variant + ' hình ' + i + ': thân che ' + (100 * hit / tot).toFixed(1) + '% hộp chữ');
+    const nsub = (d.match(/M/g) || []).length;
+    if (variant === 1) assert.ok(nsub >= 10, 'cọ khô có mảnh vụn tách rời: ' + nsub);
+    // kéo giãn KHÔNG đều: gấp đôi bề ngang → mọi x gấp đôi, y giữ nguyên
+    const P2 = poly(RR.brushPath(W * 2, H, i, variant));
+    assert.ok(P2.every((p, k) => Math.abs(p[0] - P[k][0] * 2) <= 0.25 && Math.abs(p[1] - P[k][1]) <= 0.15), 'giãn ngang đúng tỉ lệ');
   }
+  assert.equal(seen.size, 9, '9 hình khác nhau');
+  assert.equal(RR.brushPath(W, H, 7, 0), RR.brushPath(W, H, 2, 0), 'chọn hình theo hạt giống (vòng lại)');
   // kích thước cực nhỏ vẫn hợp lệ
   for (const fn of [() => RR.brushPath(1, 1, 5, 0), () => RR.brushPath(1, 1, 5, 1), () => RR.markerPath(1, 1, 5), () => RR.paperPath(1, 1, 5)]) assert.ok(!/NaN/.test(fn()));
   assert.equal(RR.seedFrom('brush-a:0:3'), RR.seedFrom('brush-a:0:3')); assert.notEqual(RR.seedFrom('brush-a:0:3'), RR.seedFrom('brush-a:1:3'));

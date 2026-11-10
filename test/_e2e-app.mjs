@@ -92,7 +92,10 @@ export async function launchApp({ appDir, instanceId, dialogQueue = [] }) {
   const env = { ...process.env, E2E_DIALOG_QUEUE: queueFile, E2E_SAVE_QUEUE: saveQueueFile };
   delete env.ELECTRON_RUN_AS_NODE;
   let log = '';
-  const child = spawn(ELECTRON, [appDir, '--remote-debugging-port=' + port, '--instance=' + instanceId], { env, stdio: ['ignore', 'pipe', 'pipe'] });
+  // Windows: cửa sổ test thường bị cửa sổ khác che → Chromium (occlusion tracking) ngừng vẽ, rAF/chụp màn hình treo ngẫu nhiên.
+  // Tắt occlusion + chế độ nền để cửa sổ test luôn vẽ như đang hiển thị.
+  const NO_BG = ['--disable-features=CalculateNativeWinOcclusion', '--disable-backgrounding-occluded-windows', '--disable-renderer-backgrounding', '--disable-background-timer-throttling'];
+  const child = spawn(ELECTRON, [appDir, '--remote-debugging-port=' + port, '--instance=' + instanceId, ...NO_BG], { env, stdio: ['ignore', 'pipe', 'pipe'] });
   child.stdout.on('data', (d) => { log += d; });
   child.stderr.on('data', (d) => { log += d; });
 
@@ -121,6 +124,9 @@ export async function launchApp({ appDir, instanceId, dialogQueue = [] }) {
     ws.send(JSON.stringify({ id: i, method, params }));
   });
   await send('Runtime.enable'); await send('Page.enable'); await send('Log.enable');
+  // Cửa sổ test không có focus → Chromium ngừng tạo khung hình (rAF/chụp màn hình có thể treo vô hạn cho tới khi có thứ đánh thức).
+  // Giả lập focus để trang luôn 'đang hiển thị'.
+  await send('Emulation.setFocusEmulationEnabled', { enabled: true });
   await sleep(5000); // đợi renderer khởi tạo xong (initializeData + autosync chạy trong main trước đó)
 
   return {
@@ -141,6 +147,7 @@ export async function launchApp({ appDir, instanceId, dialogQueue = [] }) {
       w2.onmessage = (ev) => { const m = JSON.parse(ev.data); if (m.id && p2.has(m.id)) { p2.get(m.id)(m); p2.delete(m.id); } };
       const send2 = (method, params = {}) => new Promise((r) => { const i = ++n; p2.set(i, r); w2.send(JSON.stringify({ id: i, method, params })); });
       await send2('Runtime.enable'); await send2('Page.enable');
+      await send2('Emulation.setFocusEmulationEnabled', { enabled: true });
       return {
         raw: send2,
         async ev(expr) { const r = await send2('Runtime.evaluate', { expression: expr, awaitPromise: true, returnByValue: true }); return r.result && r.result.result ? r.result.result.value : undefined; },

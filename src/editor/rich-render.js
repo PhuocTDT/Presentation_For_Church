@@ -10,10 +10,12 @@
  * (RichModel.stripChordsMapped lo việc này). Mọi giá trị định dạng đều được RichModel.sanitizeParts lọc trước khi áp.
  * Phần thuần (đường viền brush/marker/paper, gom dòng, kế hoạch đoạn) chạy được trong Node để test. */
 (function (root, factory) {
-  var RM = (typeof module === 'object' && module.exports) ? require('./rich-model.js') : root.RichModel;
-  if (typeof module === 'object' && module.exports) module.exports = factory(root, RM);
-  else root.RichRender = factory(root, RM);
-}(typeof self !== 'undefined' ? self : this, function (root, RM) {
+  var node = typeof module === 'object' && module.exports;
+  var RM = node ? require('./rich-model.js') : root.RichModel;
+  var BS = node ? require('./brush-shapes.js') : root.BrushShapes;
+  if (node) module.exports = factory(root, RM, BS);
+  else root.RichRender = factory(root, RM, BS);
+}(typeof self !== 'undefined' ? self : this, function (root, RM, BS) {
   'use strict';
 
   /* ===================== phần thuần ===================== */
@@ -51,51 +53,24 @@
     return d + ' Z';
   }
 
-  // Nét cọ (vệt sơn): chia chiều cao thành nhiều DẢI NGANG như các sợi lông cọ. THÂN phủ trọn bề ngang [0, w] (w = bề ngang vùng chữ
-  // + đệm) nên che hết chữ; hai đầu thân chỉ xơ nhẹ (vài px). Phần "đuôi" mới kéo ra NGOÀI w: vài dải kéo dài thành vệt mảnh bên phải
-  // (đôi khi đứt quãng), vài sợi lông nhô ra bên trái. Dải sát mép trên/dưới ngắn hơn một chút nên mép gồ ghề. variant 1 = cọ khô:
-  // nhiều khe hở và đuôi dài hơn. Xác định theo hạt giống. Tọa độ có thể nhỏ hơn 0 / lớn hơn w ở phần đuôi (SVG overflow:visible).
+  // Nét cọ (vệt sơn): dùng HÌNH THẬT từ bộ vector mẫu (src/editor/brush-shapes.js) — vệt mềm (variant 0) hoặc cọ khô
+  // (variant 1). Mỗi hình đã chuẩn hoá: hình chữ nhật lớn nhất nằm trọn trong thân = [0,1000]², nên kéo nó vào hộp w×h
+  // thì chữ luôn được che kín; sợi/đuôi/mảnh vụn nằm ngoài hộp (SVG overflow:visible). Chọn hình theo hạt giống.
+  var shapeToks = {};
+  function brushCount(variant) { var l = BS && BS[variant === 1 ? 'dry' : 'smooth']; return l ? l.length : 0; }
   function brushPath(w, h, seed, variant) {
     w = Math.max(8, w); h = Math.max(8, h);
-    var rnd = rng(seed), dry = variant === 1, d = '';
-    var n = clamp(Math.round(h / 3.2), 8, 24), bh = h / n;
-    var rag = Math.min(w * 0.03, 9);                                         // độ xơ hai đầu thân (px)
-
-    // một dải nằm ngang, hai đầu hơi nhấp nhô
-    function band(x0, x1, y0, y1) {
-      if (x1 - x0 < 1.2 || y1 - y0 < 0.5) return '';
-      y0 = Math.max(0, y0); y1 = Math.min(h, y1);
-      var j = Math.min(0.8, (y1 - y0) * 0.16), xm = (x0 + x1) / 2;
-      return 'M' + r1(x0) + ' ' + r1(y0 + rnd() * j) + ' L' + r1(xm) + ' ' + r1(y0 + rnd() * j) + ' L' + r1(x1) + ' ' + r1(y0 + rnd() * j) +
-        ' L' + r1(x1) + ' ' + r1(y1 - rnd() * j) + ' L' + r1(xm) + ' ' + r1(y1 - rnd() * j) + ' L' + r1(x0) + ' ' + r1(y1 - rnd() * j) + ' Z ';
+    var kind = variant === 1 ? 'dry' : 'smooth', n = brushCount(variant);
+    if (!n) return 'M0 0 L' + r1(w) + ' 0 L' + r1(w) + ' ' + r1(h) + ' L0 ' + r1(h) + ' Z';
+    var idx = (seed >>> 0) % n, key = kind + idx;
+    var toks = shapeToks[key] || (shapeToks[key] = BS[kind][idx].match(/[MLZ]|-?\d+(?:\.\d+)?/g));
+    var sx = w / 1000, sy = h / 1000, out = [], k = 0;
+    for (var i = 0; i < toks.length; i++) {
+      var t = toks[i];
+      if (t === 'M' || t === 'L' || t === 'Z') { out.push(t); k = 0; continue; }
+      out.push(r1(k++ % 2 === 0 ? +t * sx : +t * sy));
     }
-
-    for (var i = 0; i < n; i++) {
-      var t = (i + 0.5) / n, e = Math.abs(t - 0.5) * 2;                   // e: 0 ở giữa → 1 ở mép
-      var y0 = i * bh - bh * 0.15, y1 = (i + 1) * bh + bh * 0.15;          // chồng nhau để thân đặc, không hở khe
-      var l = rnd() * rag * (0.3 + e);
-      var r = w - rnd() * rag * (0.3 + e);
-      if (e > 0.55 && rnd() < 0.5) { l += rnd() * rag; r -= rnd() * rag; } // dải sát mép trên/dưới ngắn hơn
-
-      if (dry && rnd() < 0.2 + e * 0.3) {                                  // cọ khô: thân bị đứt bởi một khe (không sát hai đầu)
-        var g0 = l + (r - l) * (0.2 + rnd() * 0.55), gw = Math.min(w * 0.035, 6 + rnd() * 10);
-        d += band(l, g0, y0, y1) + band(g0 + gw, r, y0, y1);
-      } else d += band(l, r, y0, y1);
-
-      // đuôi phải: vệt mảnh kéo dài RA NGOÀI vùng chữ (nhiều ở các dải gần mép), có thể đứt quãng
-      if (rnd() < (dry ? 0.75 : 0.5) * (0.45 + e * 0.7)) {
-        var tx0 = r - w * 0.02, tx1 = w + w * (0.04 + rnd() * (dry ? 0.17 : 0.11));
-        var cy = (y0 + y1) / 2 + (rnd() - 0.5) * bh * 0.5, th = bh * (0.12 + rnd() * 0.22);
-        if (rnd() < 0.45) { var mid = tx0 + (tx1 - tx0) * (0.35 + rnd() * 0.3); d += band(tx0, mid, cy - th, cy + th) + band(mid + w * 0.012, tx1, cy - th * 0.7, cy + th * 0.7); }
-        else d += band(tx0, tx1, cy - th, cy + th);
-      }
-      // sợi lông cọ nhỏ nhô ra bên trái
-      if (rnd() < 0.12 + e * 0.25) {
-        var lc = (y0 + y1) / 2, lt = bh * (0.1 + rnd() * 0.15);
-        d += band(-w * (0.01 + rnd() * 0.02), l + w * 0.03, lc - lt, lc + lt);
-      }
-    }
-    return d.trim() || ('M0 0 L' + r1(w) + ' 0 L' + r1(w) + ' ' + r1(h) + ' L0 ' + r1(h) + ' Z');
+    return out.join(' ').replace(/([MLZ]) /g, '$1').replace(/ ([MZ])/g, '$1');
   }
 
   // Dải marker: gần như chữ nhật, hai đầu hơi bo và lệch, mép trên/dưới lệch nhẹ.
@@ -355,20 +330,10 @@
       var seed = seedFrom(bg.preset + ':' + bg.shape + ':' + bg.s);
       var svg;
       if (bg.preset === 'brush-a' || bg.preset === 'brush-b') {
+        // hạt giống theo vị trí lớp + "Hình": đổi Hình 0→1→2… luôn đổi sang mẫu kế tiếp
         svg = makeSvg(W, H);
-        var fid = 'rr-f' + (++uid), fdefs = document.createElementNS(SVGNS, 'defs'), flt = document.createElementNS(SVGNS, 'filter');
-        flt.setAttribute('id', fid); flt.setAttribute('x', '-4%'); flt.setAttribute('y', '-8%'); flt.setAttribute('width', '108%'); flt.setAttribute('height', '116%');
-        flt.setAttribute('color-interpolation-filters', 'sRGB');
-        var turb = document.createElementNS(SVGNS, 'feTurbulence');
-        turb.setAttribute('type', 'fractalNoise'); turb.setAttribute('baseFrequency', '0.018 0.32'); turb.setAttribute('numOctaves', '2'); turb.setAttribute('seed', String(seed % 997)); turb.setAttribute('result', 'n0');
-        // ép alpha của nhiễu = 1: nếu không, các kênh màu bị nhân alpha (premultiplied) nên trung bình lệch khỏi 0.5 và CẢ HÌNH bị dịch lên/sang trái
-        var cm = document.createElementNS(SVGNS, 'feColorMatrix');
-        cm.setAttribute('in', 'n0'); cm.setAttribute('type', 'matrix'); cm.setAttribute('values', '1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 0 1'); cm.setAttribute('result', 'n');
-        var disp = document.createElementNS(SVGNS, 'feDisplacementMap');
-        disp.setAttribute('in', 'SourceGraphic'); disp.setAttribute('in2', 'n'); disp.setAttribute('scale', String(r1(bg.preset === 'brush-b' ? clamp(H * 0.15, 3, 15) : clamp(H * 0.09, 2, 9)))); disp.setAttribute('xChannelSelector', 'R'); disp.setAttribute('yChannelSelector', 'G');
-        flt.appendChild(turb); flt.appendChild(cm); flt.appendChild(disp); fdefs.appendChild(flt); svg.appendChild(fdefs);
-        var grp = document.createElementNS(SVGNS, 'g'); grp.setAttribute('filter', 'url(#' + fid + ')');
-        grp.appendChild(svgPath(brushPath(W, H, seed, bg.preset === 'brush-b' ? 1 : 0), bg.color)); svg.appendChild(grp); box.appendChild(svg);
+        svg.appendChild(svgPath(brushPath(W, H, seedFrom(bg.preset + ':' + bg.s) + bg.shape, bg.preset === 'brush-b' ? 1 : 0), bg.color));
+        box.appendChild(svg);
       } else if (bg.preset === 'paper') {
         svg = makeSvg(W, H);
         svg.appendChild(svgPath(paperPath(W, H, seed + 1, 3), 'rgba(0,0,0,0.18)'));   // lớp dưới lệch (giấy chồng giấy)
@@ -458,7 +423,7 @@
 
   return {
     // thuần
-    rng: rng, seedFrom: seedFrom, brushPath: brushPath, markerPath: markerPath, paperPath: paperPath,
+    rng: rng, seedFrom: seedFrom, brushPath: brushPath, brushCount: brushCount, markerPath: markerPath, paperPath: paperPath,
     groupLineRects: groupLineRects, unionRect: unionRect, planSegments: planSegments, keyframesFor: keyframesFor,
     TRANSFORM_TYPES: TRANSFORM_TYPES, UNIT_TYPES: UNIT_TYPES,
     // giao diện
