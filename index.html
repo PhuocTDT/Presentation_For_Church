@@ -1550,24 +1550,32 @@
         padding: 5px 14px; margin: 0; border: 0; border-radius: 999px; font-size: 11.5px; font-weight: 700;
         color: var(--se-ink-faint); background: transparent; transition: background .15s, color .15s;
       }
-      #song-editor-modal .win-modal-container > main > aside > div:first-child > div:hover { background: var(--se-accent-soft); color: var(--se-accent); }
-      #song-editor-modal .win-modal-container > main > aside > div:first-child > div:first-child {
-        color: #fff; background: var(--se-accent); box-shadow: 0 6px 14px -6px rgba(79,70,229,.7);
+      #song-editor-modal .win-modal-container > main > aside > div:first-child > div { cursor: pointer; user-select: none; }
+      #song-editor-modal .win-modal-container > main > aside > div:first-child > div:not(.active):hover { background: var(--se-accent-soft); color: var(--se-accent); }
+      #song-editor-modal .win-modal-container > main > aside > div:first-child > div.active {
+        color: #fff; background: var(--se-accent); box-shadow: 0 6px 14px -6px rgba(80,72,229,.7);
+      }
+      #song-editor-modal .win-modal-container > main > aside > div:first-child > div:focus-visible { outline: 2px solid var(--se-accent); outline-offset: 2px; }
+      #song-editor-modal .win-modal-container > main > aside { position: relative; }
+      /* Tab Slides: khung Words KHÔNG được display:none (innerText của phần tử ẩn mất dấu xuống dòng → Lưu sẽ hỏng lời bài);
+         chỉ thu về cao 0 (vẫn render) + inert để không nhận focus/chuột. */
+      #song-editor-modal #lyrics-editor-container.se-pane-hidden {
+        position: absolute; left: 0; top: 0; width: 100%; height: 0; padding: 0; overflow: hidden; opacity: 0; pointer-events: none;
       }
       #song-editor-modal #lyrics-editor-container { background: transparent; padding: 8px 12px 12px; }
 
       /* -- Thẻ slide -- */
       #song-editor-modal .lyrics-slide-block {
-        background: var(--se-card); border: 1px solid var(--se-line); border-radius: 11px; margin-bottom: 9px;
+        background: var(--se-card); border: 1px solid #b9bdd3; border-radius: 11px; margin-bottom: 9px;
         box-shadow: 0 1px 2px rgba(30,33,64,.05); transition: border-color .15s, box-shadow .15s;
       }
-      #song-editor-modal .lyrics-slide-block:hover { border-color: #cdd2ee; box-shadow: 0 8px 20px -10px rgba(30,33,64,.3); }
+      #song-editor-modal .lyrics-slide-block:hover { border-color: #8f95b5; box-shadow: 0 8px 20px -10px rgba(28,27,46,.3); }
       #song-editor-modal .lyrics-slide-block:focus-within {
-        border-color: var(--se-accent); box-shadow: 0 0 0 3px var(--se-accent-ring), 0 10px 24px -12px rgba(79,70,229,.5);
+        border-color: var(--se-accent); box-shadow: 0 0 0 1px var(--se-accent), 0 0 0 4px rgba(80,72,229,.28), 0 10px 24px -12px rgba(80,72,229,.5);
       }
       #song-editor-modal .lyrics-slide-header {
         height: 30px; padding: 0 10px 0 8px; gap: 8px; background: #f6f7fd;
-        border-bottom: 1px solid var(--se-line); border-left: 4px solid transparent;
+        border-bottom: 1px solid #d3d6e6; border-left: 4px solid transparent;
       }
       #song-editor-modal .lyrics-slide-num {
         width: 20px; height: 20px; flex: none; border-radius: 6px; background: var(--se-accent-soft); color: var(--se-accent);
@@ -1592,6 +1600,48 @@
         background: var(--se-accent); color: #fff; border-color: var(--se-accent); border-style: solid;
       }
       #song-editor-modal .win-modal-container > main > aside > div:last-child button .material-symbols-outlined { font-size: 18px; }
+
+      /* -- Tab Slides: lưới hình thu nhỏ -- */
+      #song-editor-modal #slides-view-container { flex: 1 1 0; min-height: 0; overflow-y: auto; padding: 8px 12px 12px; }
+      #song-editor-modal .se-slides-hint { margin: 0 2px 8px; font-size: 11px; color: var(--se-ink-faint); }
+      #song-editor-modal .se-slides-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+      #song-editor-modal .se-slides-empty { padding: 28px 12px; text-align: center; font-size: 12px; color: var(--se-ink-faint); }
+      #song-editor-modal .se-thumb {
+        position: relative; background: var(--se-card); border: 1px solid #b9bdd3; border-radius: 10px; padding: 6px;
+        cursor: pointer; outline: none; transition: border-color .15s, box-shadow .15s, opacity .15s;
+      }
+      #song-editor-modal .se-thumb:hover { border-color: #8f95b5; }
+      #song-editor-modal .se-thumb.is-selected { border-color: var(--se-accent); box-shadow: 0 0 0 1px var(--se-accent), 0 0 0 4px rgba(80,72,229,.28); }
+      #song-editor-modal .se-thumb:focus-visible { box-shadow: 0 0 0 2px #fff, 0 0 0 4px var(--se-accent); }
+      #song-editor-modal .se-thumb.is-dragging { opacity: .4; }
+      #song-editor-modal .se-thumb.drop-before::before, #song-editor-modal .se-thumb.drop-after::after {
+        content: ''; position: absolute; top: -3px; bottom: -3px; width: 4px; border-radius: 2px; background: var(--se-accent);
+      }
+      #song-editor-modal .se-thumb.drop-before::before { left: -7px; }
+      #song-editor-modal .se-thumb.drop-after::after { right: -7px; }
+      #song-editor-modal .se-thumb-stage {
+        position: relative; aspect-ratio: 16 / 9; overflow: hidden; border-radius: 6px; background-color: #000;
+        background-size: cover; background-position: center;
+      }
+      #song-editor-modal .se-thumb-canvas { position: absolute; left: 0; top: 0; width: 960px; height: 540px; transform-origin: 0 0; pointer-events: none; }
+      #song-editor-modal .se-thumb-empty { display: none; position: absolute; inset: 0; align-items: center; justify-content: center; font-size: 11px; color: rgba(255,255,255,.55); pointer-events: none; }
+      #song-editor-modal .se-thumb-stage.is-empty .se-thumb-empty { display: flex; }
+      #song-editor-modal .se-thumb-vid { position: absolute; left: 6px; bottom: 5px; padding: 1px 6px; border-radius: 5px; background: rgba(0,0,0,.6); color: #fff; font-size: 9px; font-weight: 800; letter-spacing: .06em; pointer-events: none; }
+      #song-editor-modal .se-thumb-cap { display: flex; align-items: center; gap: 6px; margin-top: 6px; min-width: 0; }
+      #song-editor-modal .se-thumb-num {
+        flex: none; width: 20px; height: 20px; border-radius: 6px; background: var(--se-accent-soft); color: var(--se-accent);
+        display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 800;
+      }
+      #song-editor-modal .se-thumb-lbl { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11.5px; font-weight: 700; color: var(--se-ink-dim); }
+      #song-editor-modal .se-thumb-actions { position: absolute; top: 5px; right: 5px; display: flex; gap: 4px; opacity: 0; transition: opacity .12s; }
+      #song-editor-modal .se-thumb:hover .se-thumb-actions, #song-editor-modal .se-thumb:focus-within .se-thumb-actions { opacity: 1; }
+      #song-editor-modal .se-tbtn {
+        width: 24px; height: 24px; border: 0; border-radius: 7px; background: rgba(255,255,255,.94); color: var(--se-ink-dim);
+        display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 1px 4px rgba(0,0,0,.35);
+      }
+      #song-editor-modal .se-tbtn .material-symbols-outlined { font-size: 15px; }
+      #song-editor-modal .se-tbtn:hover { background: var(--se-accent); color: #fff; }
+      #song-editor-modal .se-tbtn.danger:hover { background: #dc4c4c; color: #fff; }
 
       /* -- Khung xem trước -- */
       #song-editor-modal .win-modal-container > main > section {
@@ -2264,19 +2314,20 @@
                 <!-- Left Sidebar -->
                 <aside class="w-[380px] border-r border-win-border flex flex-col shrink-0 bg-[#f5f5f5]">
                     <div class="flex px-1 pt-1 bg-[#f0f0f0] border-b border-win-border items-end h-7 shrink-0">
-                        <div
-                            class="px-4 py-1 border border-win-border border-b-white bg-white text-[11px] -mb-[1px] cursor-default">
-                            Words</div>
-                        <div
-                            class="px-4 py-1 border-t border-r border-win-border/50 text-slate-500 text-[11px] hover:bg-white/50 cursor-pointer">
-                            Slides</div>
+                        <div id="se-tab-words" class="se-tab active" role="tab" aria-selected="true" tabindex="0"
+                            onclick="setEditorTab('words')"
+                            onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();setEditorTab('words')}">Words</div>
+                        <div id="se-tab-slides" class="se-tab" role="tab" aria-selected="false" tabindex="0"
+                            onclick="setEditorTab('slides')"
+                            onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();setEditorTab('slides')}">Slides</div>
                     </div>
                     <div class="flex-1 p-3 overflow-y-auto bg-white custom-scrollbar" id="lyrics-editor-container">
                         <!-- Slides will be injected here -->
                     </div>
+                    <div id="slides-view-container" style="display:none" role="tabpanel" aria-label="Slides"></div>
                     <div class="h-8 border-t border-win-border bg-[#f0f0f0] flex items-center px-1">
                         <button class="w-6 h-6 flex items-center justify-center hover:bg-slate-200"
-                            onclick="addSlideToEditor('', document.getElementById('lyrics-editor-container').children.length, true)"><span
+                            onclick="seAddSlideFromButton()"><span
                                 class="material-symbols-outlined text-sm">add</span><span>Thêm slide</span></button>
                     </div>
                 </aside>
@@ -6372,6 +6423,7 @@
             }
 
             scaleVirtualCanvas('editor-virtual-canvas', 'editor-preview-box');
+            if (typeof seOnStyleApplied === 'function') seOnStyleApplied();
 
             // Sync style to preview output, screen monitor, and the real Screen Live window
             currentPreviewStyle = normalizeSlideStyle(editorStyle);
@@ -6412,6 +6464,7 @@
 
             const lyrics = song ? song.lyrics : '';
             renderLyricsEditor(lyrics);
+            seResetSlidesView();
 
             if (song && song.style) {
                 editorStyle = normalizeSlideStyle(song.style, {}, song.type === 'bible' ? 'bible' : 'song');
@@ -6759,6 +6812,251 @@
             });
         }
 
+        // ===== Tab "Slides": xem bài hát dưới dạng các slide thu nhỏ =====
+        // Dùng chính applyStyleToElement + khung ảo 960x540 của app nên hình thu nhỏ khớp bản xem trước và màn Live.
+        // Nguồn dữ liệu DUY NHẤT vẫn là các thẻ trong #lyrics-editor-container (lưu/đọc như cũ): tab này chỉ ĐỌC thẻ để vẽ,
+        // còn nhân đôi/xoá/kéo đổi chỗ sửa thẳng các thẻ đó rồi vẽ lại.
+        let seSlidesSig = '';
+        let seActiveSlideIdx = 0;
+        let seRenderToken = 0;
+        let seRenderTimer = null;
+        let seDragFrom = -1;
+
+        function seBlocks() { return Array.from(document.querySelectorAll('#lyrics-editor-container .lyrics-slide-block')); }
+        function seIsSlidesTab() { const v = document.getElementById('slides-view-container'); return !!v && v.style.display !== 'none'; }
+        function seReadSlides() {
+            return seBlocks().map((b) => ({
+                label: b.querySelector('.lyrics-slide-label-input').value.trim(),
+                text: b.querySelector('.lyrics-slide-content').innerText.trim()
+            }));
+        }
+
+        function setEditorTab(name) {
+            const words = name !== 'slides';
+            const tw = document.getElementById('se-tab-words');
+            const ts = document.getElementById('se-tab-slides');
+            const wc = document.getElementById('lyrics-editor-container');
+            const sv = document.getElementById('slides-view-container');
+            if (!tw || !ts || !wc || !sv) return;
+            tw.classList.toggle('active', words); ts.classList.toggle('active', !words);
+            tw.setAttribute('aria-selected', String(words)); ts.setAttribute('aria-selected', String(!words));
+            // KHÔNG dùng display:none cho khung Words: innerText của phần tử không render mất dấu xuống dòng → getLyricsFromEditor() hỏng.
+            wc.classList.toggle('se-pane-hidden', !words);
+            if ('inert' in wc) wc.inert = !words;
+            sv.style.display = words ? 'none' : '';
+            if (!words) { seInitSlidesView(); renderSlidesView(true); }
+        }
+
+        function seResetSlidesView() {
+            setEditorTab('words');
+            const v = document.getElementById('slides-view-container');
+            if (v) v.innerHTML = '';
+            seSlidesSig = ''; seActiveSlideIdx = 0; seDragFrom = -1;
+        }
+
+        function seInitSlidesView() {
+            const view = document.getElementById('slides-view-container');
+            if (!view || view._seInit) return;
+            view._seInit = true;
+            // Thẻ được thêm/xoá/đổi chỗ ở bất kỳ đâu (kể cả nút "Thêm slide") → vẽ lại nếu đang ở tab Slides.
+            new MutationObserver(() => { clearTimeout(seRenderTimer); seRenderTimer = setTimeout(() => renderSlidesView(false), 60); })
+                .observe(document.getElementById('lyrics-editor-container'), { childList: true });
+            if (window.ResizeObserver) new ResizeObserver(() => seRescaleThumbs()).observe(view);
+            view.addEventListener('click', seOnClick);
+            view.addEventListener('dblclick', (e) => { const t = e.target.closest('.se-thumb'); if (t && !e.target.closest('.se-tbtn')) seEditSlide(+t.dataset.idx); });
+            view.addEventListener('keydown', seOnKey);
+            view.addEventListener('dragstart', (e) => {
+                const t = e.target.closest && e.target.closest('.se-thumb'); if (!t) return;
+                seDragFrom = +t.dataset.idx;
+                if (e.dataTransfer) { e.dataTransfer.effectAllowed = 'move'; try { e.dataTransfer.setData('text/plain', String(seDragFrom)); } catch (err) {} }
+                t.classList.add('is-dragging');
+            });
+            view.addEventListener('dragover', (e) => {
+                if (seDragFrom < 0) return;
+                const t = e.target.closest && e.target.closest('.se-thumb'); if (!t) return;
+                e.preventDefault();
+                if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
+                const r = t.getBoundingClientRect();
+                seClearDrop();
+                t.classList.add(e.clientX > r.left + r.width / 2 ? 'drop-after' : 'drop-before');
+            });
+            view.addEventListener('drop', (e) => {
+                if (seDragFrom < 0) return;
+                const t = e.target.closest && e.target.closest('.se-thumb'); if (!t) return;
+                e.preventDefault();
+                const after = t.classList.contains('drop-after');
+                const from = seDragFrom;
+                seDragEnd();
+                seMoveSlide(from, +t.dataset.idx, after);
+            });
+            view.addEventListener('dragend', seDragEnd);
+        }
+        function seClearDrop() { document.querySelectorAll('#slides-view-container .se-thumb').forEach((t) => t.classList.remove('drop-before', 'drop-after', 'is-dragging')); }
+        function seDragEnd() { seClearDrop(); seDragFrom = -1; }
+
+        function seRescaleThumbs() {
+            document.querySelectorAll('#slides-view-container .se-thumb-stage').forEach((st) => {
+                const c = st.querySelector('.se-thumb-canvas');
+                if (c && st.clientWidth > 0) c.style.transform = 'scale(' + (st.clientWidth / EDITOR_VIRTUAL_W) + ')';
+            });
+        }
+
+        function seBuildThumb(slide, i, bg) {
+            const t = document.createElement('div');
+            t.className = 'se-thumb' + (i === seActiveSlideIdx ? ' is-selected' : '');
+            t.dataset.idx = String(i); t.tabIndex = 0; t.draggable = true; t.setAttribute('role', 'button');
+            t.title = 'Bấm để xem · bấm đúp để sửa · kéo để đổi thứ tự';
+            const stage = document.createElement('div'); stage.className = 'se-thumb-stage';
+            if (bg && bg.url && bg.mediaType !== 'video') stage.style.backgroundImage = 'url("' + String(bg.url).replace(/"/g, '%22') + '")';
+            else if (bg && bg.mediaType === 'video') { const v = document.createElement('span'); v.className = 'se-thumb-vid'; v.textContent = 'VIDEO'; stage.appendChild(v); }
+            const canvas = document.createElement('div'); canvas.className = 'se-thumb-canvas'; stage.appendChild(canvas);
+            const empty = document.createElement('span'); empty.className = 'se-thumb-empty'; empty.textContent = 'Slide trống'; stage.appendChild(empty);
+            const act = document.createElement('div'); act.className = 'se-thumb-actions';
+            [['edit', 'edit', 'Sửa lời slide này'], ['dup', 'content_copy', 'Nhân đôi slide'], ['del', 'delete', 'Xoá slide']].forEach((d) => {
+                const b = document.createElement('button'); b.type = 'button'; b.className = 'se-tbtn' + (d[0] === 'del' ? ' danger' : '');
+                b.dataset.act = d[0]; b.title = d[2]; b.draggable = false;
+                const ic = document.createElement('span'); ic.className = 'material-symbols-outlined'; ic.textContent = d[1]; b.appendChild(ic);
+                act.appendChild(b);
+            });
+            stage.appendChild(act);
+            const cap = document.createElement('div'); cap.className = 'se-thumb-cap';
+            const num = document.createElement('span'); num.className = 'se-thumb-num'; num.textContent = String(i + 1);
+            const lbl = document.createElement('span'); lbl.className = 'se-thumb-lbl'; lbl.textContent = slide.label || ('Slide ' + (i + 1));
+            const col = slide.label ? getLabelColor(slide.label) : ''; if (col) lbl.style.color = col;
+            cap.appendChild(num); cap.appendChild(lbl);
+            t.appendChild(stage); t.appendChild(cap);
+            return t;
+        }
+
+        function seFillThumb(thumb, slide) {
+            const stage = thumb.querySelector('.se-thumb-stage');
+            const canvas = stage.querySelector('.se-thumb-canvas');
+            canvas.style.transform = 'scale(' + ((stage.clientWidth / EDITOR_VIRTUAL_W) || 0.15) + ')';
+            if (!slide.text) { stage.classList.add('is-empty'); return; }
+            const box = document.createElement('div'); box.className = 'text-layer-box';
+            const pEl = document.createElement('p'); pEl.style.cssText = 'white-space:pre-wrap;outline:none;width:100%;margin:0;';
+            pEl.textContent = stripChords(slide.text);   // như màn Live: bỏ [hợp âm]
+            box.appendChild(pEl); canvas.appendChild(box);
+            applyStyleToElement(pEl, editorStyle);        // cùng đường dựng chữ với xem trước/Live (font, cỡ, viền chữ, tự co)
+        }
+
+        function renderSlidesView(force) {
+            const view = document.getElementById('slides-view-container');
+            if (!view || !seIsSlidesTab()) return;
+            const slides = seReadSlides();
+            const sig = JSON.stringify([slides, editorStyle]);
+            if (!force && sig === seSlidesSig) return;
+            seSlidesSig = sig;
+            const token = ++seRenderToken;
+            const keepScroll = view.scrollTop;
+            view.innerHTML = '';
+            if (!slides.length) { const e = document.createElement('div'); e.className = 'se-slides-empty'; e.textContent = 'Chưa có slide nào. Bấm “Thêm slide” bên dưới.'; view.appendChild(e); return; }
+            if (seActiveSlideIdx >= slides.length) seActiveSlideIdx = slides.length - 1;
+            const hint = document.createElement('p'); hint.className = 'se-slides-hint'; hint.textContent = 'Bấm để xem · bấm đúp để sửa · kéo để đổi thứ tự';
+            const grid = document.createElement('div'); grid.className = 'se-slides-grid';
+            const bg = editorStyle && editorStyle.background;
+            slides.forEach((sl, i) => grid.appendChild(seBuildThumb(sl, i, bg)));
+            view.appendChild(hint); view.appendChild(grid);
+            view.scrollTop = keepScroll;
+            // dựng chữ theo lô để bài nhiều slide không làm đơ giao diện
+            const thumbs = Array.from(grid.children); let k = 0;
+            (function step() {
+                if (token !== seRenderToken) return;
+                for (const end = Math.min(k + 6, thumbs.length); k < end; k++) seFillThumb(thumbs[k], slides[k]);
+                if (k < thumbs.length) requestAnimationFrame(step);
+            })();
+        }
+
+        // gọi khi kiểu chữ/nền/vị trí khung đổi (applyEditorStyle, kéo/đổi cỡ khung chữ)
+        function seOnStyleApplied() {
+            if (!seIsSlidesTab()) return;
+            clearTimeout(seRenderTimer);
+            seRenderTimer = setTimeout(() => renderSlidesView(false), 80);
+        }
+
+        function seSelectSlide(idx) {
+            const slides = seReadSlides();
+            if (!slides[idx]) return;
+            seActiveSlideIdx = idx;
+            document.querySelectorAll('#slides-view-container .se-thumb').forEach((t) => t.classList.toggle('is-selected', +t.dataset.idx === idx));
+            updateEditorPreview(slides[idx].text);   // giống khi bấm vào thẻ ở tab Words
+        }
+
+        function seEditSlide(idx) {
+            setEditorTab('words');
+            const b = seBlocks()[idx];
+            if (!b) return;
+            seActiveSlideIdx = idx;
+            const c = b.querySelector('.lyrics-slide-content');
+            b.scrollIntoView({ block: 'nearest' });
+            c.focus();
+            try { const r = document.createRange(); r.selectNodeContents(c); r.collapse(false); const sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(r); } catch (e) {}
+        }
+
+        function seDuplicateSlide(idx) {
+            const sl = seReadSlides()[idx];
+            if (!sl) return;
+            // cùng dạng với getLyricsFromEditor: nhãn nằm dòng đầu (addSlideToEditor tự tách lại)
+            addSlideToEditor((sl.label ? sl.label + '\n' : '') + sl.text, idx + 1, false);
+            seActiveSlideIdx = idx + 1;
+            renderSlidesView(true);
+        }
+
+        async function seDeleteSlide(idx) {
+            const blocks = seBlocks(); const sl = seReadSlides()[idx];
+            if (!blocks[idx] || !sl) return;
+            if (sl.text && !(await askConfirm('Xoá slide ' + (idx + 1) + (sl.label ? ' (' + sl.label + ')' : '') + '?', { danger: true, okText: 'Xoá' }))) return;
+            blocks[idx].remove();
+            if (!seBlocks().length) addSlideToEditor('', 0);   // luôn còn ít nhất 1 slide, như lúc mở bài trống
+            reindexSlides();
+            seActiveSlideIdx = Math.min(seActiveSlideIdx, seBlocks().length - 1);
+            renderSlidesView(true);
+        }
+
+        function seMoveSlide(from, to, after) {
+            const blocks = seBlocks();
+            const moving = blocks[from], target = blocks[to];
+            if (!moving || !target || moving === target) return;
+            if (after) target.after(moving); else target.before(moving);
+            reindexSlides();
+            seActiveSlideIdx = seBlocks().indexOf(moving);
+            renderSlidesView(true);
+        }
+
+        function seAddSlideFromButton() {
+            const c = document.getElementById('lyrics-editor-container');
+            addSlideToEditor('', c.children.length, true);
+            if (seIsSlidesTab()) {
+                seActiveSlideIdx = c.children.length - 1;
+                renderSlidesView(true);
+                const v = document.getElementById('slides-view-container'); v.scrollTop = v.scrollHeight;
+            }
+        }
+
+        function seOnClick(e) {
+            const thumb = e.target.closest('.se-thumb'); if (!thumb) return;
+            const idx = +thumb.dataset.idx;
+            const btn = e.target.closest('.se-tbtn');
+            if (btn) {
+                e.stopPropagation();
+                const a = btn.dataset.act;
+                if (a === 'edit') seEditSlide(idx); else if (a === 'dup') seDuplicateSlide(idx); else if (a === 'del') seDeleteSlide(idx);
+                return;
+            }
+            seSelectSlide(idx);
+        }
+
+        function seOnKey(e) {
+            const t = e.target.closest && e.target.closest('.se-thumb'); if (!t) return;
+            const idx = +t.dataset.idx;
+            if (e.key === 'Enter' || e.key === 'F2') { e.preventDefault(); seEditSlide(idx); }
+            else if (e.key === 'Delete') { e.preventDefault(); seDeleteSlide(idx); }
+            else if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
+                const sib = e.key === 'ArrowRight' ? t.nextElementSibling : t.previousElementSibling;
+                if (sib && sib.classList.contains('se-thumb')) { e.preventDefault(); sib.focus(); seSelectSlide(+sib.dataset.idx); }
+            }
+        }
+
         async function saveSong(shouldClose = true) {
             console.log('Attempting to save song...');
             const title = document.getElementById('song-title').value;
@@ -6875,6 +7173,7 @@
         }
 
         function closeSongEditor() {
+            seResetSlidesView();
             document.getElementById('song-editor-modal').style.display = 'none';
             document.getElementById('lyrics-editor-container').innerHTML = '';
             currentEditingSong = null;
@@ -8685,6 +8984,7 @@
             const onUp = () => {
                 document.removeEventListener('mousemove', onMove);
                 document.removeEventListener('mouseup', onUp);
+                seOnStyleApplied();
             };
 
             document.addEventListener('mousemove', onMove);
@@ -8718,6 +9018,7 @@
             const onUp = () => {
                 document.removeEventListener('mousemove', onMove);
                 document.removeEventListener('mouseup', onUp);
+                seOnStyleApplied();
             };
 
             document.addEventListener('mousemove', onMove);

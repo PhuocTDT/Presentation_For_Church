@@ -14,6 +14,7 @@
 - Toàn bộ phần trình bày nằm trong MỘT khối `<style id="song-editor-redesign">` ở cuối `<head>` của `index.html`, mọi luật có tiền tố `#song-editor-modal`; token màu `--se-*` khớp với `--stg-*` của hộp Cài đặt (accent `#5048e5`, nền `#f6f6f8`, viền `#dcdce6`).
 - **Màu phẳng, không gradient.** Thanh tiêu đề nền trắng + viền mảnh; nút OK là nút chính (màu accent đặc), Apply/Cancel phụ.
 - Hộp luôn nền sáng (như trước): JS đặt vài màu inline giả định nền sáng (màu nhãn slide `getLabelColor`, `#color-indicator`).
+- Tab **Slides** (`setEditorTab`, `renderSlidesView`, các hàm `se*` trong `index.html`) vẽ hình thu nhỏ từ các thẻ ở `#lyrics-editor-container` bằng `applyStyleToElement`; **không ẩn khung Words bằng `display:none`** (xem `.se-pane-hidden`) vì `innerText` của phần tử không render mất dấu xuống dòng → hỏng `getLyricsFromEditor()`.
 - Khi sửa: giữ nguyên ID/lớp mà JS dùng; thanh tiêu đề phải là `div` đầu tiên của `.win-modal-container` (tay kéo); `.win-button` và `.toolbar-btn` dùng chung nơi khác nên chỉ override trong phạm vi `#song-editor-modal`.
 
 ### `live.html`
