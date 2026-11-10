@@ -2,6 +2,15 @@
 
 Tất cả các thay đổi và cập nhật quan trọng của dự án được ghi lại tại đây.
 
+## [Chưa phát hành] - Thành viên vào lại phòng sau buổi nhóm không còn nhận lại tin cũ
+
+- **Triệu chứng**: người vào phòng SAU buổi nhóm (hoặc mở lại trang phone) bị đổ về hàng loạt tin trước đó mà họ chưa nhận được, hiện lần lượt từng toast như bị lặp.
+- **Nguyên nhân**: `finalizeJoin` của phone bỏ qua `since` mà relay trả về lúc `/join` và giữ mốc `lastId/lastTs` CŨ lưu trong `localStorage` từ lần trước; vào lại phòng, phone gửi mốc cũ lên và relay phát lại mọi tin sau mốc đó. Kho tin (`ring`, tối đa 120 tin) không hết hạn theo thời gian nên tin của cả buổi nhóm vẫn nằm đó.
+- **Sửa — relay** (`cloud/worker/src/room-relay.js`): khi kết nối chỉ bù tin trong **90 giây** gần nhất (`REPLAY_MAX_AGE_MS`, theo `ts`), bất kể mốc `since/sinceTs` nào → người vào/mở lại sau một khoảng dài không nhận gì cũ; vẫn bù tin gửi lúc rớt mạng thoáng qua. `sinceTs` giờ dùng được một mình, `sinceTs` âm/rác bị bỏ. Thành viên nhận thêm khung `hello {since, ts}` (mốc hiện tại) lúc kết nối. Cũng che chắn các trang phone cũ còn lưu mốc cũ trong bộ nhớ đệm — **có hiệu lực ngay sau khi deploy relay**, không cần người dùng cập nhật trang.
+- **Sửa — phone** (`comm/mobile/app.js`): mốc chỉ sống trong bộ nhớ của phiên trang, không lưu qua lần mở lại (xoá mốc cũ do bản trước lưu); khởi tạo từ `since` của `/join` hoặc khung `hello`; reconnect gửi `since` + `sinceTs`. Mở/vào lại phòng → chỉ nhận tin MỚI từ lúc vào.
+- **Giữ nguyên**: không mất tin khi rớt mạng ngắn trong lúc đang dùng; tin riêng `to:<clientId>` vẫn chỉ tới đúng người; operator không đổi.
+- Kiểm thử: **trình duyệt thật** (`test/member-replay.e2e.mjs`, 12 mục: vào lần đầu, mở lại phiên đã lưu, vào lại bằng mật khẩu, tin mới tới đúng 1 lần, rớt mạng ngắn vẫn nhận, không lặp) — trước khi sửa 6/12 trượt, sau 12/12; `test/band-replay.test.mjs` +6 ca (giới hạn tuổi tin, `sinceTs` một mình, `hello`) — relay cũ trượt đúng 6 ca đó; 107 unit test; e2e `band-replay`, `phone-page`, `setlist-page`, `song-inbox` vẫn đạt. **Cần `wrangler deploy` ở `cloud/worker/`** (relay + trang `/m/`; app desktop không đổi).
+
 ## [Chưa phát hành] - Thiết kế lại giao diện hộp "Edit Song"
 
 - **Yêu cầu**: giao diện hộp sửa bài hát (kiểu Windows cổ điển: viền xám, nút phẳng, rất nhỏ) trông chưa bắt mắt; làm lại theo phong cách tối giản như các hộp khác của app, **không dùng gradient**, và gọn.

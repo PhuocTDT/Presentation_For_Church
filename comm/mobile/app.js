@@ -66,8 +66,13 @@
 
   var state = loadState();
   var ws = null;
-  var lastTs = state.lastTs || 0;     // kèm `sinceTs` để server bù đúng tin mới nếu lastId không còn trong ring
-  var lastId = state.lastId || null;  // persist qua reload — tránh replay ring buffer khi mố lại trang
+  // Mốc "đã thấy tới đâu" CHỈ sống trong phiên trang này (bộ nhớ), KHÔNG lưu qua lần mở lại trang. Trước đây lưu trong localStorage
+  // nên người vào lại phòng (kể cả sau buổi nhóm) gửi mốc cũ lên và nhận lại cả loạt tin đã bỏ lỡ. Nay mở/vào lại phòng chỉ nhận
+  // tin MỚI từ lúc vào; mốc được khởi tạo từ relay (`since` lúc /join, hoặc khung `hello` lúc kết nối) rồi cập nhật theo tin nhận được,
+  // để reconnect THOÁNG QUA trong cùng phiên vẫn bù được tin gửi lúc rớt mạng.
+  var lastTs = 0;
+  var lastId = null;
+  delete state.lastId; delete state.lastTs;   // dọn mốc cũ do các bản trước lưu
   var reconnTimer = null;
   var reconnDelay = 1000;
   var pingTimer = null;
@@ -214,6 +219,8 @@
     state.roomName = (j.room && j.room.name) || 'Kênh Band';
     state.operatorReplies = j.operatorReplies || [];
     state.cloudRoomId = j.cloudRoomId || '';
+    lastId = j.since || null;   // mốc lúc vào phòng (không dùng mốc của lần trước)
+    lastTs = 0;
     $('slToggleBtn').hidden = !j.setlistEnabled;
     if (!state.buttons || !state.buttons.length) {
       if (j.profile && j.profile.buttons && j.profile.buttons.length) {
@@ -279,7 +286,7 @@
     if (ws) { try { ws.onclose = null; ws.close(); } catch (e) {} ws = null; }
     setDot('');
     var url = roomWsUrl('/ws?token=' + encodeURIComponent(state.token) +
-              (lastId ? '&since=' + encodeURIComponent(lastId) + '&sinceTs=' + lastTs : ''));
+              (lastId ? '&since=' + encodeURIComponent(lastId) : '') + (lastTs ? '&sinceTs=' + lastTs : ''));
     try { ws = new WebSocket(url); } catch (e) { scheduleReconnect(); return; }
 
     ws.onopen = function () { setDot('on'); reconnDelay = 1000; };
@@ -288,6 +295,12 @@
       try { msg = JSON.parse(e.data); } catch (err) { return; }
       if (!msg) return;
       if (msg.kind === 'pong') return;
+      if (msg.kind === 'hello') {
+        // Mốc hiện tại của phòng lúc kết nối: chỉ dùng để khởi tạo (không ghi đè mốc đã có từ tin nhận được / lúc /join)
+        if (!lastId && msg.since) lastId = String(msg.since);
+        if (!lastTs && Number(msg.ts) > 0) lastTs = Number(msg.ts);
+        return;
+      }
       if (msg.kind !== 'envelope' || !msg.envelope) return;
       var env = msg.envelope;
       // CHỈ cập nhật cursor `since` bằng id của loại envelope THẬT SỰ nằm
@@ -298,12 +311,7 @@
       // đã hiện rồi (toast) bị hiện lại thành trùng lặp.
       if (env.id && (env.type === 'alert' || env.type === 'text' || env.type === 'ack' || env.type === 'resolve')) {
         lastId = env.id;
-        lastTs = Number(env.ts) || lastTs;
-        state.lastId = lastId;
-        state.lastTs = lastTs;   // persist: có hiệu lực qua reload/reconnect
-        // Debounce ghi localStorage — nhiều messages đến liên tục chỉ ghi 1 lần
-        clearTimeout(saveLastIdTimer);
-        saveLastIdTimer = setTimeout(saveState, 500);
+        lastTs = Number(env.ts) || lastTs;   // chỉ trong bộ nhớ: có hiệu lực cho reconnect cùng phiên, không lưu qua lần mở lại
       }
       handleEnvelope(env);
     };
