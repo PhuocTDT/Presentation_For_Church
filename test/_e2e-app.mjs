@@ -37,6 +37,12 @@ dialog.showOpenDialog = async () => {
   const next = q.shift(); try { fs.writeFileSync(qf, JSON.stringify(q)); } catch (e) {}
   return next ? { canceled: false, filePaths: next } : { canceled: true, filePaths: [] };
 };
+const sq = process.env.E2E_SAVE_QUEUE;
+dialog.showSaveDialog = async () => {   // hộp thoại Lưu: trả đường dẫn lấy từ hàng đợi file
+  let q = []; try { q = JSON.parse(fs.readFileSync(sq, 'utf8')); } catch (e) {}
+  const next = q.shift(); try { fs.writeFileSync(sq, JSON.stringify(q)); } catch (e) {}
+  return next ? { canceled: false, filePath: next } : { canceled: true };
+};
 require('./main.js');
 `);
   const pkg = JSON.parse(fs.readFileSync(path.join(dir, 'package.json'), 'utf8'));
@@ -74,6 +80,8 @@ export function removeInstanceUserData(instanceId) {
 export async function launchApp({ appDir, instanceId, dialogQueue = [] }) {
   const queueFile = path.join(appDir, 'dialog-queue.json');
   fs.writeFileSync(queueFile, JSON.stringify(dialogQueue));
+  const saveQueueFile = path.join(appDir, 'save-queue.json');
+  fs.writeFileSync(saveQueueFile, '[]');
   // Cổng do HĐH cấp (không chọn ngẫu nhiên trong dải cố định): Windows/Hyper-V có thể "reserve" cả dải 9014–9900+ (lệnh
   // `netsh interface ipv4 show excludedportrange protocol=tcp`) → app báo "Cannot start http server for devtools".
   const port = await new Promise((resolve, reject) => {
@@ -81,7 +89,7 @@ export async function launchApp({ appDir, instanceId, dialogQueue = [] }) {
     srv.once('error', reject);
     srv.listen(0, '127.0.0.1', () => { const p = srv.address().port; srv.close(() => resolve(p)); });
   });
-  const env = { ...process.env, E2E_DIALOG_QUEUE: queueFile };
+  const env = { ...process.env, E2E_DIALOG_QUEUE: queueFile, E2E_SAVE_QUEUE: saveQueueFile };
   delete env.ELECTRON_RUN_AS_NODE;
   let log = '';
   const child = spawn(ELECTRON, [appDir, '--remote-debugging-port=' + port, '--instance=' + instanceId], { env, stdio: ['ignore', 'pipe', 'pipe'] });
@@ -140,6 +148,9 @@ export async function launchApp({ appDir, instanceId, dialogQueue = [] }) {
       if (!r.result) throw new Error('CDP lỗi (trang có thể đã tải lại hoặc sập): ' + JSON.stringify(r).slice(0, 300) + '\n--- log app ---\n' + log.slice(-800));
       if (r.result.exceptionDetails) throw new Error('renderer: ' + JSON.stringify(r.result.exceptionDetails).slice(0, 400));
       return r.result.result.value;
+    },
+    pushSaveDialog(filePath) {
+      const q = JSON.parse(fs.readFileSync(saveQueueFile, 'utf8')); q.push(filePath); fs.writeFileSync(saveQueueFile, JSON.stringify(q));
     },
     pushDialog(paths) {
       const q = JSON.parse(fs.readFileSync(queueFile, 'utf8')); q.push(paths); fs.writeFileSync(queueFile, JSON.stringify(q));
