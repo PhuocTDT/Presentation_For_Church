@@ -1446,6 +1446,8 @@
       #bandPanel .bp-error code { background: #f7d9d4; padding: 0 4px; border-radius: 4px; font-size: .78rem; }
       #bandPanel .bp-error pre { margin: 6px 0 0; white-space: pre-wrap; word-break: break-word; font-size: .74rem; color: #94564e; }
       #bandPanel .bp-error .retry { margin-top: 8px; background: #c0392f; border: none; color: #fff; border-radius: 8px; padding: 6px 14px; font-weight: 700; }
+      #bandPanel .bp-error .retry.alt { background: #fff; color: #c0392f; border: 1px solid #c0392f; margin-left: 6px; }
+      #bandPanel .bp-error .whoami { margin-top: 6px; font-size: .76rem; color: #7a4a43; }
     </style>
     <!-- Đặt CUỐI <head> (sau mọi <style> inline) để giữ đúng thứ tự cascade như Tailwind Play CDN cũ. -->
     <link rel="stylesheet" href="src/css/tailwind.generated.css" />
@@ -1534,6 +1536,10 @@
               </div>
             </div>
             <div id="bpBlockedList"></div>
+          </div>
+          <div class="bp-kv" style="margin-top:8px;">
+            <span class="k" id="bpWhoamiConn" style="flex:1;"></span>
+            <button class="bp-btn" id="bpLogoutBtn" type="button" title="Đăng xuất tài khoản operator (đổi tài khoản)">Đăng xuất</button>
           </div>
           <div class="bp-composer-link">
             <span class="k">Link soạn setlist (dùng được cả khi tắt máy)</span>
@@ -9089,6 +9095,7 @@
 
       // "Kết nối" opens the connection info as a popup over the whole app.
       function openConnModal() {
+        refreshWhoami();
         refreshQr(); api.galleryList().then(renderGal).catch(function () {});
         refreshBlockedList();
         // Luôn đóng lại danh sách "Đang kết nối" mỗi lần mở popup — nhất quán,
@@ -9099,6 +9106,7 @@
       }
       function closeConnModal() { $('bpConn').classList.add('bp-hidden'); }
       $('bpDetailsToggle').addEventListener('click', openConnModal);
+      $('bpLogoutBtn').addEventListener('click', doOperatorLogout);
       $('bpConnClose').addEventListener('click', closeConnModal);
       $('bpConn').addEventListener('click', function (e) { if (e.target === $('bpConn')) closeConnModal(); });
       document.addEventListener('keydown', function (e) {
@@ -9137,6 +9145,27 @@
         }
       }
 
+      // Đăng xuất tài khoản operator (Cognito): xoá phiên, dừng Kênh Band, mở lại hộp đăng nhập. Cần khi đăng nhập nhầm
+      // email, hoặc relay từ chối vì tài khoản không phải chủ phòng ("Sai admin secret").
+      function refreshWhoami() {
+        if (!api.operatorAuth || !api.operatorAuth.getStatus) return;
+        api.operatorAuth.getStatus().then(function (st) {
+          var t = (st && st.loggedIn && st.email) ? 'Đang đăng nhập bằng: ' + st.email : '';
+          ['bpWhoami', 'bpWhoamiConn'].forEach(function (id) { var e = $(id); if (e) e.textContent = t; });
+        }).catch(function () {});
+      }
+      function doOperatorLogout() {
+        if (!api.operatorAuth || !api.operatorAuth.logout) return;
+        if (!confirm('Đăng xuất tài khoản operator? Kênh Band sẽ dừng; bạn cần đăng nhập lại để dùng tiếp.')) return;
+        api.operatorAuth.logout().then(function () {
+          hideBandError();
+          closeConnModal();
+          applyStatus({});
+          refreshWhoami();
+          if (window.__bandGateCheck) window.__bandGateCheck(reallyOpenPanel); // mở hộp đăng nhập
+        }).catch(function () { showOperatorToast('Không đăng xuất được, thử lại.', 'error'); });
+      }
+
       var errAutoOpened = false;
       function showBandError(err) {
         var box = $('bpError');
@@ -9146,11 +9175,15 @@
           (err.code ? 'Mã lỗi: <code>' + err.code + '</code><br>' : '') +
           (err.hint ? err.hint : '') +
           '<pre>' + (err.message || '') + (err.port ? '  (cổng ' + err.port + ')' : '') + '</pre>' +
-          '<button class="retry" type="button">Thử lại</button>';
-        box.querySelector('.retry').addEventListener('click', function () {
-          box.querySelector('.retry').disabled = true;
+          '<div class="whoami" id="bpWhoami"></div>' +
+          '<button class="retry" type="button" data-act="retry">Thử lại</button>' +
+          '<button class="retry alt" type="button" data-act="logout">Đăng xuất / đổi tài khoản</button>';
+        box.querySelector('[data-act="retry"]').addEventListener('click', function () {
+          box.querySelector('[data-act="retry"]').disabled = true;
           api.start().then(applyStatus).catch(function () {});
         });
+        box.querySelector('[data-act="logout"]').addEventListener('click', doOperatorLogout);
+        refreshWhoami();
         // Auto-open once so the operator can't miss it — but never fight a manual close.
         if (!errAutoOpened) { errAutoOpened = true; revealPanel(); }
       }

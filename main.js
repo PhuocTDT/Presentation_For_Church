@@ -1399,6 +1399,7 @@ function bandStartupHint(err) {
   if (code === 'EADDRINUSE') return `Cổng ${err.port || (bandCommStore && bandCommStore.load().port)} đang bận. Có thể app đang mở sẵn ở nơi khác, hoặc phần mềm khác giữ cổng. Đóng bớt rồi bấm Thử lại, hoặc đổi "port" trong band-comm.json.`;
   if (code === 'EACCES') return 'Hệ điều hành từ chối mở cổng này (cần quyền hoặc bị firewall chặn). Thử đổi "port" trong band-comm.json sang số > 1024, hoặc cho phép app qua Windows Firewall.';
   if (code === 'EADDRNOTAVAIL') return 'Không gán được địa chỉ mạng. Kiểm tra máy đã nối Wi-Fi/LAN chưa.';
+  if (/admin secret/i.test(String(err && err.message || ''))) return 'Relay từ chối máy này vì chưa chứng minh được là CHỦ PHÒNG (khóa quản trị của máy khác với khóa đã ghim trên relay, và tài khoản đăng nhập không phải chủ phòng hoặc phiên đã hết hạn). Bấm "Đăng xuất / đổi tài khoản" bên dưới rồi đăng nhập lại bằng đúng email chủ phòng.';
   return 'Bấm Thử lại. Nếu vẫn lỗi, chép nội dung lỗi bên dưới để kiểm tra.';
 }
 

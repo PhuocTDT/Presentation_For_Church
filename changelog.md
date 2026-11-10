@@ -2,6 +2,13 @@
 
 Tất cả các thay đổi và cập nhật quan trọng của dự án được ghi lại tại đây.
 
+## [Chưa phát hành] - Nút "Đăng xuất" cho tài khoản operator + gợi ý rõ khi relay từ chối ("Sai admin secret")
+
+- **Triệu chứng báo cáo**: sidebar Kênh Band hiện "Kênh KHÔNG khởi chạy được — Sai admin secret" và **không có chỗ nào để đăng xuất** để đăng nhập lại bằng tài khoản khác. Backend đăng xuất (`band-operator-auth-logout`, `preload.js` `bandComm.operatorAuth.logout`) đã có từ trước nhưng giao diện không có nút nào gọi nó.
+- **Ý nghĩa lỗi (AuthZ)**: `POST /admin/config` chỉ được relay chấp nhận khi (1) khóa quản trị (`X-Admin-Secret`) khớp khóa đã ghim cho phòng, hoặc (2) Cognito ID token hợp lệ có email trùng `operatorEmail` của phòng (`room-relay.js` `handleAdminConfig`, `bearerIsRoomOwner`). Máy mới/cài lại/đổi tài khoản Windows có khóa khác và đăng nhập nhầm email (hoặc token hết hạn, hoặc bản ghi phòng thiếu `operatorEmail`) thì bị `403 Sai admin secret` (mật khẩu phòng cố ý KHÔNG còn được tính, B-19).
+- **Sửa**: `index.html` — hộp lỗi Kênh Band có thêm dòng **"Đang đăng nhập bằng: <email>"** và nút **"Đăng xuất / đổi tài khoản"**; khung "Kết nối" cũng có nút **Đăng xuất**. Bấm (có hỏi xác nhận) → xoá phiên, dừng Kênh Band, mở lại hộp đăng nhập. `main.js` `bandStartupHint` — lỗi "admin secret" giờ có gợi ý tiếng Việt giải thích và chỉ cách xử lý thay vì câu chung chung.
+- Kiểm thử thật trên app dev (relay giả không tới được, đã sao lưu và khôi phục file phiên): hộp lỗi hiện, có email + nút, đăng xuất xoá phiên (`loggedIn=false`), hộp lỗi ẩn, hộp đăng nhập hiện, không lỗi JS.
+
 ## [3.1.14] - Sửa tận gốc "popup Edit mở được nhưng bấm vào ô không có con trỏ"
 
 - **Nguyên nhân cơ chế tự chữa ở v3.1.13 không ăn**: trong trạng thái lỗi, cửa sổ được chọn và `webContents.isFocused()` vẫn báo **`true`**, chỉ có trong trang `document.hasFocus()` là **`false`**. `win.on('focus')` của v3.1.13 chỉ chữa khi `isFocused()` = `false` → không làm gì; còn `win.focus()` + `webContents.focus()` (IPC `refocus-page`, sau hộp Lưu/Mở) là no-op vì phía trình duyệt tưởng trang đã có focus. Đã tái hiện trạng thái này trên app thật và xác nhận cả hai cách cũ đều không chữa được.
@@ -10,6 +17,7 @@ Tất cả các thay đổi và cập nhật quan trọng của dự án đượ
 - **Đặt con trỏ đúng chỗ bấm** (`index.html`): sau khi tự chữa lúc bấm chuột, khối lời đặt con trỏ tại điểm vừa bấm (`caretRangeFromPoint`) thay vì về đầu khối; ô nhập thường vẫn được focus như trước.
 - **Chẩn đoán**: báo cáo Ctrl+Alt+D thêm "lần cuối: chữa được ở mức N / CHƯA chữa được" và lũy kế của main; log main ghi `[Focus] …`. `docs/debugging-playbook.md` có mục mới cho lỗi này.
 - Chưa thử trên Windows (môi trường kiểm thử là Linux); cần xác nhận trên máy từng bị lỗi.
+
 
 ## [3.1.13] - Giảm tải KV (hạn mức Cloudflare) + nền tuỳ chọn trong setlist + tự chữa mất focus bàn phím + tab "Đã gửi"
 
