@@ -2,7 +2,11 @@
 
 Tất cả các thay đổi và cập nhật quan trọng của dự án được ghi lại tại đây.
 
-## [Chưa phát hành] - Thành viên vào lại phòng sau buổi nhóm không còn nhận lại tin cũ
+## [3.1.17] - Hộp Edit Song mới (tab Slides, chọn nền, sửa lag, co chữ chừa chỗ next verse) + thành viên vào lại phòng không nhận tin cũ
+
+> Gồm: (1) sửa lỗi relay/phone — **cần `wrangler deploy` ở `cloud/worker/`**; (2) giao diện + sửa lỗi hộp Edit Song và màn chiếu Live (cần bản app mới).
+
+### Thành viên vào lại phòng sau buổi nhóm không còn nhận lại tin cũ
 
 - **Triệu chứng**: người vào phòng SAU buổi nhóm (hoặc mở lại trang phone) bị đổ về hàng loạt tin trước đó mà họ chưa nhận được, hiện lần lượt từng toast như bị lặp.
 - **Nguyên nhân**: `finalizeJoin` của phone bỏ qua `since` mà relay trả về lúc `/join` và giữ mốc `lastId/lastTs` CŨ lưu trong `localStorage` từ lần trước; vào lại phòng, phone gửi mốc cũ lên và relay phát lại mọi tin sau mốc đó. Kho tin (`ring`, tối đa 120 tin) không hết hạn theo thời gian nên tin của cả buổi nhóm vẫn nằm đó.
@@ -11,7 +15,7 @@ Tất cả các thay đổi và cập nhật quan trọng của dự án đượ
 - **Giữ nguyên**: không mất tin khi rớt mạng ngắn trong lúc đang dùng; tin riêng `to:<clientId>` vẫn chỉ tới đúng người; operator không đổi.
 - Kiểm thử: **trình duyệt thật** (`test/member-replay.e2e.mjs`, 12 mục: vào lần đầu, mở lại phiên đã lưu, vào lại bằng mật khẩu, tin mới tới đúng 1 lần, rớt mạng ngắn vẫn nhận, không lặp) — trước khi sửa 6/12 trượt, sau 12/12; `test/band-replay.test.mjs` +6 ca (giới hạn tuổi tin, `sinceTs` một mình, `hello`) — relay cũ trượt đúng 6 ca đó; 107 unit test; e2e `band-replay`, `phone-page`, `setlist-page`, `song-inbox` vẫn đạt. **Cần `wrangler deploy` ở `cloud/worker/`** (relay + trang `/m/`; app desktop không đổi).
 
-## [Chưa phát hành] - Thiết kế lại giao diện hộp "Edit Song"
+### Thiết kế lại giao diện hộp "Edit Song" và các sửa lỗi kèm theo
 
 - **Yêu cầu**: giao diện hộp sửa bài hát (kiểu Windows cổ điển: viền xám, nút phẳng, rất nhỏ) trông chưa bắt mắt; làm lại theo phong cách tối giản như các hộp khác của app, **không dùng gradient**, và gọn.
 - **Thay đổi** (`index.html`, chỉ lớp trình bày — không đổi logic/ID): thanh tiêu đề nền trắng + viền mảnh (biểu tượng ô vuông nhạt, nút đóng trong suốt, cao 36px); dòng tên bài và thanh công cụ nhỏ gọn (nút 24px, hộp font 138px); **thẻ slide dạng card** (số thứ tự trong ô tròn góc, viền sáng + vòng focus khi đang gõ, màu viền trái theo loại đoạn Verse/Chorus/End nhờ `getLabelColor` — trước đây JS đặt màu nhưng không có độ rộng viền nên không hiện); tab Words dạng viên thuốc; nút "＋ Thêm slide" rộng có chữ; khung xem trước bo góc nổi khối; chân hộp: Cancel · Apply · **OK (nút chính màu accent)** + gợi ý "Enter 2 lần / Ctrl+Enter để tách slide"; nền sau hộp mờ nhẹ. Khung mặc định 820×~544 (trước 770×480).
