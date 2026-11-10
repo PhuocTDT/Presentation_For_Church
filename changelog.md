@@ -2,7 +2,7 @@
 
 Tất cả các thay đổi và cập nhật quan trọng của dự án được ghi lại tại đây.
 
-## [Chưa phát hành] - Nút "Đăng xuất" cho tài khoản operator + gợi ý rõ khi relay từ chối ("Sai admin secret")
+## [3.1.15] - Nút "Đăng xuất" cho tài khoản operator + gợi ý rõ khi relay từ chối ("Sai admin secret")
 
 - **Triệu chứng báo cáo**: sidebar Kênh Band hiện "Kênh KHÔNG khởi chạy được — Sai admin secret" và **không có chỗ nào để đăng xuất** để đăng nhập lại bằng tài khoản khác. Backend đăng xuất (`band-operator-auth-logout`, `preload.js` `bandComm.operatorAuth.logout`) đã có từ trước nhưng giao diện không có nút nào gọi nó.
 - **Ý nghĩa lỗi (AuthZ)**: `POST /admin/config` chỉ được relay chấp nhận khi (1) khóa quản trị (`X-Admin-Secret`) khớp khóa đã ghim cho phòng, hoặc (2) Cognito ID token hợp lệ có email trùng `operatorEmail` của phòng (`room-relay.js` `handleAdminConfig`, `bearerIsRoomOwner`). Máy mới/cài lại/đổi tài khoản Windows có khóa khác và đăng nhập nhầm email (hoặc token hết hạn, hoặc bản ghi phòng thiếu `operatorEmail`) thì bị `403 Sai admin secret` (mật khẩu phòng cố ý KHÔNG còn được tính, B-19).
