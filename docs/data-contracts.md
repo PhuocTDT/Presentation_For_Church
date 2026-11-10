@@ -32,6 +32,15 @@ Item được lưu trong library thường có dạng:
 - `migrateItem()` phải giữ tương thích ngược
 - `validateItem()` phải chặn item thiếu `id`, `title`, `lyrics`
 
+## Định dạng giàu cho bài hát (`rich`, tuỳ chọn)
+
+- `lyrics` vẫn là chuỗi thuần và là nguồn chữ duy nhất cho mọi nơi khác (nhập/xuất, thay thế hàng loạt, đồng bộ lên điện thoại, `/setlist/`, tìm kiếm). Định dạng nằm ở trường tuỳ chọn `rich` trên bài hát; **Kinh Thánh không bao giờ có `rich`**.
+- Dạng: `{ v: 1, slides: [ null | { h, marks[], bgs[], anims[] } ] }`. `slides[i]` ứng với slide thứ i của `splitSlides(lyrics)` (cùng cách tách và nhãn như `index.html`); `h` = mã băm FNV-1a của phần chữ slide đó (đã bỏ nhãn). Chữ đổi ở nơi khác → `h` lệch → chỉ slide đó mất định dạng.
+- Vị trí `s`/`e` là chỉ số UTF-16 trong chữ slide (có cả `[hợp âm]`), nửa mở, được kéo về ranh giới ký tự (không cắt giữa chữ + dấu rời hay cặp surrogate).
+- `marks`: `color` (`#rrggbb`), `bold`, `italic`, `underline`, `size` (8–500 px trong canvas 960×540), `font`, `shadow`, `stroke`; áp theo thứ tự mảng, cái sau đè cái trước. `bgs`: lớp nền `preset` ∈ `brush-a|brush-b|paper|pill|marker` + `color`, `opacity`, `radius`, `padding`, `rotation`, `scale`, `dx`, `dy`, `z` (độ mờ chỉ thuộc lớp nền). `anims`: `phase` (`in|emph|out`), `type`, `dur`, `delay`, `ease`, `dir`, `stagger`, `repeat` (-1 = vô hạn).
+- **Không tin cậy**: `migrateItem` chạy `RichModel.sanitizeRich` (`src/editor/rich-model.js`), dựng object mới từ danh sách cho phép, kẹp miền giá trị, giới hạn số lượng (300 mark / 12 nền / 30 animation mỗi slide, 300 slide), bỏ khoá lạ. `save-song`, `importSongArray`, xuất bài và đọc thư viện đều đi qua `migrateItem`. Bài không có `rich` không bị thêm trường nào.
+- Lưu ý: khử trùng khi nhập (`songFingerprint`) chỉ so tên + lời, nên bài trùng chữ nhưng khác định dạng bị coi là trùng. Điện thoại và `/setlist/` chỉ thấy chữ thuần.
+
 ## Settings
 
 Settings hiện lưu trong `settings.json`. Các field quan trọng gồm:

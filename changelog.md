@@ -2,6 +2,13 @@
 
 Tất cả các thay đổi và cập nhật quan trọng của dự án được ghi lại tại đây.
 
+## [Chưa phát hành] - Nền móng dữ liệu cho trình soạn bài giàu định dạng (nhánh `feature/rich-text-editor`, giai đoạn 2; chưa có thay đổi giao diện)
+
+- **Mới `src/editor/rich-model.js`** (chạy cả trong trình duyệt và Node): `splitSlides` (khớp cách `index.html` tách slide/nhãn), `hashText`, `sanitizeRich`, `makeSlideRich`, `buildRuns`. Mô hình theo khoảng: `marks` (định dạng chữ), `bgs` (nền brush/marker/...), `anims` (animation) cho từng slide; `lyrics` vẫn là chuỗi thuần.
+- **`src/schema.js` `migrateItem`**: lọc `rich` bằng `sanitizeRich` (dữ liệu nhập vào là không tin cậy); Kinh Thánh luôn bỏ `rich`; bài không có `rich` không đổi hình dạng.
+- **Test `test/rich-model.test.mjs` (14 ca)**: dữ liệu hợp lệ, chữ đổi chỉ làm mất slide liên quan, đầu vào độc hại (màu/font/preset chứa mã, số cực lớn, `__proto__`), giới hạn số lượng, không sửa đầu vào, ranh giới ký tự (NFD, emoji), `buildRuns`, Kinh Thánh, idempotent, và **so với `schema.js` gốc trên `main` trên 286 bài thật cho kết quả y hệt**. Toàn bộ unit test: 114/114.
+- Chưa nối vào giao diện, `live.html` hay bộ render; các giai đoạn sau làm tiếp. Hộp Edit Song mới của v3.1.17 là nền cho giai đoạn giao diện tiếp theo.
+
 ## [3.1.17] - Hộp Edit Song mới (tab Slides, chọn nền, sửa lag, co chữ chừa chỗ next verse) + thành viên vào lại phòng không nhận tin cũ
 
 > Gồm: (1) sửa lỗi relay/phone — **cần `wrangler deploy` ở `cloud/worker/`**; (2) giao diện + sửa lỗi hộp Edit Song và màn chiếu Live (cần bản app mới).
@@ -54,7 +61,6 @@ Tất cả các thay đổi và cập nhật quan trọng của dự án đượ
 - Kiểm thử trên Electron thật: 0 hộp thoại gốc trong cả kịch bản; đăng xuất → hộp đăng nhập mở → gõ được; `alert` trả về ngay (4ms); Escape/Enter/Hủy đúng. **Chưa kiểm được bằng phím thật của hệ điều hành** (Windows không cho tiến trình nền chiếm foreground) — cần xác nhận trên máy gặp lỗi.
 
 ## [3.1.15] - Nút "Đăng xuất" cho tài khoản operator + gợi ý rõ khi relay từ chối ("Sai admin secret")
-
 - **Triệu chứng báo cáo**: sidebar Kênh Band hiện "Kênh KHÔNG khởi chạy được — Sai admin secret" và **không có chỗ nào để đăng xuất** để đăng nhập lại bằng tài khoản khác. Backend đăng xuất (`band-operator-auth-logout`, `preload.js` `bandComm.operatorAuth.logout`) đã có từ trước nhưng giao diện không có nút nào gọi nó.
 - **Ý nghĩa lỗi (AuthZ)**: `POST /admin/config` chỉ được relay chấp nhận khi (1) khóa quản trị (`X-Admin-Secret`) khớp khóa đã ghim cho phòng, hoặc (2) Cognito ID token hợp lệ có email trùng `operatorEmail` của phòng (`room-relay.js` `handleAdminConfig`, `bearerIsRoomOwner`). Máy mới/cài lại/đổi tài khoản Windows có khóa khác và đăng nhập nhầm email (hoặc token hết hạn, hoặc bản ghi phòng thiếu `operatorEmail`) thì bị `403 Sai admin secret` (mật khẩu phòng cố ý KHÔNG còn được tính, B-19).
 - **Sửa**: `index.html` — hộp lỗi Kênh Band có thêm dòng **"Đang đăng nhập bằng: <email>"** và nút **"Đăng xuất / đổi tài khoản"**; khung "Kết nối" cũng có nút **Đăng xuất**. Bấm (có hỏi xác nhận) → xoá phiên, dừng Kênh Band, mở lại hộp đăng nhập. `main.js` `bandStartupHint` — lỗi "admin secret" giờ có gợi ý tiếng Việt giải thích và chỉ cách xử lý thay vì câu chung chung.

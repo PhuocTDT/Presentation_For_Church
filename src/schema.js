@@ -1,3 +1,5 @@
+const RichModel = require('./editor/rich-model');
+
 const SongSchema = {
   required: ['id', 'title', 'lyrics'],
   defaults: {
@@ -103,6 +105,16 @@ function migrateItem(data) {
 
   if (!migrated.background || typeof migrated.background !== 'object') {
     migrated.background = null;
+  }
+
+  // `rich` (định dạng chữ/nền/animation theo khoảng) là dữ liệu KHÔNG tin cậy: dựng lại từ danh sách cho phép.
+  // Kinh Thánh không dùng định dạng này. Không có gì dùng được → bỏ hẳn trường (bài cũ không bị đổi hình dạng).
+  if (migrated.type === 'bible' || migrated.rich == null) {
+    delete migrated.rich;
+  } else {
+    const cleanRich = RichModel.sanitizeRich(migrated.rich, migrated.lyrics);
+    if (cleanRich) migrated.rich = cleanRich;
+    else delete migrated.rich;
   }
 
   return migrated;
