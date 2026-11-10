@@ -6,6 +6,7 @@
 // thư mục "<tên>/" khi `electron <thư mục>` và sẽ chạy nhầm file (đã gây vòng lặp sinh tiến trình).
 import { spawn } from 'node:child_process';
 import fs from 'node:fs';
+import net from 'node:net';
 import os from 'node:os';
 import path from 'node:path';
 import { createRequire } from 'node:module';
@@ -73,7 +74,13 @@ export function removeInstanceUserData(instanceId) {
 export async function launchApp({ appDir, instanceId, dialogQueue = [] }) {
   const queueFile = path.join(appDir, 'dialog-queue.json');
   fs.writeFileSync(queueFile, JSON.stringify(dialogQueue));
-  const port = 9400 + Math.floor(Math.random() * 500);
+  // Cổng do HĐH cấp (không chọn ngẫu nhiên trong dải cố định): Windows/Hyper-V có thể "reserve" cả dải 9014–9900+ (lệnh
+  // `netsh interface ipv4 show excludedportrange protocol=tcp`) → app báo "Cannot start http server for devtools".
+  const port = await new Promise((resolve, reject) => {
+    const srv = net.createServer();
+    srv.once('error', reject);
+    srv.listen(0, '127.0.0.1', () => { const p = srv.address().port; srv.close(() => resolve(p)); });
+  });
   const env = { ...process.env, E2E_DIALOG_QUEUE: queueFile };
   delete env.ELECTRON_RUN_AS_NODE;
   let log = '';

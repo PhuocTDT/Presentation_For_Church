@@ -1673,9 +1673,28 @@
         position: relative; padding: 40px 16px 16px;
         background: #e7eaf7;
       }
-      #song-editor-modal .win-modal-container > main > section::before {
-        content: 'XEM TRƯỚC · 16:9'; position: absolute; top: 11px; left: 16px;
-        font-size: 9.5px; font-weight: 800; letter-spacing: .15em; color: var(--se-ink-faint);
+      #song-editor-modal .se-pv-head {
+        position: absolute; top: 7px; left: 16px; right: 12px; height: 28px; display: flex; align-items: center; gap: 8px; z-index: 3;
+      }
+      #song-editor-modal .se-pv-title { font-size: 12px; font-weight: 700; color: var(--se-ink-dim); display: flex; align-items: center; gap: 6px; }
+      #song-editor-modal .se-pv-title .material-symbols-outlined { font-size: 16px; }
+      #song-editor-modal .se-live-badge {
+        display: inline-flex; align-items: center; gap: 5px; height: 20px; padding: 0 8px; border-radius: 999px;
+        background: #e6f7ec; color: #1c7a3f; font-size: 10.5px; font-weight: 700;
+      }
+      #song-editor-modal .se-live-badge::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: #25a85a; }
+      #song-editor-modal .se-pv-tools { margin-left: auto; display: flex; align-items: center; gap: 6px; }
+      #song-editor-modal .se-pv-head .se-bgbar { position: static; }
+      #song-editor-modal .se-iconbtn {
+        width: 26px; height: 26px; border: 1px solid var(--se-line); border-radius: 8px; background: #fff; color: var(--se-ink-dim);
+        display: flex; align-items: center; justify-content: center; cursor: pointer; transition: border-color .12s, color .12s, background .12s;
+      }
+      #song-editor-modal .se-iconbtn .material-symbols-outlined { font-size: 16px; }
+      #song-editor-modal .se-iconbtn:hover, #song-editor-modal .se-iconbtn:focus-visible { border-color: var(--se-accent); color: var(--se-accent); outline: none; }
+      #song-editor-modal .se-iconbtn.on { background: var(--se-accent-soft); border-color: var(--se-accent); color: var(--se-accent); }
+      /* xem trước toàn màn hình: bỏ giới hạn max-w-xl/aspect-video của Tailwind, lấp đầy màn hình (canvas ảo 960x540 tự co theo khung) */
+      #song-editor-modal #editor-preview-box:fullscreen {
+        max-width: none; width: 100vw; height: 100vh; aspect-ratio: auto; border-radius: 0; box-shadow: none; background: #000;
       }
       #song-editor-modal #editor-preview-box {
         border-radius: 11px; box-shadow: 0 18px 38px -14px rgba(30,27,75,.6), 0 0 0 1px rgba(30,27,75,.18);
@@ -1695,14 +1714,56 @@
       #song-editor-modal .win-modal-container > footer .win-button:active { transform: translateY(1px); }
       #song-editor-modal .win-modal-container > footer .win-button:focus-visible { outline: 2px solid var(--se-accent); outline-offset: 2px; }
       /* thứ tự hiển thị: Hủy · Áp dụng · OK (DOM giữ nguyên Apply, OK, Cancel) */
-      #song-editor-modal .win-modal-container > footer .win-button:nth-of-type(3) { order: 0; border-color: transparent; color: var(--se-ink-dim); background: transparent; }
-      #song-editor-modal .win-modal-container > footer .win-button:nth-of-type(3):hover { background: #f1f2fa; color: var(--se-ink); border-color: transparent; }
-      #song-editor-modal .win-modal-container > footer .win-button:nth-of-type(1) { order: 1; }
-      #song-editor-modal .win-modal-container > footer .win-button:nth-of-type(2) {
+      #song-editor-modal #se-btn-cancel { order: 0; border-color: transparent; color: var(--se-ink-dim); background: transparent; }
+      #song-editor-modal #se-btn-cancel:hover { background: #f1f2fa; color: var(--se-ink); border-color: transparent; }
+      #song-editor-modal #se-btn-apply { order: 1; }
+      #song-editor-modal #se-btn-ok {
         order: 2; color: #fff; border-color: transparent; padding: 0 22px;
         background: var(--se-accent); box-shadow: 0 8px 18px -8px rgba(79,70,229,.7);
       }
-      #song-editor-modal .win-modal-container > footer .win-button:nth-of-type(2):hover { color: #fff; background: var(--se-accent-dim); border-color: transparent; box-shadow: 0 10px 22px -8px rgba(79,70,229,.8); }
+      #song-editor-modal #se-btn-ok:hover { color: #fff; background: var(--se-accent-dim); border-color: transparent; box-shadow: 0 10px 22px -8px rgba(79,70,229,.8); }
+
+      /* -- Help & Tips (chân hộp) -- */
+      #song-editor-modal .se-help-wrap { position: relative; margin-right: auto; }
+      #song-editor-modal #se-help-btn {
+        display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 10px; border: 0; border-radius: 8px; background: transparent;
+        color: var(--se-ink-dim); font-size: 12px; font-weight: 700; cursor: pointer; transition: background .12s, color .12s;
+      }
+      #song-editor-modal #se-help-btn .material-symbols-outlined { font-size: 17px; }
+      #song-editor-modal #se-help-btn:hover, #song-editor-modal #se-help-btn[aria-expanded="true"] { background: var(--se-accent-soft); color: var(--se-accent); }
+      #song-editor-modal #se-help-btn:focus-visible { outline: 2px solid var(--se-accent); outline-offset: 2px; }
+      #song-editor-modal #se-help-pop {
+        position: absolute; left: 0; bottom: 38px; width: 330px; padding: 12px 14px; border-radius: 12px; background: #fff;
+        border: 1px solid var(--se-line); box-shadow: 0 22px 50px -12px rgba(30,33,64,.5); z-index: 20;
+      }
+      #song-editor-modal #se-help-pop[hidden] { display: none; }
+      #song-editor-modal #se-help-pop h4 { margin: 0 0 6px; font-size: 12px; font-weight: 800; color: var(--se-ink); }
+      #song-editor-modal #se-help-pop ul { margin: 0; padding-left: 16px; list-style: disc; font-size: 11.5px; line-height: 1.55; color: var(--se-ink-dim); }
+      #song-editor-modal #se-help-pop li + li { margin-top: 3px; }
+      #song-editor-modal #se-help-pop b { color: var(--se-ink); }
+
+      /* -- Mắt trên thẻ lời: panel Text / Background / Animation -- */
+      #song-editor-modal .se-eye {
+        margin-left: auto; width: 22px; height: 22px; flex: none; border: 0; border-radius: 6px; background: transparent; color: var(--se-ink-faint);
+        display: flex; align-items: center; justify-content: center; cursor: pointer; transition: background .12s, color .12s;
+      }
+      #song-editor-modal .se-eye .material-symbols-outlined { font-size: 16px; }
+      #song-editor-modal .se-eye:hover, #song-editor-modal .se-eye:focus-visible { background: var(--se-accent-soft); color: var(--se-accent); outline: none; }
+      #song-editor-modal .lyrics-slide-block.se-seg-open .se-eye { background: var(--se-accent-soft); color: var(--se-accent); }
+      #song-editor-modal .se-seg-panel { border-top: 1px solid var(--se-line-soft); background: #fbfbff; border-radius: 0 0 10px 10px; padding: 6px 10px 10px; }
+      #song-editor-modal .se-seg-panel[hidden] { display: none; }
+      #song-editor-modal .se-seg-tabs { display: flex; gap: 2px; border-bottom: 1px solid var(--se-line-soft); margin-bottom: 8px; }
+      #song-editor-modal .se-seg-tab {
+        padding: 5px 10px; margin-bottom: -1px; border: 0; border-bottom: 2px solid transparent; background: transparent; color: var(--se-ink-faint);
+        font-size: 11.5px; font-weight: 700; cursor: pointer;
+      }
+      #song-editor-modal .se-seg-tab:hover { color: var(--se-accent); }
+      #song-editor-modal .se-seg-tab.active { color: var(--se-accent); border-bottom-color: var(--se-accent); }
+      #song-editor-modal .se-seg-tab:focus-visible { outline: 2px solid var(--se-accent); outline-offset: -2px; }
+      #song-editor-modal .se-seg-scope { font-size: 11px; color: var(--se-ink-dim); margin-bottom: 6px; }
+      #song-editor-modal .se-seg-scope b { color: var(--se-ink); font-weight: 700; }
+      #song-editor-modal .se-seg-body { font-size: 11.5px; color: var(--se-ink-faint); min-height: 36px; }
+      #song-editor-modal .se-seg-body[hidden] { display: none; }
     </style>
     <!-- Đặt CUỐI <head> (sau mọi <style> inline) để giữ đúng thứ tự cascade như Tailwind Play CDN cũ. -->
     <link rel="stylesheet" href="src/css/tailwind.generated.css" />
@@ -2359,7 +2420,15 @@
                 </aside>
                 <!-- Right Preview -->
                 <section class="flex-1 bg-[#d0d0d0] flex flex-col p-4 overflow-hidden">
-                    <div id="se-preview-bgbar" class="se-bgbar"></div>
+                    <div class="se-pv-head">
+                        <span class="se-pv-title"><span class="material-symbols-outlined">desktop_windows</span>Preview</span>
+                        <span class="se-live-badge" title="Khung xem trước cập nhật ngay khi bạn gõ hoặc đổi kiểu">Live Preview</span>
+                        <div class="se-pv-tools">
+                            <div id="se-preview-bgbar" class="se-bgbar"></div>
+                            <button id="se-fs-btn" class="se-iconbtn" type="button" title="Xem trước toàn màn hình (Esc để thoát)" aria-label="Xem trước toàn màn hình"
+                                onclick="seToggleFullscreen()"><span class="material-symbols-outlined">fullscreen</span></button>
+                        </div>
+                    </div>
                     <div class="flex-1 flex items-center justify-center">
                         <div class="aspect-video w-full max-w-xl bg-black shadow-lg overflow-hidden relative"
                             id="editor-preview-box">
@@ -2382,10 +2451,22 @@
             </main>
             <!-- Bottom Action Bar -->
             <footer class="bg-[#f0f0f0] border-t border-white h-12 shrink-0 flex items-center justify-end px-3 gap-2">
-                <span class="se-hint">Mẹo: nhấn <b>Enter 2 lần</b> hoặc <b>Ctrl+Enter</b> để tách slide</span>
-                <button class="win-button text-[11px] text-slate-900" onclick="saveSong(false)">Apply</button>
-                <button class="win-button text-[11px] text-slate-900" onclick="saveSong(true)">OK</button>
-                <button class="win-button text-[11px] text-slate-900" onclick="closeSongEditor()">Cancel</button>
+                <div class="se-help-wrap">
+                    <button id="se-help-btn" type="button" aria-expanded="false" aria-controls="se-help-pop" onclick="seToggleHelp()"><span class="material-symbols-outlined">help</span>Help &amp; Tips</button>
+                    <div id="se-help-pop" role="dialog" aria-label="Help &amp; Tips" hidden>
+                        <h4>Mẹo soạn lời bài hát</h4>
+                        <ul>
+                            <li>Nhấn <b>Enter 2 lần</b> (nhanh) hoặc <b>Ctrl+Enter</b> để tách slide mới.</li>
+                            <li>Dòng đầu bắt đầu bằng <b>Đoạn, Điệp khúc, Kết, Verse, Chorus, Bridge…</b> được nhận là nhãn slide.</li>
+                            <li>Chữ trong ngoặc vuông như <b>[Am]</b> là hợp âm: hiện ở màn hình điều khiển, <b>không</b> hiện trên màn chiếu.</li>
+                            <li>Bấm biểu tượng <b>mắt</b> trên thẻ để mở Text / Background / Animation; tô chọn chữ trước để chỉ áp cho phần đó.</li>
+                            <li>Tab <b>Slides</b>: bấm để xem, bấm đúp để sửa, kéo để đổi thứ tự.</li>
+                        </ul>
+                    </div>
+                </div>
+                <button id="se-btn-apply" class="win-button text-[11px] text-slate-900" onclick="saveSong(false)">Apply</button>
+                <button id="se-btn-ok" class="win-button text-[11px] text-slate-900" onclick="saveSong(true)">OK</button>
+                <button id="se-btn-cancel" class="win-button text-[11px] text-slate-900" onclick="closeSongEditor()">Cancel</button>
             </footer>
         </div>
     </div>
@@ -6785,8 +6866,20 @@
             <div class="lyrics-slide-header">
                 <div class="lyrics-slide-num">${index + 1}</div>
                 <input class="lyrics-slide-label-input" placeholder="Label (optional)..." value="${escapeHtml(label)}" spellcheck="false">
+                <button class="se-eye" type="button" title="Tuỳ chỉnh Text / Background / Animation" aria-label="Tuỳ chỉnh thẻ này" aria-expanded="false"><span class="material-symbols-outlined">visibility</span></button>
             </div>
             <div class="lyrics-slide-content" contenteditable="true" spellcheck="false">${escapeHtml(body).replace(/\n/g, '<br>')}</div>
+            <div class="se-seg-panel" hidden>
+                <div class="se-seg-tabs" role="tablist">
+                    <button class="se-seg-tab active" type="button" role="tab" aria-selected="true" data-seg-tab="text">Text</button>
+                    <button class="se-seg-tab" type="button" role="tab" aria-selected="false" data-seg-tab="bg">Background</button>
+                    <button class="se-seg-tab" type="button" role="tab" aria-selected="false" data-seg-tab="anim">Animation</button>
+                </div>
+                <div class="se-seg-scope">Áp dụng cho: <b>cả đoạn</b></div>
+                <div class="se-seg-body" data-seg-body="text">Tuỳ chọn chữ cho phần đang chọn sẽ hiện ở đây.</div>
+                <div class="se-seg-body" data-seg-body="bg" hidden>Tuỳ chọn nền sau chữ sẽ hiện ở đây.</div>
+                <div class="se-seg-body" data-seg-body="anim" hidden>Tuỳ chọn hiệu ứng sẽ hiện ở đây.</div>
+            </div>
         `;
 
             const contentDiv = block.querySelector('.lyrics-slide-content');
@@ -6801,6 +6894,8 @@
             }
             updateLabelColor();
             labelInput.addEventListener('input', updateLabelColor);
+
+            seWireSegPanel(block, contentDiv);
 
             let lastEnterTime = 0;
 
@@ -6883,6 +6978,129 @@
                 return content;
             }).filter(s => s !== "").join('\n\n');
         }
+
+        // ===== Panel Text / Background / Animation trên thẻ lời (mở bằng biểu tượng mắt) =====
+        // Mỗi lần chỉ mở 1 thẻ. Phạm vi áp dụng = phần chữ đang tô chọn trong thẻ (vị trí tính trên CHỮ của thẻ, đã bỏ nhãn),
+        // không tô chọn gì = cả đoạn. Nội dung từng tab được thêm ở các bước sau; ở đây là khung + phạm vi.
+
+        // Chuỗi hoá DOM của ô sửa lời theo đúng cách innerText thấy (thuật toán "required line break" của CSS): <br> là một ký tự
+        // xuống dòng thật; đầu/cuối mỗi thẻ khối (div/li = 1, p = 2) là "ngắt dòng bắt buộc" — các ngắt liên tiếp gộp lấy số lớn nhất
+        // và KHÔNG bị nuốt bởi ký tự xuống dòng của <br> (nên <div><br></div> cho thêm một dòng trống). Ngắt ở đầu/cuối chuỗi bị bỏ.
+        // Không dùng innerText vì phải chạy được trên đoạn cắt rời khỏi DOM, nơi innerText mất dấu xuống dòng.
+        function seSerializeNodes(root) {
+            let out = '';
+            let pend = 0;   // số ngắt dòng bắt buộc đang chờ chèn trước nội dung kế tiếp
+            const flush = () => { if (pend && out) out += '\n'.repeat(pend); pend = 0; };
+            (function walk(n) {
+                for (let c = n.firstChild; c; c = c.nextSibling) {
+                    if (c.nodeType === 3) {
+                        if (c.nodeValue) { flush(); out += c.nodeValue; }
+                    } else if (c.nodeType === 1) {
+                        if (c.tagName === 'BR') { flush(); out += '\n'; continue; }
+                        const brk = c.tagName === 'P' ? 2 : /^(DIV|LI)$/.test(c.tagName) ? 1 : 0;
+                        if (brk) pend = Math.max(pend, brk);
+                        walk(c);
+                        if (brk) pend = Math.max(pend, brk);
+                    }
+                }
+            })(root);
+            return out;
+        }
+        // Vị trí (đã trừ khoảng trắng đầu) của một điểm biên trong chữ của ô sửa lời.
+        function seOffsetIn(contentDiv, full, container, offset) {
+            const r = document.createRange();
+            r.selectNodeContents(contentDiv);
+            r.setEnd(container, offset);
+            const lead = full.length - full.replace(/^\s+/, '').length;
+            return Math.max(0, seSerializeNodes(r.cloneContents()).length - lead);
+        }
+        // { s, e, text, body } của vùng tô chọn trong 1 thẻ, hoặc null nếu không có vùng tô chọn nằm trong thẻ đó.
+        function seBlockSelection(block) {
+            const cd = block && block.querySelector('.lyrics-slide-content');
+            const sel = window.getSelection();
+            if (!cd || !sel || !sel.rangeCount) return null;
+            const r = sel.getRangeAt(0);
+            if (!cd.contains(r.startContainer) || !cd.contains(r.endContainer)) return null;
+            const full = seSerializeNodes(cd);
+            const body = full.trim();
+            const s = Math.min(body.length, seOffsetIn(cd, full, r.startContainer, r.startOffset));
+            const e = Math.min(body.length, seOffsetIn(cd, full, r.endContainer, r.endOffset));
+            return { s: Math.min(s, e), e: Math.max(s, e), body, text: body.slice(Math.min(s, e), Math.max(s, e)) };
+        }
+        function seUpdateScope(block) {
+            const out = block.querySelector('.se-seg-scope b');
+            if (!out) return;
+            const sel = block._seSel;
+            if (!sel || sel.e <= sel.s) { out.textContent = 'cả đoạn'; return; }
+            const t = sel.text.replace(/\s+/g, ' ').trim();
+            out.textContent = '“' + (t.length > 40 ? t.slice(0, 40) + '…' : t) + '” (ký tự ' + sel.s + '–' + sel.e + ')';
+        }
+        function seSetSegTab(block, name) {
+            block.querySelectorAll('.se-seg-tab').forEach((b) => { const on = b.dataset.segTab === name; b.classList.toggle('active', on); b.setAttribute('aria-selected', String(on)); });
+            block.querySelectorAll('.se-seg-body').forEach((b) => { b.hidden = b.dataset.segBody !== name; });
+        }
+        function seToggleSegPanel(block, open) {
+            const panel = block.querySelector('.se-seg-panel');
+            const eye = block.querySelector('.se-eye');
+            if (!panel || !eye) return;
+            if (open) {
+                document.querySelectorAll('#lyrics-editor-container .lyrics-slide-block.se-seg-open').forEach((o) => { if (o !== block) seToggleSegPanel(o, false); });
+                seUpdateScope(block);
+            }
+            panel.hidden = !open;
+            block.classList.toggle('se-seg-open', open);
+            eye.setAttribute('aria-expanded', String(open));
+        }
+        function seWireSegPanel(block, contentDiv) {
+            const eye = block.querySelector('.se-eye');
+            const panel = block.querySelector('.se-seg-panel');
+            // mousedown KHÔNG lấy focus: vùng chữ đang tô chọn trong ô sửa lời phải còn nguyên khi bấm vào mắt/tab
+            const keepSel = (e) => e.preventDefault();
+            eye.addEventListener('mousedown', keepSel);
+            panel.addEventListener('mousedown', (e) => { if (e.target.closest('.se-seg-tab')) keepSel(e); });
+            eye.addEventListener('click', () => seToggleSegPanel(block, !block.classList.contains('se-seg-open')));
+            panel.addEventListener('click', (e) => { const t = e.target.closest('.se-seg-tab'); if (t) seSetSegTab(block, t.dataset.segTab); });
+            const remember = () => {
+                const sel = seBlockSelection(block);
+                if (!sel) return;                       // chọn ngoài thẻ này → giữ vùng chọn cuối cùng trong thẻ
+                block._seSel = sel;
+                if (block.classList.contains('se-seg-open')) seUpdateScope(block);
+            };
+            contentDiv.addEventListener('keyup', remember);
+            contentDiv.addEventListener('mouseup', remember);
+            contentDiv.addEventListener('input', () => { block._seSel = seBlockSelection(block) || null; if (block.classList.contains('se-seg-open')) seUpdateScope(block); });
+        }
+
+        // ===== Xem trước toàn màn hình + Help & Tips =====
+        function seToggleFullscreen() {
+            const box = document.getElementById('editor-preview-box');
+            if (!box) return;
+            if (document.fullscreenElement === box) { document.exitFullscreen().catch(() => {}); return; }
+            if (box.requestFullscreen) box.requestFullscreen().catch((err) => console.warn('[Editor] Không vào được toàn màn hình:', err && err.message));
+        }
+        document.addEventListener('fullscreenchange', () => {
+            const box = document.getElementById('editor-preview-box');
+            const btn = document.getElementById('se-fs-btn');
+            const on = !!box && document.fullscreenElement === box;
+            if (btn) {
+                btn.classList.toggle('on', on);
+                const ic = btn.querySelector('.material-symbols-outlined'); if (ic) ic.textContent = on ? 'fullscreen_exit' : 'fullscreen';
+            }
+            // khung đổi kích thước → co lại canvas ảo 960x540 cho khớp (sau 1 nhịp để trình duyệt kịp bố trí lại)
+            requestAnimationFrame(() => scaleVirtualCanvas('editor-virtual-canvas', 'editor-preview-box'));
+        });
+        function seToggleHelp(force) {
+            const pop = document.getElementById('se-help-pop');
+            const btn = document.getElementById('se-help-btn');
+            if (!pop || !btn) return;
+            const open = typeof force === 'boolean' ? force : pop.hidden;
+            pop.hidden = !open;
+            btn.setAttribute('aria-expanded', String(open));
+        }
+        document.addEventListener('mousedown', (e) => {
+            const pop = document.getElementById('se-help-pop');
+            if (pop && !pop.hidden && !e.target.closest('.se-help-wrap')) seToggleHelp(false);
+        });
 
         function reindexSlides() {
             const container = document.getElementById('lyrics-editor-container');
@@ -7313,6 +7531,8 @@
         }
 
         function closeSongEditor() {
+            if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+            seToggleHelp(false);
             seResetSlidesView();
             document.getElementById('song-editor-modal').style.display = 'none';
             document.getElementById('lyrics-editor-container').innerHTML = '';
@@ -9037,6 +9257,8 @@
             }
 
             const keys = globalSettings.shortcuts || {};
+            const editorModal = document.getElementById('song-editor-modal');
+            if (editorModal && editorModal.style.display === 'flex') return;   // hộp soạn bài đang mở: Esc thoát toàn màn hình xem trước, không xoá màn Live
             if (liveSlides.length > 0) {
                 if (e.key === keys.nextSlide || (keys.nextSlide === 'ArrowRight' && (e.key === 'ArrowDown' || e.key === ' '))) {
                     if (currentLiveIndex < liveSlides.length - 1) goLiveSlide(currentLiveIndex + 1);

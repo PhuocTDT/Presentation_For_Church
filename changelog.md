@@ -2,6 +2,18 @@
 
 Tất cả các thay đổi và cập nhật quan trọng của dự án được ghi lại tại đây.
 
+## [Chưa phát hành] - Trình soạn bài giàu định dạng, giai đoạn 3: vỏ giao diện hộp Edit Song (nhánh `feature/rich-text-editor`)
+
+- **`index.html` — hộp Edit Song**:
+  - Khung xem trước có thanh tiêu đề thật: "Preview", nhãn "Live Preview", chip nền và **nút xem trước toàn màn hình** (`seToggleFullscreen`; canvas ảo 960×540 co theo màn hình, Esc để thoát). Thay nhãn chữ "XEM TRƯỚC · 16:9" cũ (`::before`).
+  - Chân hộp có **Help & Tips** (popover: tách slide, nhãn, hợp âm `[Am]`, mắt, tab Slides) thay dòng gợi ý cũ; nút Cancel/Apply/OK định vị theo id (`#se-btn-cancel|apply|ok`) thay vì `:nth-of-type`.
+  - Mỗi thẻ ở tab Words có **biểu tượng mắt** mở panel **Text / Background / Animation** (mỗi lần mở một thẻ), kèm dòng **"Áp dụng cho"** = phần chữ đang tô chọn trong thẻ (vị trí ký tự tính trên chữ của thẻ đã bỏ nhãn — đúng hệ toạ độ của `rich-model`) hoặc "cả đoạn". Bấm mắt/tab không làm mất vùng tô chọn. Nội dung từng tab sẽ được thêm ở các bước sau; panel không nằm trong `.lyrics-slide-content` nên không lẫn vào lời khi lưu.
+  - `seSerializeNodes`: chuỗi hoá ô sửa lời theo đúng thuật toán xuống dòng của `innerText` (`<br>`, div/li = 1 ngắt, p = 2, ngắt liên tiếp gộp lấy max và không bị nuốt bởi `<br>`) để quy đổi vùng chọn → vị trí ký tự mà không phụ thuộc layout. Test so khớp `innerText` trên 11 dạng DOM mà contenteditable tạo ra (bản đầu sai ở `<div><br></div>` và chữ theo sau thẻ khối — test bắt được).
+  - Phím tắt toàn cục (mũi tên/Space/Esc điều khiển slide Live) **không chạy khi hộp Edit Song đang mở** (trước đây Esc sau khi bấm một nút trong hộp có thể xoá màn Live; nay còn có toàn màn hình xem trước nên càng cần). Tổ hợp phím có Ctrl vẫn chạy như cũ.
+- **`test/editor-shell.e2e.mjs` (mới)**: app Electron thật — header/Help/mắt/panel/tab, phạm vi theo vùng chọn (tô "VUA" → ký tự 19–22), serializer khớp innerText, lời lưu y nguyên, tab Slides, toàn màn hình (phóng canvas), Esc không xoá Live, không lỗi JS.
+- **`test/_e2e-app.mjs`**: cổng DevTools do HĐH cấp thay vì ngẫu nhiên trong 9400–9900 — Windows/Hyper-V đang reserve cả dải 9014–9900+ (`netsh interface ipv4 show excludedportrange protocol=tcp`) nên e2e cũ báo "Cannot start http server for devtools".
+- Kiểm thử: unit 122/122; e2e `editor-shell` + `data-import-flow` 5/5. Chưa làm: Undo/Redo, nút màu nền, xoá định dạng (cần mô hình lịch sử/định dạng của các bước sau — không thêm nút chưa có chức năng).
+
 ## [Chưa phát hành] - Nền móng dữ liệu cho trình soạn bài giàu định dạng (nhánh `feature/rich-text-editor`, giai đoạn 2; chưa có thay đổi giao diện)
 
 - **Mới `src/editor/rich-model.js`** (chạy cả trong trình duyệt và Node): `splitSlides` (khớp cách `index.html` tách slide/nhãn), `hashText`, `sanitizeRich`, `makeSlideRich`, `buildRuns`. Mô hình theo khoảng: `marks` (định dạng chữ), `bgs` (nền brush/marker/...), `anims` (animation) cho từng slide; `lyrics` vẫn là chuỗi thuần.
