@@ -45,7 +45,7 @@ test('bảng màu Office: bố cục, chọn màu, Automatic, Custom Colors, bà
     assert.equal(layout.base, 10); assert.equal(layout.tint, 50); assert.equal(layout.tintRows, 5); assert.equal(layout.std, 10);
     assert.deepEqual(layout.stdNames, ['Red', 'Orange', 'Yellow', 'Light Green', 'Green', 'Cyan', 'Light Blue', 'Blue', 'Dark Blue', 'Purple']);
     assert.equal(layout.autoSel, true, 'màu chữ mặc định → Automatic được đánh dấu');
-    assert.equal(layout.more, true, 'More Colors… khoá cho tới khi có hộp thoại RGB/HEX (giai đoạn 5)');
+    assert.equal(layout.more, false, 'More Colors… mở hộp thoại RGB/HEX riêng');
     assert.equal(await app.ev(`document.querySelector('#text-color-btn').getAttribute('aria-expanded')`), 'true');
     await app.screenshot(path.join(process.env.TEMP || '.', 'color-picker-1.png'));
 

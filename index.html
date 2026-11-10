@@ -1769,6 +1769,7 @@
       #song-editor-modal .se-seg-body[hidden] { display: none; }
     </style>
     <link rel="stylesheet" href="src/editor/color-picker.css" />
+    <link rel="stylesheet" href="src/editor/color-dialog.css" />
     <!-- Đặt CUỐI <head> (sau mọi <style> inline) để giữ đúng thứ tự cascade như Tailwind Play CDN cũ. -->
     <link rel="stylesheet" href="src/css/tailwind.generated.css" />
 </head>
@@ -3310,6 +3311,7 @@
     </div>
 
     <script src="src/editor/color-picker.js"></script>
+    <script src="src/editor/color-dialog.js"></script>
     <script>
         // --- Configuration & Global State ---
 
@@ -6540,7 +6542,12 @@
                 anchor: btn, title: 'Text Color', fromKeyboard: !!ev && ev.detail === 0,
                 automatic: { label: 'Automatic', hex: defHex },   // Automatic = màu chữ mặc định
                 current: () => { const c = ColorPicker.normalizeHex(editorStyle && editorStyle.color); return c && c === defHex ? null : c; },
-                onPick: (hex) => applyTextColor(hex === null ? def : hex)
+                onPick: (hex) => applyTextColor(hex === null ? def : hex),
+                // More Colors…: hộp thoại RGB/HEX riêng; OK → áp màu và thêm vào Custom Colors (như Office)
+                onMore: (cur) => ColorDialog.open({
+                    color: cur, fallback: defHex, title: 'Colors — Text Color',
+                    onOK: (hex) => { ColorPicker.addCustom(hex); applyTextColor(hex); }
+                })
             });
         }
         // Nền sau KHỐI CHỮ của bài = boxStyle (lớp riêng phía sau chữ, nên độ mờ nền không làm mờ chữ).
@@ -6560,7 +6567,11 @@
                 anchor: btn, title: 'Background Color', fromKeyboard: !!ev && ev.detail === 0,
                 automatic: { label: 'Automatic', hex: null },
                 current: seBoxBgCurrent,
-                onPick: seApplyBgColor
+                onPick: seApplyBgColor,
+                onMore: (cur) => ColorDialog.open({
+                    color: cur, fallback: '#7c4dff', title: 'Colors — Background Color',
+                    onOK: (hex) => { ColorPicker.addCustom(hex); seApplyBgColor(hex); }
+                })
             });
         }
         function seSyncColorIndicators() {

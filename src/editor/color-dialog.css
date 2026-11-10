@@ -1,0 +1,58 @@
+/* Hộp thoại "More Colors…" (src/editor/color-dialog.js). Luôn nền sáng, nằm trên mọi hộp khác (kể cả hộp Edit Song). */
+.cd-backdrop {
+  position: fixed; inset: 0; z-index: 10100; display: flex; align-items: center; justify-content: center;
+  background: rgba(17,15,46,.45); -webkit-backdrop-filter: blur(2px); backdrop-filter: blur(2px);
+}
+.cd-dialog {
+  --cd-accent: #5048e5; --cd-ink: #1c1b2e; --cd-ink-dim: #5c5a75; --cd-line: #dcdce6;
+  width: 520px; max-width: 94vw; background: #fff; color: var(--cd-ink); border-radius: 14px; border: 1px solid rgba(255,255,255,.6);
+  box-shadow: 0 32px 90px rgba(17,15,46,.5), 0 0 0 1px rgba(17,15,46,.12);
+  font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif; font-size: 12px; user-select: none; overflow: hidden;
+}
+.cd-title { display: flex; align-items: center; justify-content: space-between; height: 38px; padding: 0 8px 0 16px; border-bottom: 1px solid #ececf2; font-size: 13px; font-weight: 700; }
+.cd-x { width: 26px; height: 26px; border: 0; border-radius: 7px; background: transparent; color: var(--cd-ink-dim); font-size: 18px; line-height: 1; cursor: pointer; }
+.cd-x:hover, .cd-x:focus-visible { background: #e7e7ee; color: var(--cd-ink); outline: none; }
+.cd-body { display: flex; gap: 18px; padding: 14px 16px 6px; }
+.cd-left { flex: none; }
+.cd-label { margin-bottom: 6px; font-size: 11px; font-weight: 700; color: var(--cd-ink-dim); }
+.cd-pick { display: flex; gap: 10px; }
+.cd-spec { position: relative; width: 256px; height: 192px; border-radius: 8px; overflow: hidden; border: 1px solid var(--cd-line); cursor: crosshair; touch-action: none; }
+.cd-spec canvas { display: block; width: 100%; height: 100%; }
+.cd-dim { position: absolute; inset: 0; background: #000; pointer-events: none; }
+.cd-cross {
+  position: absolute; width: 14px; height: 14px; margin: -7px 0 0 -7px; border-radius: 50%; pointer-events: none;
+  border: 2px solid #fff; box-shadow: 0 0 0 1px rgba(0,0,0,.6), inset 0 0 0 1px rgba(0,0,0,.4);
+}
+.cd-spec:focus-visible, .cd-val:focus-visible { outline: 2px solid var(--cd-accent); outline-offset: 2px; }
+.cd-val { position: relative; width: 22px; height: 192px; border-radius: 6px; border: 1px solid var(--cd-line); cursor: pointer; touch-action: none; }
+.cd-valgrad { position: absolute; inset: 0; border-radius: 5px; }
+.cd-thumb {
+  position: absolute; left: -4px; right: -4px; height: 8px; margin-top: -4px; border-radius: 4px; background: #fff; pointer-events: none;
+  border: 1px solid rgba(0,0,0,.55); box-shadow: 0 1px 3px rgba(0,0,0,.35);
+}
+.cd-right { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 7px; }
+.cd-row { display: flex; align-items: center; gap: 8px; }
+.cd-k { width: 78px; white-space: nowrap; flex: none; font-size: 11px; font-weight: 600; color: var(--cd-ink-dim); }
+.cd-model, .cd-num, .cd-hex {
+  flex: 1; min-width: 0; height: 26px; padding: 0 8px; box-sizing: border-box; border: 1px solid var(--cd-line); border-radius: 7px; background: #fff;
+  color: var(--cd-ink); font: inherit; font-size: 12px; user-select: text;
+}
+.cd-hex { text-transform: uppercase; letter-spacing: .04em; font-weight: 600; }
+.cd-model:focus, .cd-num:focus, .cd-hex:focus { outline: none; border-color: var(--cd-accent); box-shadow: 0 0 0 3px rgba(80,72,229,.22); }
+.cd-num.bad, .cd-hex.bad { border-color: #d33; background: #fff4f4; box-shadow: 0 0 0 3px rgba(221,51,51,.15); }
+.cd-fields { display: flex; flex-direction: column; gap: 7px; }
+.cd-err { min-height: 14px; margin-top: -3px; font-size: 10.5px; color: #c0392f; }
+.cd-prev { display: flex; gap: 10px; margin-top: 2px; }
+.cd-pcol { flex: 1; display: flex; flex-direction: column; gap: 4px; }
+.cd-pcol .cd-k { width: auto; }
+.cd-sw { height: 38px; border-radius: 7px; border: 1px solid rgba(0,0,0,.25); box-sizing: border-box; }
+.cd-sw.auto { background-image: linear-gradient(135deg, transparent 47%, rgba(210,50,50,.85) 47%, rgba(210,50,50,.85) 53%, transparent 53%); }
+.cd-foot { display: flex; justify-content: flex-end; gap: 8px; padding: 10px 16px 14px; }
+.cd-btn {
+  min-width: 78px; height: 32px; padding: 0 16px; border-radius: 9px; border: 1px solid var(--cd-line); background: #fff; color: var(--cd-ink);
+  font: inherit; font-size: 12px; font-weight: 700; cursor: pointer;
+}
+.cd-btn:hover { background: #f1f2fa; border-color: rgba(80,72,229,.45); color: var(--cd-accent); }
+.cd-btn.primary { background: var(--cd-accent); border-color: transparent; color: #fff; box-shadow: 0 8px 18px -8px rgba(79,70,229,.7); }
+.cd-btn.primary:hover { background: #423bc4; color: #fff; }
+.cd-btn:focus-visible { outline: 2px solid var(--cd-accent); outline-offset: 2px; }

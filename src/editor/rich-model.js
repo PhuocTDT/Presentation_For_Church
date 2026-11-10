@@ -35,20 +35,28 @@
 
   var COLOR_RE = /^#[0-9a-fA-F]{6}$/;
   var FONT_RE = /^[\w \-.À-ɏ]{1,60}$/; // giống safeFamily của /setlist/: không cho dấu nháy, ngoặc, chấm phẩy
-  // Giống hệt labelPattern + stripLabel + tách slide của index.html (loadToPreview, bài không phải Kinh Thánh).
-  var LABEL_RE = /^(Verse|Chorus|Bridge|Pre-Chorus|Tag|End|Đoạn|Điệp khúc|Kết)/i;
+
+  // PHẢI giống hệt index.html (splitSlideLabel) và comm/setlist/slides.js (stripLabel): dòng đầu là NHÃN khi cả dòng là nhãn
+  // ("Verse 1", "Điệp khúc", "Chorus x2", "Kết") hoặc "Nhãn: lời" (giữ phần lời). "Kết thúc…/Endless…" KHÔNG phải nhãn.
+  var LABEL_WORDS = 'Verse|Chorus|Bridge|Pre-Chorus|Tag|End|Đoạn|Điệp khúc|Kết';
+  var LABEL_ONLY_RE = new RegExp('^(?:' + LABEL_WORDS + ')(?:\\s*\\d+)?(?:\\s*(?:[x×]\\s*\\d+|\\d+\\s*[x×]))?(?:\\s*\\([^)]*\\))?\\s*[:.\\-]?\\s*$', 'i');
+  var LABEL_INLINE_RE = new RegExp('^((?:' + LABEL_WORDS + ')(?:\\s*\\d+)?)\\s*:\\s*(\\S.*)$', 'i');
+
+  function splitLabel(text) {
+    var t = String(text == null ? '' : text);
+    var nlAt = t.indexOf('\n');
+    var first = (nlAt === -1 ? t : t.slice(0, nlAt)).trim();
+    var rest = nlAt === -1 ? '' : t.slice(nlAt + 1);
+    if (LABEL_ONLY_RE.test(first)) return { label: first, body: rest.trim() };
+    var m = LABEL_INLINE_RE.exec(first);
+    if (m) return { label: m[1].trim(), body: (m[2] + (rest ? '\n' + rest : '')).trim() };
+    return { label: '', body: t.trim() };
+  }
 
   function splitSlides(lyrics) {
     return String(lyrics == null ? '' : lyrics).split(/\n\s*\n/)
       .filter(function (s) { return s.trim() !== ''; })
-      .map(function (s) {
-        var t = s.trim();
-        var lines = t.split('\n');
-        if (lines.length > 0 && LABEL_RE.test(lines[0].trim())) {
-          return { label: lines[0].trim(), body: lines.slice(1).join('\n').trim() };
-        }
-        return { label: '', body: t };
-      });
+      .map(function (s) { return splitLabel(s.trim()); });
   }
 
   // FNV-1a 32-bit trên code unit UTF-16 → 8 ký tự hex. Chỉ để phát hiện chữ đã đổi, không phải mật mã.
@@ -132,7 +140,9 @@
       scale: num(o.scale, 0.5, 2, 1),
       dx: num(o.dx, -300, 300, 0),
       dy: num(o.dy, -300, 300, 0),
-      z: num(o.z, 0, 20, 0, true)
+      z: num(o.z, 0, 20, 0, true),
+      thick: num(o.thick, 0.15, 1, 0.6),          // độ dày dải marker (tỉ lệ chiều cao dòng)
+      shape: num(o.shape, 0, 9, 0, true)          // biến thể hình dạng (hạt giống của đường viền)
     };
   }
 
@@ -164,6 +174,20 @@
     return out;
   }
 
+  // Làm sạch {marks,bgs,anims} của MỘT slide theo chữ `body` (không kiểm mã băm). Dùng cho nơi hiển thị (xem trước/Live)
+  // để dù dữ liệu đến từ đâu cũng không bao giờ áp giá trị ngoài danh sách cho phép.
+  function sanitizeParts(parts, body) {
+    body = String(body == null ? '' : body);
+    var p = isObj(parts) ? parts : {};
+    var snap = boundaryFinder(body);
+    return {
+      marks: cleanList(p.marks, LIMITS.marks, cleanMark, body, snap),
+      bgs: cleanList(p.bgs, LIMITS.bgs, cleanBg, body, snap),
+      anims: cleanList(p.anims, LIMITS.anims, cleanAnim, body, snap)
+    };
+  }
+  function partsEmpty(p) { return !p || (!p.marks.length && !p.bgs.length && !p.anims.length); }
+
   // Trả về rich đã làm sạch (object MỚI) hoặc null nếu không còn gì dùng được. `info.dropped` = số slide
   // có định dạng nhưng bị bỏ vì chữ đã đổi (để giao diện báo cho người dùng).
   function sanitizeRich(rich, lyrics, info) {
@@ -176,12 +200,9 @@
       if (!isObj(r)) { out.push(null); continue; }
       var body = slides[i].body;
       if (r.h !== hashText(body)) { out.push(null); if (info) info.dropped++; continue; }
-      var snap = boundaryFinder(body);
-      var marks = cleanList(r.marks, LIMITS.marks, cleanMark, body, snap);
-      var bgs = cleanList(r.bgs, LIMITS.bgs, cleanBg, body, snap);
-      var anims = cleanList(r.anims, LIMITS.anims, cleanAnim, body, snap);
-      if (!marks.length && !bgs.length && !anims.length) { out.push(null); continue; }
-      out.push({ h: r.h, marks: marks, bgs: bgs, anims: anims });
+      var parts = sanitizeParts(r, body);
+      if (partsEmpty(parts)) { out.push(null); continue; }
+      out.push({ h: r.h, marks: parts.marks, bgs: parts.bgs, anims: parts.anims });
       any = true;
     }
     if (!any) return null;
@@ -200,9 +221,11 @@
   /* ---------- dựng các đoạn chữ ---------- */
   var FMT_KEYS = ['color', 'bold', 'italic', 'underline', 'size', 'font', 'shadow', 'stroke'];
 
-  // Cắt body thành các đoạn liên tiếp, mỗi đoạn có định dạng gộp từ mọi mark phủ nó (mark sau đè mark trước).
-  // Đoạn kề nhau cùng định dạng được gộp lại. Không có mark → đúng 1 đoạn, fmt rỗng.
-  function buildRuns(body, marks) {
+  function fmtEqual(a, b) { return JSON.stringify(a) === JSON.stringify(b); }
+
+  // Cắt body thành các đoạn liên tiếp tại mọi biên của mark (và `extraCuts`), mỗi đoạn mang định dạng gộp từ mọi mark phủ nó
+  // (mark sau đè mark trước). KHÔNG gộp đoạn kề nhau.
+  function rawRuns(body, marks, extraCuts) {
     body = String(body == null ? '' : body);
     var n = body.length;
     if (!n) return [];
@@ -213,6 +236,7 @@
       if (m && m.s > 0 && m.s < n) cuts[m.s] = true;
       if (m && m.e > 0 && m.e < n) cuts[m.e] = true;
     });
+    (extraCuts || []).forEach(function (c) { if (c > 0 && c < n) cuts[c] = true; });
     var pts = Object.keys(cuts).map(Number).sort(function (a, b) { return a - b; });
     var runs = [];
     for (var i = 0; i + 1 < pts.length; i++) {
@@ -222,11 +246,185 @@
         if (!m || !(m.s <= s && m.e >= e)) continue;
         for (var j = 0; j < FMT_KEYS.length; j++) if (m[FMT_KEYS[j]] !== undefined) fmt[FMT_KEYS[j]] = m[FMT_KEYS[j]];
       }
-      var prev = runs[runs.length - 1];
-      if (prev && JSON.stringify(prev.fmt) === JSON.stringify(fmt)) { prev.e = e; prev.text = body.slice(prev.s, e); }
-      else runs.push({ s: s, e: e, text: body.slice(s, e), fmt: fmt });
+      runs.push({ s: s, e: e, text: body.slice(s, e), fmt: fmt });
     }
     return runs;
+  }
+  function mergeRuns(runs, body) {
+    var out = [];
+    runs.forEach(function (r) {
+      var prev = out[out.length - 1];
+      if (prev && fmtEqual(prev.fmt, r.fmt)) { prev.e = r.e; prev.text = body.slice(prev.s, r.e); }
+      else out.push({ s: r.s, e: r.e, text: r.text, fmt: r.fmt });
+    });
+    return out;
+  }
+  // Đoạn đã gộp: không có mark → đúng 1 đoạn, fmt rỗng.
+  function buildRuns(body, marks) { body = String(body == null ? '' : body); return mergeRuns(rawRuns(body, marks), body); }
+
+  /* ---------- biến đổi dải (s,e) khi chữ thay đổi ---------- */
+  function commonPrefix(a, b) { var n = Math.min(a.length, b.length), i = 0; while (i < n && a.charCodeAt(i) === b.charCodeAt(i)) i++; return i; }
+
+  // Dời mọi dải (marks/bgs/anims: đều có s,e) theo thay đổi chữ oldText → newText (so khớp tiền tố/hậu tố chung).
+  // Vị trí trước vùng đổi giữ nguyên, sau vùng đổi dời theo độ lệch; nằm TRONG vùng đổi: đầu → đầu vùng, cuối → hết chữ mới.
+  // Gõ thêm ngay SAU cuối dải hoặc ngay TRƯỚC đầu dải thì chữ mới KHÔNG thuộc dải.
+  function remapItems(items, oldText, newText) {
+    oldText = String(oldText == null ? '' : oldText); newText = String(newText == null ? '' : newText);
+    if (!Array.isArray(items) || !items.length || oldText === newText) return items || [];
+    var p = commonPrefix(oldText, newText);
+    var maxSuf = Math.min(oldText.length, newText.length) - p, suf = 0;
+    while (suf < maxSuf && oldText.charCodeAt(oldText.length - 1 - suf) === newText.charCodeAt(newText.length - 1 - suf)) suf++;
+    var oldMidEnd = oldText.length - suf, newMid = newText.length - p - suf, delta = newText.length - oldText.length;
+    function map(x, isEnd) {
+      if (x < p) return x;
+      if (x >= oldMidEnd) {
+        // chèn thuần đúng tại biên: chữ mới đứng NGOÀI dải (cuối dải không dài ra; đầu dải bị đẩy sang phải)
+        if (x === p && oldMidEnd === p) return isEnd ? x : x + delta;
+        return x + delta;
+      }
+      if (x === p) return x;
+      return isEnd ? p + newMid : p;
+    }
+    var out = [];
+    items.forEach(function (it) {
+      var s = map(it.s, false), e = map(it.e, true);
+      if (e > s && s < newText.length) { var c = {}; for (var k in it) c[k] = it[k]; c.s = s; c.e = Math.min(e, newText.length); out.push(c); }
+    });
+    return out;
+  }
+  // Giữ phần [from, to) của các dải, dời về gốc `from`.
+  function sliceItems(items, from, to) {
+    var out = [];
+    (items || []).forEach(function (it) {
+      var s = Math.max(it.s, from), e = Math.min(it.e, to);
+      if (e > s) { var c = {}; for (var k in it) c[k] = it[k]; c.s = s - from; c.e = e - from; out.push(c); }
+    });
+    return out;
+  }
+  // Dời mọi dải thêm `delta` rồi kẹp vào [0, len]; dải rỗng bị bỏ.
+  function shiftItems(items, delta, len) {
+    var out = [];
+    (items || []).forEach(function (it) {
+      var s = Math.max(0, Math.min(len, it.s + delta)), e = Math.max(0, Math.min(len, it.e + delta));
+      if (e > s) { var c = {}; for (var k in it) c[k] = it[k]; c.s = s; c.e = e; out.push(c); }
+    });
+    return out;
+  }
+  function mapParts(parts, fn) {
+    parts = parts || {};
+    return { marks: fn(parts.marks || []), bgs: fn(parts.bgs || []), anims: fn(parts.anims || []) };
+  }
+  function remapParts(parts, oldText, newText) { return mapParts(parts, function (l) { return remapItems(l, oldText, newText); }); }
+  function sliceParts(parts, from, to) { return mapParts(parts, function (l) { return sliceItems(l, from, to); }); }
+  function shiftParts(parts, delta, len) { return mapParts(parts, function (l) { return shiftItems(l, delta, len); }); }
+
+  /* ---------- áp / gạt định dạng chữ (luôn trả về danh sách mark CHÍNH TẮC, không chồng lấn) ---------- */
+  function marksFromRuns(runs) {
+    var out = [];
+    runs.forEach(function (r) { if (Object.keys(r.fmt).length) { var m = { s: r.s, e: r.e }; for (var k in r.fmt) m[k] = r.fmt[k]; out.push(m); } });
+    return out;
+  }
+  // patch: { key: value } — value === undefined gỡ khoá đó trong khoảng [s, e).
+  function applyMarkPatch(marks, body, s, e, patch) {
+    body = String(body == null ? '' : body);
+    s = Math.max(0, Math.min(body.length, s | 0)); e = Math.max(0, Math.min(body.length, e | 0));
+    if (s >= e) return Array.isArray(marks) ? marks.slice() : [];
+    var runs = rawRuns(body, marks, [s, e]);
+    runs.forEach(function (r) {
+      if (r.s < s || r.e > e) return;
+      for (var k in patch) { if (patch[k] === undefined) delete r.fmt[k]; else r.fmt[k] = patch[k]; }
+    });
+    return marksFromRuns(mergeRuns(runs, body));
+  }
+  function clearMarks(marks, body, s, e) {
+    var patch = {}; FMT_KEYS.forEach(function (k) { patch[k] = undefined; });
+    return applyMarkPatch(marks, body, s, e, patch);
+  }
+  // Giá trị CHUNG của từng khoá định dạng trong [s, e) — undefined = không đặt; MIXED = có chỗ đặt khác nhau.
+  var MIXED = { mixed: true };
+  function fmtSummary(marks, body, s, e) {
+    var runs = rawRuns(body, marks, [s, e]).filter(function (r) { return r.s >= s && r.e <= e; });
+    var out = {};
+    FMT_KEYS.forEach(function (k) {
+      var first, set = false, mixed = false;
+      runs.forEach(function (r) {
+        var v = r.fmt[k]; var jv = JSON.stringify(v);
+        if (!set) { first = jv; set = true; } else if (first !== jv) mixed = true;
+      });
+      out[k] = mixed ? MIXED : (set && first !== undefined ? JSON.parse(first) : undefined);
+    });
+    return out;
+  }
+  // Bật/tắt một cờ (bold/italic/underline) trên [s, e): nếu TOÀN BỘ khoảng đang bật (theo giá trị hiệu lực: mark hoặc `base`)
+  // thì tắt, ngược lại bật.
+  function toggleFlag(marks, body, s, e, key, base) {
+    var runs = rawRuns(body, marks, [s, e]).filter(function (r) { return r.s >= s && r.e <= e; });
+    var allOn = runs.length > 0 && runs.every(function (r) { return (r.fmt[key] !== undefined ? r.fmt[key] : !!base) === true; });
+    var patch = {}; patch[key] = !allOn;
+    return applyMarkPatch(marks, body, s, e, patch);
+  }
+
+  /* ---------- bỏ [hợp âm] có ánh xạ vị trí (màn chiếu không hiện hợp âm) ---------- */
+  function stripChordsMapped(text, parts) {
+    text = String(text == null ? '' : text);
+    var re = /\[.*?\]/g, m, cuts = [];
+    while ((m = re.exec(text))) cuts.push([m.index, m.index + m[0].length]);
+    if (!cuts.length) return { text: text, parts: parts || { marks: [], bgs: [], anims: [] } };
+    var out = '', last = 0;
+    cuts.forEach(function (c) { out += text.slice(last, c[0]); last = c[1]; });
+    out += text.slice(last);
+    function map(x) {
+      var removed = 0;
+      for (var i = 0; i < cuts.length; i++) {
+        var c = cuts[i];
+        if (x >= c[1]) removed += c[1] - c[0];
+        else if (x > c[0]) { removed += x - c[0]; break; }
+        else break;
+      }
+      return x - removed;
+    }
+    function fn(list) {
+      var o = [];
+      (list || []).forEach(function (it) { var s = map(it.s), e = map(it.e); if (e > s) { var c = {}; for (var k in it) c[k] = it[k]; c.s = s; c.e = e; o.push(c); } });
+      return o;
+    }
+    return { text: out, parts: mapParts(parts, fn) };
+  }
+
+  /* ---------- ghép / tách bài ↔ các thẻ của trình soạn ---------- */
+  // blocks: [{ label, text, parts, partsText }]
+  //   text      = chữ của thẻ đúng như sẽ lưu (innerText.trim())
+  //   parts     = {marks,bgs,anims} có vị trí tính trên `partsText` (mặc định = text)
+  // → { lyrics, rich }  (thẻ rỗng bị bỏ, như getLyricsFromEditor). `rich` căn theo splitSlides(lyrics) và đã làm sạch.
+  function composeSong(blocks) {
+    var entries = [], slides = [], any = false;
+    (blocks || []).forEach(function (b) {
+      var label = String(b.label == null ? '' : b.label).trim();
+      var text = String(b.text == null ? '' : b.text).trim();
+      var entry = label ? (label + '\n' + text).trim() : text;
+      if (entry === '') return;
+      entries.push(entry);
+      var parsed = splitSlides(entry)[0];
+      if (!parsed) { slides.push(null); return; }
+      var parts = b.parts || { marks: [], bgs: [], anims: [] };
+      if (b.partsText != null && String(b.partsText) !== text) parts = remapParts(parts, String(b.partsText), text);
+      // body (chữ slide theo luật nhãn) luôn là hậu tố/tiền tố của text: dời theo độ lệch độ dài
+      var shifted = shiftParts(parts, parsed.body.length - text.length, parsed.body.length);
+      var sl = makeSlideRich(parsed.body, shifted);
+      if (sl) any = true;
+      slides.push(sl);
+    });
+    while (slides.length && slides[slides.length - 1] === null) slides.pop();
+    return { lyrics: entries.join('\n\n'), rich: any ? { v: VERSION, slides: slides } : null };
+  }
+  // Ngược lại: lời + rich → [{ label, body, parts }] (parts luôn có dạng {marks,bgs,anims}; thẻ trống nếu không có slide).
+  function decomposeSong(lyrics, rich) {
+    var slides = splitSlides(lyrics);
+    var clean = rich ? sanitizeRich(rich, lyrics) : null;
+    return slides.map(function (sl, i) {
+      var r = clean && clean.slides[i];
+      return { label: sl.label, body: sl.body, parts: r ? { marks: r.marks, bgs: r.bgs, anims: r.anims } : { marks: [], bgs: [], anims: [] } };
+    });
   }
 
   // Lấy phần rich của slide thứ i nếu còn khớp chữ hiện tại (dùng ở nơi hiển thị khi không muốn tin dữ liệu đã lưu).
@@ -236,8 +434,12 @@
   }
 
   return {
-    VERSION: VERSION, LIMITS: LIMITS, BG_PRESETS: BG_PRESETS, ANIM_TYPES: ANIM_TYPES,
-    splitSlides: splitSlides, hashText: hashText, sanitizeRich: sanitizeRich,
-    makeSlideRich: makeSlideRich, buildRuns: buildRuns, slideRich: slideRich
+    VERSION: VERSION, LIMITS: LIMITS, BG_PRESETS: BG_PRESETS, ANIM_TYPES: ANIM_TYPES, EASINGS: EASINGS, DIRS: DIRS, FMT_KEYS: FMT_KEYS, MIXED: MIXED,
+    splitLabel: splitLabel, splitSlides: splitSlides, hashText: hashText,
+    sanitizeRich: sanitizeRich, sanitizeParts: sanitizeParts, partsEmpty: partsEmpty, makeSlideRich: makeSlideRich, slideRich: slideRich,
+    buildRuns: buildRuns, rawRuns: rawRuns,
+    remapItems: remapItems, sliceItems: sliceItems, shiftItems: shiftItems, remapParts: remapParts, sliceParts: sliceParts, shiftParts: shiftParts,
+    applyMarkPatch: applyMarkPatch, clearMarks: clearMarks, toggleFlag: toggleFlag, fmtSummary: fmtSummary,
+    stripChordsMapped: stripChordsMapped, composeSong: composeSong, decomposeSong: decomposeSong
   };
 }));

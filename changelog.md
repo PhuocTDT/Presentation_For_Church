@@ -2,6 +2,14 @@
 
 Tất cả các thay đổi và cập nhật quan trọng của dự án được ghi lại tại đây.
 
+## [Chưa phát hành] - Trình soạn bài giàu định dạng, giai đoạn 5: hộp thoại More Colors + sửa luật nhãn của mô hình dữ liệu (nhánh `feature/rich-text-editor`)
+
+- **Mới `src/editor/color-dialog.js` + `color-dialog.css`** — hộp thoại "More Colors…" ĐỘC LẬP với bảng thả xuống, dùng chung cho Text Color và Background Color: spectrum 2D (ngang = sắc, dọc = độ đậm) + thanh trượt dọc độ sáng; **Color model** RGB (mặc định, 0–255) hoặc HSL; ô **HEX** 6 chữ số có kiểm tra (gõ dở không báo lỗi, sai thì viền đỏ + thông báo, OK bị chặn); cả ba đồng bộ **hai chiều**; xem trước **New** (thời gian thực) và **Current** (giữ nguyên đến khi OK); **OK** áp màu và thêm vào Custom Colors (như Office), **Cancel / Esc / ×/ bấm nền mờ** bỏ mọi thay đổi chưa xác nhận; Enter = OK; Tab quay vòng trong hộp; mũi tên chỉnh spectrum/thanh sáng/ô số (Shift = bước 10). Mở hộp luôn giữ đúng màu hiện tại; màu xám/đen giữ lại sắc độ khi kéo thanh sáng.
+- Nối vào `index.html`: nút "More Colors…" của bảng màu (trước đó bị khoá) gọi hộp thoại này cho cả chữ và nền.
+- **Sửa lỗi giai đoạn 2:** `rich-model.splitSlides` dùng luật nhận nhãn CŨ (khớp tiền tố) trong khi app đã đổi sang luật mới (nhãn phải là cả dòng, hoặc "Nhãn: lời") → định dạng sẽ lệch slide ở bài có dòng như "Kết thúc…". Nay dùng đúng luật của `index.html`/`comm/setlist/slides.js` (có test đối chiếu với bản web).
+- **`rich-model` bổ sung** (cho trình soạn): `remapItems` (dời dải khi sửa chữ: gõ ngay trước đầu/sau cuối dải thì chữ mới KHÔNG thuộc dải), `sliceItems`/`shiftItems`, `applyMarkPatch`/`toggleFlag`/`clearMarks`/`fmtSummary` (định dạng chính tắc, không chồng lấn), `stripChordsMapped` (bỏ [hợp âm] có ánh xạ vị trí cho màn chiếu), `composeSong`/`decomposeSong` (thẻ ↔ lời + rich, kể cả nhãn lệch luật), `sanitizeParts` (làm sạch ở nơi hiển thị); thêm trường nền `thick` (độ dày marker) và `shape` (biến thể hình).
+- **Test**: `color-dialog.test.mjs` (3), `rich-ops.test.mjs` (11), `color-dialog.e2e.mjs` (app thật: HEX↔RGB↔HSL↔spectrum↔thanh sáng, giá trị sai, New/Current, OK/Cancel/Esc/Enter/Tab, dùng chung cho chữ và nền, Custom Colors). Unit 144/144; e2e 3 file đều đạt (chạy tuần tự `--test-concurrency=1`; chạy song song nhiều app Electron có thể treo).
+
 ## [Chưa phát hành] - Trình soạn bài giàu định dạng, giai đoạn 4: bảng chọn màu kiểu Office dùng chung (nhánh `feature/rich-text-editor`)
 
 - **Mới `src/editor/color-picker.js` + `color-picker.css`**: một bảng màu duy nhất cho **Text Color** và **Background Color**, thứ tự cố định **Automatic → Theme Colors → Standard Colors → Custom Colors → More Colors…**.
