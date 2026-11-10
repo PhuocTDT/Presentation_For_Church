@@ -61,7 +61,7 @@ Bản phát hành **không đóng gói nội dung** (Kinh Thánh, bài hát, med
 |---|---|
 | `main.js` | Cửa sổ, menu, IPC, protocol `app-media://`, lưu file an toàn, client relay, hardening renderer |
 | `preload.js` | API cầu nối cho renderer |
-| `index.html` | Library, schedule, editor bài hát (modal `#song-editor-modal`, giao diện kiểu Windows cổ điển có chủ đích), preview, control live, sidebar `#bandPanel` |
+| `index.html` | Library, schedule, editor bài hát (modal `#song-editor-modal`, giao diện tối giản hiện đại, xem `docs/ui-guidelines.md`), preview, control live, sidebar `#bandPanel` |
 | `live.html` | Hiển thị chữ/background trên màn hình chiếu |
 | `src/schema.js` | Migrate và validate item |
 | `src/library-sync.js` | Gộp thư viện từ bản cài cũ / thư mục dữ liệu cũ |

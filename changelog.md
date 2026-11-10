@@ -2,6 +2,15 @@
 
 Tất cả các thay đổi và cập nhật quan trọng của dự án được ghi lại tại đây.
 
+## [Chưa phát hành] - Thiết kế lại giao diện hộp "Edit Song"
+
+- **Yêu cầu**: giao diện hộp sửa bài hát (kiểu Windows cổ điển: viền xám, nút phẳng, rất nhỏ) trông chưa bắt mắt; làm lại theo phong cách tối giản như các hộp khác của app, **không dùng gradient**, và gọn.
+- **Thay đổi** (`index.html`, chỉ lớp trình bày — không đổi logic/ID): thanh tiêu đề nền trắng + viền mảnh (biểu tượng ô vuông nhạt, nút đóng trong suốt, cao 36px); dòng tên bài và thanh công cụ nhỏ gọn (nút 24px, hộp font 138px); **thẻ slide dạng card** (số thứ tự trong ô tròn góc, viền sáng + vòng focus khi đang gõ, màu viền trái theo loại đoạn Verse/Chorus/End nhờ `getLabelColor` — trước đây JS đặt màu nhưng không có độ rộng viền nên không hiện); tab Words dạng viên thuốc; nút "＋ Thêm slide" rộng có chữ; khung xem trước bo góc nổi khối; chân hộp: Cancel · Apply · **OK (nút chính màu accent)** + gợi ý "Enter 2 lần / Ctrl+Enter để tách slide"; nền sau hộp mờ nhẹ. Khung mặc định 820×~544 (trước 770×480).
+- Bảng màu `--se-*` đồng bộ với token `--stg-*` của hộp Cài đặt (accent `#5048e5`). Hộp luôn nền sáng như trước (JS đặt vài màu inline giả định nền sáng).
+- Sửa luôn: ô nhãn slide trước đây bị ép nền trắng (khối trắng lệch trong tiêu đề thẻ); vạch chỉ thị màu chữ màu trắng chìm vào nền sáng nên thêm viền.
+- Tài liệu: `docs/ui-guidelines.md`, `CLAUDE.md`, `docs/architecture.md` — bỏ mô tả "giữ kiểu Windows cổ điển có chủ đích".
+- Kiểm thử trên Electron thật (`#song-editor-modal`): mở hộp, gõ cập nhật xem trước, Enter đôi tách slide, thêm slide, màu nhãn, cỡ chữ (gõ tay + dropdown), căn lề, popover hình nền, kéo thả thanh tiêu đề, thứ tự nút, Cancel — đều đạt, không lỗi JS, không hộp thoại gốc, `songs.json` không đổi.
+
 ## [3.1.16] - Bỏ hộp thoại gốc (alert/confirm/prompt) khỏi giao diện: sửa "không gõ được sau khi xác nhận / nạp list"
 
 - **Triệu chứng báo cáo (bản 3.1.15)**: bấm "Đăng xuất / đổi tài khoản" rồi xác nhận thì hộp đăng nhập **không nhận phím bàn phím**; sau khi **nạp list** cũng không sửa được bài (mất focus).

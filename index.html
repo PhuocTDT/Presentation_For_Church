@@ -1449,6 +1449,186 @@
       #bandPanel .bp-error .retry.alt { background: #fff; color: #c0392f; border: 1px solid #c0392f; margin-left: 6px; }
       #bandPanel .bp-error .whoami { margin-top: 6px; font-size: .76rem; color: #7a4a43; }
     </style>
+    <style id="song-editor-redesign">
+      /* ===== Hộp "Edit Song" — giao diện hiện đại (thay kiểu Windows cổ điển) =====
+         Chỉ là lớp trình bày: giữ nguyên ID/lớp mà JS dùng (thanh tiêu đề là div đầu tiên để kéo thả; JS tự đặt màu
+         nhãn/viền trái từng slide). Luôn nền sáng (như trước) vì vài màu do JS đặt inline giả định nền sáng. */
+      #song-editor-modal {
+        --se-accent: #5048e5; --se-accent-dim: #423bc4; --se-accent-soft: rgba(80,72,229,.10); --se-accent-ring: rgba(80,72,229,.22);
+        --se-ink: #1c1b2e; --se-ink-dim: #5c5a75; --se-ink-faint: #8b899f;
+        --se-line: #dcdce6; --se-line-soft: #ececf2; --se-bg: #f6f6f8; --se-card: #ffffff;
+        background: rgba(17,15,46,.58);
+        -webkit-backdrop-filter: blur(5px); backdrop-filter: blur(5px);
+      }
+      #song-editor-modal .win-modal-container {
+        width: min(820px, 94vw); height: min(68vh, 570px); min-width: 520px; min-height: 360px;
+        background: var(--se-bg); border: 1px solid rgba(255,255,255,.55); border-radius: 14px;
+        box-shadow: 0 32px 90px rgba(17,15,46,.5), 0 0 0 1px rgba(17,15,46,.12);
+        font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif; color: var(--se-ink);
+      }
+
+      /* -- Thanh tiêu đề (div đầu tiên: JS dùng làm tay kéo) -- */
+      #song-editor-modal .win-modal-container > div:first-child {
+        height: 36px; padding: 0 8px 0 12px; border-bottom: 1px solid var(--se-line-soft);
+        background: #fff; color: var(--se-ink);
+      }
+      #song-editor-modal .win-modal-container > div:first-child .material-symbols-outlined { color: inherit; }
+      #song-editor-modal .win-modal-container > div:first-child > div:first-child { gap: 10px; }
+      #song-editor-modal .win-modal-container > div:first-child > div:first-child > .material-symbols-outlined {
+        width: 22px; height: 22px; border-radius: 7px; background: var(--se-accent-soft); color: var(--se-accent);
+        display: flex; align-items: center; justify-content: center; font-size: 15px;
+      }
+      #song-editor-modal #modal-title { font-size: 13px; font-weight: 600; letter-spacing: -.01em; color: var(--se-ink); }
+      #song-editor-modal .win-modal-container > div:first-child button {
+        width: 24px; height: 24px; border-radius: 6px; background: transparent; color: var(--se-ink-dim);
+        transition: background .15s, color .15s;
+      }
+      #song-editor-modal .win-modal-container > div:first-child button:hover { background: #e7e7ee; color: var(--se-ink); }
+      #song-editor-modal .win-modal-container > div:first-child button .material-symbols-outlined { font-size: 15px; }
+
+      /* -- Tên bài + thanh công cụ -- */
+      #song-editor-modal .win-modal-container > header {
+        background: #fff; border-bottom: 1px solid var(--se-line);
+        box-shadow: 0 8px 18px -16px rgba(28,27,46,.35); position: relative; z-index: 2;
+      }
+      #song-editor-modal .win-modal-container > header > div:first-child {
+        padding: 8px 14px 4px; gap: 10px; border-bottom: 0 !important;
+      }
+      #song-editor-modal .win-modal-container > header > div:first-child label {
+        font-size: 10px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--se-ink-faint) !important;
+      }
+      #song-editor-modal #song-title {
+        height: 30px; padding: 0 11px; font-size: 13px; font-weight: 600; color: var(--se-ink);
+        border: 1px solid var(--se-line) !important; border-radius: 9px; background: #f8f9fe;
+        transition: border-color .15s, box-shadow .15s, background .15s;
+      }
+      #song-editor-modal #song-title:focus {
+        outline: none; background: #fff; border-color: var(--se-accent) !important; box-shadow: 0 0 0 4px var(--se-accent-ring);
+      }
+      #song-editor-modal .win-modal-container > header > div:nth-child(2) { padding: 2px 14px 6px; gap: 3px; flex-wrap: wrap; }
+      #song-editor-modal .win-modal-container .toolbar-btn {
+        width: 24px; height: 24px; border-radius: 7px; color: var(--se-ink-dim); background-color: var(--se-bg);
+        border: 1px solid transparent; transition: background .12s, color .12s, border-color .12s, box-shadow .12s;
+      }
+      #song-editor-modal .win-modal-container .toolbar-btn:hover {
+        background-color: var(--se-accent-soft); color: var(--se-accent); border-color: rgba(79,70,229,.35);
+      }
+      #song-editor-modal .win-modal-container .toolbar-btn.active {
+        background-color: var(--se-accent); color: #fff; border-color: var(--se-accent); box-shadow: 0 4px 10px -3px rgba(79,70,229,.6);
+      }
+      #song-editor-modal .win-modal-container .toolbar-btn:focus-visible { outline: 2px solid var(--se-accent); outline-offset: 2px; }
+      #song-editor-modal .win-modal-container .toolbar-btn .material-symbols-outlined { font-size: 15px; }
+      #song-editor-modal #editor-bg-media-btn { width: 28px; }
+      /* vạch chỉ thị màu chữ: màu chữ mặc định là trắng nên cần viền để vẫn thấy trên nền sáng */
+      #song-editor-modal #color-indicator { left: 6px; right: 6px; bottom: 3px; height: 3px; border-radius: 3px; box-shadow: inset 0 0 0 1px rgba(30,33,64,.35); }
+      #song-editor-modal .win-modal-container .divider-win { height: 14px; margin: 0 3px; background-color: var(--se-line); }
+      #song-editor-modal .win-modal-container select#font-family {
+        height: 24px; width: 138px; padding: 0 6px; font-size: 11.5px; border-radius: 7px; border-color: var(--se-line);
+      }
+      #song-editor-modal .win-modal-container select#font-family:focus { outline: none; border-color: var(--se-accent); box-shadow: 0 0 0 3px var(--se-accent-ring); }
+      #song-editor-modal .win-modal-container .hybrid-size-control {
+        height: 24px; width: 66px; border-radius: 7px; border-color: var(--se-line);
+      }
+      #song-editor-modal .win-modal-container .hybrid-size-control:focus-within { border-color: var(--se-accent); box-shadow: 0 0 0 3px var(--se-accent-ring); }
+      #song-editor-modal .hybrid-size-input { font-size: 11.5px !important; font-weight: 700; color: var(--se-ink) !important; }
+      #song-editor-modal .win-modal-container .hybrid-size-btn { width: 18px; border-left-color: var(--se-line); border-radius: 0 6px 6px 0; }
+      #song-editor-modal .win-modal-container .hybrid-size-btn:hover { background: var(--se-accent-soft); color: var(--se-accent); }
+      #song-editor-modal .size-dropdown { border-radius: 10px; border-color: var(--se-line); box-shadow: 0 14px 30px -10px rgba(30,33,64,.4); overflow: hidden; }
+      #song-editor-modal .size-dropdown-item { padding: 5px 12px; font-size: 12px; }
+      #song-editor-modal .size-dropdown-item:hover { background: var(--se-accent); }
+      #song-editor-modal #editor-media-picker-popover { border-radius: 14px; border-color: var(--se-line); box-shadow: 0 22px 50px -12px rgba(30,33,64,.5); }
+
+      /* -- Khu vực chính -- */
+      #song-editor-modal .win-modal-container > main { background: var(--se-bg); }
+      #song-editor-modal .win-modal-container > main > aside {
+        width: 350px; background: #fafbff; border-right: 1px solid var(--se-line);
+      }
+      #song-editor-modal .win-modal-container > main > aside > div:first-child {
+        height: auto; padding: 10px 12px 4px; gap: 4px; align-items: center; background: transparent; border-bottom: 0;
+      }
+      #song-editor-modal .win-modal-container > main > aside > div:first-child > div {
+        padding: 5px 14px; margin: 0; border: 0; border-radius: 999px; font-size: 11.5px; font-weight: 700;
+        color: var(--se-ink-faint); background: transparent; transition: background .15s, color .15s;
+      }
+      #song-editor-modal .win-modal-container > main > aside > div:first-child > div:hover { background: var(--se-accent-soft); color: var(--se-accent); }
+      #song-editor-modal .win-modal-container > main > aside > div:first-child > div:first-child {
+        color: #fff; background: var(--se-accent); box-shadow: 0 6px 14px -6px rgba(79,70,229,.7);
+      }
+      #song-editor-modal #lyrics-editor-container { background: transparent; padding: 8px 12px 12px; }
+
+      /* -- Thẻ slide -- */
+      #song-editor-modal .lyrics-slide-block {
+        background: var(--se-card); border: 1px solid var(--se-line); border-radius: 11px; margin-bottom: 9px;
+        box-shadow: 0 1px 2px rgba(30,33,64,.05); transition: border-color .15s, box-shadow .15s;
+      }
+      #song-editor-modal .lyrics-slide-block:hover { border-color: #cdd2ee; box-shadow: 0 8px 20px -10px rgba(30,33,64,.3); }
+      #song-editor-modal .lyrics-slide-block:focus-within {
+        border-color: var(--se-accent); box-shadow: 0 0 0 3px var(--se-accent-ring), 0 10px 24px -12px rgba(79,70,229,.5);
+      }
+      #song-editor-modal .lyrics-slide-header {
+        height: 30px; padding: 0 10px 0 8px; gap: 8px; background: #f6f7fd;
+        border-bottom: 1px solid var(--se-line); border-left: 4px solid transparent;
+      }
+      #song-editor-modal .lyrics-slide-num {
+        width: 20px; height: 20px; flex: none; border-radius: 6px; background: var(--se-accent-soft); color: var(--se-accent);
+        display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 800;
+      }
+      /* luật cũ ép MỌI input trong hộp sang nền trắng/viền xám — ô nhãn phải trong suốt để hoà vào tiêu đề thẻ */
+      #song-editor-modal .win-modal-container input.lyrics-slide-label-input {
+        background-color: transparent; border-color: transparent; font-size: 11.5px; font-weight: 700; letter-spacing: .01em;
+      }
+      #song-editor-modal .lyrics-slide-label-input::placeholder { color: var(--se-ink-faint); font-weight: 600; }
+      #song-editor-modal .lyrics-slide-content { padding: 9px 12px; font-size: 13px; line-height: 1.55; color: var(--se-ink); }
+
+      /* -- Nút thêm slide -- */
+      #song-editor-modal .win-modal-container > main > aside > div:last-child {
+        height: 48px; padding: 0 12px; background: #fff; border-top: 1px solid var(--se-line);
+      }
+      #song-editor-modal .win-modal-container > main > aside > div:last-child button {
+        width: 100%; height: 32px; gap: 5px; border-radius: 9px; border: 1.5px dashed #bfc6ee; background: var(--se-accent-soft);
+        color: var(--se-accent); font-size: 12px; font-weight: 700; transition: background .15s, color .15s, border-color .15s;
+      }
+      #song-editor-modal .win-modal-container > main > aside > div:last-child button:hover {
+        background: var(--se-accent); color: #fff; border-color: var(--se-accent); border-style: solid;
+      }
+      #song-editor-modal .win-modal-container > main > aside > div:last-child button .material-symbols-outlined { font-size: 18px; }
+
+      /* -- Khung xem trước -- */
+      #song-editor-modal .win-modal-container > main > section {
+        position: relative; padding: 30px 16px 16px;
+        background: #e7eaf7;
+      }
+      #song-editor-modal .win-modal-container > main > section::before {
+        content: 'XEM TRƯỚC · 16:9'; position: absolute; top: 11px; left: 16px;
+        font-size: 9.5px; font-weight: 800; letter-spacing: .15em; color: var(--se-ink-faint);
+      }
+      #song-editor-modal #editor-preview-box {
+        border-radius: 11px; box-shadow: 0 18px 38px -14px rgba(30,27,75,.6), 0 0 0 1px rgba(30,27,75,.18);
+      }
+
+      /* -- Chân hộp -- */
+      #song-editor-modal .win-modal-container > footer {
+        height: 52px; padding: 0 16px; gap: 8px; background: #fff; border-top: 1px solid var(--se-line);
+      }
+      #song-editor-modal .win-modal-container > footer .se-hint { margin-right: auto; font-size: 11px; color: var(--se-ink-faint); }
+      #song-editor-modal .win-modal-container > footer .se-hint b { color: var(--se-ink-dim); font-weight: 700; }
+      #song-editor-modal .win-modal-container > footer .win-button {
+        height: 32px; padding: 0 16px; border-radius: 9px; font-size: 12px; font-weight: 700; color: var(--se-ink);
+        background: #fff; border: 1px solid var(--se-line); box-shadow: none; transition: background .15s, border-color .15s, box-shadow .15s, transform .05s;
+      }
+      #song-editor-modal .win-modal-container > footer .win-button:hover { background: var(--se-accent-soft); border-color: rgba(79,70,229,.45); color: var(--se-accent); }
+      #song-editor-modal .win-modal-container > footer .win-button:active { transform: translateY(1px); }
+      #song-editor-modal .win-modal-container > footer .win-button:focus-visible { outline: 2px solid var(--se-accent); outline-offset: 2px; }
+      /* thứ tự hiển thị: Hủy · Áp dụng · OK (DOM giữ nguyên Apply, OK, Cancel) */
+      #song-editor-modal .win-modal-container > footer .win-button:nth-of-type(3) { order: 0; border-color: transparent; color: var(--se-ink-dim); background: transparent; }
+      #song-editor-modal .win-modal-container > footer .win-button:nth-of-type(3):hover { background: #f1f2fa; color: var(--se-ink); border-color: transparent; }
+      #song-editor-modal .win-modal-container > footer .win-button:nth-of-type(1) { order: 1; }
+      #song-editor-modal .win-modal-container > footer .win-button:nth-of-type(2) {
+        order: 2; color: #fff; border-color: transparent; padding: 0 22px;
+        background: var(--se-accent); box-shadow: 0 8px 18px -8px rgba(79,70,229,.7);
+      }
+      #song-editor-modal .win-modal-container > footer .win-button:nth-of-type(2):hover { color: #fff; background: var(--se-accent-dim); border-color: transparent; box-shadow: 0 10px 22px -8px rgba(79,70,229,.8); }
+    </style>
     <!-- Đặt CUỐI <head> (sau mọi <style> inline) để giữ đúng thứ tự cascade như Tailwind Play CDN cũ. -->
     <link rel="stylesheet" href="src/css/tailwind.generated.css" />
 </head>
@@ -2097,7 +2277,7 @@
                     <div class="h-8 border-t border-win-border bg-[#f0f0f0] flex items-center px-1">
                         <button class="w-6 h-6 flex items-center justify-center hover:bg-slate-200"
                             onclick="addSlideToEditor('', document.getElementById('lyrics-editor-container').children.length, true)"><span
-                                class="material-symbols-outlined text-sm">add</span></button>
+                                class="material-symbols-outlined text-sm">add</span><span>Thêm slide</span></button>
                     </div>
                 </aside>
                 <!-- Right Preview -->
@@ -2124,6 +2304,7 @@
             </main>
             <!-- Bottom Action Bar -->
             <footer class="bg-[#f0f0f0] border-t border-white h-12 shrink-0 flex items-center justify-end px-3 gap-2">
+                <span class="se-hint">Mẹo: nhấn <b>Enter 2 lần</b> hoặc <b>Ctrl+Enter</b> để tách slide</span>
                 <button class="win-button text-[11px] text-slate-900" onclick="saveSong(false)">Apply</button>
                 <button class="win-button text-[11px] text-slate-900" onclick="saveSong(true)">OK</button>
                 <button class="win-button text-[11px] text-slate-900" onclick="closeSongEditor()">Cancel</button>
