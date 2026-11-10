@@ -1911,7 +1911,7 @@
                                 id="preview-output-box">
                                 <img class="absolute inset-0 w-full h-full object-cover hidden" id="preview-bg-img" />
                                 <video class="absolute inset-0 w-full h-full object-cover hidden" id="preview-bg-video"
-                                    autoplay loop muted playsinline preload="auto"></video>
+                                    muted playsinline preload="auto"></video>
                                 <div class="absolute inset-0 overflow-hidden" id="preview-canvas-wrap">
                                     <div id="preview-virtual-canvas"
                                         style="width:960px;height:540px;transform-origin:center;position:absolute;top:50%;left:50%;">
@@ -2365,7 +2365,7 @@
                             id="editor-preview-box">
                             <img class="absolute inset-0 w-full h-full object-cover hidden" id="editor-bg-img" />
                             <video class="absolute inset-0 w-full h-full object-cover hidden" id="editor-bg-video"
-                                autoplay loop muted playsinline preload="auto"></video>
+                                muted playsinline preload="auto"></video>
                             <div id="editor-virtual-canvas"
                                 style="width:960px;height:540px;transform-origin:center;position:absolute;top:50%;left:50%;">
                                 <div id="editor-text-box" class="text-layer-box editor-active"
@@ -6651,6 +6651,19 @@
             document.getElementById('editor-media-picker-popover').classList.add('hidden');
         }
 
+        // Xem trước (Preview) và xem trước trong Edit chỉ cần HÌNH TĨNH của video nền (một khung hình), không chạy video: đỡ CPU/GPU
+        // lúc soạn và đỡ rối mắt. Màn giám sát "mirror Live" và cửa sổ Live thật vẫn phát bình thường.
+        function setStaticVideoFrame(vid, url) {
+            vid.autoplay = false; vid.loop = false;
+            if (vid.getAttribute('src') !== url) {   // so với thuộc tính gốc (vid.src là URL đã chuẩn hoá nên không so trực tiếp được)
+                vid.src = url;
+                vid.load();
+            }
+            try { vid.pause(); } catch (e) {}
+            const seek = () => { try { vid.currentTime = Math.min(0.5, (isFinite(vid.duration) && vid.duration > 0 ? vid.duration / 2 : 0.5)); } catch (e) {} };
+            if (vid.readyState >= 1) seek(); else vid.addEventListener('loadedmetadata', seek, { once: true });
+        }
+
         function setEditorBackgroundPreview(background) {
             const img = document.getElementById('editor-bg-img');
             const vid = document.getElementById('editor-bg-video');
@@ -6661,11 +6674,7 @@
 
             if (background.mediaType === 'video') {
                 vid.classList.remove('hidden');
-                if (vid.src !== background.url) {
-                    vid.src = background.url;
-                    vid.load();
-                }
-                vid.play().catch(() => { });
+                setStaticVideoFrame(vid, background.url);
             } else {
                 img.classList.remove('hidden');
                 img.src = background.url;
@@ -8236,13 +8245,7 @@
             if (background.mediaType === 'video') {
                 if (previewVid) {
                     previewVid.classList.remove('hidden');
-                    if (previewVid.src !== background.url) {
-                        previewVid.src = background.url;
-                        previewVid.load();
-                    }
-                    previewVid.play().catch((error) => {
-                        console.warn('[Preview] Failed to play background video:', error);
-                    });
+                    setStaticVideoFrame(previewVid, background.url);
                 }
             } else {
                 if (previewImg) {
