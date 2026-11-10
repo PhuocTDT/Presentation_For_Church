@@ -4105,6 +4105,9 @@
                 payload.background = normalizeSlideBackground(payload.background);
             }
 
+            // Live cần biết next verse đang BẬT để chừa chỗ ở đáy — kể cả slide cuối (nextVerse rỗng)
+            payload.reserveNextVerse = !!globalSettings.showNextVerse;
+
             // Attach next verse if enabled (also stripped)
             if (globalSettings.showNextVerse) {
                 payload.nextVerse = stripChords(getNextVerseContent());
@@ -6762,16 +6765,10 @@
             const block = document.createElement('div');
             block.className = 'lyrics-slide-block';
 
-            const lines = content.split('\n');
-            let label = '';
-            let body = content;
-
-            // Simple label detection or use first line as label if bolded later
-            const firstLine = lines[0].trim();
-            if (firstLine.match(/^(Verse|Chorus|Bridge|Pre-Chorus|Tag|End|Đoạn|Điệp khúc|Kết)/i)) {
-                label = firstLine;
-                body = lines.slice(1).join('\n');
-            }
+            // Nhận nhãn bằng CÙNG quy tắc với màn chiếu (splitSlideLabel) để thấy đúng cái sẽ được chiếu
+            const parsedLabel = splitSlideLabel(content);
+            const label = parsedLabel.label;
+            const body = label ? parsedLabel.content : content;
 
             // label/body có thể đến từ lyric import (file bài hát/Bible XML) —
             // không tin cậy được, phải escape trước khi nhét vào innerHTML/attribute.
@@ -6801,6 +6798,7 @@
             contentDiv.oninput = () => {
                 queueEditorPreview(contentDiv);   // gom theo khung hình: gõ nhanh không dựng lại xem trước ở từng phím
             };
+            contentDiv.addEventListener('blur', () => splitBlankLinesInBlock(block));   // rời thẻ: dòng trống bên trong → tách thẻ
 
             contentDiv.onfocus = () => {
                 updateEditorPreview(contentDiv.innerText);
@@ -6950,7 +6948,7 @@
             sv.style.display = words ? 'none' : '';
             const bgRow = document.getElementById('se-slides-bgbar');
             if (bgRow) bgRow.style.display = words ? 'none' : 'flex';
-            if (!words) { seInitSlidesView(); renderSlidesView(true); }
+            if (!words) { normalizeEditorBlocks(); seInitSlidesView(); renderSlidesView(true); }
         }
 
         function seResetSlidesView() {
@@ -7170,9 +7168,30 @@
             }
         }
 
+        // Thẻ có DÒNG TRỐNG bên trong thực chất là nhiều slide (lúc lưu/mở lại, Preview và Live đều tách theo dòng trống). Enter đôi
+        // chỉ tách ngay khi nhấn nhanh (<400ms); nhấn chậm hơn thì thẻ giữ nguyên một dòng trống → trình soạn thảo hiện 4 thẻ trong
+        // khi màn chiếu có 5 slide (và tab Slides đếm sai). Tách thẻ cho khớp khi rời thẻ, chuyển tab Slides và trước khi lưu.
+        function splitBlankLinesInBlock(block) {
+            if (!block || !block.isConnected) return false;
+            const contentDiv = block.querySelector('.lyrics-slide-content');
+            if (!contentDiv) return false;
+            const parts = contentDiv.innerText.replace(/\r/g, '').split(/\n[ \t]*\n/).map((x) => x.trim()).filter(Boolean);
+            if (parts.length < 2) return false;
+            const container = document.getElementById('lyrics-editor-container');
+            const at = Array.from(container.children).indexOf(block);
+            contentDiv.innerText = parts[0];
+            for (let i = 1; i < parts.length; i++) addSlideToEditor(parts[i], at + i, false);
+            reindexSlides();
+            return true;
+        }
+        function normalizeEditorBlocks() {
+            Array.from(document.querySelectorAll('#lyrics-editor-container .lyrics-slide-block')).forEach(splitBlankLinesInBlock);
+        }
+
         async function saveSong(shouldClose = true) {
             console.log('Attempting to save song...');
             const title = document.getElementById('song-title').value;
+            normalizeEditorBlocks();
             const lyrics = getLyricsFromEditor();
             if (!title) { alert('Vui lòng nhập tiêu đề bài hát!'); return; }
 
@@ -7543,14 +7562,27 @@
         }
 
         // --- Presentation Logic ---
-        const labelPattern = /^(Verse|Chorus|Bridge|Pre-Chorus|Tag|End|Đoạn|Điệp khúc|Kết)/i;
+        // Dòng đầu của slide là NHÃN khi: (a) cả dòng là nhãn ("Verse 1", "Điệp khúc", "Chorus x2", "Kết", "Verse 1 (nhẹ)"), hoặc
+        // (b) nhãn + dấu hai chấm rồi tới lời ("Chorus: Ha-lê-lu-gia…" → nhãn "Chorus", lời giữ lại). Trước đây chỉ cần dòng BẮT ĐẦU
+        // bằng các chữ đó ("Kết thúc…", "Endless…", "Đoạn đường…") là cả dòng lời bị nuốt thành nhãn và KHÔNG được chiếu.
+        // PHẢI giống hệt comm/setlist/slides.js (xem trước trên web).
+        const LABEL_WORDS = 'Verse|Chorus|Bridge|Pre-Chorus|Tag|End|Đoạn|Điệp khúc|Kết';
+        const LABEL_ONLY_RE = new RegExp('^(?:' + LABEL_WORDS + ')(?:\\s*\\d+)?(?:\\s*(?:[x×]\\s*\\d+|\\d+\\s*[x×]))?(?:\\s*\\([^)]*\\))?\\s*[:.\\-]?\\s*$', 'i');
+        const LABEL_INLINE_RE = new RegExp('^((?:' + LABEL_WORDS + ')(?:\\s*\\d+)?)\\s*:\\s*(\\S.*)$', 'i');
+
+        function splitSlideLabel(text) {
+            const t = String(text == null ? '' : text);
+            const nlAt = t.indexOf('\n');
+            const first = (nlAt === -1 ? t : t.slice(0, nlAt)).trim();
+            const rest = nlAt === -1 ? '' : t.slice(nlAt + 1);
+            if (LABEL_ONLY_RE.test(first)) return { label: first, content: rest.trim() };
+            const m = LABEL_INLINE_RE.exec(first);
+            if (m) return { label: m[1].trim(), content: (m[2] + (rest ? '\n' + rest : '')).trim() };
+            return { label: '', content: t.trim() };
+        }
 
         function stripLabel(text) {
-            const lines = text.split('\n');
-            if (lines.length > 0 && labelPattern.test(lines[0].trim())) {
-                return { label: lines[0].trim(), content: lines.slice(1).join('\n').trim() };
-            }
-            return { label: '', content: text.trim() };
+            return splitSlideLabel(text);
         }
 
         function loadToPreview(song) {
@@ -7857,6 +7889,19 @@
             return widthOverflow || heightOverflow;
         }
 
+        // ===== Chừa chỗ cho thanh "next verse" khi nó BẬT =====
+        // Thanh next verse nằm ở đáy khung ảo 960x540 (từ ~y=491 trở xuống). Trước đây co chữ chỉ so chiều cao đoạn văn với
+        // CẢ khung (454px, tính luôn phần đệm), còn khung lại `overflow: visible` → ~một nửa số slide có dòng cuối tràn xuống
+        // tới y≈510-530, đè lên thanh next verse. Khi next verse bật và khung tự canh (người dùng chưa kéo tay), đáy khối chữ
+        // phải ≤ NEXT_VERSE_SAFE_BOTTOM. Next verse TẮT hoặc khung kéo tay: giữ nguyên hành vi cũ (không bị ảnh hưởng).
+        const NEXT_VERSE_SAFE_BOTTOM = 488;   // đơn vị khung ảo; thanh next verse bắt đầu ở ~491
+        function textBottomInCanvas(el, textBox) {
+            // vị trí đáy khối chữ trong khung ảo, đo bằng hình học layout (không phụ thuộc tỉ lệ thu phóng của khung)
+            const centered = /translateY\(\s*-50%\s*\)/.test(textBox.style.transform || '');
+            const boxTop = textBox.offsetTop - (centered ? textBox.offsetHeight / 2 : 0);
+            return boxTop + el.offsetTop + el.offsetHeight;
+        }
+
         function fitTextToBox(el, textBox, styleOverride = null) {
             if (!el || !textBox) return;
             const style = normalizeSlideStyle(styleOverride || {});
@@ -7872,6 +7917,7 @@
             // sổ Live thật (live.html không có giới hạn số dòng), nên xem trước không còn nhỏ hơn màn chiếu.
             const hardLines = (el.innerText || el.textContent || '').split('\n').filter((l) => l.trim() !== '').length;
             const maxLines = Math.max(configuredMaxLines, hardLines);
+            const reserveNextVerse = !!isNextVerseOn && !(style.textBox && style.textBox.top != null);
 
             const baseFontSize = Math.max(8, Math.round(parsePixelValue(style.fontSize, 80)));
             const baseStrokeWidth = Math.max(0, Number(style.textStrokeWidth || 0));
@@ -7899,6 +7945,9 @@
                 // 2. Line count limit — height of maxLines is fontSize * LIVE_LINE_HEIGHT * maxLines
                 const maxAllowedHeight = fontSize * parseFloat(LIVE_LINE_HEIGHT) * maxLines + 2; // +2px tolerance
                 if (el.scrollHeight > maxAllowedHeight) return true;
+
+                // 3. Next verse bật: đáy khối chữ không được chạm thanh next verse
+                if (reserveNextVerse && textBottomInCanvas(el, textBox) > NEXT_VERSE_SAFE_BOTTOM) return true;
 
                 return false;
             };
