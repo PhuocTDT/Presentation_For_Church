@@ -1521,6 +1521,9 @@
       #song-editor-modal #editor-bg-media-btn { width: 28px; }
       /* vạch chỉ thị màu chữ: màu chữ mặc định là trắng nên cần viền để vẫn thấy trên nền sáng */
       #song-editor-modal #color-indicator { left: 6px; right: 6px; bottom: 3px; height: 3px; border-radius: 3px; box-shadow: inset 0 0 0 1px rgba(30,33,64,.35); }
+      #song-editor-modal #bg-color-indicator { position: absolute; left: 6px; right: 6px; bottom: 3px; height: 3px; border-radius: 3px; box-shadow: inset 0 0 0 1px rgba(30,33,64,.35); }
+      #song-editor-modal #bg-color-indicator.none { background: repeating-linear-gradient(135deg, #fff 0 3px, #d33 3px 4px) !important; }
+      #song-editor-modal #text-color-btn[aria-expanded="true"], #song-editor-modal #bg-color-btn[aria-expanded="true"] { background-color: var(--se-accent-soft); color: var(--se-accent); border-color: rgba(79,70,229,.35); }
       #song-editor-modal .win-modal-container .divider-win { height: 14px; margin: 0 3px; background-color: var(--se-line); }
       #song-editor-modal .win-modal-container select#font-family {
         height: 24px; width: 138px; padding: 0 6px; font-size: 11.5px; border-radius: 7px; border-color: var(--se-line);
@@ -1765,6 +1768,7 @@
       #song-editor-modal .se-seg-body { font-size: 10.5px; color: var(--se-ink-faint); min-height: 36px; }
       #song-editor-modal .se-seg-body[hidden] { display: none; }
     </style>
+    <link rel="stylesheet" href="src/editor/color-picker.css" />
     <!-- Đặt CUỐI <head> (sau mọi <style> inline) để giữ đúng thứ tự cascade như Tailwind Play CDN cũ. -->
     <link rel="stylesheet" href="src/css/tailwind.generated.css" />
 </head>
@@ -2346,13 +2350,16 @@
                     <button class="toolbar-btn" onclick="formatDoc('underline')" title="Underline"><span
                             class="underline">U</span></button>
                     <div class="divider-win"></div>
-                    <label class="toolbar-btn relative" title="Text Color">
+                    <button id="text-color-btn" class="toolbar-btn relative" type="button" title="Text Color" aria-label="Text Color"
+                        aria-haspopup="dialog" aria-expanded="false" onclick="seOpenTextColor(this, event)">
                         <span class="font-bold text-[10px]">A</span>
                         <div class="absolute bottom-0 left-1 right-1 h-[3px] bg-red-500" id="color-indicator"></div>
-                        <input type="color" id="text-color-picker" value="#ffffff"
-                            class="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
-                            onchange="applyTextColor(this.value)">
-                    </label>
+                    </button>
+                    <button id="bg-color-btn" class="toolbar-btn relative" type="button" title="Background Color (nền sau khối chữ)" aria-label="Background Color"
+                        aria-haspopup="dialog" aria-expanded="false" onclick="seOpenBgColor(this, event)">
+                        <span class="material-symbols-outlined">format_color_fill</span>
+                        <div id="bg-color-indicator" class="none"></div>
+                    </button>
                     <div class="divider-win"></div>
 
                     <!-- Media Background Picker -->
@@ -3302,6 +3309,7 @@
         </div>
     </div>
 
+    <script src="src/editor/color-picker.js"></script>
     <script>
         // --- Configuration & Global State ---
 
@@ -6520,6 +6528,49 @@
             applyEditorStyle();
         }
 
+        // ===== Text Color / Background Color: CÙNG MỘT bảng màu kiểu Office (src/editor/color-picker.js) =====
+        // Hiện tại cả hai áp cho CẢ BÀI (kiểu chữ chung của bài); khi có định dạng theo vùng chọn thì nơi gọi chuyển sang vùng chọn.
+        function seDefaultTextColor() {
+            const isBible = !!(currentEditingSong && currentEditingSong.type === 'bible');
+            return normalizeSlideStyle({}, {}, isBible ? 'bible' : 'song').color;   // màu chữ mặc định của app (Cài đặt)
+        }
+        function seOpenTextColor(btn, ev) {
+            const def = seDefaultTextColor(), defHex = ColorPicker.normalizeHex(def);
+            ColorPicker.open({
+                anchor: btn, title: 'Text Color', fromKeyboard: !!ev && ev.detail === 0,
+                automatic: { label: 'Automatic', hex: defHex },   // Automatic = màu chữ mặc định
+                current: () => { const c = ColorPicker.normalizeHex(editorStyle && editorStyle.color); return c && c === defHex ? null : c; },
+                onPick: (hex) => applyTextColor(hex === null ? def : hex)
+            });
+        }
+        // Nền sau KHỐI CHỮ của bài = boxStyle (lớp riêng phía sau chữ, nên độ mờ nền không làm mờ chữ).
+        function seBoxBgCurrent() {
+            const b = editorStyle && editorStyle.boxStyle;
+            return b && b.enabled ? ColorPicker.normalizeHex(b.backgroundColor) : null;
+        }
+        function seApplyBgColor(hex) {
+            const b = { ...((editorStyle && editorStyle.boxStyle) || {}) };
+            if (hex === null) b.enabled = false;                       // Automatic = bỏ nền
+            else { if (!b.enabled) b.backgroundOpacity = 0.8; b.enabled = true; b.backgroundColor = hex; }
+            editorStyle.boxStyle = b;
+            applyEditorStyle();
+        }
+        function seOpenBgColor(btn, ev) {
+            ColorPicker.open({
+                anchor: btn, title: 'Background Color', fromKeyboard: !!ev && ev.detail === 0,
+                automatic: { label: 'Automatic', hex: null },
+                current: seBoxBgCurrent,
+                onPick: seApplyBgColor
+            });
+        }
+        function seSyncColorIndicators() {
+            if (!editorStyle) return;
+            const t = document.getElementById('color-indicator');
+            if (t) t.style.backgroundColor = editorStyle.color || '#ffffff';
+            const bi = document.getElementById('bg-color-indicator'), c = seBoxBgCurrent();
+            if (bi) { bi.style.backgroundColor = c || ''; bi.classList.toggle('none', !c); }
+        }
+
         // Bài ĐANG SỬA có phải mục này không? (khớp scheduleId, hoặc id bài — cùng quy tắc với saveSong). Bài mới chưa lưu thì không
         // thể đang ở Preview/Live. Trước đây applyEditorStyle() đẩy kiểu chữ của bài đang sửa sang Preview/Live BẤT KỂ bài nào đang
         // phát → sửa bài B làm đổi kiểu chữ của bài A đang chiếu, và mỗi phím gõ lại gửi 1 gói IPC sang cửa sổ Live.
@@ -6535,6 +6586,7 @@
         let edSyncedOut = false;   // đã đẩy kiểu chữ CHƯA LƯU ra ngoài → Cancel phải khôi phục
 
         function applyEditorStyle() {
+            seSyncColorIndicators();
             const previewEl = document.getElementById('editor-preview-text');
             if (previewEl) {
                 applyStyleToElement(previewEl, editorStyle);

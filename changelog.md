@@ -2,6 +2,19 @@
 
 Tất cả các thay đổi và cập nhật quan trọng của dự án được ghi lại tại đây.
 
+## [Chưa phát hành] - Trình soạn bài giàu định dạng, giai đoạn 4: bảng chọn màu kiểu Office dùng chung (nhánh `feature/rich-text-editor`)
+
+- **Mới `src/editor/color-picker.js` + `color-picker.css`**: một bảng màu duy nhất cho **Text Color** và **Background Color**, thứ tự cố định **Automatic → Theme Colors → Standard Colors → Custom Colors → More Colors…**.
+  - **Automatic**: `onPick(null)`; nơi gọi quyết định ý nghĩa (chữ = màu chữ mặc định của app; nền = bỏ nền). Được đánh dấu khi đang ở trạng thái mặc định.
+  - **Theme Colors**: hàng 10 màu gốc + 5 hàng sắc độ theo cột (thuật toán lumMod/lumOff của Office, kiểm bằng số Office thật: Accent 1 Lighter 80% ≈ `#dae3f3`, Darker 25% ≈ `#2f5597`). Bộ 10 màu gốc cấu hình/lưu được qua `ColorPicker.setTheme()` (chưa có giao diện sửa).
+  - **Standard Colors**: Red, Orange, Yellow, Light Green, Green, Cyan, Light Blue, Blue, Dark Blue, Purple.
+  - **Custom Colors**: nằm NGAY DƯỚI Standard; nút **+** thêm màu đang chọn, **×** hoặc **Delete** để xoá, không trùng (không phân biệt hoa/thường, `#f0a` ≡ `#ff00aa`), tối đa 10 (đầy thì bỏ màu cũ nhất), lưu `localStorage['se.customColors.v1']` nên **sống qua khởi động lại app**; dữ liệu hỏng được bỏ qua.
+  - **More Colors…**: có sẵn nhưng đang khoá (`onMore` chưa nối) — hộp thoại RGB/HEX riêng làm ở giai đoạn 5.
+  - Bàn phím: Enter mở và focus vào trong; mũi tên di chuyển theo toạ độ thật; Esc đóng và trả focus; bấm ra ngoài / bấm lại nút để đóng. Bấm vào bảng không lấy focus nên vùng chữ đang tô chọn ở nơi khác được giữ nguyên.
+- **`index.html` — hộp Edit Song**: nút **Text Color** (thay `<input type=color>` hệ thống) và nút **Background Color** mới dùng chung bảng màu. Hiện áp cho cả bài: màu chữ → `style.color` (Automatic = màu mặc định trong Cài đặt); nền → `style.boxStyle` (lớp riêng phía sau chữ; bật nền lần đầu đặt độ mờ 0.8; Automatic = `enabled:false`), nên **độ mờ nền không làm mờ chữ**. Vạch chỉ thị màu dưới hai nút luôn đồng bộ với kiểu chữ.
+- **Test**: `test/color-picker.test.mjs` (8 ca thuần: chuyển màu hex/rgb/hsl/hsv khứ hồi 3000 màu, sắc độ Office, bảng theme, kho Custom, theme) và `test/color-picker.e2e.mjs` (app thật: thứ tự mục, chọn màu, Automatic, Custom thêm/trùng/xoá/Delete, bàn phím, nền và độ mờ, lưu bài, **khởi động lại app vẫn còn Custom Colors**). Unit 130/130; e2e 6/6.
+- Lưu ý: đóng app quá sớm (< vài giây) sau khi thêm màu Custom có thể mất màu vừa thêm do Chromium ghi `localStorage` trễ; đóng app bình thường thì không mất.
+
 ## [Chưa phát hành] - Trình soạn bài giàu định dạng, giai đoạn 3: vỏ giao diện hộp Edit Song (nhánh `feature/rich-text-editor`)
 
 - **`index.html` — hộp Edit Song**:

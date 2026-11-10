@@ -1,0 +1,64 @@
+/* Bảng chọn màu kiểu Office (src/editor/color-picker.js). Luôn nền sáng: dùng được trong hộp Edit Song và các hộp khác. */
+.cp-pop {
+  --cp-accent: #5048e5; --cp-ink: #1c1b2e; --cp-ink-dim: #5c5a75; --cp-line: #dcdce6;
+  position: fixed; z-index: 10050; width: 232px; padding: 8px 10px 6px; box-sizing: border-box;
+  background: #fff; color: var(--cp-ink); border: 1px solid var(--cp-line); border-radius: 12px;
+  box-shadow: 0 22px 50px -12px rgba(30,33,64,.5), 0 0 0 1px rgba(30,33,64,.04);
+  font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif; font-size: 11.5px; user-select: none;
+}
+.cp-pop button { font-family: inherit; }
+.cp-h { margin: 8px -2px 4px; padding: 2px 6px; font-size: 10.5px; font-weight: 700; color: var(--cp-ink-dim); background: #f3f3f8; border-radius: 5px; }
+
+.cp-auto {
+  display: flex; align-items: center; gap: 8px; width: 100%; height: 26px; padding: 0 6px; border: 1px solid transparent; border-radius: 6px;
+  background: transparent; color: var(--cp-ink); font-size: 11.5px; font-weight: 600; text-align: left; cursor: pointer;
+}
+.cp-auto:hover, .cp-auto:focus-visible { background: #f1f2fa; outline: none; border-color: rgba(80,72,229,.35); }
+.cp-auto.sel { border-color: var(--cp-accent); background: rgba(80,72,229,.08); }
+.cp-auto-sw { width: 14px; height: 14px; flex: none; border-radius: 3px; border: 1px solid rgba(0,0,0,.35); box-sizing: border-box; }
+.cp-auto-sw.none { background: linear-gradient(135deg, #fff 45%, #d33 45%, #d33 55%, #fff 55%); }
+
+.cp-row { display: grid; grid-template-columns: repeat(10, 1fr); gap: 3px; }
+.cp-theme .cp-base { margin-bottom: 5px; }
+.cp-theme .cp-tint { margin-top: 2px; }
+
+.cp-sw {
+  position: relative; display: block; width: 100%; aspect-ratio: 1 / 1; min-width: 0; padding: 0; border-radius: 3px; cursor: pointer;
+  border: 1px solid rgba(0,0,0,.22); box-sizing: border-box; transition: transform .08s, box-shadow .08s;
+}
+.cp-sw:hover { transform: scale(1.18); z-index: 1; box-shadow: 0 2px 6px rgba(0,0,0,.35); }
+.cp-sw:focus-visible { outline: 2px solid var(--cp-accent); outline-offset: 1px; z-index: 2; }
+.cp-sw.sel { outline: 2px solid var(--cp-accent); outline-offset: 1px; z-index: 2; }
+.cp-sw.sel::after {   /* dấu ✓ nhỏ ở giữa ô đang chọn */
+  content: ''; position: absolute; left: 50%; top: 46%; width: 4px; height: 8px; border: solid #fff; border-width: 0 2px 2px 0;
+  transform: translate(-50%, -50%) rotate(45deg); filter: drop-shadow(0 0 1px rgba(0,0,0,.7));
+}
+.cp-sw.sel.light::after { border-color: #222; filter: none; }
+
+.cp-custom { grid-template-columns: repeat(10, 1fr); }
+.cp-cw { position: relative; }
+.cp-x {
+  position: absolute; top: -5px; right: -5px; width: 13px; height: 13px; padding: 0; border: 0; border-radius: 50%; background: #444; color: #fff;
+  display: none; align-items: center; justify-content: center; cursor: pointer; z-index: 3;
+}
+.cp-x .material-symbols-outlined { font-size: 10px; }
+.cp-cw:hover .cp-x, .cp-cw:focus-within .cp-x { display: flex; }
+.cp-x:hover { background: #d33; }
+.cp-add {
+  display: flex; align-items: center; justify-content: center; width: 100%; aspect-ratio: 1 / 1; min-width: 0; padding: 0; border-radius: 3px;
+  border: 1px dashed #9a9ab5; background: #fff; color: var(--cp-ink-dim); cursor: pointer;
+}
+.cp-add .material-symbols-outlined { font-size: 14px; }
+.cp-add:hover:not(:disabled), .cp-add:focus-visible { border-color: var(--cp-accent); color: var(--cp-accent); outline: none; background: rgba(80,72,229,.08); }
+.cp-add:disabled { opacity: .4; cursor: default; }
+.cp-sw.flash { animation: cp-flash .7s ease-out; }
+@keyframes cp-flash { 0% { box-shadow: 0 0 0 4px rgba(80,72,229,.7); } 100% { box-shadow: 0 0 0 0 rgba(80,72,229,0); } }
+
+.cp-sep { height: 1px; margin: 8px -4px 4px; background: #ececf2; }
+.cp-more {
+  display: flex; align-items: center; gap: 7px; width: 100%; height: 26px; padding: 0 6px; border: 1px solid transparent; border-radius: 6px;
+  background: transparent; color: var(--cp-ink); font-size: 11.5px; font-weight: 600; text-align: left; cursor: pointer;
+}
+.cp-more .material-symbols-outlined { font-size: 15px; color: var(--cp-ink-dim); }
+.cp-more:hover:not(:disabled), .cp-more:focus-visible { background: #f1f2fa; outline: none; border-color: rgba(80,72,229,.35); }
+.cp-more:disabled { opacity: .45; cursor: default; }
