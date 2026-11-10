@@ -28,7 +28,8 @@ test('đường viền: hợp lệ, nằm trong khung, xác định theo hạt g
     assert.equal(fn(12345), d, name + ' xác định theo hạt giống');
     assert.notEqual(fn(777), d, name + ' đổi hạt giống → đổi hình');
     const b2 = bounds(d);
-    assert.ok(b2.minX >= -1 && b2.maxX <= W + 8 && b2.minY >= -1 && b2.maxY <= H + 1, name + ' trong khung: ' + JSON.stringify(b2));
+    const tail = name.startsWith('brush') ? 0.25 : 0;   // brush: phần đuôi được kéo ra ngoài bề ngang vùng chữ (tối đa +25%), lông cọ trái tối đa -5%
+    assert.ok(b2.minX >= -1 - (name.startsWith('brush') ? W * 0.05 : 0) && b2.maxX <= W * (1 + tail) + 8 && b2.minY >= -1 && b2.maxY <= H + 1, name + ' trong khung: ' + JSON.stringify(b2));
     assert.ok(!/NaN|Infinity|undefined/.test(d), name);
     assert.ok((d.match(/M/g) || []).length >= minSub, name + ' đủ đường con');
   }
@@ -39,7 +40,14 @@ test('đường viền: hợp lệ, nằm trong khung, xác định theo hạt g
   assert.ok(bb.maxY - bb.minY > H * 0.85, 'thân phủ gần hết chiều cao');
   const reach = Math.max(...[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((sd) => bounds(RR.brushPath(W, H, sd, 0)).maxX));
   assert.ok(reach > W * 0.9, 'đuôi vệt (vài dải kéo dài thành sợi mảnh) ra gần mép phải: ' + reach);
-  assert.ok(Math.max(...[1, 2, 3, 4, 5, 6].map((sd) => bounds(RR.brushPath(W, H, sd, 1)).maxX)) <= W, 'không tràn ra ngoài khung');
+  assert.ok(Math.max(...[1, 2, 3, 4, 5, 6].map((sd) => bounds(RR.brushPath(W, H, sd, 1)).maxX)) <= W * 1.25, 'đuôi không dài quá 25%');
+  // THÂN phủ trọn bề ngang vùng chữ (để che hết chữ): nhiều dải ở giữa dài gần bằng cả bề ngang, bắt đầu sát mép trái và kết thúc sát mép phải
+  for (const variant of [0, 1]) for (const sd of [1, 2, 3, 4, 5, 6, 7, 8]) {
+    const subs = RR.brushPath(W, H, sd, variant).split('M').filter(Boolean).map((p) => bounds('M' + p));
+    const wide = subs.filter((b3) => b3.maxX - b3.minX >= W * 0.9);
+    assert.ok(wide.length >= 5, 'variant ' + variant + ' seed ' + sd + ': đủ dải phủ trọn bề ngang, có ' + wide.length);
+    assert.ok(Math.min(...wide.map((b3) => b3.minX)) <= W * 0.04 && Math.max(...wide.map((b3) => b3.maxX)) >= W * 0.96, 'thân chạm cả hai mép');
+  }
   // kích thước cực nhỏ vẫn hợp lệ
   for (const fn of [() => RR.brushPath(1, 1, 5, 0), () => RR.brushPath(1, 1, 5, 1), () => RR.markerPath(1, 1, 5), () => RR.paperPath(1, 1, 5)]) assert.ok(!/NaN/.test(fn()));
   assert.equal(RR.seedFrom('brush-a:0:3'), RR.seedFrom('brush-a:0:3')); assert.notEqual(RR.seedFrom('brush-a:0:3'), RR.seedFrom('brush-a:1:3'));

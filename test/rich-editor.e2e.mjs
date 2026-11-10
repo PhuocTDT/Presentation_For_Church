@@ -142,12 +142,40 @@ test('trình soạn giàu định dạng: từ-theo-từ, nền, hoạt ảnh, l
     assert.equal(await ev(`getComputedStyle(document.querySelector('#editor-text-box .rr-bg-item')).opacity`), '0.4', 'độ mờ nền');
     assert.equal(await ev(`getComputedStyle(document.getElementById('editor-preview-text')).opacity`), '1', 'độ mờ nền KHÔNG làm mờ chữ');
     await app.screenshot(path.join(process.env.TEMP || os.tmpdir(), 'rich-2-brush.png'));
-    // padding / xoay / thu phóng / vị trí
-    const wBefore = await ev(`document.querySelector('#editor-text-box .rr-bg-item').offsetWidth`);
-    await ev(`(() => { const n = [...document.querySelectorAll('.se-seg-panel .sp-num')]; const by = (t) => n.find((i) => i.title.startsWith(t)); const set = (i, v) => { i.value = String(v); i.dispatchEvent(new Event('input', { bubbles: true })); };
-      set(by('Đệm'), 30); set(by('Xoay'), 5); set(by('Phóng'), 120); set(by('Dịch ngang'), 10); set(by('Dịch dọc'), -6); })()`); await sleep(300);
-    const tf = await ev(`(() => { const it = document.querySelector('#editor-text-box .rr-bg-item'); return { w: it.offsetWidth, t: it.style.transform }; })()`);
-    assert.ok(tf.w > wBefore, 'padding lớn hơn → nền rộng hơn'); assert.match(tf.t, /rotate\(5deg\)/); assert.match(tf.t, /scale\(1\.2\)/); assert.match(tf.t, /translate\(10px,\s*-6px\)/);
+    // VẾT SƠN PHẢI CHE TRỌN CHỮ VÀ KHÔNG LỆCH: vẽ chính SVG của nền ra canvas rồi đo vùng có mực (có cả bộ lọc làm nhoè mép)
+    const ink = () => ev('(async () => { const it = document.querySelector("#editor-text-box .rr-bg-item"); const svg = it.querySelector("svg"); const W = Math.round(it.offsetWidth), H = Math.round(it.offsetHeight);' +
+      ' const c0 = svg.cloneNode(true); c0.setAttribute("xmlns", "http://www.w3.org/2000/svg"); c0.setAttribute("width", W); c0.setAttribute("height", H); c0.style.cssText = "overflow:visible";' +
+      ' const img = new Image(); await new Promise((r, j) => { img.onload = r; img.onerror = j; img.src = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(new XMLSerializer().serializeToString(c0)); });' +
+      ' const pad = 60, cv = document.createElement("canvas"); cv.width = W + pad * 2; cv.height = H + pad * 2; const g = cv.getContext("2d"); g.drawImage(img, pad, pad, W, H);' +
+      ' const d = g.getImageData(0, 0, cv.width, cv.height).data; let x0 = 1e9, x1 = -1, y0 = 1e9, y1 = -1, sx = 0, sy = 0, n = 0;' +
+      ' for (let y = 0; y < cv.height; y++) for (let x = 0; x < cv.width; x++) if (d[(y * cv.width + x) * 4 + 3] > 40) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; sx += x; sy += y; n++; }' +
+      ' return { W, H, x0: x0 - pad, x1: x1 - pad, y0: y0 - pad, y1: y1 - pad, cx: sx / n - pad, cy: sy / n - pad, n }; })()');
+    const k = await ink();
+    assert.ok(k.n > 200, 'có mực: ' + JSON.stringify(k));
+    assert.ok(k.x0 <= k.W * 0.06, 'nét sơn bắt đầu sát mép trái của vùng chữ: ' + JSON.stringify(k));
+    assert.ok(k.x1 >= k.W * 0.97, 'nét sơn phủ tới tận mép phải (thân + đuôi): ' + JSON.stringify(k));
+    assert.ok(k.y0 <= k.H * 0.12 && k.y1 >= k.H * 0.88, 'phủ trọn chiều cao dòng chữ: ' + JSON.stringify(k));
+    assert.ok(Math.abs(k.cx - k.W / 2) < k.W * 0.12 && Math.abs(k.cy - k.H / 2) < k.H * 0.12, 'tâm khối mực nằm giữa vùng chữ (không bị bộ lọc đẩy lệch): ' + JSON.stringify(k));
+    // Đệm = CHIỀU CAO, Cỡ = CHIỀU NGANG (không còn phóng đều mọi hướng)
+    const dim = () => ev("(() => { const it = document.querySelector('#editor-text-box .rr-bg-item'); return { w: it.offsetWidth, h: it.offsetHeight, t: it.style.transform }; })()");
+    const setNum = (title, v) => ev("(() => { const i = [...document.querySelectorAll('.se-seg-panel .sp-num')].find((x) => x.title.startsWith(" + JSON.stringify(title) + ")); i.value = String(" + v + "); i.dispatchEvent(new Event('input', { bubbles: true })); })()");
+    const d0 = await dim();
+    await setNum('Đệm', 36); await sleep(300);
+    const d1 = await dim();
+    assert.ok(d1.h > d0.h + 20, 'Đệm tăng CHIỀU CAO: ' + d0.h + ' → ' + d1.h);
+    assert.ok(Math.abs(d1.w - d0.w) <= 1, 'Đệm KHÔNG đổi chiều ngang: ' + d0.w + ' vs ' + d1.w);
+    await setNum('Cỡ: ', 150); await sleep(300);
+    const d2 = await dim();
+    assert.ok(d2.w > d1.w * 1.3, 'Cỡ tăng CHIỀU NGANG: ' + d1.w + ' → ' + d2.w);
+    assert.ok(Math.abs(d2.h - d1.h) <= 1, 'Cỡ KHÔNG đổi chiều cao: ' + d1.h + ' vs ' + d2.h);
+    assert.doesNotMatch(d2.t, /scale/, 'không còn phóng đều bằng CSS scale');
+    const k2 = await ink();
+    assert.ok(k2.x0 <= k2.W * 0.06 && k2.x1 >= k2.W * 0.97, 'vẫn phủ trọn bề ngang sau khi giãn: ' + JSON.stringify(k2));
+    await setNum('Cỡ: ', 100); await setNum('Đệm', 12); await sleep(250);
+    await ev("(() => { const n = [...document.querySelectorAll('.se-seg-panel .sp-num')]; const by = (t) => n.find((i) => i.title.startsWith(t)); const set = (i, v) => { i.value = String(v); i.dispatchEvent(new Event('input', { bubbles: true })); };" +
+      " set(by('Xoay'), 5); set(by('Dịch ngang'), 10); set(by('Dịch dọc'), -6); })()"); await sleep(300);
+    const tf = await dim();
+    assert.match(tf.t, /rotate\(5deg\)/); assert.match(tf.t, /translate\(10px,\s*-6px\)/);
     // đổi sang Marker: mỗi dòng một dải
     await click('.se-seg-panel .sp-pre[data-preset="marker"]'); await sleep(300);
     const mk = await ev(`(() => { const it = document.querySelector('#editor-text-box .rr-bg-item'); return { preset: it.dataset.preset, strips: it.querySelectorAll(':scope > div svg path').length }; })()`);

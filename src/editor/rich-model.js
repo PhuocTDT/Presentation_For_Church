@@ -135,9 +135,9 @@
       color: color(o.color) || '#7c4dff',
       opacity: num(o.opacity, 0, 1, 0.8),
       radius: num(o.radius, 0, 60, 12),
-      padding: num(o.padding, 0, 80, 12),
+      padding: num(o.padding, 0, 80, 12),           // đệm theo CHIỀU CAO (mỗi phía, px)
       rotation: num(o.rotation, -45, 45, 0),
-      scale: num(o.scale, 0.5, 2, 1),
+      scale: num(o.scale, 0.5, 3, 1),               // giãn CHIỀU NGANG (tỉ lệ so với bề ngang chữ)
       dx: num(o.dx, -300, 300, 0),
       dy: num(o.dy, -300, 300, 0),
       z: num(o.z, 0, 20, 0, true),

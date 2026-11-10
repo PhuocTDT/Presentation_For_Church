@@ -51,14 +51,15 @@
     return d + ' Z';
   }
 
-  // Nét cọ (vệt sơn): chia chiều cao thành nhiều DẢI NGANG như các sợi lông cọ. Thân đặc ở giữa; mỗi dải có điểm bắt đầu/kết thúc lệch
-  // nhau nên hai đầu xơ ra như lông cọ; vài dải kéo dài thành vệt mảnh ở đuôi phải (đôi khi đứt quãng); dải sát mép trên/dưới ngắn hơn
-  // nên mép gồ ghề. variant 1 = cọ khô: nhiều khe hở và đuôi dài hơn. Xác định theo hạt giống (cùng hạt giống → cùng hình).
+  // Nét cọ (vệt sơn): chia chiều cao thành nhiều DẢI NGANG như các sợi lông cọ. THÂN phủ trọn bề ngang [0, w] (w = bề ngang vùng chữ
+  // + đệm) nên che hết chữ; hai đầu thân chỉ xơ nhẹ (vài px). Phần "đuôi" mới kéo ra NGOÀI w: vài dải kéo dài thành vệt mảnh bên phải
+  // (đôi khi đứt quãng), vài sợi lông nhô ra bên trái. Dải sát mép trên/dưới ngắn hơn một chút nên mép gồ ghề. variant 1 = cọ khô:
+  // nhiều khe hở và đuôi dài hơn. Xác định theo hạt giống. Tọa độ có thể nhỏ hơn 0 / lớn hơn w ở phần đuôi (SVG overflow:visible).
   function brushPath(w, h, seed, variant) {
     w = Math.max(8, w); h = Math.max(8, h);
     var rnd = rng(seed), dry = variant === 1, d = '';
     var n = clamp(Math.round(h / 3.2), 8, 24), bh = h / n;
-    var bodyL = w * 0.03, bodyR = w * (dry ? 0.78 : 0.83);
+    var rag = Math.min(w * 0.03, 9);                                         // độ xơ hai đầu thân (px)
 
     // một dải nằm ngang, hai đầu hơi nhấp nhô
     function band(x0, x1, y0, y1) {
@@ -72,27 +73,26 @@
     for (var i = 0; i < n; i++) {
       var t = (i + 0.5) / n, e = Math.abs(t - 0.5) * 2;                   // e: 0 ở giữa → 1 ở mép
       var y0 = i * bh - bh * 0.15, y1 = (i + 1) * bh + bh * 0.15;          // chồng nhau để thân đặc, không hở khe
-      var l = bodyL + rnd() * w * (0.01 + e * 0.045);
-      if (rnd() < 0.2 + e * 0.35) l += rnd() * w * 0.07;                   // vài dải bắt đầu muộn → đầu trái xơ
-      var r = bodyR - rnd() * w * (0.02 + e * 0.09);
-      if (rnd() < 0.15 + e * 0.3) r -= rnd() * w * 0.06;                   // vài dải kết thúc sớm → mép phải xơ
+      var l = rnd() * rag * (0.3 + e);
+      var r = w - rnd() * rag * (0.3 + e);
+      if (e > 0.55 && rnd() < 0.5) { l += rnd() * rag; r -= rnd() * rag; } // dải sát mép trên/dưới ngắn hơn
 
-      if (dry && rnd() < 0.25 + e * 0.3) {                                 // cọ khô: thân bị đứt bởi một khe
-        var g0 = l + (r - l) * (0.3 + rnd() * 0.4), gw = w * (0.01 + rnd() * 0.035);
+      if (dry && rnd() < 0.2 + e * 0.3) {                                  // cọ khô: thân bị đứt bởi một khe (không sát hai đầu)
+        var g0 = l + (r - l) * (0.2 + rnd() * 0.55), gw = Math.min(w * 0.035, 6 + rnd() * 10);
         d += band(l, g0, y0, y1) + band(g0 + gw, r, y0, y1);
       } else d += band(l, r, y0, y1);
 
-      // đuôi phải: vệt mảnh kéo dài (nhiều hơn ở các dải gần mép), có thể đứt quãng
+      // đuôi phải: vệt mảnh kéo dài RA NGOÀI vùng chữ (nhiều ở các dải gần mép), có thể đứt quãng
       if (rnd() < (dry ? 0.75 : 0.5) * (0.45 + e * 0.7)) {
-        var tx0 = r - w * 0.02, tx1 = Math.min(w * 0.995, r + w * (0.04 + rnd() * (dry ? 0.17 : 0.12)));
+        var tx0 = r - w * 0.02, tx1 = w + w * (0.04 + rnd() * (dry ? 0.17 : 0.11));
         var cy = (y0 + y1) / 2 + (rnd() - 0.5) * bh * 0.5, th = bh * (0.12 + rnd() * 0.22);
         if (rnd() < 0.45) { var mid = tx0 + (tx1 - tx0) * (0.35 + rnd() * 0.3); d += band(tx0, mid, cy - th, cy + th) + band(mid + w * 0.012, tx1, cy - th * 0.7, cy + th * 0.7); }
         else d += band(tx0, tx1, cy - th, cy + th);
       }
       // sợi lông cọ nhỏ nhô ra bên trái
       if (rnd() < 0.12 + e * 0.25) {
-        var lx1 = l + w * 0.03, lx0 = Math.max(0, l - w * (0.015 + rnd() * 0.03)), lc = (y0 + y1) / 2, lt = bh * (0.1 + rnd() * 0.15);
-        d += band(lx0, lx1, lc - lt, lc + lt);
+        var lc = (y0 + y1) / 2, lt = bh * (0.1 + rnd() * 0.15);
+        d += band(-w * (0.01 + rnd() * 0.02), l + w * 0.03, lc - lt, lc + lt);
       }
     }
     return d.trim() || ('M0 0 L' + r1(w) + ' 0 L' + r1(w) + ' ' + r1(h) + ' L0 ' + r1(h) + ' Z');
@@ -343,22 +343,30 @@
       var lines = groupLineRects(handle.rects(bg.s, bg.e));
       if (!lines.length) return;
       lines = lines.map(function (l) { return { left: (l.left - lr.left) / scale, right: (l.right - lr.left) / scale, top: (l.top - lr.top) / scale, bottom: (l.bottom - lr.top) / scale }; });
-      var U = unionRect(lines), pad = bg.padding;
+      // Đệm = tăng CHIỀU CAO (mỗi phía thêm `padding` px); Cỡ = tăng CHIỀU NGANG (bề ngang chữ × scale, giữ tâm); lề ngang cố định ~10px
+      // mỗi đầu để đầu cọ không cắt vào chữ. Xoay quanh tâm; dịch X/Y.
+      var U = unionRect(lines), pad = bg.padding, HM = 10;
+      var cx = (U.left + U.right) / 2, cy = (U.top + U.bottom) / 2;
       var box = document.createElement('div'); box.className = 'rr-bg-item'; box.dataset.preset = bg.preset;
-      var W = U.right - U.left + pad * 2, H = U.bottom - U.top + pad * 2;
-      box.style.cssText = 'position:absolute;pointer-events:none;left:' + r1(U.left - pad) + 'px;top:' + r1(U.top - pad) + 'px;width:' + r1(W) + 'px;height:' + r1(H) + 'px;' +
-        'opacity:' + bg.opacity + ';transform-origin:50% 50%;transform:translate(' + bg.dx + 'px,' + bg.dy + 'px) rotate(' + bg.rotation + 'deg) scale(' + bg.scale + ');';
+      var W = (U.right - U.left) * bg.scale + HM * 2, H = (U.bottom - U.top) + pad * 2;
+      var BL = cx - W / 2, BT = cy - H / 2;
+      box.style.cssText = 'position:absolute;pointer-events:none;left:' + r1(BL) + 'px;top:' + r1(BT) + 'px;width:' + r1(W) + 'px;height:' + r1(H) + 'px;' +
+        'opacity:' + bg.opacity + ';transform-origin:50% 50%;transform:translate(' + bg.dx + 'px,' + bg.dy + 'px) rotate(' + bg.rotation + 'deg);';
       var seed = seedFrom(bg.preset + ':' + bg.shape + ':' + bg.s);
       var svg;
       if (bg.preset === 'brush-a' || bg.preset === 'brush-b') {
         svg = makeSvg(W, H);
         var fid = 'rr-f' + (++uid), fdefs = document.createElementNS(SVGNS, 'defs'), flt = document.createElementNS(SVGNS, 'filter');
         flt.setAttribute('id', fid); flt.setAttribute('x', '-4%'); flt.setAttribute('y', '-8%'); flt.setAttribute('width', '108%'); flt.setAttribute('height', '116%');
+        flt.setAttribute('color-interpolation-filters', 'sRGB');
         var turb = document.createElementNS(SVGNS, 'feTurbulence');
-        turb.setAttribute('type', 'fractalNoise'); turb.setAttribute('baseFrequency', '0.018 0.32'); turb.setAttribute('numOctaves', '2'); turb.setAttribute('seed', String(seed % 997)); turb.setAttribute('result', 'n');
+        turb.setAttribute('type', 'fractalNoise'); turb.setAttribute('baseFrequency', '0.018 0.32'); turb.setAttribute('numOctaves', '2'); turb.setAttribute('seed', String(seed % 997)); turb.setAttribute('result', 'n0');
+        // ép alpha của nhiễu = 1: nếu không, các kênh màu bị nhân alpha (premultiplied) nên trung bình lệch khỏi 0.5 và CẢ HÌNH bị dịch lên/sang trái
+        var cm = document.createElementNS(SVGNS, 'feColorMatrix');
+        cm.setAttribute('in', 'n0'); cm.setAttribute('type', 'matrix'); cm.setAttribute('values', '1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 0 1'); cm.setAttribute('result', 'n');
         var disp = document.createElementNS(SVGNS, 'feDisplacementMap');
         disp.setAttribute('in', 'SourceGraphic'); disp.setAttribute('in2', 'n'); disp.setAttribute('scale', String(r1(bg.preset === 'brush-b' ? clamp(H * 0.15, 3, 15) : clamp(H * 0.09, 2, 9)))); disp.setAttribute('xChannelSelector', 'R'); disp.setAttribute('yChannelSelector', 'G');
-        flt.appendChild(turb); flt.appendChild(disp); fdefs.appendChild(flt); svg.appendChild(fdefs);
+        flt.appendChild(turb); flt.appendChild(cm); flt.appendChild(disp); fdefs.appendChild(flt); svg.appendChild(fdefs);
         var grp = document.createElementNS(SVGNS, 'g'); grp.setAttribute('filter', 'url(#' + fid + ')');
         grp.appendChild(svgPath(brushPath(W, H, seed, bg.preset === 'brush-b' ? 1 : 0), bg.color)); svg.appendChild(grp); box.appendChild(svg);
       } else if (bg.preset === 'paper') {
@@ -377,10 +385,10 @@
         svg.appendChild(rect); box.appendChild(svg);
       } else {   // marker: một dải riêng cho từng dòng, ở phần dưới dòng chữ
         lines.forEach(function (l, li) {
-          var lh = l.bottom - l.top, sh = Math.max(4, lh * bg.thick), top = l.top + (lh - sh) * 0.8;
-          var x0 = l.left - pad * 0.6, w = (l.right - l.left) + pad * 1.2;
+          var lh = l.bottom - l.top, sh = Math.max(4, lh * bg.thick + pad), top = l.top + (lh - lh * bg.thick) * 0.8 - pad * 0.5;
+          var w = (l.right - l.left) * bg.scale + HM * 2, x0 = (l.left + l.right) / 2 - w / 2;
           var holder = document.createElement('div');
-          holder.style.cssText = 'position:absolute;left:' + r1(x0 - (U.left - pad)) + 'px;top:' + r1(top - (U.top - pad)) + 'px;width:' + r1(w) + 'px;height:' + r1(sh) + 'px;';
+          holder.style.cssText = 'position:absolute;left:' + r1(x0 - BL) + 'px;top:' + r1(top - BT) + 'px;width:' + r1(w) + 'px;height:' + r1(sh) + 'px;';
           var s2 = makeSvg(w, sh); s2.appendChild(svgPath(markerPath(w, sh, seed + li * 17), bg.color)); holder.appendChild(s2); box.appendChild(holder);
         });
       }

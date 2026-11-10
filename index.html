@@ -7365,6 +7365,8 @@
             panel.hidden = !open;
             block.classList.toggle('se-seg-open', open);
             eye.setAttribute('aria-expanded', String(open));
+            // panel dài hơn phần danh sách nhìn thấy (thẻ gần mép dưới bị thanh "Thêm slide" che) → cuộn để thấy trọn thẻ
+            if (open) requestAnimationFrame(() => { try { block.scrollIntoView({ block: 'nearest' }); } catch (e) { /* bỏ qua */ } });
         }
         function seWireSegPanel(block, contentDiv) {
             const eye = block.querySelector('.se-eye');

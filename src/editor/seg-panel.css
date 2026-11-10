@@ -22,7 +22,21 @@
 .se-seg-panel .w90 .sp-sel { width: 70px; }
 .se-seg-panel .sp-num:focus, .se-seg-panel .sp-sel:focus { outline: none; border-color: #5048e5; box-shadow: 0 0 0 3px rgba(80,72,229,.2); }
 .se-seg-panel .sp-num:disabled, .se-seg-panel .sp-sel:disabled, .se-seg-panel .sp-cb:disabled { opacity: .4; cursor: default; }
-.se-seg-panel .sp-ck { width: 13px; height: 13px; accent-color: #5048e5; }
+/* Ô tick TỰ VẼ: Tailwind đặt appearance:none cho mọi input và luật cũ của hộp soạn ép input nền trắng → ô được chọn không có hình.
+   Selector cố ý cụ thể (id + 3 lớp) để thắng luật "#song-editor-modal .win-modal-container input". */
+#song-editor-modal .win-modal-container .se-seg-panel input.sp-ck {
+  -webkit-appearance: none; appearance: none; position: relative; flex: none; width: 15px; height: 15px; margin: 0; padding: 0; box-sizing: border-box;
+  border: 1.5px solid #8f95b5; border-radius: 4px; background: #fff; cursor: pointer;   /* không transition: trạng thái đã chọn phải hiện NGAY */
+}
+#song-editor-modal .win-modal-container .se-seg-panel input.sp-ck:hover:not(:disabled) { border-color: #5048e5; }
+#song-editor-modal .win-modal-container .se-seg-panel input.sp-ck:checked,
+#song-editor-modal .win-modal-container .se-seg-panel input.sp-ck:indeterminate { background: #5048e5; border-color: #5048e5; }
+#song-editor-modal .win-modal-container .se-seg-panel input.sp-ck:checked::after {
+  content: ''; position: absolute; left: 4px; top: 0.5px; width: 4px; height: 8px; border: solid #fff; border-width: 0 2px 2px 0; transform: rotate(45deg);
+}
+#song-editor-modal .win-modal-container .se-seg-panel input.sp-ck:indeterminate::after { content: ''; position: absolute; left: 2.5px; top: 5.5px; width: 7px; height: 2px; background: #fff; border-radius: 1px; }
+#song-editor-modal .win-modal-container .se-seg-panel input.sp-ck:focus-visible { outline: 2px solid #5048e5; outline-offset: 2px; }
+#song-editor-modal .win-modal-container .se-seg-panel input.sp-ck:disabled { opacity: .4; cursor: default; }
 .se-seg-panel .sp-range { width: 90px; accent-color: #5048e5; }
 
 .se-seg-panel .sp-tgs { display: inline-flex; gap: 2px; }

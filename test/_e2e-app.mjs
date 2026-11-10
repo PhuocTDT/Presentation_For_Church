@@ -111,7 +111,15 @@ export async function launchApp({ appDir, instanceId, dialogQueue = [] }) {
     else if (m.method === 'Log.entryAdded') logs.push(m.params.entry.level + ': ' + String(m.params.entry.text).slice(0, 300) + ' ' + (m.params.entry.url || ''));
     else if (m.method === 'Runtime.exceptionThrown') exceptions.push(m.params.exceptionDetails.text + ' ' + ((m.params.exceptionDetails.exception || {}).description || '').slice(0, 300));
   };
-  const send = (method, params = {}) => new Promise((r) => { const i = ++id; pend.set(i, r); ws.send(JSON.stringify({ id: i, method, params })); });
+  // Mỗi lệnh CDP có thời hạn: một Promise trong renderer không bao giờ settle (ảnh không onload, fullscreen không có cử chỉ...) sẽ
+  // thành LỖI có tên lệnh + đầu biểu thức, thay vì treo cả bộ test tới khi bị kill mà không có thông báo nào.
+  const CDP_TIMEOUT = Number(process.env.E2E_CDP_TIMEOUT_MS) || 45000;
+  const send = (method, params = {}) => new Promise((r, rej) => {
+    const i = ++id;
+    const timer = setTimeout(() => { pend.delete(i); rej(new Error('CDP quá hạn ' + CDP_TIMEOUT + 'ms: ' + method + ' ' + String(params.expression || '').slice(0, 300) + ' --- log app --- ' + log.slice(-600))); }, CDP_TIMEOUT);
+    pend.set(i, (m) => { clearTimeout(timer); r(m); });
+    ws.send(JSON.stringify({ id: i, method, params }));
+  });
   await send('Runtime.enable'); await send('Page.enable'); await send('Log.enable');
   await sleep(5000); // đợi renderer khởi tạo xong (initializeData + autosync chạy trong main trước đó)
 
