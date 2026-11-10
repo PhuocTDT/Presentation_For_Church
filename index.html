@@ -1536,7 +1536,8 @@
       #song-editor-modal .hybrid-size-input { font-size: 11.5px !important; font-weight: 700; color: var(--se-ink) !important; }
       #song-editor-modal .win-modal-container .hybrid-size-btn { width: 18px; border-left-color: var(--se-line); border-radius: 0 6px 6px 0; }
       #song-editor-modal .win-modal-container .hybrid-size-btn:hover { background: var(--se-accent-soft); color: var(--se-accent); }
-      #song-editor-modal .size-dropdown { border-radius: 10px; border-color: var(--se-line); box-shadow: 0 14px 30px -10px rgba(30,33,64,.4); overflow: hidden; }
+      /* overflow-y PHẢI là auto: danh sách cỡ (8…250) dài hơn max-height → "hidden" làm mất cuộn, chỉ thấy tới 36 */
+      #song-editor-modal .size-dropdown { border-radius: 10px; border-color: var(--se-line); box-shadow: 0 14px 30px -10px rgba(30,33,64,.4); overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; }
       #song-editor-modal .size-dropdown-item { padding: 5px 12px; font-size: 12px; }
       #song-editor-modal .size-dropdown-item:hover { background: var(--se-accent); }
       #song-editor-modal #editor-media-picker-popover { border-radius: 14px; border-color: var(--se-line); box-shadow: 0 22px 50px -12px rgba(30,33,64,.5); }

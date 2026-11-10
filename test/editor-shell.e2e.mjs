@@ -144,6 +144,17 @@ test('hộp Edit Song: header xem trước, Help & Tips, mắt + panel, phạm v
     assert.equal(await app.ev(`window.__clearedLive`), 0, 'Esc khi hộp soạn đang mở không được xoá màn Live');
     assert.equal(await app.ev(`currentLiveIndex`), before);
 
+    // --- menu cỡ chữ trên thanh công cụ CUỘN được tới cỡ lớn nhất (từng bị overflow:hidden → chỉ thấy tới 36) ---
+    await app.ev(`toggleSizeDropdown()`);
+    const dd = await app.ev(`(() => { const m = document.getElementById('size-dropdown-menu'); const s = getComputedStyle(m); return { shown: s.display !== 'none', oy: s.overflowY, sh: m.scrollHeight, ch: m.clientHeight }; })()`);
+    assert.ok(dd.shown, 'menu cỡ chữ mở');
+    assert.ok(dd.sh > dd.ch, 'danh sách dài hơn khung (cần cuộn): ' + JSON.stringify(dd));
+    assert.equal(dd.oy, 'auto', 'menu cỡ chữ phải cuộn được');
+    const lastVisible = await app.ev(`(() => { const m = document.getElementById('size-dropdown-menu'); m.scrollTop = m.scrollHeight; const it = m.lastElementChild.getBoundingClientRect(), mb = m.getBoundingClientRect(); return m.scrollTop > 0 && it.bottom <= mb.bottom + 1 && it.top >= mb.top - 1; })()`);
+    assert.ok(lastVisible, 'cuộn xuống thấy mục cuối (250)');
+    await app.ev(`document.getElementById('size-dropdown-menu').lastElementChild.click()`);
+    assert.equal(await app.ev(`document.getElementById('font-size-input').value`), '250');
+
     assert.deepEqual(app.exceptions, [], 'không có lỗi JS: ' + JSON.stringify(app.exceptions));
   } finally { await app.close(); }
 });
