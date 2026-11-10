@@ -1544,10 +1544,10 @@
         width: 350px; background: #fafbff; border-right: 1px solid var(--se-line);
       }
       #song-editor-modal .win-modal-container > main > aside > div:first-child {
-        height: auto; padding: 10px 12px 4px; gap: 4px; align-items: center; background: transparent; border-bottom: 0;
+        height: auto; padding: 8px 12px 2px; gap: 3px; align-items: center; background: transparent; border-bottom: 0;
       }
       #song-editor-modal .win-modal-container > main > aside > div:first-child > .se-tab {
-        padding: 5px 14px; margin: 0; border: 0; border-radius: 999px; font-size: 11.5px; font-weight: 700;
+        padding: 3px 11px; margin: 0; border: 0; border-radius: 999px; font-size: 10.5px; font-weight: 700;
         color: var(--se-ink-faint); background: transparent; transition: background .15s, color .15s;
       }
       #song-editor-modal .win-modal-container > main > aside > div:first-child > .se-tab { cursor: pointer; user-select: none; }
@@ -1562,11 +1562,11 @@
       #song-editor-modal #lyrics-editor-container.se-pane-hidden {
         position: absolute; left: 0; top: 0; width: 100%; height: 0; padding: 0; overflow: hidden; opacity: 0; pointer-events: none;
       }
-      #song-editor-modal #lyrics-editor-container { background: transparent; padding: 8px 12px 12px; }
+      #song-editor-modal #lyrics-editor-container { background: transparent; padding: 6px 12px 10px; }
 
       /* -- Thẻ slide -- */
       #song-editor-modal .lyrics-slide-block {
-        background: var(--se-card); border: 1px solid #b9bdd3; border-radius: 11px; margin-bottom: 9px;
+        background: var(--se-card); border: 1px solid #b9bdd3; border-radius: 9px; margin-bottom: 7px;
         box-shadow: 0 1px 2px rgba(30,33,64,.05); transition: border-color .15s, box-shadow .15s;
       }
       #song-editor-modal .lyrics-slide-block:hover { border-color: #8f95b5; box-shadow: 0 8px 20px -10px rgba(28,27,46,.3); }
@@ -1574,19 +1574,19 @@
         border-color: var(--se-accent); box-shadow: 0 0 0 1px var(--se-accent), 0 0 0 4px rgba(80,72,229,.28), 0 10px 24px -12px rgba(80,72,229,.5);
       }
       #song-editor-modal .lyrics-slide-header {
-        height: 30px; padding: 0 10px 0 8px; gap: 8px; background: #f6f7fd;
+        height: 24px; padding: 0 8px 0 7px; gap: 6px; background: #f6f7fd;
         border-bottom: 1px solid #d3d6e6; border-left: 4px solid transparent;
       }
       #song-editor-modal .lyrics-slide-num {
-        width: 20px; height: 20px; flex: none; border-radius: 6px; background: var(--se-accent-soft); color: var(--se-accent);
-        display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 800;
+        width: 16px; height: 16px; flex: none; border-radius: 5px; background: var(--se-accent-soft); color: var(--se-accent);
+        display: flex; align-items: center; justify-content: center; font-size: 9px; font-weight: 800;
       }
       /* luật cũ ép MỌI input trong hộp sang nền trắng/viền xám — ô nhãn phải trong suốt để hoà vào tiêu đề thẻ */
       #song-editor-modal .win-modal-container input.lyrics-slide-label-input {
-        background-color: transparent; border-color: transparent; font-size: 11.5px; font-weight: 700; letter-spacing: .01em;
+        background-color: transparent; border-color: transparent; font-size: 10.5px; font-weight: 700; letter-spacing: .01em;
       }
       #song-editor-modal .lyrics-slide-label-input::placeholder { color: var(--se-ink-faint); font-weight: 600; }
-      #song-editor-modal .lyrics-slide-content { padding: 9px 12px; font-size: 13px; line-height: 1.55; color: var(--se-ink); }
+      #song-editor-modal .lyrics-slide-content { padding: 6px 10px; font-size: 11.5px; line-height: 1.5; color: var(--se-ink); }
 
       /* -- Nút thêm slide -- */
       #song-editor-modal .win-modal-container > main > aside > div:last-child {
@@ -1744,25 +1744,25 @@
 
       /* -- Mắt trên thẻ lời: panel Text / Background / Animation -- */
       #song-editor-modal .se-eye {
-        margin-left: auto; width: 22px; height: 22px; flex: none; border: 0; border-radius: 6px; background: transparent; color: var(--se-ink-faint);
+        margin-left: auto; width: 18px; height: 18px; flex: none; border: 0; border-radius: 5px; background: transparent; color: var(--se-ink-faint);
         display: flex; align-items: center; justify-content: center; cursor: pointer; transition: background .12s, color .12s;
       }
-      #song-editor-modal .se-eye .material-symbols-outlined { font-size: 16px; }
+      #song-editor-modal .se-eye .material-symbols-outlined { font-size: 14px; }
       #song-editor-modal .se-eye:hover, #song-editor-modal .se-eye:focus-visible { background: var(--se-accent-soft); color: var(--se-accent); outline: none; }
       #song-editor-modal .lyrics-slide-block.se-seg-open .se-eye { background: var(--se-accent-soft); color: var(--se-accent); }
       #song-editor-modal .se-seg-panel { border-top: 1px solid var(--se-line-soft); background: #fbfbff; border-radius: 0 0 10px 10px; padding: 6px 10px 10px; }
       #song-editor-modal .se-seg-panel[hidden] { display: none; }
       #song-editor-modal .se-seg-tabs { display: flex; gap: 2px; border-bottom: 1px solid var(--se-line-soft); margin-bottom: 8px; }
       #song-editor-modal .se-seg-tab {
-        padding: 5px 10px; margin-bottom: -1px; border: 0; border-bottom: 2px solid transparent; background: transparent; color: var(--se-ink-faint);
-        font-size: 11.5px; font-weight: 700; cursor: pointer;
+        padding: 3px 9px; margin-bottom: -1px; border: 0; border-bottom: 2px solid transparent; background: transparent; color: var(--se-ink-faint);
+        font-size: 10.5px; font-weight: 700; cursor: pointer;
       }
       #song-editor-modal .se-seg-tab:hover { color: var(--se-accent); }
       #song-editor-modal .se-seg-tab.active { color: var(--se-accent); border-bottom-color: var(--se-accent); }
       #song-editor-modal .se-seg-tab:focus-visible { outline: 2px solid var(--se-accent); outline-offset: -2px; }
-      #song-editor-modal .se-seg-scope { font-size: 11px; color: var(--se-ink-dim); margin-bottom: 6px; }
+      #song-editor-modal .se-seg-scope { font-size: 10px; color: var(--se-ink-dim); margin-bottom: 6px; }
       #song-editor-modal .se-seg-scope b { color: var(--se-ink); font-weight: 700; }
-      #song-editor-modal .se-seg-body { font-size: 11.5px; color: var(--se-ink-faint); min-height: 36px; }
+      #song-editor-modal .se-seg-body { font-size: 10.5px; color: var(--se-ink-faint); min-height: 36px; }
       #song-editor-modal .se-seg-body[hidden] { display: none; }
     </style>
     <!-- Đặt CUỐI <head> (sau mọi <style> inline) để giữ đúng thứ tự cascade như Tailwind Play CDN cũ. -->
