@@ -35,7 +35,7 @@ globalThis.WebSocketPair = function () { return { 0: new FakeSocket(), 1: new Fa
 const { RoomRelay } = await import(pathToFileURL(relayPath).href);
 
 // ---------- dựng 1 phòng có ring đã seed ----------
-const T0 = 1_700_000_000_000;
+const T0 = Date.now() - 30_000;   // 30 giây trước: còn trong cửa sổ bù tin (90s) của relay
 const ring = [
   { id: 'm1', ts: T0 + 1, type: 'alert',   to: 'all', text: 'Tăng piano' },
   { id: 'm2', ts: T0 + 2, type: 'resolve', to: 'all', text: 'Tăng piano' },     // alert m1 ĐÃ xử lý
@@ -44,24 +44,28 @@ const ring = [
   { id: 'm5', ts: T0 + 5, type: 'alert',   to: 'c_other', text: 'riêng người khác' },
   { id: 'm6', ts: T0 + 6, type: 'alert',   to: 'all', text: 'Dạo' },
 ];
-async function connect(query) {
-  const store = new Map([['adminSecret', 's3cret'], ['ring', structuredClone(ring)], ['config', { code: 'ABC', name: 'Test' }]]);
+async function connectRaw(query, { ringData = ring, phone = false } = {}) {
+  const store = new Map([['adminSecret', 's3cret'], ['ring', structuredClone(ringData)], ['config', { code: 'ABC', name: 'Test' }]]);
+  const sockets = [];
   const ctx = {
     storage: { get: async (k) => store.get(k), put: async (k, v) => { store.set(k, v); } },
     blockConcurrencyWhile: (fn) => fn(),
     acceptWebSocket() {}, getWebSockets() { return sockets; }
   };
-  const sockets = [];
-  const origAccept = ctx.acceptWebSocket;
   const relay = new RoomRelay(ctx, {});
   await relay.ready;
   const origPair = globalThis.WebSocketPair;
-  globalThis.WebSocketPair = function () { const p = origPair(); sockets.push(p[1]); return p; };
-  const url = new URL('https://x/api/room/ABC/ws?adminSecret=s3cret' + query);
+  globalThis.WebSocketPair = function () { const pr = origPair(); sockets.push(pr[1]); return pr; };
+  // phone = thành viên (token), mặc định = operator (adminSecret)
+  const auth = phone ? '?token=' + encodeURIComponent(await relay.makeToken('c_me', 'Hoa', 'p1')) : '?adminSecret=s3cret';
+  const url = new URL('https://x/api/room/ABC/ws' + auth + query);
   const res = await relay.handleWebSocketUpgrade(new Request(url), url);
   globalThis.WebSocketPair = origPair;
   assert.equal(res.status, 101);
-  return sockets[0].sent.filter((m) => m.kind === 'envelope' && m.envelope.type !== 'presence').map((m) => m.envelope.id);
+  return sockets[0].sent;
+}
+async function connect(query, opts) {
+  return (await connectRaw(query, opts)).filter((m) => m.kind === 'envelope' && m.envelope.type !== 'presence').map((m) => m.envelope.id);
 }
 
 test('server: since hợp lệ → chỉ replay tin SAU nó (bỏ tin riêng của người khác)', async () => {
@@ -84,6 +88,40 @@ test('since lạ + sinceTs mới hơn mọi tin → không replay', async () => 
 });
 test('sinceTs rác (NaN/âm) → không đổ ring', async () => {
   assert.deepEqual(await connect('&since=zzz&sinceTs=abc'), []);
+});
+
+// ---------- giới hạn tuổi tin + khung hello (thành viên vào lại phòng sau buổi nhóm không nhận lại tin cũ) ----------
+const agedRing = (agoMs) => ring.map((e) => ({ ...e, ts: Date.now() - agoMs + (e.ts - T0) }));   // cả ring cách đây `agoMs`
+test('tin đã bỏ lỡ từ LÂU (> 90s) không được phát lại dù since hợp lệ', async () => {
+  assert.deepEqual(await connect('&since=m1', { ringData: agedRing(10 * 60 * 1000) }), []);
+});
+test('since LẠ + sinceTs cũ: ring cũ không đổ về (mốc cũ lưu trong điện thoại từ buổi trước)', async () => {
+  assert.deepEqual(await connect('&since=m_cu&sinceTs=' + (Date.now() - 3 * 24 * 3600 * 1000), { ringData: agedRing(10 * 60 * 1000) }), []);
+});
+test('ring lẫn tin cũ và tin mới: chỉ bù tin còn trong 90s', async () => {
+  const mixed = ring.map((e, i) => (i < 3 ? { ...e, ts: Date.now() - 20 * 60 * 1000 } : e));   // m1..m3 cũ, m4..m6 mới
+  assert.deepEqual(await connect('&since=m1', { ringData: mixed }), ['m4', 'm6']);             // m5 là tin riêng người khác
+});
+test('sinceTs đứng một mình (không có since) vẫn bù tin mới hơn mốc trong 90s', async () => {
+  assert.deepEqual(await connect('&sinceTs=' + (T0 + 3)), ['m4', 'm6']);
+});
+test('sinceTs âm/rác đứng một mình → không replay', async () => {
+  assert.deepEqual(await connect('&sinceTs=-5'), []);
+  assert.deepEqual(await connect('&sinceTs=abc'), []);
+});
+test('hello: thành viên nhận mốc hiện tại của phòng (id tin cuối + giờ server); operator không nhận', async () => {
+  const phoneMsgs = await connectRaw('', { phone: true });
+  const hello = phoneMsgs.find((m) => m.kind === 'hello');
+  assert.ok(hello, 'thành viên phải nhận khung hello');
+  assert.equal(hello.since, 'm6');
+  assert.ok(Math.abs(hello.ts - Date.now()) < 5000, 'ts là giờ server hiện tại');
+  assert.deepEqual(phoneMsgs.filter((m) => m.kind === 'envelope' && m.envelope.type !== 'presence'), [], 'vào mới → không replay gì');
+  assert.equal((await connectRaw('')).some((m) => m.kind === 'hello'), false, 'operator không cần hello');
+});
+test('hello khi ring rỗng: since = null (phone vẫn dùng ts)', async () => {
+  const hello = (await connectRaw('', { phone: true, ringData: [] })).find((m) => m.kind === 'hello');
+  assert.equal(hello.since, null);
+  assert.ok(hello.ts > 0);
 });
 
 // ---------- client operator: con trỏ since ----------

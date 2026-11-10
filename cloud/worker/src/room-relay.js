@@ -37,6 +37,11 @@ import {
 import { createCognitoVerifier } from './cognito-verify.js';
 
 const RING_MAX = 120;               // số envelope replay được khi phone reconnect
+// Chỉ bù tin của ≤ REPLAY_MAX_AGE_MS gần nhất khi một kết nối (lại). Reconnect là để không mất tin lúc rớt mạng THOÁNG QUA;
+// người vào/mở lại phòng sau một khoảng dài (vd. sau buổi nhóm) chỉ nhận tin MỚI từ lúc vào — tin đã bỏ lỡ không phát lại.
+// Kho `ring` lưu tối đa RING_MAX tin KHÔNG hết hạn theo thời gian, nên nếu không có giới hạn này, mốc `since` cũ còn lưu trong
+// điện thoại (hoặc trang phone cũ chưa cập nhật) sẽ khiến cả loạt tin cũ đổ về.
+const REPLAY_MAX_AGE_MS = 90 * 1000;
 const TOKEN_MAX_AGE_MS = 12 * 60 * 60 * 1000; // giống TOKEN_MAX_AGE_MS ở server.js cũ
 const DUP_WINDOW_MS = 5000;
 const BLOCK_DURATION_MS = 3 * 24 * 60 * 60 * 1000; // Chặn (operator) tự hết hạn sau 3 ngày
@@ -1384,8 +1389,9 @@ export class RoomRelay {
     // Replay từ `since` (id envelope cuối phone đã thấy) — reconnect không mất
     // tin nhắn gửi lúc mất mạng thoáng qua, y hệt hành vi LAN cũ.
     const since = url.searchParams.get('since');
-    if (since) {
-      const idx = this.ring.findIndex((e) => e.id === since);
+    const sinceTs = Math.max(0, Number(url.searchParams.get('sinceTs')) || 0);
+    if (since || sinceTs > 0) {
+      const idx = since ? this.ring.findIndex((e) => e.id === since) : -1;
       // `since` không còn trong ring (id không phải loại pushRing(), ring đã
       // xoay quá 120 tin, hoặc client phiên bản cũ gửi id presence/gallery) —
       // TUYỆT ĐỐI không replay cả ring: đó là nguồn lỗi "tin cũ đã xử lý đổ
@@ -1395,13 +1401,20 @@ export class RoomRelay {
       if (idx >= 0) {
         replay = this.ring.slice(idx + 1);
       } else {
-        const sinceTs = Number(url.searchParams.get('sinceTs')) || 0;
         replay = sinceTs ? this.ring.filter((e) => e.ts > sinceTs) : [];
       }
+      // Dù mốc nào: chỉ bù tin còn "tươi" — tin đã bỏ lỡ từ lâu (vd. cả buổi nhóm trước) bị bỏ qua hoàn toàn.
+      const minTs = Date.now() - REPLAY_MAX_AGE_MS;
+      replay = replay.filter((e) => Number(e.ts) >= minTs);
       for (const envelope of replay) {
         if (envelope.to && envelope.to !== 'all' && envelope.to !== ident.clientId) continue;
         try { server.send(JSON.stringify({ kind: 'envelope', envelope })); } catch (e) {}
       }
+    }
+    // Thành viên (không phải operator) nhận "mốc hiện tại" của phòng ngay khi kết nối để dùng làm `since/sinceTs` cho các lần
+    // reconnect sau — kể cả khi chưa nhận được tin nào hoặc phiên được mở lại bằng token đã lưu (không qua /join).
+    if (!ident.isOperator) {
+      try { server.send(JSON.stringify({ kind: 'hello', since: this.ring.length ? this.ring[this.ring.length - 1].id : null, ts: Date.now() })); } catch (e) {}
     }
     await this.broadcastPresence();
 
