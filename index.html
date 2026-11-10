@@ -6436,31 +6436,58 @@
             applyEditorStyle();
         }
 
+        // Bài ĐANG SỬA có phải mục này không? (khớp scheduleId, hoặc id bài — cùng quy tắc với saveSong). Bài mới chưa lưu thì không
+        // thể đang ở Preview/Live. Trước đây applyEditorStyle() đẩy kiểu chữ của bài đang sửa sang Preview/Live BẤT KỂ bài nào đang
+        // phát → sửa bài B làm đổi kiểu chữ của bài A đang chiếu, và mỗi phím gõ lại gửi 1 gói IPC sang cửa sổ Live.
+        function editorTargetsItem(item) {
+            const ce = currentEditingSong;
+            if (!ce || !item) return false;
+            if (ce.scheduleId && item.scheduleId === ce.scheduleId) return true;
+            return !!(ce.id && item.id && item.id === ce.id);
+        }
+
+        let edBgSig = null;        // nền đã áp lên khung xem trước lần gần nhất (null = chưa áp)
+        let edSyncSig = null;      // kiểu chữ đã đẩy sang Preview/Live lần gần nhất
+        let edSyncedOut = false;   // đã đẩy kiểu chữ CHƯA LƯU ra ngoài → Cancel phải khôi phục
+
         function applyEditorStyle() {
             const previewEl = document.getElementById('editor-preview-text');
             if (previewEl) {
                 applyStyleToElement(previewEl, editorStyle);
             }
 
-            // Handle background media in editor preview
-            if (editorStyle.background) {
-                setEditorBackgroundPreview(editorStyle.background);
-            } else {
-                clearEditorBackgroundPreview();
+            // Nền: chỉ chạm vào khi nền THAY ĐỔI (trước đây mỗi phím gõ đều gán lại img.src / gọi vid.play() / dựng lại chip nền)
+            const bgSig = editorStyle.background ? JSON.stringify(editorStyle.background) : '';
+            if (bgSig !== edBgSig) {
+                edBgSig = bgSig;
+                if (editorStyle.background) {
+                    setEditorBackgroundPreview(editorStyle.background);
+                } else {
+                    clearEditorBackgroundPreview();
+                }
+                if (typeof seRefreshBgBars === 'function') seRefreshBgBars();
             }
 
             scaleVirtualCanvas('editor-virtual-canvas', 'editor-preview-box');
             if (typeof seOnStyleApplied === 'function') seOnStyleApplied();
-            if (typeof seRefreshBgBars === 'function') seRefreshBgBars();
 
-            // Sync style to preview output, screen monitor, and the real Screen Live window
-            currentPreviewStyle = normalizeSlideStyle(editorStyle);
-            const previewText = document.getElementById('preview-lyrics-text');
-            if (previewText && previewText.innerText) {
-                applyStyleToElement(previewText, currentPreviewStyle);
-                scaleVirtualCanvas('preview-virtual-canvas', 'preview-output-box');
+            // Đẩy sang Preview / màn hình giám sát / cửa sổ Live THẬT: chỉ khi bài đang sửa chính là bài ở đó, và chỉ khi kiểu chữ đổi
+            // (gõ chữ không đổi kiểu → không làm gì thêm).
+            const styleSig = JSON.stringify(editorStyle);
+            if (styleSig === edSyncSig) return;
+            edSyncSig = styleSig;
+            const previewItem = currentScheduleIndex >= 0 ? schedule[currentScheduleIndex] : null;
+            if (editorTargetsItem(previewItem)) {
+                currentPreviewStyle = normalizeSlideStyle(editorStyle);
+                const previewText = document.getElementById('preview-lyrics-text');
+                if (previewText && previewText.innerText) {
+                    applyStyleToElement(previewText, currentPreviewStyle);
+                    scaleVirtualCanvas('preview-virtual-canvas', 'preview-output-box');
+                }
+                edSyncedOut = true;
             }
-            if (currentLiveIndex >= 0) {
+            const liveItem = (currentLiveIndex >= 0 && currentLiveScheduleIndex >= 0) ? schedule[currentLiveScheduleIndex] : null;
+            if (editorTargetsItem(liveItem)) {
                 currentLiveStyle = normalizeSlideStyle(editorStyle);
                 const mediaText = document.getElementById('media-monitor-lyrics-text');
                 if (mediaText && mediaText.innerText) {
@@ -6468,6 +6495,7 @@
                     scaleVirtualCanvas('media-monitor-virtual-canvas', 'media-monitor-output-box');
                 }
                 sendToLiveWindow({ text: null, style: currentLiveStyle });
+                edSyncedOut = true;
             }
         }
 
@@ -6522,9 +6550,11 @@
                 document.getElementById('color-indicator').style.backgroundColor = '#ffffff';
             }
 
-            applyEditorStyle();
             currentEditingSong = song || null;
             songEditorLastSavedFingerprint = null;
+            edBgSig = null; edSyncedOut = false;
+            edSyncSig = JSON.stringify(editorStyle);   // kiểu chữ lúc mở = mốc, không đẩy gì sang Preview/Live chỉ vì mở hộp
+            applyEditorStyle();
 
             // Setup Toolbar Listeners
             document.getElementById('font-size-input').onchange = (e) => setFontSize(e.target.value);
@@ -6703,7 +6733,15 @@
         });
 
         function setFontSize(size) {
-            editorStyle.fontSize = size + 'px';
+            const input = document.getElementById('font-size-input');
+            const n = Math.round(Number(size));
+            if (!Number.isFinite(n) || n < 1) {   // rỗng / không phải số / 0 / âm: bỏ, khôi phục ô nhập về giá trị đang dùng
+                if (input) input.value = parseInt(editorStyle.fontSize) || 80;
+                return;
+            }
+            const v = Math.min(500, n);           // cùng giới hạn max của ô nhập
+            if (input && String(input.value) !== String(v)) input.value = v;
+            editorStyle.fontSize = v + 'px';
             applyEditorStyle();
         }
 
@@ -6761,7 +6799,7 @@
             let lastEnterTime = 0;
 
             contentDiv.oninput = () => {
-                updateEditorPreview(contentDiv.innerText);
+                queueEditorPreview(contentDiv);   // gom theo khung hình: gõ nhanh không dựng lại xem trước ở từng phím
             };
 
             contentDiv.onfocus = () => {
@@ -7176,8 +7214,7 @@
                         await loadLibrary();
                         if (currentLibraryTab === 'bible') renderLibrary();
                     } else {
-                        songLibrary = updatedList;
-                        if (currentLibraryTab === 'songs') renderLibrary();
+                        songLibrary = updatedList;   // renderLibrary() chạy 1 lần ở cuối (trước đây dựng lại cả bảng thư viện 2 lần)
                     }
 
                     // 1. Tự động cập nhật tất cả các mục trong Schedule
@@ -7251,8 +7288,15 @@
             seResetSlidesView();
             document.getElementById('song-editor-modal').style.display = 'none';
             document.getElementById('lyrics-editor-container').innerHTML = '';
+            // Video nền xem trước (autoplay + loop) vẫn giải mã ngầm sau khi ẩn hộp nếu không giải phóng → ăn CPU, góp phần gây lag.
+            clearEditorBackgroundPreview();
+            edBgSig = null; edSyncSig = null;
+            const pushedOut = edSyncedOut; edSyncedOut = false;
             currentEditingSong = null;
             songEditorLastSavedFingerprint = null;
+            // Cancel: kiểu chữ chưa lưu đã được đẩy sang Preview/Live lúc sửa → nạp lại từ bản ĐÃ LƯU của Schedule
+            // (sau Apply/OK thì Schedule đã mang kiểu chữ mới nên đây là thao tác vô hại).
+            if (pushedOut) { try { refreshPreviewAfterScheduleTemplateApply(); } catch (e) { console.warn('[Editor] khôi phục Preview/Live sau khi đóng:', e); } }
         }
 
         let _filterTimer = null;
@@ -7477,6 +7521,17 @@
                 currentLiveSlideIndex = currentPreviewIndex;
                 goLive(currentSlides[currentPreviewIndex]);
             }
+        }
+
+        let edPreviewRaf = 0, edPreviewSrc = null;
+        function queueEditorPreview(contentDiv) {
+            edPreviewSrc = contentDiv;
+            if (edPreviewRaf) return;
+            edPreviewRaf = requestAnimationFrame(() => {
+                edPreviewRaf = 0;
+                const el = edPreviewSrc; edPreviewSrc = null;
+                if (el && el.isConnected) updateEditorPreview(el.innerText);   // innerText ép reflow → đọc 1 lần/khung hình
+            });
         }
 
         function updateEditorPreview(text) {
@@ -7810,7 +7865,13 @@
             // Chords + Next Verse = Max 4 lines, Otherwise = Max 5 lines
             const hasChords = el.innerHTML.includes('chord-mark');
             const isNextVerseOn = globalSettings.showNextVerse;
-            const maxLines = (hasChords && isNextVerseOn) ? 4 : 5;
+            const configuredMaxLines = (hasChords && isNextVerseOn) ? 4 : 5;
+            // Giới hạn số dòng chỉ có ý nghĩa khi co chữ làm GIẢM được số dòng (dòng bị xuống hàng vì quá rộng). Nếu nội dung đã có
+            // nhiều dòng CỨNG (xuống dòng thật) hơn giới hạn thì co chữ không bao giờ thoả giới hạn → trước đây chữ bị co thẳng về cỡ nhỏ
+            // nhất (10px) dù khung còn rất trống. Khi đó nới giới hạn bằng đúng số dòng cứng, chỉ còn ràng buộc "vừa khung" — giống cửa
+            // sổ Live thật (live.html không có giới hạn số dòng), nên xem trước không còn nhỏ hơn màn chiếu.
+            const hardLines = (el.innerText || el.textContent || '').split('\n').filter((l) => l.trim() !== '').length;
+            const maxLines = Math.max(configuredMaxLines, hardLines);
 
             const baseFontSize = Math.max(8, Math.round(parsePixelValue(style.fontSize, 80)));
             const baseStrokeWidth = Math.max(0, Number(style.textStrokeWidth || 0));
@@ -7847,18 +7908,17 @@
                 return;
             }
 
-            let fittedSize = baseFontSize;
-            for (let nextSize = baseFontSize - 1; nextSize >= minFontSize; nextSize -= 1) {
-                el.style.fontSize = `${nextSize}px`;
-                applyStrokeForFontSize(nextSize);
-                fittedSize = nextSize;
-                if (!checkOverflow(nextSize)) {
-                    return;
-                }
+            // Tìm cỡ chữ LỚN NHẤT còn vừa bằng tìm nhị phân. Trước đây giảm từng 1px, mỗi bước ghi fontSize rồi đọc scrollHeight
+            // (ép reflow) → tới ~70 lần reflow cho một lần gọi, và hàm này chạy ở xem trước + Preview + màn giám sát mỗi lần gõ.
+            let lo = minFontSize, hi = baseFontSize - 1, best = minFontSize;   // best = cỡ nhỏ nhất, dùng khi không cỡ nào vừa
+            while (lo <= hi) {
+                const mid = (lo + hi) >> 1;
+                el.style.fontSize = `${mid}px`;
+                applyStrokeForFontSize(mid);
+                if (!checkOverflow(mid)) { best = mid; lo = mid + 1; } else { hi = mid - 1; }
             }
-
-            el.style.fontSize = `${fittedSize}px`;
-            applyStrokeForFontSize(fittedSize);
+            el.style.fontSize = `${best}px`;
+            applyStrokeForFontSize(best);
         }
 
         function positionTextBox(textBox, styleOverride = null) {
