@@ -1546,16 +1546,16 @@
       #song-editor-modal .win-modal-container > main > aside > div:first-child {
         height: auto; padding: 10px 12px 4px; gap: 4px; align-items: center; background: transparent; border-bottom: 0;
       }
-      #song-editor-modal .win-modal-container > main > aside > div:first-child > div {
+      #song-editor-modal .win-modal-container > main > aside > div:first-child > .se-tab {
         padding: 5px 14px; margin: 0; border: 0; border-radius: 999px; font-size: 11.5px; font-weight: 700;
         color: var(--se-ink-faint); background: transparent; transition: background .15s, color .15s;
       }
-      #song-editor-modal .win-modal-container > main > aside > div:first-child > div { cursor: pointer; user-select: none; }
-      #song-editor-modal .win-modal-container > main > aside > div:first-child > div:not(.active):hover { background: var(--se-accent-soft); color: var(--se-accent); }
-      #song-editor-modal .win-modal-container > main > aside > div:first-child > div.active {
+      #song-editor-modal .win-modal-container > main > aside > div:first-child > .se-tab { cursor: pointer; user-select: none; }
+      #song-editor-modal .win-modal-container > main > aside > div:first-child > .se-tab:not(.active):hover { background: var(--se-accent-soft); color: var(--se-accent); }
+      #song-editor-modal .win-modal-container > main > aside > div:first-child > .se-tab.active {
         color: #fff; background: var(--se-accent); box-shadow: 0 6px 14px -6px rgba(80,72,229,.7);
       }
-      #song-editor-modal .win-modal-container > main > aside > div:first-child > div:focus-visible { outline: 2px solid var(--se-accent); outline-offset: 2px; }
+      #song-editor-modal .win-modal-container > main > aside > div:first-child > .se-tab:focus-visible { outline: 2px solid var(--se-accent); outline-offset: 2px; }
       #song-editor-modal .win-modal-container > main > aside { position: relative; }
       /* Tab Slides: khung Words KHÔNG được display:none (innerText của phần tử ẩn mất dấu xuống dòng → Lưu sẽ hỏng lời bài);
          chỉ thu về cao 0 (vẫn render) + inert để không nhận focus/chuột. */
@@ -1643,9 +1643,34 @@
       #song-editor-modal .se-tbtn:hover { background: var(--se-accent); color: #fff; }
       #song-editor-modal .se-tbtn.danger:hover { background: #dc4c4c; color: #fff; }
 
+      /* -- Chip chọn nền (trên khung xem trước và đầu tab Slides) -- */
+      #song-editor-modal .se-bgbar { position: absolute; top: 6px; right: 12px; display: flex; align-items: center; gap: 4px; z-index: 3; }
+      #song-editor-modal .se-bgbar-row { display: none; flex: none; align-items: center; gap: 4px; margin-left: auto; padding: 0; }
+      #song-editor-modal #se-slides-bgbar .se-bgchip { max-width: 150px; }
+      #song-editor-modal .se-bgchip {
+        display: flex; align-items: center; gap: 7px; height: 26px; max-width: 230px; padding: 0 8px 0 4px;
+        border: 1px solid var(--se-line); border-radius: 8px; background: #fff; color: var(--se-ink-dim);
+        font-size: 11px; font-weight: 700; cursor: pointer; transition: border-color .12s, color .12s;
+      }
+      #song-editor-modal .se-bgchip:hover, #song-editor-modal .se-bgchip:focus-visible { border-color: var(--se-accent); color: var(--se-accent); outline: none; }
+      #song-editor-modal .se-bgchip .material-symbols-outlined { font-size: 15px; }
+      #song-editor-modal .se-bgchip-thumb {
+        flex: none; width: 26px; height: 16px; border-radius: 4px; background-color: #000; background-size: cover; background-position: center;
+        box-shadow: inset 0 0 0 1px rgba(28,27,46,.25); display: flex; align-items: center; justify-content: center; color: #fff;
+      }
+      #song-editor-modal .se-bgchip-thumb .material-symbols-outlined { font-size: 12px; }
+      #song-editor-modal .se-bgchip-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      #song-editor-modal .se-bgclear {
+        width: 26px; height: 26px; border: 1px solid var(--se-line); border-radius: 8px; background: #fff; color: var(--se-ink-dim);
+        display: flex; align-items: center; justify-content: center; cursor: pointer; transition: border-color .12s, color .12s;
+      }
+      #song-editor-modal .se-bgclear .material-symbols-outlined { font-size: 15px; }
+      #song-editor-modal .se-bgclear:hover, #song-editor-modal .se-bgclear:focus-visible { border-color: #dc4c4c; color: #dc4c4c; outline: none; }
+      #song-editor-modal .se-thumb-video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; pointer-events: none; }
+
       /* -- Khung xem trước -- */
       #song-editor-modal .win-modal-container > main > section {
-        position: relative; padding: 30px 16px 16px;
+        position: relative; padding: 40px 16px 16px;
         background: #e7eaf7;
       }
       #song-editor-modal .win-modal-container > main > section::before {
@@ -2320,6 +2345,7 @@
                         <div id="se-tab-slides" class="se-tab" role="tab" aria-selected="false" tabindex="0"
                             onclick="setEditorTab('slides')"
                             onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();setEditorTab('slides')}">Slides</div>
+                        <div id="se-slides-bgbar" class="se-bgbar-row" style="display:none"></div>
                     </div>
                     <div class="flex-1 p-3 overflow-y-auto bg-white custom-scrollbar" id="lyrics-editor-container">
                         <!-- Slides will be injected here -->
@@ -2333,6 +2359,7 @@
                 </aside>
                 <!-- Right Preview -->
                 <section class="flex-1 bg-[#d0d0d0] flex flex-col p-4 overflow-hidden">
+                    <div id="se-preview-bgbar" class="se-bgbar"></div>
                     <div class="flex-1 flex items-center justify-center">
                         <div class="aspect-video w-full max-w-xl bg-black shadow-lg overflow-hidden relative"
                             id="editor-preview-box">
@@ -6424,6 +6451,7 @@
 
             scaleVirtualCanvas('editor-virtual-canvas', 'editor-preview-box');
             if (typeof seOnStyleApplied === 'function') seOnStyleApplied();
+            if (typeof seRefreshBgBars === 'function') seRefreshBgBars();
 
             // Sync style to preview output, screen monitor, and the real Screen Live window
             currentPreviewStyle = normalizeSlideStyle(editorStyle);
@@ -6511,21 +6539,27 @@
             setTimeout(setupEditorTextBoxInteraction, 100);
         }
 
-        function toggleEditorMediaPicker() {
+        function toggleEditorMediaPicker(anchorEl) {
             const popover = document.getElementById('editor-media-picker-popover');
-            const btn = document.getElementById('editor-bg-media-btn');
+            const btn = anchorEl || document.getElementById('editor-bg-media-btn');
+            // đang mở từ nút khác → đóng rồi mở lại tại nút vừa bấm (thay vì đóng hẳn)
+            if (popover._anchor && popover._anchor !== btn && !popover.classList.contains('hidden')) popover.classList.add('hidden');
             if (popover.classList.contains('hidden')) {
+                popover._anchor = btn;
                 renderEditorMediaPicker();
                 popover.classList.remove('hidden');
 
                 // Position popover
                 const rect = btn.getBoundingClientRect();
-                popover.style.top = (rect.bottom + 5) + 'px';
-                popover.style.left = rect.left + 'px';
+                const popW = 288, popH = 300;   // w-72 / max-height trong markup
+                let top = rect.bottom + 5;
+                if (top + popH > window.innerHeight - 8) top = Math.max(8, rect.top - popH - 5);   // hết chỗ phía dưới thì mở lên trên
+                popover.style.top = top + 'px';
+                popover.style.left = Math.max(8, Math.min(rect.left, window.innerWidth - popW - 8)) + 'px';
 
                 // Close on outside click
                 const closeHandler = (e) => {
-                    if (!popover.contains(e.target) && !btn.contains(e.target)) {
+                    if (!popover.contains(e.target) && !e.target.closest('#editor-bg-media-btn, .se-bgchip')) {
                         popover.classList.add('hidden');
                         document.removeEventListener('click', closeHandler);
                     }
@@ -6541,7 +6575,7 @@
             grid.innerHTML = '';
 
             if (!mediaLibrary || mediaLibrary.length === 0) {
-                grid.innerHTML = '<div class="col-span-3 text-[9px] text-slate-400 italic text-center py-4">No media available</div>';
+                grid.innerHTML = '<div class="col-span-3 text-[11px] text-slate-500 text-center py-4 leading-snug">Chưa có ảnh/video nền.<br>Thêm bằng <b>File → Import Media</b>.</div>';
                 return;
             }
 
@@ -6812,6 +6846,38 @@
             });
         }
 
+        // ===== Chip "Nền" (trên khung xem trước + đầu tab Slides): xem nền đang dùng, đổi hoặc bỏ =====
+        // Nền là của CẢ BÀI (editorStyle.background — cùng thứ với nút ảnh trên thanh công cụ); đổi ở đâu thì khung xem trước
+        // lớn và các hình thu nhỏ ở tab Slides đều đổi theo (applyEditorStyle → seOnStyleApplied).
+        function seRefreshBgBars() {
+            const bg = editorStyle && editorStyle.background;
+            ['se-preview-bgbar', 'se-slides-bgbar'].forEach((id) => {
+                const bar = document.getElementById(id);
+                if (!bar) return;
+                bar.textContent = '';
+                const chip = document.createElement('button'); chip.type = 'button'; chip.className = 'se-bgchip'; chip.dataset.act = 'pick';
+                chip.title = bg ? 'Đổi nền (đang dùng: ' + (bg.mediaName || '') + ')' : 'Chọn ảnh/video nền cho bài hát';
+                const th = document.createElement('span'); th.className = 'se-bgchip-thumb';
+                if (bg && bg.mediaType !== 'video' && bg.url) th.style.backgroundImage = 'url("' + String(bg.url).replace(/"/g, '%22') + '")';
+                else { const ic = document.createElement('span'); ic.className = 'material-symbols-outlined'; ic.textContent = bg ? 'videocam' : 'image'; th.appendChild(ic); }
+                const nm = document.createElement('span'); nm.className = 'se-bgchip-name'; nm.textContent = bg ? (bg.mediaName || 'Nền') : 'Chọn nền';
+                const dd = document.createElement('span'); dd.className = 'material-symbols-outlined'; dd.textContent = 'expand_more';
+                chip.appendChild(th); chip.appendChild(nm); chip.appendChild(dd);
+                bar.appendChild(chip);
+                if (bg) {
+                    const x = document.createElement('button'); x.type = 'button'; x.className = 'se-bgclear'; x.dataset.act = 'clear'; x.title = 'Bỏ nền';
+                    const xi = document.createElement('span'); xi.className = 'material-symbols-outlined'; xi.textContent = 'close'; x.appendChild(xi);
+                    bar.appendChild(x);
+                }
+            });
+        }
+        document.addEventListener('click', (e) => {
+            const b = e.target.closest && e.target.closest('#se-preview-bgbar button, #se-slides-bgbar button');
+            if (!b) return;
+            if (b.dataset.act === 'clear') clearEditorBackground();
+            else toggleEditorMediaPicker(b);
+        });
+
         // ===== Tab "Slides": xem bài hát dưới dạng các slide thu nhỏ =====
         // Dùng chính applyStyleToElement + khung ảo 960x540 của app nên hình thu nhỏ khớp bản xem trước và màn Live.
         // Nguồn dữ liệu DUY NHẤT vẫn là các thẻ trong #lyrics-editor-container (lưu/đọc như cũ): tab này chỉ ĐỌC thẻ để vẽ,
@@ -6844,6 +6910,8 @@
             wc.classList.toggle('se-pane-hidden', !words);
             if ('inert' in wc) wc.inert = !words;
             sv.style.display = words ? 'none' : '';
+            const bgRow = document.getElementById('se-slides-bgbar');
+            if (bgRow) bgRow.style.display = words ? 'none' : 'flex';
             if (!words) { seInitSlidesView(); renderSlidesView(true); }
         }
 
@@ -6908,7 +6976,14 @@
             t.title = 'Bấm để xem · bấm đúp để sửa · kéo để đổi thứ tự';
             const stage = document.createElement('div'); stage.className = 'se-thumb-stage';
             if (bg && bg.url && bg.mediaType !== 'video') stage.style.backgroundImage = 'url("' + String(bg.url).replace(/"/g, '%22') + '")';
-            else if (bg && bg.mediaType === 'video') { const v = document.createElement('span'); v.className = 'se-thumb-vid'; v.textContent = 'VIDEO'; stage.appendChild(v); }
+            else if (bg && bg.mediaType === 'video') {
+                if (bg.url && seBlocks().length <= 30) {   // nhiều slide thì thôi (mỗi hình 1 thẻ video sẽ nặng)
+                    const vid = document.createElement('video'); vid.className = 'se-thumb-video'; vid.muted = true; vid.playsInline = true; vid.preload = 'metadata';
+                    vid.addEventListener('loadedmetadata', () => { try { vid.currentTime = 0.1; } catch (e) {} }, { once: true });
+                    vid.src = bg.url; stage.appendChild(vid);
+                }
+                const v = document.createElement('span'); v.className = 'se-thumb-vid'; v.textContent = 'VIDEO'; stage.appendChild(v);
+            }
             const canvas = document.createElement('div'); canvas.className = 'se-thumb-canvas'; stage.appendChild(canvas);
             const empty = document.createElement('span'); empty.className = 'se-thumb-empty'; empty.textContent = 'Slide trống'; stage.appendChild(empty);
             const act = document.createElement('div'); act.className = 'se-thumb-actions';
