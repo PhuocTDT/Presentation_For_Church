@@ -3330,16 +3330,22 @@
         function closeStyleTemplateManager(force = false) {
             const item = schedule[currentScheduleIndex];
             const hasPreviewItem = !!(item && !item.isMediaOnly);
+            const finishClose = () => {
+                styleEditorDirty = false;
+                document.getElementById('style-template-manager-modal').style.display = 'none';
+            };
             if (!force && styleEditorDirty && hasPreviewItem) {
-                const applyIt = confirm(
+                askConfirm(
                     `Bạn đã chỉnh Style nhưng chưa áp dụng.\n\n` +
-                    `OK = Áp dụng cho bài đang xem ở Preview ("${item.title || 'bài này'}").\n` +
-                    `Cancel = Thoát, không áp dụng.`
-                );
-                if (applyIt) applyStyleEditorToCurrentPreviewItem();
+                    `Áp dụng cho bài đang xem ở Preview ("${item.title || 'bài này'}")?`,
+                    { title: 'Áp dụng Style?', okText: 'Áp dụng', cancelText: 'Thoát, không áp dụng' }
+                ).then((applyIt) => {
+                    if (applyIt) applyStyleEditorToCurrentPreviewItem();
+                    finishClose();
+                });
+                return;
             }
-            styleEditorDirty = false;
-            document.getElementById('style-template-manager-modal').style.display = 'none';
+            finishClose();
         }
 
         // Bật/tắt nút "Apply this item" theo việc có bài trong Preview hay không
@@ -3463,7 +3469,7 @@
             }
             const template = getStyleTemplateById(currentStyleTemplateEditingId);
             if (!template) return;
-            if (!confirm(`Xóa template "${template.name}"?`)) return;
+            if (!(await askConfirm(`Xóa template "${template.name}"?`, { danger: true, okText: 'Xóa' }))) return;
             const result = await window.electronAPI.deleteStyleTemplate(currentStyleTemplateEditingId);
             if (!result || result.success === false) {
                 alert(result?.error || 'Không thể xóa template.');
@@ -4260,7 +4266,7 @@
 
 
         async function renameBibleVersion(fileName, currentDisplayName) {
-            const nextDisplayName = prompt('Nhập tên phiên bản hiển thị trong danh sách:', currentDisplayName || '');
+            const nextDisplayName = await askPrompt('Nhập tên phiên bản hiển thị trong danh sách:', currentDisplayName || '');
             if (nextDisplayName === null) return;
             const trimmed = String(nextDisplayName || '').trim();
             if (!trimmed) {
@@ -4286,7 +4292,7 @@
         }
 
         async function deleteBibleVersion(fileName, displayName) {
-            const confirmed = confirm(`Bạn có chắc chắn muốn xoá bản dịch "${displayName}" khỏi ứng dụng?`);
+            const confirmed = await askConfirm(`Bạn có chắc chắn muốn xoá bản dịch "${displayName}" khỏi ứng dụng?`, { danger: true, okText: 'Xoá' });
             if (!confirmed) return;
 
             const result = await window.electronAPI.deleteBibleVersion({ fileName });
@@ -4426,7 +4432,7 @@
             if (!preview || preview.success === false) return;
             if ((preview.songs?.changedItems || 0) === 0 && (preview.bible?.changedFiles || 0) === 0) return;
 
-            const confirmed = confirm('Áp dụng thay thế hàng loạt cho dữ liệu hiện có? Hành động này sẽ ghi đè dữ liệu nguồn và tạo backup cho Songs.');
+            const confirmed = await askConfirm('Áp dụng thay thế hàng loạt cho dữ liệu hiện có? Hành động này sẽ ghi đè dữ liệu nguồn và tạo backup cho Songs.', { okText: 'Áp dụng' });
             if (!confirmed) return;
 
             const result = await window.electronAPI.bulkReplaceLibraryText(payload);
@@ -6101,7 +6107,7 @@
             }
 
             const confirmMsg = `Bạn có chắc chắn muốn xóa "${item.title}"?`;
-            if (confirm(confirmMsg)) {
+            if (await askConfirm(confirmMsg, { danger: true, okText: 'Xóa' })) {
                 try {
                     const result = await window.electronAPI.deleteSong({
                         id: item.id,
@@ -8114,7 +8120,51 @@
                 }, function () {});
             } catch (e) { return Promise.resolve(); }
         }
-        ['alert', 'confirm', 'prompt'].forEach(function (name) {
+        // ===== Hộp thoại TRONG TRANG (thay alert/confirm/prompt gốc) =====
+        // alert()/confirm()/prompt() gốc của Electron chặn luồng giao diện và trên Windows trả lại cửa sổ mà trang KHÔNG còn focus
+        // bàn phím (bấm vào ô nhưng không gõ được — kể cả hộp đăng nhập mở ngay sau đó). Hộp thoại này là DOM thường: không chặn,
+        // không đụng focus của hệ điều hành, đóng xong trả focus về phần tử đang dùng.
+        function inPageDialog(o) {
+            return new Promise(function (resolve) {
+                var prev = document.activeElement;
+                var ov = document.createElement('div');
+                ov.setAttribute('role', 'dialog'); ov.setAttribute('aria-modal', 'true');
+                ov.style.cssText = 'position:fixed;inset:0;z-index:100002;background:rgba(15,23,42,.55);display:flex;align-items:center;justify-content:center;padding:16px;';
+                var box = document.createElement('div');
+                box.style.cssText = 'background:#fff;color:#1e293b;border-radius:12px;max-width:480px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.4);padding:18px 18px 14px;font-size:14px;';
+                if (o.title) { var h = document.createElement('div'); h.style.cssText = 'font-weight:700;font-size:15px;margin-bottom:6px;'; h.textContent = o.title; box.appendChild(h); }
+                var msg = document.createElement('div'); msg.style.cssText = 'color:#334155;line-height:1.5;white-space:pre-line;word-break:break-word;'; msg.textContent = String(o.message == null ? '' : o.message); box.appendChild(msg);
+                var inp = null;
+                if (o.input) {
+                    inp = document.createElement('input'); inp.type = 'text'; inp.value = o.defaultValue || '';
+                    inp.style.cssText = 'width:100%;margin-top:10px;padding:7px 9px;border:1px solid #cbd5e1;border-radius:7px;font-size:14px;box-sizing:border-box;';
+                    box.appendChild(inp);
+                }
+                var row = document.createElement('div'); row.style.cssText = 'display:flex;gap:8px;justify-content:flex-end;margin-top:14px;flex-wrap:wrap;';
+                function mk(label, cls) { var b = document.createElement('button'); b.type = 'button'; b.className = 'ws-rv-btn' + (cls ? ' ' + cls : ''); b.textContent = label; return b; }
+                var bCancel = o.single ? null : mk(o.cancelText || 'Hủy');
+                var bOk = mk(o.okText || 'OK', o.danger ? '' : 'go');
+                if (o.danger) bOk.style.cssText = 'background:#c0392f;border-color:#c0392f;color:#fff;font-weight:700;';
+                var cancelValue = o.input ? null : false;
+                function close(v) { document.removeEventListener('keydown', onKey, true); ov.remove(); try { if (prev && prev.isConnected && prev.focus) prev.focus(); } catch (e) {} resolve(v); }
+                function ok() { close(o.input ? inp.value : true); }
+                function onKey(e) {
+                    if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); close(o.single ? undefined : cancelValue); }
+                    else if (e.key === 'Enter' && inp && e.target === inp) { e.preventDefault(); e.stopPropagation(); ok(); }
+                }
+                document.addEventListener('keydown', onKey, true);
+                bOk.addEventListener('click', ok);
+                if (bCancel) { bCancel.addEventListener('click', function () { close(cancelValue); }); row.appendChild(bCancel); }
+                row.appendChild(bOk); box.appendChild(row); ov.appendChild(box); document.body.appendChild(ov);
+                // Hộp xoá/nguy hiểm: focus mặc định vào Hủy để lỡ bấm Enter không xoá nhầm.
+                (inp || (o.danger && bCancel) || bOk).focus();
+                if (inp) inp.select();
+            });
+        }
+        window.askConfirm = function (message, o) { return inPageDialog(Object.assign({ message: message }, o || {})); };
+        window.askPrompt = function (message, defaultValue) { return inPageDialog({ message: message, input: true, defaultValue: defaultValue || '' }); };
+        window.alert = function (message) { inPageDialog({ message: message, single: true }); };   // không chặn, không giành focus hệ điều hành
+        ['confirm', 'prompt'].forEach(function (name) {   // còn sót (nếu có): vẫn trả focus sau khi đóng
             var orig = window[name];
             if (typeof orig !== 'function') return;
             window[name] = function () {
@@ -8733,8 +8783,8 @@
         for (var i = 0; i < buf.length; i++) out += chars[buf[i] % chars.length];
         return out;
       }
-      $('bpPasswordReload').addEventListener('click', function () {
-        if (!confirm('Tạo mật khẩu mới cho phòng? Máy đã kết nối không bị ảnh hưởng, người vào sau phải dùng mật khẩu mới.')) return;
+      $('bpPasswordReload').addEventListener('click', async function () {
+        if (!(await askConfirm('Tạo mật khẩu mới cho phòng? Máy đã kết nối không bị ảnh hưởng, người vào sau phải dùng mật khẩu mới.', { okText: 'Tạo mới' }))) return;
         var btn = this;
         btn.classList.remove('spin'); void btn.offsetWidth; btn.classList.add('spin');
         setTimeout(function () { btn.classList.remove('spin'); }, 500);
@@ -8864,9 +8914,9 @@
           rm.type = 'button';
           rm.textContent = '×';
           rm.title = 'Xoá ảnh này';
-          rm.addEventListener('click', function (e) {
+          rm.addEventListener('click', async function (e) {
             e.stopPropagation();
-            if (!confirm('Xác nhận xoá ảnh hợp âm "' + (im.name || im.id) + '"?')) return;
+            if (!(await askConfirm('Xác nhận xoá ảnh hợp âm "' + (im.name || im.id) + '"?', { danger: true, okText: 'Xoá' }))) return;
             selectedGalIds.delete(im.id);
             api.galleryRemove(im.id)
               .then(function (res) {
@@ -8925,10 +8975,10 @@
 
       var delSelBtn = $('bpGalDeleteSelected');
       if (delSelBtn) {
-        delSelBtn.addEventListener('click', function () {
+        delSelBtn.addEventListener('click', async function () {
           var ids = Array.from(selectedGalIds);
           if (!ids.length) return;
-          if (!confirm('Bạn có chắc chắn muốn xoá ' + ids.length + ' ảnh hợp âm đã chọn?')) return;
+          if (!(await askConfirm('Bạn có chắc chắn muốn xoá ' + ids.length + ' ảnh hợp âm đã chọn?', { danger: true, okText: 'Xoá' }))) return;
           delSelBtn.disabled = true;
           var call = (api && typeof api.galleryRemoveMany === 'function')
             ? api.galleryRemoveMany(ids)
@@ -8953,10 +9003,10 @@
 
       var delAllBtn = $('bpGalDeleteAll');
       if (delAllBtn) {
-        delAllBtn.addEventListener('click', function () {
+        delAllBtn.addEventListener('click', async function () {
           var total = currentGalImages.length;
           if (!total) return;
-          if (!confirm('CẢNH BÁO: Bạn có chắc chắn muốn xoá TOÀN BỘ ' + total + ' ảnh hợp âm?')) return;
+          if (!(await askConfirm('CẢNH BÁO: Bạn có chắc chắn muốn xoá TOÀN BỘ ' + total + ' ảnh hợp âm?', { danger: true, okText: 'Xoá tất cả' }))) return;
           delAllBtn.disabled = true;
           var call = (api && typeof api.galleryClear === 'function')
             ? api.galleryClear()
@@ -9032,16 +9082,16 @@
           var kickBtn = document.createElement('button');
           kickBtn.type = 'button'; kickBtn.className = 'act'; kickBtn.textContent = 'Kick';
           kickBtn.title = 'Ngắt kết nối ngay — vẫn vào lại được sau';
-          kickBtn.addEventListener('click', function () {
-            if (!confirm('Ngắt kết nối "' + (c.name || 'Ẩn danh') + '" khỏi phòng?')) return;
+          kickBtn.addEventListener('click', async function () {
+            if (!(await askConfirm('Ngắt kết nối "' + (c.name || 'Ẩn danh') + '" khỏi phòng?', { okText: 'Ngắt kết nối' }))) return;
             api.kickClient(c.clientId).then(function () { refreshOnlineList(); });
           });
           row.appendChild(kickBtn);
           var blockBtn = document.createElement('button');
           blockBtn.type = 'button'; blockBtn.className = 'act block'; blockBtn.textContent = 'Chặn';
           blockBtn.title = 'Ngắt kết nối và cấm quay lại phòng này trong 3 ngày';
-          blockBtn.addEventListener('click', function () {
-            if (!confirm('Chặn "' + (c.name || 'Ẩn danh') + '" khỏi phòng này trong 3 ngày? Bạn vẫn bỏ chặn sớm hơn được bất cứ lúc nào.')) return;
+          blockBtn.addEventListener('click', async function () {
+            if (!(await askConfirm('Chặn "' + (c.name || 'Ẩn danh') + '" khỏi phòng này trong 3 ngày? Bạn vẫn bỏ chặn sớm hơn được bất cứ lúc nào.', { danger: true, okText: 'Chặn' }))) return;
             api.blockClient(c.clientId).then(function () { refreshOnlineList(); refreshBlockedList(); });
           });
           row.appendChild(blockBtn);
@@ -9154,9 +9204,9 @@
           ['bpWhoami', 'bpWhoamiConn'].forEach(function (id) { var e = $(id); if (e) e.textContent = t; });
         }).catch(function () {});
       }
-      function doOperatorLogout() {
+      async function doOperatorLogout() {
         if (!api.operatorAuth || !api.operatorAuth.logout) return;
-        if (!confirm('Đăng xuất tài khoản operator? Kênh Band sẽ dừng; bạn cần đăng nhập lại để dùng tiếp.')) return;
+        if (!(await askConfirm('Đăng xuất tài khoản operator? Kênh Band sẽ dừng; bạn cần đăng nhập lại để dùng tiếp.', { okText: 'Đăng xuất' }))) return;
         api.operatorAuth.logout().then(function () {
           hideBandError();
           closeConnModal();
@@ -9268,11 +9318,11 @@
       // Xóa feed CHỈ trên màn hình operator này — không đụng relay/điện thoại.
       // Cố ý GIỮ seenEnvIds để tin vừa xóa không hiện lại nếu relay replay lúc
       // reconnect trong cùng phiên chạy.
-      $('bpClear').addEventListener('click', function () {
+      $('bpClear').addEventListener('click', async function () {
         var feed = $('bpFeed');
         var empty = $('bpEmpty');
         if (!feed.querySelector('.bp-fr, .bp-msg, .bp-slcard')) return;
-        if (!confirm('Xóa toàn bộ tin trên màn hình Kênh Band? (chỉ xóa trên máy này)')) return;
+        if (!(await askConfirm('Xóa toàn bộ tin trên màn hình Kênh Band? (chỉ xóa trên máy này)', { okText: 'Xóa' }))) return;
         Array.prototype.slice.call(feed.children).forEach(function (n) { if (n !== empty) n.remove(); });
         empty.textContent = running ? 'Đã xóa. Tin mới sẽ hiện ở đây.' : 'Bấm "Bắt đầu" rồi cho band mở địa chỉ + nhập mật khẩu phòng.';
         empty.classList.remove('bp-hidden');
@@ -9461,10 +9511,11 @@
         function performLoad(isReload) {
           // Nạp = THAY THẾ toàn bộ Schedule. Có thay đổi chưa lưu (kể cả Schedule soạn thủ công chưa từng lưu)
           // thì hỏi Lưu / Không lưu / Hủy ở bước sau; chưa có gì cần lưu thì hỏi xác nhận như trước.
-          if (!isScheduleDirty() && !confirm((isReload ? 'Nạp lại' : 'Nạp') + ' setlist "' + slTitle + '" — thay thế toàn bộ Schedule hiện tại?')) return;
+          var askFirst = isScheduleDirty() ? Promise.resolve(true)
+            : askConfirm((isReload ? 'Nạp lại' : 'Nạp') + ' setlist "' + slTitle + '" — thay thế toàn bộ Schedule hiện tại?', { okText: isReload ? 'Nạp lại' : 'Nạp' });
           // Bài do thành viên TẠO MỚI trên web chưa có trong thư viện: duyệt ngay lúc nạp
           // (Duyệt = lưu vào thư viện + đưa vào Schedule; Từ chối = bỏ khỏi Schedule).
-          reviewNewWebSongs(sl, slTitle).then(function (rv) {
+          askFirst.then(function (go) { return go ? reviewNewWebSongs(sl, slTitle) : { ok: false, skipped: [] }; }).then(function (rv) {
             if (!rv.ok) return; // operator hủy -> không nạp gì
             // Đặt SAU bước duyệt, ngay trước lúc thay thế: hủy ở đây thì không nạp, setlist vẫn chờ trên thẻ.
             return confirmSaveBeforeLeaving('nạp setlist “' + slTitle + '” (sẽ thay thế toàn bộ Schedule)').then(function (ok) {
@@ -9515,8 +9566,9 @@
         if (!api || !api.songInboxPending) return Promise.resolve({ ok: true, skipped: titles });
         return api.songInboxPending().then(function (r) {
           if (r && r.error) {
-            if (!confirm('Không lấy được ' + need.length + ' bài mới từ web (' + r.error + ').\nNạp setlist KHÔNG có các bài này?')) return { ok: false, skipped: [] };
-            return { ok: true, skipped: titles };
+            return askConfirm('Không lấy được ' + need.length + ' bài mới từ web (' + r.error + ').\nNạp setlist KHÔNG có các bài này?', { okText: 'Nạp không có các bài này' }).then(function (yes) {
+              return yes ? { ok: true, skipped: titles } : { ok: false, skipped: [] };
+            });
           }
           var byId = {}; ((r && r.songs) || []).forEach(function (e) { byId[e.webId] = e; });
           var entries = [], skipped = [];

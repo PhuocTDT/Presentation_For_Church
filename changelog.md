@@ -2,6 +2,14 @@
 
 Tất cả các thay đổi và cập nhật quan trọng của dự án được ghi lại tại đây.
 
+## [3.1.16] - Bỏ hộp thoại gốc (alert/confirm/prompt) khỏi giao diện: sửa "không gõ được sau khi xác nhận / nạp list"
+
+- **Triệu chứng báo cáo (bản 3.1.15)**: bấm "Đăng xuất / đổi tài khoản" rồi xác nhận thì hộp đăng nhập **không nhận phím bàn phím**; sau khi **nạp list** cũng không sửa được bài (mất focus).
+- **Nguyên nhân**: `confirm()`/`alert()`/`prompt()` gốc của Electron chặn luồng giao diện và trên Windows trả lại cửa sổ mà **trang không còn focus bàn phím** (chuột vẫn trúng ô nhưng không gõ được). Các cơ chế "tự chữa focus" ở 3.1.13/3.1.14 chỉ chữa sau khi lỗi đã xảy ra và không đảm bảo; nút đăng xuất ở 3.1.15 và luồng nạp setlist đều dùng `confirm()` gốc nên đúng là đường dẫn tới lỗi này.
+- **Sửa** (`index.html`): thay bằng hộp thoại **trong trang** (DOM thường — không chặn, không đụng focus hệ điều hành, đóng xong trả focus về phần tử đang dùng): `askConfirm()`, `askPrompt()`, và `alert()` giờ là hộp thông báo không chặn. Hộp xoá/nguy hiểm mặc định focus vào "Hủy" (lỡ Enter không xoá nhầm); Escape = Hủy; Enter trong ô nhập = OK. Đã chuyển TẤT CẢ 15 điểm gọi: đăng xuất operator, **nạp setlist** (xác nhận thay thế + hỏi khi không lấy được bài web), xoá/chặn/ngắt kết nối thành viên, xoá ảnh hợp âm (1/nhiều/tất cả), tạo mật khẩu phòng, xoá tin Kênh Band, xoá bài/template/bản dịch Kinh Thánh, đổi tên bản dịch, thay thế hàng loạt, đóng Style manager. (Hộp "Lưu Schedule?" vốn đã ở trong trang từ 3.1.12.)
+- **Còn lại hộp thoại hệ điều hành**: chọn/lưu file (mở/lưu `.bcsch`, nhập/xuất) và hỏi lưu lúc thoát app — đã gắn cửa sổ cha và có cơ chế trả focus (`ensurePageFocus`).
+- Kiểm thử trên Electron thật: 0 hộp thoại gốc trong cả kịch bản; đăng xuất → hộp đăng nhập mở → gõ được; `alert` trả về ngay (4ms); Escape/Enter/Hủy đúng. **Chưa kiểm được bằng phím thật của hệ điều hành** (Windows không cho tiến trình nền chiếm foreground) — cần xác nhận trên máy gặp lỗi.
+
 ## [3.1.15] - Nút "Đăng xuất" cho tài khoản operator + gợi ý rõ khi relay từ chối ("Sai admin secret")
 
 - **Triệu chứng báo cáo**: sidebar Kênh Band hiện "Kênh KHÔNG khởi chạy được — Sai admin secret" và **không có chỗ nào để đăng xuất** để đăng nhập lại bằng tài khoản khác. Backend đăng xuất (`band-operator-auth-logout`, `preload.js` `bandComm.operatorAuth.logout`) đã có từ trước nhưng giao diện không có nút nào gọi nó.
