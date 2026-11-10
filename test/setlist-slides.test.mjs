@@ -37,6 +37,27 @@ test('nhãn khớp hành vi desktop: nhận Verse/Chorus/Đoạn/Điệp khúc/K
   assert.equal(S.stripLabel('Kết\nAmen').label, 'Kết');
   assert.equal(S.stripLabel('Lời bình thường\nx').label, '');
 });
+test('nhãn: chỉ nhận khi CẢ DÒNG là nhãn (hoặc "Nhãn: lời"); dòng lời bắt đầu bằng Kết/End/Đoạn/Tag KHÔNG bị nuốt', () => {
+  // dòng LỜI bắt đầu bằng các chữ của nhãn: trước đây bị coi là nhãn và không được chiếu
+  for (const lyric of ['Kết thúc bài hát bằng lời chúc', 'Endless love, endless grace', 'Đoạn đường dài con đi', 'Tagalog là một ngôn ngữ', 'Kết nối con với Cha', 'Versed in grace']) {
+    const r = S.stripLabel(lyric + '\nlời tiếp theo');
+    assert.equal(r.label, '', 'không phải nhãn: ' + lyric);
+    assert.equal(r.content, lyric + '\nlời tiếp theo', 'giữ nguyên lời: ' + lyric);
+  }
+  // nhãn thật, các dạng thường gặp
+  for (const lab of ['Verse', 'Verse 1', 'verse 2:', 'Chorus x2', 'Chorus 2x', 'Điệp khúc', 'Điệp khúc 2', 'Đoạn 1', 'Đoạn 3.', 'Kết', 'End', 'Tag', 'Bridge', 'Pre-Chorus', 'Verse 1 (nhẹ)']) {
+    const r = S.stripLabel(lab + '\nLời một');
+    assert.equal(r.label, lab, 'là nhãn: ' + lab);
+    assert.equal(r.content, 'Lời một');
+  }
+  // nhãn cùng dòng với lời: tách nhãn, giữ lời (trước đây cả dòng lời bị nuốt)
+  const inl = S.stripLabel('Chorus: Ha-lê-lu-gia, ngợi khen\nLời hai');
+  assert.equal(inl.label, 'Chorus');
+  assert.equal(inl.content, 'Ha-lê-lu-gia, ngợi khen\nLời hai');
+  assert.equal(S.stripLabel('Điệp khúc 2: Chúa ơi\nx').label, 'Điệp khúc 2');
+  // nhãn một dòng duy nhất (không có lời kèm)
+  assert.deepEqual(S.stripLabel('Điệp khúc'), { label: 'Điệp khúc', content: '' });
+});
 test('searchNorm: bỏ dấu tiếng Việt, đ -> d', () => {
   assert.equal(S.searchNorm('Đức Chúa Trời Tuyệt Vời'), 'duc chua troi tuyet voi');
   assert.ok(S.searchNorm('Ơn Chúa').includes('on chua'));

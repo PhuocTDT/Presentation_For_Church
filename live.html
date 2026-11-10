@@ -297,6 +297,22 @@
             el.style.webkitTextStroke = `${strokeWidth}px ${style.textStrokeColor}`;
         }
 
+        // Chừa chỗ cho thanh "next verse" (xem index.html: NEXT_VERSE_SAFE_BOTTOM). Cờ này do app điều khiển gửi kèm mỗi gói nội
+        // dung (reserveNextVerse) — slide cuối có nextVerse rỗng nên không thể suy ra "bật" từ nội dung. Next verse tắt hoặc khung
+        // kéo tay: giữ nguyên hành vi cũ.
+        let reserveNextVerse = false;
+        const NEXT_VERSE_SAFE_BOTTOM = 488;   // đơn vị khung ảo 960x540
+        function textBottomInCanvas(el, textBox) {
+            const centered = /translateY\(\s*-50%\s*\)/.test(textBox.style.transform || '');
+            const boxTop = textBox.offsetTop - (centered ? textBox.offsetHeight / 2 : 0);
+            return boxTop + el.offsetTop + el.offsetHeight;
+        }
+        function overflowsBox(el, textBox, style) {
+            if (measureOverflow(el, textBox)) return true;
+            if (reserveNextVerse && !(style && style.textBox && style.textBox.top != null) && textBottomInCanvas(el, textBox) > NEXT_VERSE_SAFE_BOTTOM) return true;
+            return false;
+        }
+
         function fitTextToBox(el, textBox, style = currentStyle) {
             if (!el || !textBox) return;
             const normalizedStyle = normalizeStyle(style || currentStyle);
@@ -310,7 +326,7 @@
                 return;
             }
 
-            if (!measureOverflow(el, textBox)) {
+            if (!overflowsBox(el, textBox, normalizedStyle)) {
                 return;
             }
 
@@ -319,7 +335,7 @@
                 el.style.fontSize = `${nextSize}px`;
                 applyStrokeForFontSize(el, normalizedStyle, nextSize, baseFontSize);
                 fittedSize = nextSize;
-                if (!measureOverflow(el, textBox)) {
+                if (!overflowsBox(el, textBox, normalizedStyle)) {
                     return;
                 }
             }
@@ -508,11 +524,21 @@
 
         window.electronAPI.onLiveUpdateContent((event, data) => {
             console.log('[Live] Received content:', data);
+            let reserveChanged = false;
+            if (data && data.reserveNextVerse !== undefined) {
+                const r = !!data.reserveNextVerse;
+                if (r !== reserveNextVerse) { reserveNextVerse = r; reserveChanged = true; }
+            }
             if (data && data.style) {
                 applyStyle(data.style);
             }
             if (data && data.text !== null && data.text !== undefined) {
                 setText(data.text);
+            }
+            if (reserveChanged && !(data && data.style) && !(data && data.text !== null && data.text !== undefined)) {
+                // chỉ cờ đổi (bật/tắt next verse) mà không kèm chữ/kiểu → co lại chữ đang hiện cho đúng
+                const cur = document.getElementById('lyrics-text');
+                if (cur && cur.textContent) fitTextToBox(cur, document.getElementById('text-box'), currentStyle);
             }
             if (data && data.nextVerse !== undefined) {
                 const nextVerseEl = document.getElementById('next-verse-text');

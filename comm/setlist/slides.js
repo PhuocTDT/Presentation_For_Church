@@ -13,9 +13,11 @@
   var LYRICS_MAX = 6000;   // = SONG_LYRICS_MAX ở relay, MAX_LYRICS_CHARS ở worker.js
   var TITLE_MAX = 200;
 
-  // Y HỆT desktop (index.html labelPattern) — cố ý KHÔNG neo `$`/`\b` để preview
-  // khớp màn chiếu thật, kể cả khi dòng đầu "Kết…/End…" bị coi là nhãn.
-  var LABEL_RE = /^(Verse|Chorus|Bridge|Pre-Chorus|Tag|End|Đoạn|Điệp khúc|Kết)/i;
+  // Y HỆT desktop (index.html splitSlideLabel): dòng đầu là NHÃN khi cả dòng là nhãn ("Verse 1", "Điệp khúc", "Kết") hoặc
+  // "Nhãn: lời" (giữ phần lời). Dòng lời bắt đầu bằng "Kết thúc…/Endless…/Đoạn đường…" KHÔNG phải nhãn.
+  var LABEL_WORDS = 'Verse|Chorus|Bridge|Pre-Chorus|Tag|End|Đoạn|Điệp khúc|Kết';
+  var LABEL_ONLY_RE = new RegExp('^(?:' + LABEL_WORDS + ')(?:\\s*\\d+)?(?:\\s*(?:[x×]\\s*\\d+|\\d+\\s*[x×]))?(?:\\s*\\([^)]*\\))?\\s*[:.\\-]?\\s*$', 'i');
+  var LABEL_INLINE_RE = new RegExp('^((?:' + LABEL_WORDS + ')(?:\\s*\\d+)?)\\s*:\\s*(\\S.*)$', 'i');
 
   function normalizeLyrics(raw) {
     var text = String(raw == null ? '' : raw)
@@ -34,11 +36,14 @@
   }
 
   function stripLabel(text) {
-    var lines = String(text).split('\n');
-    if (lines.length > 0 && LABEL_RE.test(lines[0].trim())) {
-      return { label: lines[0].trim(), content: lines.slice(1).join('\n').trim() };
-    }
-    return { label: '', content: String(text).trim() };
+    var t = String(text);
+    var nlAt = t.indexOf('\n');
+    var first = (nlAt === -1 ? t : t.slice(0, nlAt)).trim();
+    var rest = nlAt === -1 ? '' : t.slice(nlAt + 1);
+    if (LABEL_ONLY_RE.test(first)) return { label: first, content: rest.trim() };
+    var m = LABEL_INLINE_RE.exec(first);
+    if (m) return { label: m[1].trim(), content: (m[2] + (rest ? '\n' + rest : '')).trim() };
+    return { label: '', content: t.trim() };
   }
 
   // [Am]chord trong lời chỉ để operator xem; màn chiếu bỏ đi (index.html stripChords).
