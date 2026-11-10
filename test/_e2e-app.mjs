@@ -137,7 +137,8 @@ export async function launchApp({ appDir, instanceId, dialogQueue = [] }) {
     // chạy biểu thức trong renderer (await được Promise), trả về giá trị JSON
     async ev(expr) {
       const r = await send('Runtime.evaluate', { expression: expr, awaitPromise: true, returnByValue: true });
-      if (r.result && r.result.exceptionDetails) throw new Error('renderer: ' + JSON.stringify(r.result.exceptionDetails).slice(0, 400));
+      if (!r.result) throw new Error('CDP lỗi (trang có thể đã tải lại hoặc sập): ' + JSON.stringify(r).slice(0, 300) + '\n--- log app ---\n' + log.slice(-800));
+      if (r.result.exceptionDetails) throw new Error('renderer: ' + JSON.stringify(r.result.exceptionDetails).slice(0, 400));
       return r.result.result.value;
     },
     pushDialog(paths) {

@@ -9,6 +9,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { makeAppCopy, launchApp, instanceUserDataDir, removeInstanceUserData } from './_e2e-app.mjs';
 
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const instances = []; const copies = [];
 after(() => {
   for (const c of copies) { try { c.cleanup(); } catch (e) { console.error('cleanup app copy:', e.message); } }
@@ -55,9 +56,9 @@ test('hộp Edit Song: header xem trước, Help & Tips, mắt + panel, phạm v
     await app.raw('Input.dispatchMouseEvent', { type: 'mouseReleased', x: 200, y: 200, button: 'left', clickCount: 1 });
     assert.equal(await app.ev(`document.getElementById('se-help-pop').hidden`), true, 'bấm ra ngoài đóng Help');
 
-    // --- mắt: mở panel, mỗi lần chỉ một thẻ, đổi tab ---
+    // --- mắt: mở panel (dựng lười: thẻ chưa mở chưa có dòng phạm vi), mỗi lần chỉ một thẻ, đổi tab ---
     await app.ev(`document.querySelectorAll('#lyrics-editor-container .se-eye')[0].click()`);
-    let st = await app.ev(`(() => { const b = [...document.querySelectorAll('#lyrics-editor-container .lyrics-slide-block')]; return b.map((x) => ({ open: x.classList.contains('se-seg-open'), hidden: x.querySelector('.se-seg-panel').hidden, scope: x.querySelector('.se-seg-scope b').textContent })); })()`);
+    let st = await app.ev(`(() => { const b = [...document.querySelectorAll('#lyrics-editor-container .lyrics-slide-block')]; return b.map((x) => ({ open: x.classList.contains('se-seg-open'), hidden: x.querySelector('.se-seg-panel').hidden, scope: (x.querySelector('.se-seg-scope b') || {}).textContent })); })()`);
     assert.deepEqual(st.map((x) => x.open), [true, false]); assert.equal(st[0].hidden, false); assert.equal(st[0].scope, 'cả đoạn');
     await app.ev(`document.querySelectorAll('#lyrics-editor-container .se-eye')[1].click()`);
     st = await app.ev(`[...document.querySelectorAll('#lyrics-editor-container .lyrics-slide-block')].map((x) => x.classList.contains('se-seg-open'))`);
@@ -75,10 +76,11 @@ test('hộp Edit Song: header xem trước, Help & Tips, mắt + panel, phạm v
       while ((n = walker.nextNode())) { const i = n.nodeValue.indexOf('VUA'); if (i >= 0) { node = n; off = i; break; } }
       const r = document.createRange(); r.setStart(node, off); r.setEnd(node, off + 3);
       const s = window.getSelection(); s.removeAllRanges(); s.addRange(r);
-      cd.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
       const b = cd.closest('.lyrics-slide-block');
-      return { scope: b.querySelector('.se-seg-scope b').textContent, got: seBlockSelection(b), inner: cd.innerText.trim() };
+      return { got: seBlockSelection(b), inner: cd.innerText.trim() };
     })()`);
+    await sleep(200);   // vùng chọn được ghi nhận qua selectionchange + 1 khung hình
+    sel.scope = await app.ev(`document.querySelector('#lyrics-editor-container .lyrics-slide-block .se-seg-scope b').textContent`);
     const body0 = 'Chúa chính Ngài là VUA của muôn đời\nDòng hai';
     assert.equal(sel.inner, body0, 'ô sửa lời chứa đúng chữ của thẻ 1 (đã bỏ nhãn)');
     assert.equal(sel.got.body, body0);
@@ -115,16 +117,23 @@ test('hộp Edit Song: header xem trước, Help & Tips, mắt + panel, phạm v
     assert.equal(await app.ev(`document.querySelectorAll('#slides-view-container .se-thumb').length`), 2);
     await app.ev(`setEditorTab('words')`);
 
-    // --- toàn màn hình xem trước ---
-    await app.ev(`document.getElementById('se-fs-btn').click()`);
-    await new Promise((r) => setTimeout(r, 800));
+    // --- toàn màn hình xem trước (bấm bằng chuột THẬT: requestFullscreen cần thao tác người dùng, .click() bằng script không đủ) ---
+    const realClick = async (sel) => {
+      const p = await app.ev(`(() => { const r = document.querySelector(${JSON.stringify(sel)}).getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; })()`);
+      await app.raw('Input.dispatchMouseEvent', { type: 'mousePressed', x: p.x, y: p.y, button: 'left', buttons: 1, clickCount: 1 });
+      await app.raw('Input.dispatchMouseEvent', { type: 'mouseReleased', x: p.x, y: p.y, button: 'left', buttons: 0, clickCount: 1 });
+    };
+    // fullscreenchange bắn ở khung hình kế tiếp; cửa sổ không ở tiền cảnh bị hạ tần số khung hình → chờ có giới hạn thay vì chờ cố định
+    const waitFor = async (expr, ms = 8000) => { const t0 = Date.now(); while (Date.now() - t0 < ms) { if (await app.ev(expr)) return true; await new Promise((r) => setTimeout(r, 150)); } return false; };
+    await realClick('#se-fs-btn');
+    await waitFor(`document.querySelector('#se-fs-btn .material-symbols-outlined').textContent === 'fullscreen_exit'`);
     const fsOn = await app.ev(`({ el: (document.fullscreenElement || {}).id, icon: document.querySelector('#se-fs-btn .material-symbols-outlined').textContent, w: document.getElementById('editor-preview-box').getBoundingClientRect().width, iw: innerWidth })`);
     assert.equal(fsOn.el, 'editor-preview-box'); assert.equal(fsOn.icon, 'fullscreen_exit');
     assert.ok(fsOn.w >= fsOn.iw - 2, `khung xem trước phải lấp đầy màn hình (w=${fsOn.w}, innerWidth=${fsOn.iw})`);
     const scale = await app.ev(`document.getElementById('editor-virtual-canvas').style.transform`);
     assert.match(scale, /scale\(([\d.]+)\)/); assert.ok(+scale.match(/scale\(([\d.]+)\)/)[1] > 1, 'canvas ảo phóng to theo màn hình: ' + scale);
-    await app.ev(`document.getElementById('se-fs-btn').click()`);
-    await new Promise((r) => setTimeout(r, 800));
+    await app.ev(`seToggleFullscreen()`);   // thoát: nút nằm sau khung đang toàn màn hình nên gọi thẳng hàm (người dùng thật nhấn Esc/nút)
+    await waitFor(`document.querySelector('#se-fs-btn .material-symbols-outlined').textContent === 'fullscreen'`);
     assert.equal(await app.ev(`document.fullscreenElement === null && document.querySelector('#se-fs-btn .material-symbols-outlined').textContent`), 'fullscreen');
 
     // --- phím tắt toàn cục không chạy khi hộp đang mở: Esc không xoá màn Live, mũi tên không chuyển slide Live ---

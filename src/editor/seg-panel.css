@@ -1,0 +1,72 @@
+/* Panel Text / Background / Animation trong thẻ lời (src/editor/seg-panel.js). Luôn nền sáng. */
+.se-seg-panel .sp-bodies { padding-top: 2px; }
+.se-seg-panel .sp-tab[hidden] { display: none; }
+.se-seg-panel .sp-scope { font-size: 10px; color: #5c5a75; margin: 0 0 6px; }
+.se-seg-panel .sp-scope b { color: #1c1b2e; font-weight: 700; }
+.se-seg-panel .sp-scope-hint { font-size: 10px; color: #8b899f; margin: 0 0 5px; }
+
+.se-seg-panel .sp-line { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; flex-wrap: wrap; }
+.se-seg-panel .sp-row { display: inline-flex; align-items: center; gap: 4px; min-width: 0; }
+.se-seg-panel .sp-row.grow { flex: 1; }
+.se-seg-panel .sp-row.dim { opacity: .45; }
+.se-seg-panel .sp-row.grow > .sp-sel { flex: 1; min-width: 0; }
+.se-seg-panel .sp-k { font-size: 10px; font-weight: 700; color: #5c5a75; white-space: nowrap; }
+.se-seg-panel .sp-spacer { flex: 1; }
+.se-seg-panel .sp-pc { display: inline-flex; align-items: center; gap: 2px; font-size: 10px; color: #5c5a75; }
+
+.se-seg-panel .sp-num, .se-seg-panel .sp-sel {
+  height: 22px; padding: 0 5px; box-sizing: border-box; border: 1px solid #dcdce6; border-radius: 6px; background: #fff; color: #1c1b2e; font: inherit; font-size: 10.5px;
+}
+.se-seg-panel .sp-num { width: 52px; }
+.se-seg-panel .w50 .sp-num { width: 44px; } .se-seg-panel .w60 .sp-num { width: 52px; } .se-seg-panel .w70 .sp-num { width: 60px; }
+.se-seg-panel .w90 .sp-sel { width: 70px; }
+.se-seg-panel .sp-num:focus, .se-seg-panel .sp-sel:focus { outline: none; border-color: #5048e5; box-shadow: 0 0 0 3px rgba(80,72,229,.2); }
+.se-seg-panel .sp-num:disabled, .se-seg-panel .sp-sel:disabled, .se-seg-panel .sp-cb:disabled { opacity: .4; cursor: default; }
+.se-seg-panel .sp-ck { width: 13px; height: 13px; accent-color: #5048e5; }
+.se-seg-panel .sp-range { width: 90px; accent-color: #5048e5; }
+
+.se-seg-panel .sp-tgs { display: inline-flex; gap: 2px; }
+.se-seg-panel .sp-tg { width: 24px; height: 22px; border: 1px solid #dcdce6; border-radius: 6px; background: #fff; color: #5c5a75; font-size: 11px; cursor: pointer; }
+.se-seg-panel .sp-tg.b { font-weight: 800; } .se-seg-panel .sp-tg.i { font-style: italic; font-family: serif; } .se-seg-panel .sp-tg.u { text-decoration: underline; }
+.se-seg-panel .sp-tg:hover { border-color: #5048e5; color: #5048e5; }
+.se-seg-panel .sp-tg.on { background: #5048e5; border-color: #5048e5; color: #fff; }
+
+.se-seg-panel .sp-cb {
+  display: inline-flex; align-items: center; gap: 1px; height: 22px; padding: 0 3px 0 4px; border: 1px solid #dcdce6; border-radius: 6px; background: #fff; cursor: pointer; color: #5c5a75;
+}
+.se-seg-panel .sp-cb .material-symbols-outlined { font-size: 14px; }
+.se-seg-panel .sp-cb:hover:not(:disabled), .se-seg-panel .sp-cb:focus-visible { border-color: #5048e5; outline: none; }
+.se-seg-panel .sp-sw { width: 16px; height: 14px; border-radius: 3px; border: 1px solid rgba(0,0,0,.3); box-sizing: border-box; }
+.se-seg-panel .sp-sw.none { background: repeating-linear-gradient(135deg, #fff 0 3px, #d33 3px 4px); }
+.se-seg-panel .sp-sw.mixed { background-image: linear-gradient(90deg, #f44 0 33%, #4c4 33% 66%, #48f 66%); }
+
+.se-seg-panel .sp-btn {
+  display: inline-flex; align-items: center; gap: 3px; height: 22px; padding: 0 8px; border: 1px solid #dcdce6; border-radius: 6px; background: #fff; color: #1c1b2e;
+  font: inherit; font-size: 10.5px; font-weight: 700; cursor: pointer;
+}
+.se-seg-panel .sp-btn .material-symbols-outlined { font-size: 14px; }
+.se-seg-panel .sp-btn:hover { border-color: #5048e5; color: #5048e5; }
+.se-seg-panel .sp-btn.primary { background: #5048e5; border-color: transparent; color: #fff; }
+.se-seg-panel .sp-btn.primary:hover { background: #423bc4; color: #fff; }
+.se-seg-panel .sp-btn.ghost { background: transparent; }
+.se-seg-panel .sp-btn.danger:hover { border-color: #d33; color: #d33; }
+
+.se-seg-panel .sp-gallery { display: grid; grid-template-columns: repeat(6, 1fr); gap: 5px; margin-bottom: 6px; }
+.se-seg-panel .sp-pre { height: 34px; padding: 4px; border: 1.5px solid #dcdce6; border-radius: 7px; background: #fff; cursor: pointer; }
+.se-seg-panel .sp-pre:hover { border-color: #8f95b5; }
+.se-seg-panel .sp-pre.on { border-color: #5048e5; box-shadow: 0 0 0 2px rgba(80,72,229,.22); }
+.se-seg-panel .sp-pre:focus-visible { outline: 2px solid #5048e5; outline-offset: 1px; }
+.se-seg-panel .sp-pt { display: block; width: 100%; height: 100%; }
+.se-seg-panel .sp-pt svg { display: block; width: 100%; height: 100%; }
+.se-seg-panel .sp-pt.none { background: linear-gradient(135deg, transparent 45%, #d33 45%, #d33 55%, transparent 55%); border-radius: 4px; }
+
+.se-seg-panel .sp-chips { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 6px; }
+.se-seg-panel .sp-chip { max-width: 100%; padding: 2px 8px; border: 1px solid #dcdce6; border-radius: 999px; background: #fff; color: #5c5a75; font-size: 10px; font-weight: 600; cursor: pointer; }
+.se-seg-panel .sp-chip span { display: block; max-width: 230px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.se-seg-panel .sp-chip:hover { border-color: #8f95b5; }
+.se-seg-panel .sp-chip.on { border-color: #5048e5; background: rgba(80,72,229,.1); color: #5048e5; }
+
+.se-seg-panel .sp-seg { display: inline-flex; border: 1px solid #dcdce6; border-radius: 7px; overflow: hidden; margin-bottom: 6px; }
+.se-seg-panel .sp-segb { padding: 3px 10px; border: 0; background: #fff; color: #5c5a75; font-size: 10.5px; font-weight: 700; cursor: pointer; }
+.se-seg-panel .sp-segb + .sp-segb { border-left: 1px solid #dcdce6; }
+.se-seg-panel .sp-segb.on { background: #5048e5; color: #fff; }

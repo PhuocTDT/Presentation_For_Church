@@ -160,6 +160,8 @@
         </div>
     </div>
 
+    <script src="src/editor/rich-model.js"></script>
+    <script src="src/editor/rich-render.js"></script>
     <script>
         const DEFAULT_STYLE = {
             fontFamily: 'Times New Roman',
@@ -440,14 +442,41 @@
             showBackground(background);
         }
 
-        function setText(text) {
+        // Chữ đang hiện + định dạng giàu (màu/cỡ riêng/nền brush-marker/hoạt ảnh). Cùng bộ render với xem trước ở cửa sổ chính.
+        let currentText = '', currentRich = null, renderSeq = 0;
+        function paintText(text, rich, animate) {
             const el = document.getElementById('lyrics-text');
-            el.textContent = text || '';
+            const parts = rich ? RichModel.sanitizeParts(rich, text) : null;   // dữ liệu qua IPC vẫn được lọc theo danh sách cho phép
+            if (parts && !RichModel.partsEmpty(parts)) {
+                RichRender.render(el, text, parts, { baseSize: parsePixelValue(currentStyle.fontSize, 80), animate: !!animate });
+            } else {
+                RichRender.clear(el);
+                el.textContent = text || '';
+            }
             fitTextToBox(el, document.getElementById('text-box'), currentStyle);
+            if (el._richHandle) {
+                el._richHandle.relayout();   // sau khi chữ đã co vừa khung
+                if (animate) { el._richHandle.play('in'); el._richHandle.play('emph'); }
+            }
+        }
+        // Đổi slide: nếu slide hiện tại có hoạt ảnh "ra" thì chạy xong (tối đa 3 giây) rồi mới đổi.
+        async function setText(text, rich) {
+            const seq = ++renderSeq;
+            const el = document.getElementById('lyrics-text'), h = el._richHandle;
+            if (h && h.hasPhase('out') && (text || '') !== currentText) {
+                const wait = Math.min(3000, h.phaseDuration('out'));
+                h.playOut();
+                await new Promise((r) => setTimeout(r, wait));
+                if (seq !== renderSeq) return;   // trong lúc chờ đã có slide mới hơn
+            }
+            const same = (text || '') === currentText && JSON.stringify(rich || null) === JSON.stringify(currentRich);
+            currentText = text || ''; currentRich = rich || null;
+            paintText(currentText, currentRich, !same);   // gửi lại y hệt (đổi nền/kiểu…) thì không phát lại hoạt ảnh vào
         }
 
         function clearAll() {
-            setText('');
+            renderSeq++; currentText = ''; currentRich = null;
+            paintText('', null, false);
             currentBackgroundUrl = null;
             const bufferA = document.getElementById('buffer-a');
             const bufferB = document.getElementById('buffer-b');
@@ -520,6 +549,7 @@
             }
 
             fitTextToBox(el, textBox, normalizedStyle);
+            if (currentRich) paintText(currentText, currentRich, false);   // cỡ chữ gốc/kiểu đổi → dựng lại định dạng (không phát lại hoạt ảnh)
         }
 
         window.electronAPI.onLiveUpdateContent((event, data) => {
@@ -533,7 +563,7 @@
                 applyStyle(data.style);
             }
             if (data && data.text !== null && data.text !== undefined) {
-                setText(data.text);
+                setText(data.text, data.rich);
             }
             if (reserveChanged && !(data && data.style) && !(data && data.text !== null && data.text !== undefined)) {
                 // chỉ cờ đổi (bật/tắt next verse) mà không kèm chữ/kiểu → co lại chữ đang hiện cho đúng
