@@ -8636,26 +8636,32 @@
             }
         }
 
+        // Hệ toạ độ ẢO của khung xem trước là 960x540 (xem scaleVirtualCanvas, positionTextBox, live.html) — KHÔNG phải
+        // 1920x1080. Mã cũ tính theo 1920x1080 nên (1) lần kéo đầu, khi khung đang canh giữa/trên/dưới chưa có toạ độ,
+        // vị trí khởi đầu bị suy ra sai → khung nhảy sang chỗ khác rồi mới theo chuột; (2) tỉ lệ chuột→khung sai gấp đôi.
+        const EDITOR_VIRTUAL_W = 960;
+        const EDITOR_VIRTUAL_H = 540;
+
         function getEditorCanvasScale(container) {
-            const cw = container.clientWidth;
-            const ch = container.clientHeight;
-            return Math.min(cw / 1920, ch / 1080);
+            const canvas = document.getElementById('editor-virtual-canvas');
+            const r = canvas ? canvas.getBoundingClientRect() : null;
+            if (r && r.width > 0) return r.width / EDITOR_VIRTUAL_W;   // tỉ lệ thật đang hiển thị (đã gồm transform scale)
+            return Math.min(container.clientWidth / EDITOR_VIRTUAL_W, container.clientHeight / EDITOR_VIRTUAL_H) || 1;
         }
 
+        // ĐO vị trí hiển thị thật của khung chữ (đã tính cả canh giữa translateY(-50%)) rồi đổi sang đơn vị ảo, thay vì suy ra
+        // từ editorStyle — nên bắt đầu kéo/đổi cỡ từ ĐÚNG chỗ đang thấy, bất kể khung đang canh theo kiểu nào.
         function getTextBoxPixelPos(textBox) {
-            const tb = editorStyle.textBox;
-            const left = (tb && tb.left != null) ? tb.left : 96;
-            const width = (tb && tb.width != null) ? tb.width : 1728;
-            let top;
-            if (tb && tb.top != null) {
-                top = tb.top;
-            } else {
-                const align = editorStyle.verticalAlign || 'middle';
-                if (align === 'top') top = 96;
-                else if (align === 'bottom') top = 1080 - textBox.offsetHeight - 96;
-                else top = (1080 - textBox.offsetHeight) / 2;
-            }
-            return { top, left, width };
+            const container = document.getElementById('editor-preview-box');
+            const canvas = document.getElementById('editor-virtual-canvas');
+            const cr = canvas.getBoundingClientRect();
+            const tr = textBox.getBoundingClientRect();
+            const scale = getEditorCanvasScale(container);
+            return {
+                top: (tr.top - cr.top) / scale,
+                left: (tr.left - cr.left) / scale,
+                width: textBox.offsetWidth
+            };
         }
 
         function beginTextBoxDrag(e, textBox, container) {
@@ -8667,8 +8673,8 @@
                 const scale = getEditorCanvasScale(container);
                 const dx = (ev.clientX - startMouseX) / scale;
                 const dy = (ev.clientY - startMouseY) / scale;
-                const newTop = Math.max(0, Math.min(1080 - textBox.offsetHeight, startTop + dy));
-                const newLeft = Math.max(0, Math.min(1920 - startWidth, startLeft + dx));
+                const newTop = Math.max(0, Math.min(EDITOR_VIRTUAL_H - textBox.offsetHeight, startTop + dy));
+                const newLeft = Math.max(0, Math.min(EDITOR_VIRTUAL_W - startWidth, startLeft + dx));
                 if (!editorStyle.textBox) editorStyle.textBox = {};
                 editorStyle.textBox.top = newTop;
                 editorStyle.textBox.left = newLeft;
