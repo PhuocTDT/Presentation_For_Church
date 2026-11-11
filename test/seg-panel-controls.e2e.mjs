@@ -193,9 +193,17 @@ test('mọi ô điều khiển của panel Text/Background/Animation: đổi đ�
     await num('Thời lượng', 1200); await num('Độ trễ', 300); await settle();
     await ev(`(() => { const s = [...document.querySelectorAll('${P} .sp-sel')].filter((x) => x.options[0] && x.options[0].value === 'linear')[0]; s.value = 'ease-in-out'; s.dispatchEvent(new Event('change', { bubbles: true })); })()`); await settle();
     await ev(`(() => { const s = [...document.querySelectorAll('${P} .sp-sel')].filter((x) => x.options[0] && x.options[0].value === 'up')[0]; s.value = 'left'; s.dispatchEvent(new Event('change', { bubbles: true })); })()`); await settle();
-    await num('Số lần lặp', 3); await settle();
     let a = (await rich()).anims[0];
-    assert.deepEqual([a.dur, a.delay, a.ease, a.dir, a.repeat], [1200, 300, 'ease-in-out', 'left', 3]);
+    assert.deepEqual([a.dur, a.delay, a.ease, a.dir, a.repeat], [1200, 300, 'ease-in-out', 'left', 1]);
+    // hiệu ứng VÀO: ô Lặp và ∞ bị khoá (lặp vào/ra làm chữ chớp tắt — "mất chữ")
+    const repUi = () => ev(`(() => { const n = [...document.querySelectorAll('${P} .sp-num')].find((x) => x.title.startsWith('Số lần lặp') || x.title.startsWith('Chỉ hiệu ứng Nhấn')); const c = document.querySelector('${P} .sp-ck[title="Lặp vô hạn"]'); return { rep: n.disabled, inf: c.disabled }; })()`);
+    assert.deepEqual(await repUi(), { rep: true, inf: true }, 'giai đoạn Vào: không cho lặp');
+    // chuyển sang NHẤN thì lặp được
+    await ev(`document.querySelector('${P} .sp-segb[data-phase="emph"]').click()`); await settle();
+    await fire(`${P} .sp-form .sp-sel`, 'pulse', 'change'); await settle();
+    assert.deepEqual(await repUi(), { rep: false, inf: false }, 'giai đoạn Nhấn: cho lặp');
+    await num('Số lần lặp', 3); await settle();
+    assert.equal((await rich()).anims[0].repeat, 3);
     // ∞: ô tick hiển thị + ô "Lặp" bị khoá
     assert.equal((await ckLooks('Lặp vô hạn')).bg === INDIGO, false);
     await check('Lặp vô hạn', true);

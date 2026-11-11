@@ -158,7 +158,9 @@
       ease: oneOf(o.ease, EASINGS, 'ease-out'),
       dir: oneOf(o.dir, DIRS, 'up'),
       stagger: num(o.stagger, 0, 2000, 60, true),
-      repeat: num(o.repeat, -1, 100, 1, true) // -1 = lặp vô hạn
+      // -1 = lặp vô hạn. CHỈ hiệu ứng "nhấn" được lặp: lặp hiệu ứng vào/ra làm chữ chớp tắt — với ∞ luôn có ký tự gần như
+      // trong suốt trên màn chiếu ("mất chữ"). Dữ liệu cũ có lặp ở vào/ra được đưa về 1 khi đọc.
+      repeat: phase === 'emph' ? num(o.repeat, -1, 100, 1, true) : 1
     };
     var c = color(o.color); if (c) a.color = c;
     return a;

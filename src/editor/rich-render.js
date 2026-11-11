@@ -144,7 +144,9 @@
       return map[dir];
     }
     if (a.phase === 'in') {
-      if (t === 'fade' || t === 'typewriter') return [{ opacity: 0 }, { opacity: 1 }];
+      // typewriter: bậc CỨNG bằng hai khung trùng vị trí (không dùng easing steps(): sai số làm tròn ở khung cuối có lúc giữ ký tự ẩn hẳn)
+      if (t === 'typewriter') return [{ opacity: 0, offset: 0 }, { opacity: 0, offset: 0.5 }, { opacity: 1, offset: 0.5 }, { opacity: 1, offset: 1 }];
+      if (t === 'fade') return [{ opacity: 0 }, { opacity: 1 }];
       if (t === 'slide-up') return [{ opacity: 0, transform: slideFrom('up') }, { opacity: 1, transform: 'none' }];
       if (t === 'slide-down') return [{ opacity: 0, transform: slideFrom('down') }, { opacity: 1, transform: 'none' }];
       if (t === 'zoom') return [{ opacity: 0, transform: 'scale(0.6)' }, { opacity: 1, transform: 'scale(1)' }];
@@ -251,7 +253,7 @@
       var unitAnim = null, wrappers = [];
       seg.anims.forEach(function (i) {
         var a = parts.anims[i];
-        if (UNIT_TYPES[a.type] && !unitAnim) { unitAnim = i; return; }
+        if (UNIT_TYPES[a.type] && unitAnim === null) { unitAnim = i; return; }   // (trước: !unitAnim → sai khi chỉ số = 0)
         wrappers.push(i);
       });
       wrappers.forEach(function (i) {
@@ -386,12 +388,12 @@
         it.targets.forEach(function (t, idx) {
           var startColor = a.type === 'color' ? getComputedStyle(t).color : null;
           var delay = a.delay + (unit ? idx * a.stagger : 0);
-          var dur = a.type === 'typewriter' ? 1 : a.dur;
-          var easing = a.type === 'typewriter' ? 'steps(1, end)' : a.ease;
+          var dur = a.type === 'typewriter' ? 20 : a.dur;
+          var easing = a.type === 'typewriter' ? 'linear' : a.ease;
           var keep = a.phase === 'out' || a.phase === 'in' || a.type === 'scale' || a.type === 'color';
           var an;
           try {
-            an = t.animate(keyframesFor(a, startColor), { duration: dur, delay: delay, easing: easing, iterations: a.repeat === -1 ? Infinity : Math.max(1, a.repeat), fill: keep ? 'both' : 'backwards' });
+            an = t.animate(keyframesFor(a, startColor), { duration: dur, delay: delay, easing: easing, iterations: a.phase !== 'emph' ? 1 : a.repeat === -1 ? Infinity : Math.max(1, a.repeat), fill: keep ? 'both' : 'backwards' });
           } catch (x) { return; }
           if (a.phase === 'in') t.style.opacity = '';   // WAAPI (fill both) giữ trạng thái đầu cho tới hết thời gian chờ
           handle.running.push(an);

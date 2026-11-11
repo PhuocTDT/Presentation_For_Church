@@ -94,7 +94,18 @@ test('đầu vào độc hại bị loại, không rò khoá lạ', () => {
   assert.equal(sl.bgs[0].scale, 0.5);
   assert.equal(sl.bgs[0].dx, 300);
   assert.equal(sl.anims.length, 1);
-  assert.deepEqual(sl.anims[0], { s: 0, e: 4, phase: 'in', type: 'typewriter', dur: 10000, delay: 0, ease: 'ease-out', dir: 'up', stagger: 60, repeat: 100 });
+  // hiệu ứng VÀO không được lặp (lặp làm chữ chớp tắt / "mất chữ" trên màn chiếu) → repeat luôn 1
+  assert.deepEqual(sl.anims[0], { s: 0, e: 4, phase: 'in', type: 'typewriter', dur: 10000, delay: 0, ease: 'ease-out', dir: 'up', stagger: 60, repeat: 1 });
+});
+
+test('lặp chỉ dành cho hiệu ứng nhấn: vào/ra luôn 1 lần, nhấn được kẹp 1–100 hoặc ∞', () => {
+  const mk = (a) => R.sanitizeRich({ v: 1, slides: [{ h: R.hashText(body0), marks: [], bgs: [], anims: [Object.assign({ s: 0, e: 4 }, a)] }] }, LYRICS).slides[0].anims[0];
+  assert.equal(mk({ phase: 'in', type: 'char', repeat: -1 }).repeat, 1);
+  assert.equal(mk({ phase: 'in', type: 'fade', repeat: 5 }).repeat, 1);
+  assert.equal(mk({ phase: 'out', type: 'fade', repeat: -1 }).repeat, 1);
+  assert.equal(mk({ phase: 'emph', type: 'pulse', repeat: -1 }).repeat, -1);
+  assert.equal(mk({ phase: 'emph', type: 'pulse', repeat: 1e9 }).repeat, 100);
+  assert.equal(mk({ phase: 'emph', type: 'glow', repeat: 3 }).repeat, 3);
 });
 
 test('giới hạn số lượng và kiểu dữ liệu sai', () => {

@@ -392,7 +392,13 @@
       if (ctl.anType.dataset.phase !== fv.phase) { ctl.anType.textContent = ''; types.forEach(function (t) { ctl.anType.appendChild(h('option', { value: t, text: TYPE_LABEL[t] })); }); ctl.anType.dataset.phase = fv.phase; }
       ctl.anType.value = fv.type;
       setVal(ctl.anDur, fv.dur); setVal(ctl.anDelay, fv.delay); ctl.anEase.value = fv.ease; ctl.anDir.value = fv.dir;
-      setVal(ctl.anStag, fv.stagger); setVal(ctl.anRep, fv.repeat === -1 ? null : fv.repeat); ctl.anInf.checked = fv.repeat === -1; ctl.anRep.disabled = fv.repeat === -1;
+      setVal(ctl.anStag, fv.stagger); setVal(ctl.anRep, fv.repeat === -1 ? null : fv.repeat); ctl.anInf.checked = fv.repeat === -1;
+      // Lặp chỉ cho hiệu ứng NHẤN (vào/ra lặp lại làm chữ chớp tắt, "mất chữ")
+      var canRep = fv.phase === 'emph';
+      if (!canRep) { setVal(ctl.anRep, 1); ctl.anInf.checked = false; }
+      ctl.anRep.disabled = !canRep || fv.repeat === -1; ctl.anInf.disabled = !canRep;
+      ctl.anRep.closest('.sp-row').classList.toggle('dim', !canRep); ctl.anInf.closest('.sp-row').classList.toggle('dim', !canRep);
+      ctl.anRep.title = canRep ? 'Số lần lặp' : 'Chỉ hiệu ứng Nhấn mới lặp được (Vào/Ra lặp lại sẽ làm chữ chớp tắt)';
       ctl.anCol.set(fv.color || null);
       ctl.anStag.disabled = !UNIT_TYPE[fv.type]; ctl.anStag.closest('.sp-row').classList.toggle('dim', !UNIT_TYPE[fv.type]);
       ctl.anDir.disabled = !(fv.type === 'slide' || /^slide-/.test(fv.type));
