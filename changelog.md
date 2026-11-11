@@ -2,11 +2,15 @@
 
 Tất cả các thay đổi và cập nhật quan trọng của dự án được ghi lại tại đây.
 
-## [Chưa phát hành] - Vệt sơn dùng hình mẫu thật + sửa test e2e treo ngẫu nhiên (nhánh `feature/rich-text-editor`)
+## [3.2.0] - Trình soạn bài giàu định dạng: định dạng theo vùng chọn, nền vệt sơn/marker, hoạt ảnh, Undo/Redo, Preview = Projector
+
+> Chỉ cần bản app mới (không cần deploy Worker). Điện thoại và `/setlist/` vẫn thấy chữ thuần. Toàn bộ unit + e2e của trình soạn: 163/163 đạt.
+
+### Vệt sơn dùng hình mẫu thật + sửa test e2e treo ngẫu nhiên
 
 - **Vệt sơn (Brush / Brush khô) dùng HÌNH THẬT** thay cho hình sinh ngẫu nhiên (người dùng góp ý "chưa đủ mềm mại, độ ngẫu nhiên chưa giống mẫu"): mới `src/editor/brush-shapes.js` (≈33 KB) chứa 5 vệt mềm + 4 vệt cọ khô trích từ bộ vector mẫu người dùng gửi (`133.ai`, `16577.eps`; bộ màu nước `11164.eps` là ảnh raster nên không dùng được). Mỗi hình chuẩn hoá sao cho hình chữ nhật lớn nhất ĐẶT GIỮA trọng tâm thân = hộp chữ → chữ luôn bị che kín và nằm giữa vệt; Cỡ ↔ / Đệm ↕ kéo giãn không đều như trước; ô "Hình" chọn lần lượt các mẫu. Bỏ bộ lọc nhiễu (feTurbulence/feDisplacementMap) cho brush. Nạp trong `index.html` và `live.html` trước `rich-render.js` (Preview = Projector). Hình thu nhỏ preset vẽ vệt thu nhỏ ở giữa để thấy cả sợi/đuôi.
 - Công cụ dựng lại: `scripts/brush-shapes/extract.py` + `build_shapes.py` (Python, chỉ dùng khi phát triển).
-- **⚠ Giấy phép:** bộ vector mẫu không kèm thông tin giấy phép (tên gói kiểu Vecteezy/Freepik — thường yêu cầu ghi nguồn hoặc giấy phép Pro khi dùng trong sản phẩm thương mại). Cần xác nhận và ghi vào `THIRD_PARTY_NOTICES.md` TRƯỚC khi phát hành bản có tính năng này.
+- **⚠ Giấy phép:** bộ vector mẫu không kèm thông tin giấy phép (tên gói kiểu Vecteezy/Freepik — thường yêu cầu ghi nguồn hoặc giấy phép Pro khi dùng trong sản phẩm thương mại). Đã ghi nguồn vào `THIRD_PARTY_NOTICES.md` (mục "Hình vệt sơn"); giấy phép gốc VẪN CHƯA xác nhận — chủ dự án quyết định phát hành 3.2.0 trước, cần bổ sung/thay hình nếu giấy phép không cho phép.
 - **Sửa test e2e treo ngẫu nhiên** (`test/_e2e-app.mjs`): cửa sổ test bị che/không có focus → Chromium ngừng vẽ, `Page.captureScreenshot`/rAF treo vô hạn (đã gây 1/6 lần `rich-editor.e2e` treo 200 s không có thông báo). Nay chạy Electron với `--disable-features=CalculateNativeWinOcclusion --disable-backgrounding-occluded-windows --disable-renderer-backgrounding --disable-background-timer-throttling`, bật `Emulation.setFocusEmulationEnabled` cho cả cửa sổ chính lẫn Live, và mọi lệnh CDP có thời hạn (mặc định 45 s, `E2E_CDP_TIMEOUT_MS`) → treo thành lỗi có tên lệnh.
 - **Preview = Projector về BỐ CỤC** (người dùng báo xem trước 4 dòng nhưng màn chiếu rớt chữ "nguyên" xuống dòng 5): đo trên bài thật cho thấy Edit Song 56px / Live 59px. Nguyên nhân và cách sửa:
   - Hai thuật toán tự co khác nhau: cửa sổ chính có giới hạn số dòng nhưng ĐẾM bằng công thức `chiều cao ÷ (cỡ × 1.4)` (chữ có cỡ riêng to hơn làm dòng cao hơn → tưởng quá 5 dòng → co nhỏ hơn); live.html không có giới hạn này. Nay MỘT module dùng chung `src/editor/text-fit.js` (nạp ở cả hai cửa sổ), đếm số dòng THẬT từ hình học dòng (`Range.getClientRects`, bỏ qua hợp âm).
@@ -21,7 +25,7 @@ Tất cả các thay đổi và cập nhật quan trọng của dự án đượ
 - **Sửa menu cỡ chữ trên thanh công cụ Edit Song không cuộn được** (chỉ thấy tới 36): CSS thiết kế lại hộp soạn đặt `overflow: hidden` đè lên `overflow-y: auto` của menu. Nay cuộn được tới 250 (test e2e `editor-shell` kiểm cuộn tới mục cuối và chọn được).
 - **Test**: `rich-render.test.mjs` kiểm 9 hình (thân che TRỌN hộp chữ, giãn ngang đúng tỉ lệ, cọ khô có mảnh vụn, chọn hình theo hạt giống). Toàn bộ unit + 7 file e2e: 159/159 đạt.
 
-## [Chưa phát hành] - Trình soạn bài giàu định dạng, giai đoạn 5: hộp thoại More Colors + sửa luật nhãn của mô hình dữ liệu (nhánh `feature/rich-text-editor`)
+### Trình soạn bài giàu định dạng, giai đoạn 5: hộp thoại More Colors + sửa luật nhãn của mô hình dữ liệu
 
 - **Mới `src/editor/color-dialog.js` + `color-dialog.css`** — hộp thoại "More Colors…" ĐỘC LẬP với bảng thả xuống, dùng chung cho Text Color và Background Color: spectrum 2D (ngang = sắc, dọc = độ đậm) + thanh trượt dọc độ sáng; **Color model** RGB (mặc định, 0–255) hoặc HSL; ô **HEX** 6 chữ số có kiểm tra (gõ dở không báo lỗi, sai thì viền đỏ + thông báo, OK bị chặn); cả ba đồng bộ **hai chiều**; xem trước **New** (thời gian thực) và **Current** (giữ nguyên đến khi OK); **OK** áp màu và thêm vào Custom Colors (như Office), **Cancel / Esc / ×/ bấm nền mờ** bỏ mọi thay đổi chưa xác nhận; Enter = OK; Tab quay vòng trong hộp; mũi tên chỉnh spectrum/thanh sáng/ô số (Shift = bước 10). Mở hộp luôn giữ đúng màu hiện tại; màu xám/đen giữ lại sắc độ khi kéo thanh sáng.
 - Nối vào `index.html`: nút "More Colors…" của bảng màu (trước đó bị khoá) gọi hộp thoại này cho cả chữ và nền.
@@ -29,7 +33,7 @@ Tất cả các thay đổi và cập nhật quan trọng của dự án đượ
 - **`rich-model` bổ sung** (cho trình soạn): `remapItems` (dời dải khi sửa chữ: gõ ngay trước đầu/sau cuối dải thì chữ mới KHÔNG thuộc dải), `sliceItems`/`shiftItems`, `applyMarkPatch`/`toggleFlag`/`clearMarks`/`fmtSummary` (định dạng chính tắc, không chồng lấn), `stripChordsMapped` (bỏ [hợp âm] có ánh xạ vị trí cho màn chiếu), `composeSong`/`decomposeSong` (thẻ ↔ lời + rich, kể cả nhãn lệch luật), `sanitizeParts` (làm sạch ở nơi hiển thị); thêm trường nền `thick` (độ dày marker) và `shape` (biến thể hình).
 - **Test**: `color-dialog.test.mjs` (3), `rich-ops.test.mjs` (11), `color-dialog.e2e.mjs` (app thật: HEX↔RGB↔HSL↔spectrum↔thanh sáng, giá trị sai, New/Current, OK/Cancel/Esc/Enter/Tab, dùng chung cho chữ và nền, Custom Colors). Unit 144/144; e2e 3 file đều đạt (chạy tuần tự `--test-concurrency=1`; chạy song song nhiều app Electron có thể treo).
 
-## [Chưa phát hành] - Trình soạn bài giàu định dạng, giai đoạn 4: bảng chọn màu kiểu Office dùng chung (nhánh `feature/rich-text-editor`)
+### Trình soạn bài giàu định dạng, giai đoạn 4: bảng chọn màu kiểu Office dùng chung
 
 - **Mới `src/editor/color-picker.js` + `color-picker.css`**: một bảng màu duy nhất cho **Text Color** và **Background Color**, thứ tự cố định **Automatic → Theme Colors → Standard Colors → Custom Colors → More Colors…**.
   - **Automatic**: `onPick(null)`; nơi gọi quyết định ý nghĩa (chữ = màu chữ mặc định của app; nền = bỏ nền). Được đánh dấu khi đang ở trạng thái mặc định.
@@ -42,7 +46,7 @@ Tất cả các thay đổi và cập nhật quan trọng của dự án đượ
 - **Test**: `test/color-picker.test.mjs` (8 ca thuần: chuyển màu hex/rgb/hsl/hsv khứ hồi 3000 màu, sắc độ Office, bảng theme, kho Custom, theme) và `test/color-picker.e2e.mjs` (app thật: thứ tự mục, chọn màu, Automatic, Custom thêm/trùng/xoá/Delete, bàn phím, nền và độ mờ, lưu bài, **khởi động lại app vẫn còn Custom Colors**). Unit 130/130; e2e 6/6.
 - Lưu ý: đóng app quá sớm (< vài giây) sau khi thêm màu Custom có thể mất màu vừa thêm do Chromium ghi `localStorage` trễ; đóng app bình thường thì không mất.
 
-## [Chưa phát hành] - Trình soạn bài giàu định dạng, giai đoạn 3: vỏ giao diện hộp Edit Song (nhánh `feature/rich-text-editor`)
+### Trình soạn bài giàu định dạng, giai đoạn 3: vỏ giao diện hộp Edit Song
 
 - **`index.html` — hộp Edit Song**:
   - Khung xem trước có thanh tiêu đề thật: "Preview", nhãn "Live Preview", chip nền và **nút xem trước toàn màn hình** (`seToggleFullscreen`; canvas ảo 960×540 co theo màn hình, Esc để thoát). Thay nhãn chữ "XEM TRƯỚC · 16:9" cũ (`::before`).
@@ -54,7 +58,7 @@ Tất cả các thay đổi và cập nhật quan trọng của dự án đượ
 - **`test/_e2e-app.mjs`**: cổng DevTools do HĐH cấp thay vì ngẫu nhiên trong 9400–9900 — Windows/Hyper-V đang reserve cả dải 9014–9900+ (`netsh interface ipv4 show excludedportrange protocol=tcp`) nên e2e cũ báo "Cannot start http server for devtools".
 - Kiểm thử: unit 122/122; e2e `editor-shell` + `data-import-flow` 5/5. Chưa làm: Undo/Redo, nút màu nền, xoá định dạng (cần mô hình lịch sử/định dạng của các bước sau — không thêm nút chưa có chức năng).
 
-## [Chưa phát hành] - Trình soạn bài giàu định dạng, giai đoạn 6–10: định dạng theo vùng chọn, nền brush/marker, hoạt ảnh, Undo/Redo, Preview = Projector (nhánh `feature/rich-text-editor`)
+### Trình soạn bài giàu định dạng, giai đoạn 6–10: định dạng theo vùng chọn, nền brush/marker, hoạt ảnh, Undo/Redo, Preview = Projector
 
 - **Định dạng chữ theo vùng chọn (giai đoạn 6).** Tô chọn một đoạn chữ trong thẻ rồi dùng thanh công cụ (B/I/U, font, cỡ, màu chữ, màu nền) hoặc panel **Text**: chỉ phần đó đổi (ví dụ chỉ từ "VUA" màu vàng), phần còn lại giữ nguyên; không tô gì thì áp cho cả bài như trước. Panel Text có font, cỡ riêng, B/I/U, màu, **bóng chữ**, **viền chữ**, **Reset formatting**. Chip "Vùng chọn: …" ở thanh công cụ cho biết đang áp cho đâu. Định dạng được dời theo khi gõ/xoá chữ (kiểm bằng gõ tiếng Việt có dấu), theo khi tách thẻ (Enter đôi, dòng trống), nhân đôi, đổi thứ tự. **Undo/Redo** (nút ở chân hộp, Ctrl+Z / Ctrl+Y) cho toàn bộ trạng thái soạn: tiêu đề, kiểu chữ chung, các thẻ và định dạng. Lưu/mở lại/đổi slide giữ nguyên định dạng; bài cũ lưu lại không phát sinh trường `rich`.
 - **Nền theo vùng chọn (giai đoạn 7).** Panel **Background**: 5 kiểu (Brush, Giấy xé, Dải bo tròn, Marker, Brush khô) + "Không nền"; màu (bảng màu Office dùng chung), độ mờ (chỉ nền, không làm mờ chữ), đệm, xoay, tỉ lệ, vị trí X/Y, bo góc, độ dày marker, biến thể hình, **thứ tự lớp** (Lên/Xuống), **nhiều lớp** trên cùng vùng ("Thêm lớp"), xoá/reset. Nút Background Color ở thanh công cụ với vùng chọn = thêm/đổi nền marker cho phần đó. Vệt sơn Brush dựng từ nhiều dải ngang như lông cọ (thân đặc, đầu trái xơ, đuôi phải kéo thành sợi mảnh, đứt quãng) + bộ lọc nhoè mép theo chiều ngang — giống vệt sơn thật; cùng hạt giống thì luôn ra cùng hình.
@@ -72,7 +76,7 @@ Tất cả các thay đổi và cập nhật quan trọng của dự án đượ
   - **`test/seg-panel-controls.e2e.mjs`:** duyệt MỌI ô của ba tab và kiểm cả hiển thị (ô tick có nền chàm + dấu tick, nút bật có màu, chip/kiểu nền đang chọn được tô); đủ mọi kiểu hoạt ảnh của 3 giai đoạn, các ô chỉ dùng cho một số kiểu (Stagger/Hướng/Màu) bị khoá đúng chỗ.
 - **Giới hạn đã biết:** điện thoại và `/setlist/` chỉ thấy chữ thuần; màn giám sát của cửa sổ chính không chạy hoạt ảnh (hiện trạng thái cuối); lớp nền lớn hơn khung chữ bị cắt ở mép khung (`overflow:hidden` của khối chữ); bộ 10 màu Theme cấu hình được bằng `ColorPicker.setTheme()` nhưng chưa có giao diện sửa.
 
-## [Chưa phát hành] - Nền móng dữ liệu cho trình soạn bài giàu định dạng (nhánh `feature/rich-text-editor`, giai đoạn 2; chưa có thay đổi giao diện)
+### Nền móng dữ liệu cho trình soạn bài giàu định dạng (giai đoạn 2; chưa có thay đổi giao diện)
 
 - **Mới `src/editor/rich-model.js`** (chạy cả trong trình duyệt và Node): `splitSlides` (khớp cách `index.html` tách slide/nhãn), `hashText`, `sanitizeRich`, `makeSlideRich`, `buildRuns`. Mô hình theo khoảng: `marks` (định dạng chữ), `bgs` (nền brush/marker/...), `anims` (animation) cho từng slide; `lyrics` vẫn là chuỗi thuần.
 - **`src/schema.js` `migrateItem`**: lọc `rich` bằng `sanitizeRich` (dữ liệu nhập vào là không tin cậy); Kinh Thánh luôn bỏ `rich`; bài không có `rich` không đổi hình dạng.

@@ -1,6 +1,6 @@
 {
   "name": "easyworship-app",
-  "version": "3.1.17",
+  "version": "3.2.0",
   "description": "Presentation For Church - Worship Presentation App",
   "main": "main.js",
   "scripts": {

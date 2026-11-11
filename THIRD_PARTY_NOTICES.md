@@ -20,6 +20,10 @@ Phần mềm **không kèm** nội dung Kinh Thánh, bài hát hay ảnh/video n
 
 Các phông Google được đóng gói không sửa đổi (file `.woff2` lấy từ Google Fonts, chỉ giữ tập ký tự Latin, Latin mở rộng và tiếng Việt). Phông OFL không được bán riêng lẻ; chúng chỉ đi kèm phần mềm này.
 
+## Hình vệt sơn (nền Brush / Brush khô)
+
+`src/editor/brush-shapes.js` chứa đường viền (đã đơn giản hoá, chuẩn hoá) của 9 vệt sơn trích từ bộ vector minh hoạ "Watercolor Brush Strokes" do chủ dự án cung cấp (file `133.ai`/`133.eps` — tiêu đề nhúng "74-Watercolor-Brush-Strokes.eps" — và `16577.eps`). File gốc không kèm thông tin tác giả/giấy phép; **nguồn và điều khoản ghi nguồn đang được xác minh** và sẽ được bổ sung tại đây. Công cụ trích: `scripts/brush-shapes/`.
+
 ## Thành phần của Electron
 Ứng dụng chạy trên Electron (MIT) và Chromium; giấy phép của chúng nằm trong `LICENSE` và `LICENSES.chromium.html` trong thư mục cài đặt.
 
