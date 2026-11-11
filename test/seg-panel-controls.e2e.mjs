@@ -127,12 +127,26 @@ test('mọi ô điều khiển của panel Text/Background/Animation: đổi đ�
       await num(t, v); await settle();
       assert.equal((await rich()).bgs[0][key], want, t);
     }
+    // Đệm cho phép số ÂM: nền thấp hơn dòng chữ (kẹp ở -40, nền luôn cao tối thiểu 4px)
+    const bgH = () => ev(`document.querySelector('#editor-text-box .rr-bg-item').offsetHeight`);
+    await num('Đệm', 0); await settle(); const h0 = await bgH();
+    await num('Đệm', -10); await settle();
+    assert.equal((await rich()).bgs[0].padding, -10, 'Đệm nhận số âm');
+    assert.ok(Math.abs((await bgH()) - (h0 - 20)) <= 1, 'đệm -10 → nền thấp hơn 20px: ' + h0 + ' → ' + (await bgH()));
+    await num('Đệm', -999); await settle();
+    assert.equal((await rich()).bgs[0].padding, -40, 'Đệm tối thiểu -40');
+    assert.ok((await bgH()) >= 4, 'nền vẫn cao tối thiểu 4px');
+    await num('Đệm', 30); await settle();
+    // X, Y và Hình chung MỘT hàng
+    assert.equal(await ev(`(() => { const by = (t) => [...document.querySelectorAll('${P} .sp-num')].find((x) => x.title.startsWith(t)).closest('.sp-grid'); return by('Dịch ngang') === by('Dịch dọc') && by('Dịch dọc') === by('Biến thể'); })()`), true, 'X, Y, Hình cùng một hàng');
     // giá trị ngoài biên bị kẹp, không vỡ
     await num('Cỡ: ', 9999); await settle(); assert.equal((await rich()).bgs[0].scale, 3, 'Cỡ tối đa 300%');
     await num('Cỡ: ', 100); await settle();
     // marker: ô "Dày %" chỉ hiện với marker
     await ev(`document.querySelector('${P} .sp-pre[data-preset="marker"]').click()`); await settle();
     assert.equal(await ev(`[...document.querySelectorAll('${P} .sp-num')].find((x) => x.title.startsWith('Độ dày dải')).offsetParent !== null`), true, 'marker có ô độ dày');
+    // "Dày %" nằm cùng hàng X/Y/Hình và KHÔNG bị rớt dòng (cùng toạ độ dọc với ô X)
+    assert.equal(await ev(`(() => { const by = (t) => [...document.querySelectorAll('${P} .sp-num')].find((x) => x.title.startsWith(t)); const r = (t) => by(t).closest('.sp-row').getBoundingClientRect(); const top = (t) => r(t).top; return Math.abs(top('Đệm') - top('Độ dày dải')) < 2 && Math.abs(top('Đệm') - top('Xoay')) < 2 && Math.abs(r('Đệm').left - r('Dịch ngang').left) < 2 && Math.abs(r('Cỡ: ').left - r('Dịch dọc').left) < 2 && top('Dịch ngang') > top('Đệm') + 10; })()`), true, 'lưới 4 cột: Đệm/Cỡ/Xoay/Dày cùng hàng, X/Y/Hình hàng dưới, thẳng cột');
     await num('Độ dày dải', 40); await settle(); assert.equal((await rich()).bgs[0].thick, 0.4);
     assert.equal(await ev(`[...document.querySelectorAll('${P} .sp-num')].find((x) => x.title.startsWith('Bo góc')).offsetParent === null`), true, 'marker không có ô bo góc');
     // nhiều lớp: Thêm lớp, Lên, Xuống, chip, Reset, Xoá lớp

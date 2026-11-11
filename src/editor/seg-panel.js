@@ -193,7 +193,7 @@
     var bgOpR = h('input', { type: 'range', class: 'sp-range', min: '0', max: '100', step: '1', 'aria-label': 'Độ mờ nền' });
     bgOpR.addEventListener('input', function () { updBg({ opacity: Number(bgOpR.value) / 100 }); });
     var bgRad = num(0, 60, 1, function (v) { if (v !== null) updBg({ radius: v }); }, 'Bo góc (px) — cho dải bo tròn');
-    var bgPad = num(0, 80, 1, function (v) { if (v !== null) updBg({ padding: v }); }, 'Đệm: tăng CHIỀU CAO của nền (px mỗi phía)');
+    var bgPad = num(-40, 80, 1, function (v) { if (v !== null) updBg({ padding: v }); }, 'Đệm: tăng CHIỀU CAO của nền (px mỗi phía, số âm = thấp hơn dòng chữ)');
     var bgRot = num(-45, 45, 1, function (v) { if (v !== null) updBg({ rotation: v }); }, 'Xoay (độ)');
     var bgScl = num(50, 300, 1, function (v) { if (v !== null) updBg({ scale: v / 100 }); }, 'Cỡ: tăng CHIỀU NGANG của nền (% so với bề ngang chữ)');
     var bgDx = num(-300, 300, 1, function (v) { if (v !== null) updBg({ dx: v }); }, 'Dịch ngang (px)');
@@ -212,8 +212,9 @@
     tBg.appendChild(layers);
     var bgForm = h('div', { class: 'sp-form' }, [
       h('div', { class: 'sp-line' }, [row('Màu nền', bgCol), row('Độ mờ', bgOpR, 'grow'), h('span', { class: 'sp-pc' }, [bgOp, h('span', { text: '%' })])]),
-      h('div', { class: 'sp-line' }, [row('Đệm ↕', bgPad, 'w60'), row('Cỡ ↔', bgScl, 'w60'), row('Xoay', bgRot, 'w60'), row('Hình', bgShp, 'w50')]),
-      h('div', { class: 'sp-line' }, [row('X', bgDx, 'w60'), row('Y', bgDy, 'w60'), row('Bo góc', bgRad, 'w60', 'rad'), row('Dày %', bgThk, 'w60', 'thk')]),
+      // lưới 4 cột thẳng hàng: hàng KÍCH THƯỚC (Đệm/Cỡ/Xoay + Bo góc hoặc Dày tuỳ kiểu nền) và hàng VỊ TRÍ & HÌNH (X/Y/Hình)
+      h('div', { class: 'sp-grid' }, [row('Đệm ↕', bgPad), row('Cỡ ↔', bgScl), row('Xoay', bgRot), row('Bo góc', bgRad), row('Dày %', bgThk)]),
+      h('div', { class: 'sp-grid' }, [row('X', bgDx), row('Y', bgDy), row('Hình', bgShp)]),
       h('div', { class: 'sp-line' }, [bgUp, bgDown, bgAdd, h('span', { class: 'sp-spacer' }), bgReset, bgDel])
     ]);
     tBg.appendChild(bgForm);

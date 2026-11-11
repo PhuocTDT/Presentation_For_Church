@@ -318,12 +318,12 @@
       var lines = groupLineRects(handle.rects(bg.s, bg.e));
       if (!lines.length) return;
       lines = lines.map(function (l) { return { left: (l.left - lr.left) / scale, right: (l.right - lr.left) / scale, top: (l.top - lr.top) / scale, bottom: (l.bottom - lr.top) / scale }; });
-      // Đệm = tăng CHIỀU CAO (mỗi phía thêm `padding` px); Cỡ = tăng CHIỀU NGANG (bề ngang chữ × scale, giữ tâm); lề ngang cố định ~10px
+      // Đệm = tăng CHIỀU CAO (mỗi phía thêm `padding` px, âm = thấp hơn dòng chữ; luôn giữ tối thiểu 4px); Cỡ = tăng CHIỀU NGANG (bề ngang chữ × scale, giữ tâm); lề ngang cố định ~10px
       // mỗi đầu để đầu cọ không cắt vào chữ. Xoay quanh tâm; dịch X/Y.
       var U = unionRect(lines), pad = bg.padding, HM = 10;
       var cx = (U.left + U.right) / 2, cy = (U.top + U.bottom) / 2;
       var box = document.createElement('div'); box.className = 'rr-bg-item'; box.dataset.preset = bg.preset;
-      var W = (U.right - U.left) * bg.scale + HM * 2, H = (U.bottom - U.top) + pad * 2;
+      var W = (U.right - U.left) * bg.scale + HM * 2, H = Math.max(4, (U.bottom - U.top) + pad * 2);
       var BL = cx - W / 2, BT = cy - H / 2;
       box.style.cssText = 'position:absolute;pointer-events:none;left:' + r1(BL) + 'px;top:' + r1(BT) + 'px;width:' + r1(W) + 'px;height:' + r1(H) + 'px;' +
         'opacity:' + bg.opacity + ';transform-origin:50% 50%;transform:translate(' + bg.dx + 'px,' + bg.dy + 'px) rotate(' + bg.rotation + 'deg);';
@@ -350,7 +350,7 @@
         svg.appendChild(rect); box.appendChild(svg);
       } else {   // marker: một dải riêng cho từng dòng, ở phần dưới dòng chữ
         lines.forEach(function (l, li) {
-          var lh = l.bottom - l.top, sh = Math.max(4, lh * bg.thick + pad), top = l.top + (lh - lh * bg.thick) * 0.8 - pad * 0.5;
+          var lh = l.bottom - l.top, sh = Math.max(4, lh * bg.thick + pad), top = l.top + (lh - lh * bg.thick) * 0.8 - (sh - lh * bg.thick) * 0.5;
           var w = (l.right - l.left) * bg.scale + HM * 2, x0 = (l.left + l.right) / 2 - w / 2;
           var holder = document.createElement('div');
           holder.style.cssText = 'position:absolute;left:' + r1(x0 - BL) + 'px;top:' + r1(top - BT) + 'px;width:' + r1(w) + 'px;height:' + r1(sh) + 'px;';

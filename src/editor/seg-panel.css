@@ -10,7 +10,12 @@
 .se-seg-panel .sp-row.grow { flex: 1; }
 .se-seg-panel .sp-row.dim { opacity: .45; }
 .se-seg-panel .sp-row.grow > .sp-sel { flex: 1; min-width: 0; }
-.se-seg-panel .sp-k { font-size: 10px; font-weight: 700; color: #5c5a75; white-space: nowrap; }
+/* lưới thông số nền: 4 cột bằng nhau → các hàng thẳng cột, ô số co giãn theo chỗ còn lại (không rớt dòng) */
+.se-seg-panel .sp-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px 8px; margin-bottom: 6px; }
+.se-seg-panel .sp-grid > .sp-row { min-width: 0; flex-direction: column; align-items: stretch; gap: 2px; }   /* nhãn TRÊN, ô số dùng trọn bề ngang cột */
+.se-seg-panel .sp-grid .sp-k { font-size: 9.5px; line-height: 1.2; overflow: hidden; text-overflow: ellipsis; }
+.se-seg-panel .sp-grid .sp-num { width: 100%; min-width: 0; }
+.se-seg-panel .sp-k {font-size: 10px; font-weight: 700; color: #5c5a75; white-space: nowrap; }
 .se-seg-panel .sp-spacer { flex: 1; }
 .se-seg-panel .sp-pc { display: inline-flex; align-items: center; gap: 2px; font-size: 10px; color: #5c5a75; }
 
