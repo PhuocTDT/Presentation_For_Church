@@ -161,6 +161,7 @@
     </div>
 
     <script src="src/editor/rich-model.js"></script>
+    <script src="src/editor/text-fit.js"></script>
     <script src="src/editor/brush-shapes.js"></script>
     <script src="src/editor/rich-render.js"></script>
     <script>
@@ -285,66 +286,23 @@
             return Number.isFinite(numeric) ? numeric : fallback;
         }
 
-        function measureOverflow(el, textBox) {
-            if (!el || !textBox) return false;
-            if (textBox.clientWidth <= 0 || textBox.clientHeight <= 0) return false;
-            const widthOverflow = Math.ceil(el.scrollWidth) > Math.ceil(textBox.clientWidth);
-            const heightOverflow = Math.ceil(el.scrollHeight) > Math.ceil(textBox.clientHeight);
-            return widthOverflow || heightOverflow;
-        }
-
-        function applyStrokeForFontSize(el, style, fontSize, baseFontSize) {
-            const baseStrokeWidth = Math.max(0, Number(style.textStrokeWidth || 0));
-            const ratio = baseFontSize > 0 ? fontSize / baseFontSize : 1;
-            const strokeWidth = Math.max(0, Math.round(baseStrokeWidth * ratio));
-            el.style.webkitTextStroke = `${strokeWidth}px ${style.textStrokeColor}`;
-        }
-
-        // Chừa chỗ cho thanh "next verse" (xem index.html: NEXT_VERSE_SAFE_BOTTOM). Cờ này do app điều khiển gửi kèm mỗi gói nội
-        // dung (reserveNextVerse) — slide cuối có nextVerse rỗng nên không thể suy ra "bật" từ nội dung. Next verse tắt hoặc khung
-        // kéo tay: giữ nguyên hành vi cũ.
+        // Chừa chỗ cho thanh "next verse". Cờ này do app điều khiển gửi kèm mỗi gói nội dung (reserveNextVerse) — slide cuối có
+        // nextVerse rỗng nên không thể suy ra "bật" từ nội dung. Phép đo nằm trong src/editor/text-fit.js (dùng chung với cửa sổ chính).
         let reserveNextVerse = false;
         const NEXT_VERSE_SAFE_BOTTOM = 488;   // đơn vị khung ảo 960x540
-        function textBottomInCanvas(el, textBox) {
-            const centered = /translateY\(\s*-50%\s*\)/.test(textBox.style.transform || '');
-            const boxTop = textBox.offsetTop - (centered ? textBox.offsetHeight / 2 : 0);
-            return boxTop + el.offsetTop + el.offsetHeight;
-        }
-        function overflowsBox(el, textBox, style) {
-            if (measureOverflow(el, textBox)) return true;
-            if (reserveNextVerse && !(style && style.textBox && style.textBox.top != null) && textBottomInCanvas(el, textBox) > NEXT_VERSE_SAFE_BOTTOM) return true;
-            return false;
-        }
 
         function fitTextToBox(el, textBox, style = currentStyle) {
             if (!el || !textBox) return;
-            const normalizedStyle = normalizeStyle(style || currentStyle);
-            const baseFontSize = Math.max(8, Math.round(parsePixelValue(normalizedStyle.fontSize, 80)));
-            const minFontSize = Math.max(8, Math.min(baseFontSize, 10));
-
-            el.style.fontSize = `${baseFontSize}px`;
-            applyStrokeForFontSize(el, normalizedStyle, baseFontSize, baseFontSize);
-
-            if (normalizedStyle.autoFitText === false || !el.textContent || !el.textContent.trim()) {
-                return;
-            }
-
-            if (!overflowsBox(el, textBox, normalizedStyle)) {
-                return;
-            }
-
-            let fittedSize = baseFontSize;
-            for (let nextSize = baseFontSize - 1; nextSize >= minFontSize; nextSize -= 1) {
-                el.style.fontSize = `${nextSize}px`;
-                applyStrokeForFontSize(el, normalizedStyle, nextSize, baseFontSize);
-                fittedSize = nextSize;
-                if (!overflowsBox(el, textBox, normalizedStyle)) {
-                    return;
-                }
-            }
-
-            el.style.fontSize = `${fittedSize}px`;
-            applyStrokeForFontSize(el, normalizedStyle, fittedSize, baseFontSize);
+            const s = normalizeStyle(style || currentStyle);
+            // Thuật toán DÙNG CHUNG với cửa sổ chính (src/editor/text-fit.js) ⇒ Preview = Projector (cùng cỡ chữ, cùng chỗ ngắt dòng).
+            TextFit.fit(el, textBox, {
+                fontSize: parsePixelValue(s.fontSize, 80),
+                strokeWidth: s.textStrokeWidth, strokeColor: s.textStrokeColor,
+                autoFit: s.autoFitText !== false,
+                maxLines: 5,   // màn chiếu không hiện hợp âm
+                reserveNextVerse: reserveNextVerse && !(s.textBox && s.textBox.top != null),
+                safeBottom: NEXT_VERSE_SAFE_BOTTOM
+            });
         }
 
         function normalizeBackground(bg) {
@@ -539,7 +497,8 @@
                         textBox.style.transform = '';
                     } else if (align === 'bottom') {
                         textBox.style.top = 'auto';
-                        textBox.style.bottom = '43px';
+                        // next verse bật: khung ngay trên thanh next verse (giống index.html positionTextBox)
+                        textBox.style.bottom = (reserveNextVerse ? Math.max(43, 540 - NEXT_VERSE_SAFE_BOTTOM) : 43) + 'px';
                         textBox.style.transform = '';
                     } else {
                         textBox.style.top = '50%';
