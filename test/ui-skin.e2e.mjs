@@ -175,6 +175,11 @@ test('skin áp vào giao diện thật: panel bo góc, header thấp, màu chọ
     // header Library theo mẫu: chỉ 1 nút "bài mới" (Import/Export ẩn, vẫn có ở menu File); ô tìm kiếm cao 22px
     const lh = await app.ev(`(() => { const d = (id) => getComputedStyle(document.getElementById(id)).display; return { nb: d('header-newsong-btn'), imp: d('header-import-btn'), exp: d('header-export-btn'), search: getComputedStyle(document.getElementById('library-search')).height }; })()`);
     assert.deepEqual(lh, { nb: 'flex', imp: 'none', exp: 'none', search: '22px' }, 'header Library: 1 nút bài mới, tìm kiếm 22px');
+    // viên ON của monitor: chấm xanh khi bật, xám khi tắt; nút "…" của Schedule là ô vuông bo góc (không phải hình tròn)
+    const dots = await app.ev(`(() => { const b = document.getElementById('btn-toggle-media-monitor'), d = () => getComputedStyle(b, '::before').backgroundColor; const on = d(); toggleMonitor('media'); const off = d(); toggleMonitor('media');
+      const m = getComputedStyle(document.querySelector('#top-row > section:nth-of-type(1) > div:first-child > span')); return { on, off, more: m.borderTopLeftRadius, w: m.width, h: m.height }; })()`);
+    assert.notEqual(dots.on, 'rgba(0, 0, 0, 0)', 'ON: có chấm màu (--u-ok)'); assert.notEqual(dots.off, dots.on, 'OFF: chấm đổi sang xám');
+    assert.ok(parseFloat(dots.more) < parseFloat(dots.h) / 2, 'nút … là ô vuông bo góc, không phải hình tròn: ' + JSON.stringify(dots));
     // mục đang chọn KHÔNG in đậm (chữ đậm rộng hơn → câu dài rớt dòng); nhãn ON AIR là viên thuốc đỏ như mẫu
     const w = await app.ev(`(() => { const r = [...document.querySelectorAll('tbody tr[data-library-key]')].find((x) => x.style.backgroundColor), s = document.querySelector('[data-schedule-item].bg-blue-500'), sl = document.querySelector('#live-slides-container > div > div:last-child, #preview-slides-container > div > div:last-child');
       const chip = document.querySelector('#live-slides-container [class*="text-[7px]"]');

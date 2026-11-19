@@ -165,12 +165,12 @@ html[data-ui-skin] .lib-tabs button{color:var(--u-hdrmute)!important;font-family
 html[data-ui-skin] .lib-tabs button.border-primary{color:var(--u-hdrtext)!important;border-bottom-color:var(--u-accent)!important}
 html[data-ui-skin] #library-search{background:var(--u-input)!important;color:var(--u-text)!important;border:1px solid var(--u-line2)!important;border-radius:var(--u-rbtn)!important;height:20px!important;font-size:10px!important}
 html[data-ui-skin] #library-search::placeholder{color:var(--u-faint)}
-/* nút bật/tắt monitor theo mẫu: viên thuốc có chấm xanh (xám khi OFF); dấu "≡" của Schedule thành nút tròn "…" */
+/* nút bật/tắt monitor theo mẫu: viên thuốc có chấm xanh (xám khi OFF); dấu "≡" của Schedule thành nút vuông bo góc "…" */
 html[data-ui-skin] :is(#btn-toggle-preview-monitor,#btn-toggle-media-monitor){display:inline-flex!important;align-items:center;gap:5px}
 html[data-ui-skin] :is(#btn-toggle-preview-monitor,#btn-toggle-media-monitor)::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--u-ok,#16a37f);flex:none}
 html[data-ui-skin] :is(#btn-toggle-preview-monitor,#btn-toggle-media-monitor)[data-on="0"]::before{background:var(--u-faint)}
-html[data-ui-skin] #top-row>section:nth-of-type(1)>div:first-child>span{font-size:0!important;width:var(--u-btnh);height:var(--u-btnh);border-radius:999px;background:var(--u-btn);border:1px solid var(--u-line2);display:grid;place-items:center;color:var(--u-btntext,var(--u-text))!important}
-html[data-ui-skin] #top-row>section:nth-of-type(1)>div:first-child>span::before{content:"more_horiz";font-family:'Material Symbols Outlined';font-size:15px;font-weight:400;line-height:1;letter-spacing:normal;text-transform:none;color:var(--u-btntext,var(--u-text))}
+html[data-ui-skin] #top-row>section:nth-of-type(1)>div:first-child>span{font-size:0!important;line-height:0;flex:none;box-sizing:border-box;width:var(--u-btnh);height:var(--u-btnh);border-radius:var(--u-rbtn);background:var(--u-btn);border:1px solid var(--u-line2);display:grid;place-items:center;color:var(--u-btntext,var(--u-text))!important}
+html[data-ui-skin] #top-row>section:nth-of-type(1)>div:first-child>span::before{content:"";width:2.5px;height:2.5px;border-radius:50%;background:currentColor;box-shadow:-5px 0 0 currentColor,5px 0 0 currentColor}
 /* icon cho "Go Live" (▷) và "Screen Live" (màn hình) như mẫu — dùng font Material Symbols có sẵn trong app */
 html[data-ui-skin] :is(button[onclick="goLiveFromPreview()"],#btn-screen-live){display:inline-flex!important;align-items:center;gap:4px}
 html[data-ui-skin] :is(button[onclick="goLiveFromPreview()"],#btn-screen-live)::before{font-family:'Material Symbols Outlined';font-size:14px;font-weight:400;line-height:1;letter-spacing:normal;text-transform:none;flex:none}
