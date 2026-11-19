@@ -23,6 +23,16 @@
 - Tối giản, đen, không chrome
 - Chữ và background phải đọc được từ xa
 
+## Skin giao diện (cửa sổ operator)
+
+- Người dùng chọn trong **Cài đặt → Giao diện** (có khung xem trước; bấm "Lưu thay đổi" mới áp dụng, "Huỷ" thì bỏ). Lưu ở `settings.json` (`uiSkin`, `uiHeader` — xem `docs/data-contracts.md`).
+- 8 phong cách: **Cổ điển** (giao diện gốc, mặc định, KHÔNG đặt thuộc tính nào), Mist, Iris, Honey, Sage (sáng, tối giản), Midnight (tối, tối giản), Candy (sáng, nhiều màu), Studio (tối, nhiều màu). 5 kiểu header A Đậm / B Than / C Đặc / D Sáng / E Vạch (mặc định) chỉ áp dụng cho nhóm tối giản.
+- Cách làm: `src/css/ui-themes.css`. Skin = `data-ui-skin` (+ `data-ui-hdr`) trên `<html>`; token `--u-*` đặt trên mọi phần tử có `data-ui-skin` nên **khung xem trước dùng đúng token của cửa sổ thật**. Luật ghi đè giao diện thật nằm dưới `html[data-ui-skin]` và dùng `!important` vì giao diện gốc là class Tailwind + style inline.
+- Skin tối ép class `dark` của Tailwind (để chữ gốc đọc được); `Cổ điển` giữ nguyên hành vi Dark Mode cũ. Cổ điển chỉ có token trong CSS để vẽ khung xem trước.
+- Phụ thuộc vào cấu trúc DOM hiện tại; khi đổi markup các phần sau phải kiểm tra lại skin: header là `div` đầu của `section.panel` (và header phụ `.h-8.shrink-0` của Screen Monitor), hàng Schedule `[data-schedule-item]` (đang chọn = class `bg-blue-500`), thẻ slide trong `#preview-slides-container`/`#live-slides-container` (đang phát = style inline `#b3e4ff`), hàng thư viện `tbody tr[data-library-key]` (đang chọn = `row.style.backgroundColor` → serialize thành `rgb(134, 205, 255)`, selector phải khớp dạng `rgb`), `#bandPanel`/`#bandPanelTab`, `body > footer`.
+- KHÔNG đổi: màn Live (`live.html` không nạp `ui-themes.css`), hộp Edit Song, hộp Cài đặt (giữ token `--stg-*`), menu hệ điều hành. Màu phẳng, không gradient.
+- Test: `test/ui-skin.e2e.mjs`.
+
 ## Virtual canvas
 
 - Live/preview nên giữ logic canvas 16:9 ổn định

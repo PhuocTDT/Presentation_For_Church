@@ -1782,6 +1782,7 @@
     <link rel="stylesheet" href="src/editor/seg-panel.css" />
     <!-- Đặt CUỐI <head> (sau mọi <style> inline) để giữ đúng thứ tự cascade như Tailwind Play CDN cũ. -->
     <link rel="stylesheet" href="src/css/tailwind.generated.css" />
+    <link rel="stylesheet" href="src/css/ui-themes.css" />
 </head>
 
 <body
@@ -2849,6 +2850,10 @@
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/></svg>
                 Chung
               </button>
+              <button class="stg-nav-item" data-tab="giaodien" type="button">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="13.5" cy="6.5" r="1.5"/><circle cx="17.5" cy="10.5" r="1.5"/><circle cx="8.5" cy="7.5" r="1.5"/><circle cx="6.5" cy="12.5" r="1.5"/><path d="M12 22a10 10 0 1 1 10-10c0 2.5-2 3-4 3h-2a2 2 0 0 0-1.5 3.3c.6.8.5 1.7-.2 2.5-.7.8-1.6 1.2-2.3 1.2z"/></svg>
+                Giao diện
+              </button>
               <button class="stg-nav-item" data-tab="hienthi" type="button">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="13" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
                 Hiển thị Live
@@ -2915,6 +2920,30 @@
                       <span class="stg-track"></span>
                     </label>
                   </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- GIAO DIỆN (skin cửa sổ điều khiển) -->
+            <div class="stg-pane" id="stg-pane-giaodien">
+              <h2 class="stg-pane-title">Giao diện</h2>
+              <p class="stg-pane-desc">Chọn phong cách cho cửa sổ điều khiển. Màn chiếu Live không bị đổi. Chọn thử bên dưới, bấm "Lưu thay đổi" để áp dụng.</p>
+              <div class="stg-section">
+                <div class="stg-row" style="display:block" data-search="giao diện theme skin phong cách màu mist iris honey sage midnight candy studio cổ điển">
+                  <div class="stg-label" style="margin-bottom:8px">Phong cách</div>
+                  <div class="uis-grid" id="uiSkinGrid" role="group" aria-label="Phong cách giao diện"></div>
+                </div>
+                <div class="stg-row" style="display:block" data-search="header tiêu đề panel màu đậm than đặc sáng vạch">
+                  <div class="stg-label">Kiểu header</div>
+                  <div class="stg-help" id="uiHdrHelp" style="margin-bottom:8px">Màu của thanh tiêu đề trên mỗi khu vực.</div>
+                  <div class="uis-hdr" id="uiHdrRow" role="group" aria-label="Kiểu header"></div>
+                </div>
+              </div>
+              <div class="stg-section">
+                <div class="stg-row" style="display:block" data-search="xem trước giao diện preview">
+                  <div class="stg-label" style="margin-bottom:8px">Xem trước</div>
+                  <div class="uip" id="uiPreview" aria-label="Xem trước giao diện"></div>
+                  <div class="uis-note">Bản xem trước chỉ mô phỏng bố cục. "Dark Mode" ở tab Chung chỉ áp dụng cho kiểu "Cổ điển" — các phong cách khác tự quyết định sáng/tối.</div>
                 </div>
               </div>
             </div>
@@ -3452,6 +3481,8 @@
         function createDefaultGlobalSettings() {
             return {
                 theme: 'light',
+                uiSkin: 'classic',   // skin giao diện operator (src/css/ui-themes.css); 'classic' = giao diện hiện tại
+                uiHeader: 'e',       // kiểu header a|b|c|d|e (chỉ nhóm tối giản)
                 gpuAcceleration: true,
                 fontFamilySong: 'CMG Sans',
                 fontFamilyBible: 'Times New Roman',
@@ -3984,6 +4015,8 @@
                 merged.fontFamilyBible = saved.fontFamily;
             }
             merged.shortcuts = { ...defaults.shortcuts, ...((saved && saved.shortcuts) || {}) };
+            merged.uiSkin = UI_SKINS.some(k => k.id === (saved && saved.uiSkin)) ? saved.uiSkin : defaults.uiSkin;
+            merged.uiHeader = UI_HEADERS.some(k => k.id === (saved && saved.uiHeader)) ? saved.uiHeader : defaults.uiHeader;
             merged.textMargin = { ...defaults.textMargin, ...((saved && saved.textMargin) || {}) };
             merged.textPadding = { ...defaults.textPadding, ...((saved && saved.textPadding) || {}) };
             merged.allowSingleDisplayLiveWindow = saved && typeof saved.allowSingleDisplayLiveWindow === 'boolean'
@@ -5107,6 +5140,99 @@
             applySettings();
         }
 
+        // ===== Skin giao diện cửa sổ operator (src/css/ui-themes.css) =====
+        // dark: skin tối → ép class `dark` của Tailwind để các màu chữ gốc đọc được; hdr: có cho chọn kiểu header không.
+        const UI_SKINS = [
+            { id: 'classic',  name: 'Cổ điển',  tag: 'GỐC', desc: 'Giao diện hiện tại của ứng dụng', dark: false, hdr: false, sw: ['#1e293b', '#ffffff', '#4f46e5'] },
+            { id: 'mist',     name: 'Mist',     tag: 'SÁNG',     desc: 'Xám-xanh dịu, nhấn xanh ngọc',      dark: false, hdr: true,  sw: ['#e4ebee', '#ffffff', '#0d9488'] },
+            { id: 'iris',     name: 'Iris',     tag: 'SÁNG',     desc: 'Viền mảnh, nhấn chàm',              dark: false, hdr: true,  sw: ['#eceef5', '#ffffff', '#5048e5'] },
+            { id: 'honey',    name: 'Honey',    tag: 'SÁNG',     desc: 'Trắng ngà ấm, nhấn hổ phách',       dark: false, hdr: true,  sw: ['#ebe9e5', '#fffffd', '#e08a00'] },
+            { id: 'sage',     name: 'Sage',     tag: 'SÁNG',     desc: 'Xám lá, nhấn xanh lá đậm',          dark: false, hdr: true,  sw: ['#e4e8df', '#fbfcfa', '#3a7653'] },
+            { id: 'midnight', name: 'Midnight', tag: 'TỐI',      desc: 'Xanh đêm, nhấn hổ phách',           dark: true,  hdr: true,  sw: ['#0a0f1b', '#121929', '#f5a524'] },
+            { id: 'candy',    name: 'Candy',    tag: 'NHIỀU MÀU', desc: 'Mỗi khu vực một màu, thân thiện',  dark: false, hdr: false, sw: ['#6d5dfc', '#ff4d6d', '#10b981', '#f59e0b'] },
+            { id: 'studio',   name: 'Studio',   tag: 'TỐI · MÀU', desc: 'Kiểu phòng điều khiển, dày đặc',   dark: true,  hdr: false, sw: ['#0e1527', '#22d3ee', '#ff3158'] }
+        ];
+        const UI_HEADERS = [
+            { id: 'a', name: 'Đậm',  tip: 'Bản đậm của màu nhấn, chữ trắng' },
+            { id: 'b', name: 'Than', tip: 'Xám than pha màu theme, dịu hơn đen thuần' },
+            { id: 'c', name: 'Đặc',  tip: 'Đúng màu nhấn của theme' },
+            { id: 'd', name: 'Sáng', tip: 'Nền nhạt pha màu nhấn, có vạch màu dưới header' },
+            { id: 'e', name: 'Vạch', tip: 'Header không tô màu, chỉ có vạch màu mảnh trên đầu thẻ' }
+        ];
+        let uiPick = { skin: 'classic', hdr: 'e' };   // lựa chọn đang xem trong Cài đặt (chưa lưu)
+        let uiPickInit = false;                      // chỉ ghi uiPick vào cài đặt khi hộp Cài đặt đã khởi tạo nó
+
+        function applyUiSkin() {
+            const skin = UI_SKINS.find(k => k.id === globalSettings.uiSkin) || UI_SKINS[0];
+            const hdr = UI_HEADERS.some(k => k.id === globalSettings.uiHeader) ? globalSettings.uiHeader : 'e';
+            const root = document.documentElement;
+            if (skin.id === 'classic') {                // Cổ điển: giữ nguyên hành vi cũ (class dark do applySettings đặt)
+                root.removeAttribute('data-ui-skin');
+                root.removeAttribute('data-ui-hdr');
+                return;
+            }
+            root.setAttribute('data-ui-skin', skin.id);
+            root.setAttribute('data-ui-hdr', hdr);
+            root.classList.toggle('dark', !!skin.dark);
+        }
+
+        function uiPreviewHtml() {
+            const song = (t, sel) => `<div class="uip-song${sel ? ' sel' : ''}">${t}</div>`;
+            const card = (l, t, sel) => `<div class="uip-card${sel ? ' sel' : ''}"><div class="l">${l}</div><div class="t">${t}</div></div>`;
+            const tiles = ['#9fd0e8', '#9db0ee', '#b39df0', '#d6a0ee', '#ee9fe3'].map(c => `<i style="background:${c}"></i>`).join('');
+            return `<div class="uip-grid">
+                <div class="uip-p"><div class="uip-h"><b>Schedule</b></div><div class="uip-b">
+                    <div class="uip-row"><i></i>Bình An Vua!…<span class="tg">LIVE</span></div>
+                    <div class="uip-row sel"><i></i>Cháy lên vì gió,<span class="tg">ON</span></div></div></div>
+                <div class="uip-p"><div class="uip-h"><b>Preview</b><span class="uip-btn">ON</span><span class="uip-btn pri">Go Live</span></div><div class="uip-b">
+                    ${card('Slide 1', 'Cháy lên vì gió,<br>Thổi đến nơi đây', true)}${card('Slide 2', 'Cháy theo luồng gió,<br>Biến đổi người tôi', false)}</div></div>
+                <div class="uip-p"><div class="uip-h"><b>Live</b><span class="uip-btn">Clear</span><span class="uip-btn live">Live</span></div><div class="uip-b">
+                    ${card('Slide 1', 'Bình An Vua! Thần Khôn Ngoan!', true)}${card('Slide 2', 'Vua các chúa! Thần Oai Nghiêm!', false)}</div></div>
+                <div class="uip-p"><div class="uip-h"><span class="tab on">Songs</span><span class="tab">Bible</span></div><div class="uip-b">
+                    ${song('020 Chào mừng', false)}${song('021 Cháy lên vì gió,', true)}${song('022 Chẳng ai ngoài Giê-xu', false)}
+                    <span class="uip-btn pri" style="height:18px;justify-content:center">ADD TO SCHEDULE</span></div></div>
+                <div class="uip-p"><div class="uip-h"><b>Media</b></div><div class="uip-b"><div class="uip-tiles">${tiles}${tiles}</div></div></div>
+                <div class="uip-p"><div class="uip-h"><b>Screen Monitor</b><span class="uip-btn">ON</span></div><div class="uip-b"><div class="uip-mon">Bình An Vua!</div></div></div>
+            </div><span class="uip-band">Chat</span>`;
+        }
+
+        function renderUiSkinPane() {
+            const grid = document.getElementById('uiSkinGrid');
+            const hdrRow = document.getElementById('uiHdrRow');
+            const prev = document.getElementById('uiPreview');
+            if (!grid || !hdrRow || !prev) return;
+            const skin = UI_SKINS.find(k => k.id === uiPick.skin) || UI_SKINS[0];
+            grid.innerHTML = UI_SKINS.map(k => `<button type="button" class="uis-card" data-skin="${k.id}" title="${k.desc}" aria-pressed="${k.id === skin.id}">
+                <span class="uis-sw">${k.sw.map(c => `<i style="background:${c}"></i>`).join('')}</span>
+                <span class="uis-top"><span class="uis-name">${k.name}</span><span class="uis-tag">${k.tag}</span></span></button>`).join('');
+            hdrRow.innerHTML = UI_HEADERS.map(h => `<button type="button" class="uis-chip" data-hdr="${h.id}" title="${h.tip}" aria-pressed="${h.id === uiPick.hdr}" ${skin.hdr ? '' : 'disabled'}>${h.id.toUpperCase()} · ${h.name}</button>`).join('');
+            const help = document.getElementById('uiHdrHelp');
+            if (help) help.textContent = skin.hdr
+                ? 'Màu của thanh tiêu đề trên mỗi khu vực (áp dụng cho nhóm Mist, Iris, Honey, Sage, Midnight).'
+                : (skin.id === 'classic' ? 'Kiểu "Cổ điển" giữ header như hiện tại.' : 'Phong cách này có header riêng (không chọn kiểu).');
+            prev.setAttribute('data-ui-skin', skin.id);
+            prev.setAttribute('data-ui-hdr', uiPick.hdr);
+            prev.innerHTML = uiPreviewHtml();
+        }
+
+        function initUiSkinPane() {
+            uiPick = {
+                skin: UI_SKINS.some(k => k.id === globalSettings.uiSkin) ? globalSettings.uiSkin : 'classic',
+                hdr: UI_HEADERS.some(k => k.id === globalSettings.uiHeader) ? globalSettings.uiHeader : 'e'
+            };
+            uiPickInit = true;
+            renderUiSkinPane();
+        }
+
+        (function bindUiSkinPane() {
+            document.addEventListener('click', function (e) {
+                const card = e.target.closest && e.target.closest('#uiSkinGrid [data-skin]');
+                if (card) { uiPick.skin = card.dataset.skin; uiPickInit = true; renderUiSkinPane(); return; }
+                const chip = e.target.closest && e.target.closest('#uiHdrRow [data-hdr]');
+                if (chip && !chip.disabled) { uiPick.hdr = chip.dataset.hdr; uiPickInit = true; renderUiSkinPane(); }
+            });
+        })();
+
         function applySettings() {
             // Apply Theme
             if (globalSettings.theme === 'dark') {
@@ -5114,6 +5240,9 @@
             } else {
                 document.documentElement.classList.remove('dark');
             }
+
+            // Skin giao diện (có thể ép/bỏ class dark theo skin)
+            applyUiSkin();
 
             // Apply Next Verse toggle
             updateNextVerseVisibility();
@@ -5434,6 +5563,7 @@
                 ensureSelectHasOption(document.getElementById('settings-font-family-song'), globalSettings.fontFamilySong);
                 ensureSelectHasOption(document.getElementById('settings-font-family-bible'), globalSettings.fontFamilyBible);
                 applyStgTheme();
+                initUiSkinPane();
 
                 const gpuEl = document.getElementById('settings-gpu-acceleration');
                 if (gpuEl) gpuEl.checked = globalSettings.gpuAcceleration !== false;
@@ -5520,6 +5650,7 @@
         }
 
         function closeSettings(canceled = true) {
+            uiPickInit = false;
             if (canceled && settingsOpenTheme && globalSettings.theme !== settingsOpenTheme) {
                 globalSettings.theme = settingsOpenTheme;
                 applyStgTheme();
@@ -5609,6 +5740,7 @@
                 left: toNumber('settings-padding-left')
             };
 
+            if (uiPickInit) { globalSettings.uiSkin = uiPick.skin; globalSettings.uiHeader = uiPick.hdr; }
             await window.electronAPI.saveSettings(globalSettings);
             settingsOpenTheme = globalSettings.theme;
             rebuildShortcutActionMap();

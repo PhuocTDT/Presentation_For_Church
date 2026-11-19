@@ -1,0 +1,310 @@
+/* =====================================================================
+   UI THEMES (skin cho cửa sổ OPERATOR) — chọn trong Cài đặt → "Giao diện".
+   - Mặc định "Cổ điển" = KHÔNG đặt thuộc tính nào → giao diện hiện tại không đổi.
+   - Skin khác: <html data-ui-skin="mist|iris|honey|sage|midnight|candy|studio" data-ui-hdr="a|b|c|d|e">.
+   - Token (--u-*) đặt trên BẤT KỲ phần tử nào có data-ui-skin → dùng được cho cả cửa sổ chính lẫn khung xem trước.
+   - Các luật ghi đè giao diện thật nằm dưới tiền tố  html[data-ui-skin]  và dùng !important vì giao diện gốc
+     dùng class Tailwind + style inline (thẻ slide đang phát, hàng bài đang chọn).
+   - Chỉ ảnh hưởng cửa sổ operator. Cửa sổ Live (live.html), hộp Edit Song và hộp Cài đặt KHÔNG bị đổi.
+   - Màu phẳng, không gradient. Docs: docs/ui-guidelines.md ("Skin giao diện").
+   ===================================================================== */
+
+/* ---------------------------------------------------------------------
+   1) TOKEN MÀU / KÍCH THƯỚC THEO SKIN
+   --------------------------------------------------------------------- */
+[data-ui-skin]{
+  --u-gap:4px;--u-phh:26px;--u-btnh:20px;
+  --u-hfont:'Inter',system-ui,sans-serif;--u-hsize:11.5px;--u-hweight:700;--u-hls:0;--u-hcase:none;
+  --u-lblbg:transparent;--u-lblfg:var(--u-muted);--u-lblbg-sel:transparent;--u-lblfg-sel:var(--u-seltext);
+  --u-hdrline:0;
+  color-scheme:light;
+}
+
+[data-ui-skin="mist"]{
+  --u-dark:0;--u-bg:#e4ebee;--u-panel:#fff;--u-slide:#fbfdfd;--u-btn:#fff;--u-input:#f1f6f7;--u-hover:#edf3f5;
+  --u-line:#dfe7ea;--u-line2:#c7d5da;--u-text:#0e2a33;--u-muted:#5f7c87;--u-faint:#9db1b9;
+  --u-accent:#0d9488;--u-accent-ink:#fff;--u-live:#ef4b48;--u-live-ink:#fff;--u-ok:#16a37f;
+  --u-selbg:#b9e7df;--u-seltext:#033f39;--u-selborder:#3fb5a6;
+  --u-radius:12px;--u-rbtn:8px;--u-shadow:0 2px 10px rgba(20,60,75,.07);
+  --u-band:#e08a00;--u-band-ink:#2a1700;
+  --u-hA:#0f5a54;--u-hB:#294550;--u-hC:#0d9488;--u-hCt:#fff;--u-hCbt:#064e47;--u-hD:#d5eeea;--u-hDt:#05443d;
+  --u-hsize:12px;--u-hweight:700;
+}
+[data-ui-skin="iris"]{
+  --u-dark:0;--u-bg:#eceef5;--u-panel:#fff;--u-slide:#fff;--u-btn:#fff;--u-input:#f4f5fa;--u-hover:#f0f1f9;
+  --u-line:#e1e4f0;--u-line2:#c9cee4;--u-text:#171a33;--u-muted:#62668a;--u-faint:#a0a4c4;
+  --u-accent:#5048e5;--u-accent-ink:#fff;--u-live:#e5484d;--u-live-ink:#fff;--u-ok:#22a06b;
+  --u-selbg:#d3d0fb;--u-seltext:#241e9c;--u-selborder:#7d76ee;
+  --u-radius:10px;--u-rbtn:7px;--u-shadow:none;
+  --u-band:#e2702a;--u-band-ink:#fff;
+  --u-hA:#2f2b8c;--u-hB:#2e3354;--u-hC:#5048e5;--u-hCt:#fff;--u-hCbt:#26217f;--u-hD:#dedcfb;--u-hDt:#241f7c;
+  --u-hsize:10px;--u-hweight:700;--u-hls:.1em;--u-hcase:uppercase;
+}
+[data-ui-skin="honey"]{
+  --u-dark:0;--u-bg:#ebe9e5;--u-panel:#fffffd;--u-slide:#fff;--u-btn:#fff;--u-input:#f4f3f0;--u-hover:#f2f0eb;
+  --u-line:#e5e2dc;--u-line2:#d1cdc4;--u-text:#2a2721;--u-muted:#76716a;--u-faint:#aba79f;
+  --u-accent:#e08a00;--u-accent-ink:#2a1700;--u-live:#e5484d;--u-live-ink:#fff;--u-ok:#5f9a4a;
+  --u-selbg:#fbd98a;--u-seltext:#4f2f00;--u-selborder:#e0a21e;
+  --u-radius:12px;--u-rbtn:8px;--u-shadow:0 2px 8px rgba(40,36,28,.07);
+  --u-band:#0d9488;--u-band-ink:#fff;
+  --u-hA:#7d4b00;--u-hB:#3f3629;--u-hC:#e08a00;--u-hCt:#2a1700;--u-hCbt:#5a3300;--u-hD:#fae3b4;--u-hDt:#5a3300;
+  --u-hsize:12px;--u-hweight:800;
+}
+[data-ui-skin="sage"]{
+  --u-dark:0;--u-bg:#e4e8df;--u-panel:#fbfcfa;--u-slide:#fff;--u-btn:#fff;--u-input:#f0f3ec;--u-hover:#ecf0e6;
+  --u-line:#dce2d5;--u-line2:#c2ccb9;--u-text:#1c2a22;--u-muted:#66776b;--u-faint:#a3b0a6;
+  --u-accent:#3a7653;--u-accent-ink:#fff;--u-live:#e5484d;--u-live-ink:#fff;--u-ok:#3a7653;
+  --u-selbg:#c4e1d0;--u-seltext:#113d27;--u-selborder:#5ea67f;
+  --u-radius:10px;--u-rbtn:7px;--u-shadow:0 1px 0 rgba(30,50,35,.05);
+  --u-band:#a8497a;--u-band-ink:#fff;
+  --u-hA:#1f4b36;--u-hB:#2d3d34;--u-hC:#3a7653;--u-hCt:#fff;--u-hCbt:#14412a;--u-hD:#d3e7da;--u-hDt:#13402a;
+  --u-hfont:'Montserrat','Inter',sans-serif;--u-hsize:10px;--u-hweight:700;--u-hls:.1em;--u-hcase:uppercase;
+}
+[data-ui-skin="midnight"]{
+  --u-dark:1;color-scheme:dark;
+  --u-bg:#0a0f1b;--u-panel:#121929;--u-slide:#172038;--u-btn:#19223c;--u-input:#0e1423;--u-hover:#1a2441;
+  --u-line:#212b45;--u-line2:#303c5f;--u-text:#e8ebf4;--u-muted:#8a95b3;--u-faint:#566083;
+  --u-accent:#f5a524;--u-accent-ink:#241700;--u-live:#ff4d5e;--u-live-ink:#fff;--u-ok:#4ade80;
+  --u-selbg:#50380f;--u-seltext:#ffeec4;--u-selborder:#d49a22;
+  --u-radius:12px;--u-rbtn:8px;--u-shadow:none;
+  --u-band:#38bdf8;--u-band-ink:#04202c;
+  --u-hA:#6f4707;--u-hB:#1c2845;--u-hC:#f5a524;--u-hCt:#241700;--u-hCbt:#3d2600;--u-hD:#202c4b;--u-hDt:#e8ebf4;
+  --u-hsize:10px;--u-hweight:600;--u-hls:.1em;--u-hcase:uppercase;
+}
+[data-ui-skin="candy"]{
+  --u-dark:0;--u-bg:#ecefff;--u-panel:#fff;--u-slide:#fff;--u-btn:#fff;--u-input:#fff;--u-hover:#f3f4ff;
+  --u-line:#e0e4fb;--u-line2:#cdd3f5;--u-text:#1d1b4b;--u-muted:#6468a3;--u-faint:#a3a8d6;
+  --u-accent:#6d5dfc;--u-accent-ink:#fff;--u-live:#ff4d6d;--u-live-ink:#fff;--u-ok:#18b66a;
+  --u-selbg:#6d5dfc;--u-seltext:#fff;--u-selborder:#6d5dfc;
+  --u-radius:10px;--u-rbtn:7px;--u-shadow:0 4px 12px rgba(80,72,229,.08);
+  --u-band:#d946ef;--u-band-ink:#fff;
+  --u-phh:30px;
+  --u-hfont:'Montserrat','Inter',sans-serif;--u-hsize:11px;--u-hweight:800;--u-hls:.04em;--u-hcase:uppercase;
+  --u-pc:#6d5dfc;
+  --u-hdrbg:color-mix(in srgb,var(--u-pc) 11%,#fff);--u-hdrtext:#1d1b4b;--u-hdrmute:#6468a3;
+  --u-lblbg:var(--u-pc);--u-lblfg:#fff;--u-lblbg-sel:var(--u-pc);--u-lblfg-sel:#fff;
+}
+[data-ui-skin="studio"]{
+  --u-dark:1;color-scheme:dark;
+  --u-bg:#060a14;--u-panel:#0e1527;--u-slide:#111a30;--u-btn:#131d36;--u-input:#0a1020;--u-hover:#17233f;
+  --u-line:#1b2644;--u-line2:#2a3a66;--u-text:#dce5ff;--u-muted:#7c8bb5;--u-faint:#4f5d86;
+  --u-accent:#22d3ee;--u-accent-ink:#03222a;--u-live:#ff3158;--u-live-ink:#fff;--u-ok:#2be28a;
+  --u-selbg:#0f3140;--u-seltext:#e8fbff;--u-selborder:#1a8aa6;
+  --u-radius:12px;--u-rbtn:8px;--u-shadow:none;
+  --u-band:#e879f9;--u-band-ink:#2a0d33;
+  --u-hfont:'Oswald','Inter',sans-serif;--u-hsize:11.5px;--u-hweight:500;--u-hls:.14em;--u-hcase:uppercase;
+  --u-pc:#a78bfa;
+  --u-hdrbg:#0b1224;--u-hdrtext:#dce5ff;--u-hdrmute:#7c8bb5;
+  --u-lblbg:#0b1224;--u-lblfg:#7c8bb5;--u-lblbg-sel:#12576e;--u-lblfg-sel:#fff;
+}
+
+/* "Cổ điển": CHỈ dùng cho khung xem trước trong Cài đặt (cửa sổ thật không bao giờ có data-ui-skin="classic") */
+[data-ui-skin="classic"]{
+  --u-dark:0;--u-bg:#f1f5f9;--u-panel:#fff;--u-slide:#fff;--u-btn:#475569;--u-btntext:#fff;--u-input:#fff;--u-hover:#f1f5f9;
+  --u-line:#e2e8f0;--u-line2:#64748b;--u-text:#0f172a;--u-muted:#64748b;--u-faint:#94a3b8;
+  --u-accent:#4f46e5;--u-accent-ink:#fff;--u-live:#dc2626;--u-live-ink:#fff;--u-ok:#22c55e;
+  --u-selbg:#b3e4ff;--u-seltext:#0f172a;--u-selborder:#7cc8f2;
+  --u-radius:8px;--u-rbtn:4px;--u-shadow:0 1px 2px rgba(0,0,0,.06);--u-band:#e8903f;--u-band-ink:#40260a;
+  --u-hdrbg:#1e293b;--u-hdrtext:#fff;--u-hdrmute:rgba(255,255,255,.6);
+  --u-lblbg:#64748b;--u-lblfg:#fff;--u-lblbg-sel:#4f46e5;--u-lblfg-sel:#fff;
+  --u-hsize:10px;--u-hweight:700;--u-hls:.06em;--u-hcase:uppercase;
+}
+
+/* ---------------------------------------------------------------------
+   2) KIỂU HEADER (chỉ nhóm tối giản: mist/iris/honey/sage/midnight)
+      A Đậm · B Than · C Đặc · D Sáng · E Vạch(mặc định: header không tô màu + vạch màu mảnh trên đầu thẻ)
+   --------------------------------------------------------------------- */
+[data-ui-hdr="a"]:is([data-ui-skin="mist"],[data-ui-skin="iris"],[data-ui-skin="honey"],[data-ui-skin="sage"],[data-ui-skin="midnight"]){--u-hdrbg:var(--u-hA);--u-hdrtext:#fff;--u-hdrmute:rgba(255,255,255,.66)}
+[data-ui-hdr="b"]:is([data-ui-skin="mist"],[data-ui-skin="iris"],[data-ui-skin="honey"],[data-ui-skin="sage"],[data-ui-skin="midnight"]){--u-hdrbg:var(--u-hB);--u-hdrtext:#fff;--u-hdrmute:rgba(255,255,255,.62)}
+[data-ui-hdr="c"]:is([data-ui-skin="mist"],[data-ui-skin="iris"],[data-ui-skin="honey"],[data-ui-skin="sage"],[data-ui-skin="midnight"]){--u-hdrbg:var(--u-hC);--u-hdrtext:var(--u-hCt);--u-hdrmute:color-mix(in srgb,var(--u-hCt) 68%,transparent)}
+[data-ui-hdr="d"]:is([data-ui-skin="mist"],[data-ui-skin="iris"],[data-ui-skin="honey"],[data-ui-skin="sage"],[data-ui-skin="midnight"]){--u-hdrbg:var(--u-hD);--u-hdrtext:var(--u-hDt);--u-hdrmute:color-mix(in srgb,var(--u-hDt) 62%,transparent);--u-hdrline:2px solid var(--u-accent)}
+[data-ui-hdr="e"]:is([data-ui-skin="mist"],[data-ui-skin="iris"],[data-ui-skin="honey"],[data-ui-skin="sage"],[data-ui-skin="midnight"]){--u-hdrbg:transparent;--u-hdrtext:var(--u-text);--u-hdrmute:var(--u-muted);--u-hdrline:1px solid var(--u-line);--u-topbar:3px solid var(--u-accent)}
+/* nếu thiếu data-ui-hdr (hoặc giá trị lạ) → coi như E */
+[data-ui-skin]:is([data-ui-skin="mist"],[data-ui-skin="iris"],[data-ui-skin="honey"],[data-ui-skin="sage"],[data-ui-skin="midnight"]):not([data-ui-hdr="a"],[data-ui-hdr="b"],[data-ui-hdr="c"],[data-ui-hdr="d"]){--u-hdrbg:transparent;--u-hdrtext:var(--u-text);--u-hdrmute:var(--u-muted);--u-hdrline:1px solid var(--u-line);--u-topbar:3px solid var(--u-accent)}
+/* C: nút chính trùng màu header → nền trắng */
+[data-ui-hdr="c"]:is([data-ui-skin="mist"],[data-ui-skin="iris"],[data-ui-skin="honey"],[data-ui-skin="sage"],[data-ui-skin="midnight"]){--u-primary-in-hdr-bg:#fff;--u-primary-in-hdr-fg:var(--u-hCbt)}
+
+/* ---------------------------------------------------------------------
+   3) GIAO DIỆN THẬT (cửa sổ operator) — chỉ khi có data-ui-skin trên <html>
+   --------------------------------------------------------------------- */
+html[data-ui-skin] body{background:var(--u-bg)!important;color:var(--u-text)}
+html[data-ui-skin] .resizer-h,html[data-ui-skin] .resizer-v{background:transparent!important}
+
+/* panel */
+html[data-ui-skin] .panel{background:var(--u-panel)!important;border:1px solid var(--u-line)!important;border-radius:var(--u-radius)!important;box-shadow:var(--u-shadow)!important;color:var(--u-text)}
+html[data-ui-skin] .panel{border-top:var(--u-topbar,1px solid var(--u-line))!important}
+html[data-ui-skin] .panel .bg-slate-50,html[data-ui-skin] .panel [class*="dark:bg-slate-950"],html[data-ui-skin] .panel [class*="dark:bg-slate-900"]{background:var(--u-panel)!important}
+html[data-ui-skin] .panel [class*="border-slate-200"],html[data-ui-skin] .panel [class*="border-slate-800"],html[data-ui-skin] .panel [class*="border-slate-100"]{border-color:var(--u-line)!important}
+html[data-ui-skin] .panel [class*="text-slate-4"],html[data-ui-skin] .panel [class*="text-slate-5"]{color:var(--u-muted)!important}
+
+/* header (6 header panel + header phụ của Screen Monitor) */
+html[data-ui-skin] .panel>div:first-child,html[data-ui-skin] .panel .h-8.shrink-0{
+  background:var(--u-hdrbg)!important;color:var(--u-hdrtext)!important;
+  height:var(--u-phh)!important;min-height:var(--u-phh)!important;padding:0 10px!important;
+  border-radius:0!important;border-top:0!important;border-bottom:var(--u-hdrline)!important;
+}
+html[data-ui-skin] .panel>div:first-child h3,html[data-ui-skin] .panel .h-8.shrink-0>span{
+  color:var(--u-hdrtext)!important;opacity:1!important;font-family:var(--u-hfont)!important;font-size:var(--u-hsize)!important;
+  font-weight:var(--u-hweight)!important;letter-spacing:var(--u-hls)!important;text-transform:var(--u-hcase)!important;line-height:1;
+}
+html[data-ui-skin] .panel>div:first-child>span.text-white\/60{color:var(--u-hdrmute)!important}
+/* nút/ô trên header: giữ kiểu riêng của theme (không theo màu header) */
+html[data-ui-skin] .panel>div:first-child button:not([id^="tab-"]),
+html[data-ui-skin] .panel .h-8.shrink-0 button{
+  background:var(--u-btn)!important;color:var(--u-text)!important;border:1px solid var(--u-line2)!important;border-radius:var(--u-rbtn)!important;
+  height:var(--u-btnh)!important;min-height:0!important;padding:0 8px!important;font-size:10px!important;font-weight:600!important;line-height:1;
+  display:inline-flex!important;align-items:center;justify-content:center;gap:4px;
+}
+html[data-ui-skin] .panel>div:first-child button:not([id^="tab-"]):hover,html[data-ui-skin] .panel .h-8.shrink-0 button:hover{background:var(--u-hover)!important}
+html[data-ui-skin] .panel>div:first-child button .material-symbols-outlined,html[data-ui-skin] .panel .h-8.shrink-0 button .material-symbols-outlined{color:inherit!important;font-size:14px!important}
+html[data-ui-skin] .panel>div:first-child button.size-5,html[data-ui-skin] .lib-actions button{width:var(--u-btnh)!important;padding:0!important}
+html[data-ui-skin] .panel>div:first-child button.bg-primary{background:var(--u-primary-in-hdr-bg,var(--u-accent))!important;color:var(--u-primary-in-hdr-fg,var(--u-accent-ink))!important;border-color:var(--u-primary-in-hdr-bg,var(--u-accent))!important}
+html[data-ui-skin] .panel>div:first-child button.bg-red-600{background:var(--u-live)!important;color:var(--u-live-ink)!important;border-color:var(--u-live)!important}
+/* tab Songs/Bible + ô tìm kiếm trong header Library */
+html[data-ui-skin] .lib-tabs{border-bottom:0!important}
+html[data-ui-skin] .lib-tabs button{color:var(--u-hdrmute)!important;font-family:var(--u-hfont)!important;font-size:var(--u-hsize)!important;font-weight:var(--u-hweight)!important;letter-spacing:var(--u-hls)!important;text-transform:var(--u-hcase)!important;border-bottom:2px solid transparent!important;padding:0 8px!important;height:var(--u-phh)}
+html[data-ui-skin] .lib-tabs button.border-primary{color:var(--u-hdrtext)!important;border-bottom-color:var(--u-accent)!important}
+html[data-ui-skin] #library-search{background:var(--u-input)!important;color:var(--u-text)!important;border:1px solid var(--u-line2)!important;border-radius:var(--u-rbtn)!important;height:24px!important}
+html[data-ui-skin] #library-search::placeholder{color:var(--u-faint)}
+
+/* Schedule */
+html[data-ui-skin] [data-schedule-item]{color:var(--u-text)!important;border:1px solid transparent;border-radius:var(--u-rbtn)!important}
+html[data-ui-skin] [data-schedule-item]:hover{background:var(--u-hover)!important}
+html[data-ui-skin] [data-schedule-item].bg-blue-500{background:var(--u-selbg)!important;color:var(--u-seltext)!important;border-color:var(--u-selborder)!important}
+html[data-ui-skin] [data-schedule-item] .text-red-400,html[data-ui-skin] [data-schedule-item] .text-red-500{color:var(--u-live)!important}
+
+/* Thẻ slide (Preview + Live) */
+html[data-ui-skin] :is(#preview-slides-container,#live-slides-container)>div{background:var(--u-slide)!important;border:1px solid var(--u-line)!important;border-radius:calc(var(--u-radius) - 4px)!important;box-shadow:none!important;color:var(--u-text)}
+html[data-ui-skin] :is(#preview-slides-container,#live-slides-container)>div>div:first-child{background:var(--u-lblbg)!important;color:var(--u-lblfg)!important;padding:2px 10px!important;font-size:9px!important;line-height:1.25!important}
+html[data-ui-skin] :is(#preview-slides-container,#live-slides-container)>div>div:first-child.bg-indigo-600{background:var(--u-lblbg-sel)!important;color:var(--u-lblfg-sel)!important}
+html[data-ui-skin] :is(#preview-slides-container,#live-slides-container)>div>div:last-child{background:transparent!important;color:var(--u-text)!important;font-size:12.5px!important;line-height:1.45!important}
+html[data-ui-skin] :is(#preview-slides-container,#live-slides-container)>div:has(>div[style*="b3e4ff"]){background:var(--u-selbg)!important;border-color:var(--u-selborder)!important}
+html[data-ui-skin] :is(#preview-slides-container,#live-slides-container)>div>div[style*="b3e4ff"]{color:var(--u-seltext)!important}
+html[data-ui-skin] #live-slides-container.ring-2{box-shadow:none}
+
+/* Library (danh sách bài) */
+html[data-ui-skin] tbody tr[data-library-key]{color:var(--u-text)}
+html[data-ui-skin] tbody tr[data-library-key] [class*="text-slate-9"],html[data-ui-skin] tbody tr[data-library-key] [class*="text-slate-1"]{color:inherit!important}
+html[data-ui-skin] tbody tr[data-library-key]:hover{background:var(--u-hover)}
+html[data-ui-skin] tbody tr[data-library-key]:is([style*="86cdff"],[style*="134, 205, 255"]){background:var(--u-selbg)!important;color:var(--u-seltext)!important}
+html[data-ui-skin] tbody tr[data-library-key]:is([style*="86cdff"],[style*="134, 205, 255"]) td:first-child{box-shadow:inset 3px 0 0 var(--u-accent)}
+html[data-ui-skin] tbody>tr>td,html[data-ui-skin] tbody td{border-color:var(--u-line)!important}
+html[data-ui-skin] .panel #library-primary-action-btn{background:var(--u-accent)!important;color:var(--u-accent-ink)!important;border:1px solid var(--u-accent)!important;border-radius:var(--u-rbtn)!important}
+html[data-ui-skin] .panel #library-add-new-song-btn{background:var(--u-btn)!important;color:var(--u-text)!important;border:1px solid var(--u-line2)!important;border-radius:var(--u-rbtn)!important}
+
+/* Media */
+html[data-ui-skin] #media-library-container .grid>div{border:1px solid var(--u-line)!important;border-radius:calc(var(--u-radius) - 4px)!important}
+html[data-ui-skin] #media-library-container .grid>div:hover{border-color:var(--u-accent)!important}
+html[data-ui-skin] #media-library-container [class*="text-slate-4"]{color:var(--u-faint)!important}
+html[data-ui-skin] #media-monitor-output-box,html[data-ui-skin] #preview-output-box{border-color:var(--u-line)!important;border-radius:max(6px,calc(var(--u-radius) - 6px))!important}
+
+/* Thanh trạng thái dưới cùng: bo 2 góc trên, thụt vào bằng lề panel */
+html[data-ui-skin] body>footer{background:var(--u-panel)!important;color:var(--u-muted)!important;height:22px!important;margin:0 var(--u-gap);
+  border:1px solid var(--u-line)!important;border-bottom:0!important;border-radius:var(--u-radius) var(--u-radius) 0 0}
+html[data-ui-skin] body>footer *{color:inherit!important}
+
+/* Kênh Band: nút thu gọn nổi bật bằng MÀU RIÊNG của theme (không trùng màu nhấn); khi mở thì theo tone theme */
+html[data-ui-skin] #bandPanelTab:not(.has-alert){background:var(--u-band)!important;color:var(--u-band-ink)!important}
+html[data-ui-skin] #bandPanelTab:not(.has-alert):hover{filter:brightness(1.07)}
+html[data-ui-skin] #bandPanel{background:var(--u-panel)!important;color:var(--u-text)!important;border-right:1px solid var(--u-line)!important}
+html[data-ui-skin] #bandPanel .bp-head{background:var(--u-hdrbg)!important;color:var(--u-hdrtext)!important;border-radius:0!important;border-bottom:var(--u-hdrline)!important;padding-top:3px;padding-bottom:3px}
+html[data-ui-skin] #bandPanel .bp-title{color:var(--u-hdrtext)!important;font-family:var(--u-hfont);letter-spacing:var(--u-hls);text-transform:var(--u-hcase)}
+html[data-ui-skin] #bandPanel .bp-btn{background:var(--u-btn)!important;color:var(--u-text)!important;border:1px solid var(--u-line2)!important;border-radius:var(--u-rbtn)!important}
+html[data-ui-skin] #bandPanel .bp-btn:hover{background:var(--u-hover)!important}
+html[data-ui-skin] #bandPanel .bp-btn.go{background:var(--u-accent)!important;color:var(--u-accent-ink)!important;border-color:var(--u-accent)!important}
+html[data-ui-skin] #bandPanel .bp-btn.stop{background:var(--u-live)!important;color:var(--u-live-ink)!important;border-color:var(--u-live)!important}
+html[data-ui-skin] #bandPanel .bp-x{color:var(--u-hdrmute)!important}
+html[data-ui-skin] #bandPanel input,html[data-ui-skin] #bandPanel textarea,html[data-ui-skin] #bandPanel select{background:var(--u-input)!important;color:var(--u-text)!important;border-color:var(--u-line2)!important}
+html[data-ui-skin] #bandPanel .bp-composer{background:var(--u-panel)!important;border-top:1px solid var(--u-line)!important}
+html[data-ui-skin] #bandPanel .bp-replies button{background:var(--u-btn)!important;border-color:var(--u-line2)!important;color:var(--u-text)!important;border-radius:var(--u-rbtn)!important}
+html[data-ui-skin] #bandPanel .bp-replies button:hover{background:var(--u-hover)!important}
+html[data-ui-skin] #bandPanel .bp-row input{border-radius:var(--u-rbtn)!important}
+html[data-ui-skin] #bandPanel .bp-row input:focus{border-color:var(--u-accent)!important}
+html[data-ui-skin] #bandPanel .bp-row .send{background:var(--u-accent)!important;color:var(--u-accent-ink)!important;border-radius:var(--u-rbtn)!important}
+html[data-ui-skin] #bandPanel .bp-msg{color:var(--u-text)!important;background:var(--u-hover)}
+html[data-ui-skin] #bandPanel .bp-msg.op{background:var(--u-selbg)!important;border-color:var(--u-selborder)!important;color:var(--u-seltext)!important}
+html[data-ui-skin] #bandPanel .bp-msg.sys,html[data-ui-skin] #bandPanel .bp-empty{background:transparent!important;color:var(--u-faint)!important}
+html[data-ui-skin] #bandPanel .bp-conn{background:var(--u-panel)!important;color:var(--u-text)!important;border-color:var(--u-line)!important}
+html[data-ui-skin] #bandPanel .bp-conn :is(.k,label,.note,.bp-wizard-hint-in-conn,.bp-gal-count){color:var(--u-muted)!important}
+html[data-ui-skin] #bandPanel .bp-conn :is(.host,.v){color:var(--u-text)!important}
+html[data-ui-skin] #bandPanel .bp-conn .bp-gal{background:var(--u-input)!important;border-color:var(--u-line)!important}
+
+/* ---- Candy: mỗi khu vực một màu (header tô nhạt + thẻ slide có thanh nhãn màu) ---- */
+html[data-ui-skin="candy"] #top-row>section:nth-of-type(1){--u-pc:#6d5dfc}
+html[data-ui-skin="candy"] #top-row>section:nth-of-type(2){--u-pc:#3b82f6}
+html[data-ui-skin="candy"] #top-row>section:nth-of-type(3){--u-pc:#ff4d6d}
+html[data-ui-skin="candy"] #bottom-row>section:nth-of-type(1){--u-pc:#f59e0b}
+html[data-ui-skin="candy"] #bottom-row>section:nth-of-type(2){--u-pc:#10b981}
+html[data-ui-skin="candy"] #live-slides-container>div>div:first-child:not(.bg-indigo-600){background:#8a8fb8!important}
+html[data-ui-skin="candy"] #live-slides-container>div>div:first-child.bg-indigo-600{background:#ff4d6d!important}
+html[data-ui-skin="candy"] :is(#preview-slides-container,#live-slides-container)>div:has(>div[style*="b3e4ff"]){background:color-mix(in srgb,var(--u-pc) 14%,#fff)!important}
+html[data-ui-skin="candy"] :is(#preview-slides-container,#live-slides-container)>div>div[style*="b3e4ff"]{color:var(--u-text)!important}
+html[data-ui-skin="candy"] :is(#preview-slides-container,#live-slides-container)>div:has(>div[style*="b3e4ff"]){border-color:var(--u-pc)!important}
+html[data-ui-skin="candy"] [data-schedule-item]{border-width:1.5px}
+
+/* ---- Studio: viền màu đầu thẻ theo khu vực; Schedule + Library chọn = hổ phách ---- */
+html[data-ui-skin="studio"] .panel{border-top:2px solid var(--u-pc)!important}
+html[data-ui-skin="studio"] #top-row>section:nth-of-type(1){--u-pc:#a78bfa}
+html[data-ui-skin="studio"] #top-row>section:nth-of-type(2){--u-pc:#22d3ee}
+html[data-ui-skin="studio"] #top-row>section:nth-of-type(3){--u-pc:#ff3158}
+html[data-ui-skin="studio"] #bottom-row>section:nth-of-type(1){--u-pc:#f59e0b}
+html[data-ui-skin="studio"] #bottom-row>section:nth-of-type(2){--u-pc:#2be28a}
+html[data-ui-skin="studio"] #top-row>section:nth-of-type(1),html[data-ui-skin="studio"] #bottom-row>section:nth-of-type(1){--u-selbg:#3a2a08;--u-seltext:#ffe9b8;--u-selborder:#c88a12;--u-accent:#f59e0b;--u-accent-ink:#2a1a00}
+html[data-ui-skin="studio"] #top-row>section:nth-of-type(3) :is(#live-slides-container)>div:has(>div[style*="b3e4ff"]){background:#3a0f1b!important;border-color:var(--u-live)!important}
+html[data-ui-skin="studio"] #live-slides-container>div>div:first-child.bg-indigo-600{background:var(--u-live)!important;color:#fff!important}
+
+/* =====================================================================
+   4) TAB "GIAO DIỆN" TRONG CÀI ĐẶT (hộp Cài đặt giữ token --stg-* riêng, không theo skin)
+   ===================================================================== */
+#stg-pane-giaodien .uis-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+#stg-pane-giaodien .uis-card{position:relative;text-align:left;border:1px solid var(--stg-border);background:var(--stg-surface);color:var(--stg-text);
+  border-radius:8px;padding:6px 8px 7px;cursor:pointer;font:inherit;display:flex;flex-direction:column;gap:5px;min-width:0}
+#stg-pane-giaodien .uis-card:hover{border-color:var(--stg-accent)}
+#stg-pane-giaodien .uis-card[aria-pressed="true"]{border-color:var(--stg-accent);box-shadow:0 0 0 2px var(--stg-accent-soft);background:var(--stg-accent-soft)}
+#stg-pane-giaodien .uis-top{display:flex;align-items:baseline;justify-content:space-between;gap:4px;min-width:0}
+#stg-pane-giaodien .uis-sw{display:flex;height:12px;border-radius:5px;overflow:hidden;border:1px solid rgba(128,128,128,.25)}
+#stg-pane-giaodien .uis-sw i{flex:1}
+#stg-pane-giaodien .uis-name{font-size:12px;font-weight:700;white-space:nowrap}
+#stg-pane-giaodien .uis-tag{font-size:8.5px;font-weight:700;color:var(--stg-text-faint);letter-spacing:.03em;white-space:nowrap}
+#stg-pane-giaodien .uis-hdr{display:flex;flex-wrap:wrap;gap:6px}
+#stg-pane-giaodien .uis-chip{border:1px solid var(--stg-border);background:var(--stg-surface);color:var(--stg-text);border-radius:8px;padding:5px 10px;font:inherit;font-size:12px;cursor:pointer}
+#stg-pane-giaodien .uis-chip:hover:not(:disabled){border-color:var(--stg-accent)}
+#stg-pane-giaodien .uis-chip[aria-pressed="true"]{border-color:var(--stg-accent);background:var(--stg-accent-soft);color:var(--stg-accent);font-weight:700}
+#stg-pane-giaodien .uis-chip:disabled{opacity:.45;cursor:not-allowed}
+#stg-pane-giaodien .uis-note{font-size:11px;color:var(--stg-text-faint);margin-top:6px}
+
+/* ---- Khung xem trước (mô phỏng cửa sổ operator, dùng đúng token --u-* của skin) ---- */
+.uip{--u-pc:#6d5dfc;position:relative;background:var(--u-bg);border:1px solid var(--stg-border,#ccc);border-radius:10px;padding:var(--u-gap);overflow:hidden;
+  font:10px/1.3 'Inter',system-ui,sans-serif;color:var(--u-text);user-select:none}
+.uip *{box-sizing:border-box}
+.uip-grid{display:grid;grid-template-columns:1fr 1.25fr 1.25fr;grid-template-rows:auto auto;gap:var(--u-gap)}
+.uip-p{background:var(--u-panel);border:1px solid var(--u-line);border-top:var(--u-topbar,1px solid var(--u-line));border-radius:var(--u-radius);box-shadow:var(--u-shadow);overflow:hidden;display:flex;flex-direction:column;min-width:0}
+.uip-p:nth-child(1){--u-pc:#6d5dfc}.uip-p:nth-child(2){--u-pc:#3b82f6}.uip-p:nth-child(3){--u-pc:#ff4d6d}.uip-p:nth-child(4){--u-pc:#f59e0b}.uip-p:nth-child(5){--u-pc:#10b981}.uip-p:nth-child(6){--u-pc:#64748b}
+[data-ui-skin="studio"] .uip-p:nth-child(1){--u-pc:#a78bfa}[data-ui-skin="studio"] .uip-p:nth-child(2){--u-pc:#22d3ee}[data-ui-skin="studio"] .uip-p:nth-child(3){--u-pc:#ff3158}[data-ui-skin="studio"] .uip-p:nth-child(5){--u-pc:#2be28a}
+[data-ui-skin="studio"] .uip-p{border-top:2px solid var(--u-pc)}
+.uip-h{height:var(--u-phh);flex:none;display:flex;align-items:center;gap:6px;padding:0 8px;background:var(--u-hdrbg);color:var(--u-hdrtext);border-bottom:var(--u-hdrline)}
+.uip-h b{font-family:var(--u-hfont);font-size:calc(var(--u-hsize) - 1px);font-weight:var(--u-hweight);letter-spacing:var(--u-hls);text-transform:var(--u-hcase);margin-right:auto;white-space:nowrap}
+.uip-h .tab{font-family:var(--u-hfont);font-size:calc(var(--u-hsize) - 1px);font-weight:var(--u-hweight);letter-spacing:var(--u-hls);text-transform:var(--u-hcase);color:var(--u-hdrmute);white-space:nowrap}
+.uip-h .tab.on{color:var(--u-hdrtext);border-bottom:2px solid var(--u-accent)}
+.uip-h .tab+.tab{margin-right:auto}
+.uip-btn{height:16px;padding:0 6px;display:inline-flex;align-items:center;border-radius:var(--u-rbtn);border:1px solid var(--u-line2);background:var(--u-btn);color:var(--u-btntext,var(--u-text));font-size:8px;font-weight:600;white-space:nowrap}
+.uip-btn.pri{background:var(--u-primary-in-hdr-bg,var(--u-accent));color:var(--u-primary-in-hdr-fg,var(--u-accent-ink));border-color:var(--u-primary-in-hdr-bg,var(--u-accent))}
+.uip-btn.live{background:var(--u-live);color:var(--u-live-ink);border-color:var(--u-live)}
+.uip-b{padding:4px;display:flex;flex-direction:column;gap:3px;min-height:0}
+.uip-row{display:flex;align-items:center;gap:5px;padding:3px 5px;border-radius:var(--u-rbtn);border:1px solid transparent;font-weight:600;white-space:nowrap;overflow:hidden}
+.uip-row i{width:20px;height:11px;background:#000;border-radius:2px;flex:none}
+.uip-row.sel{background:var(--u-selbg);color:var(--u-seltext);border-color:var(--u-selborder)}
+.uip-row .tg{margin-left:auto;font-size:8px;font-weight:800;color:var(--u-live)}
+.uip-row.sel .tg{color:inherit}
+.uip-card{border:1px solid var(--u-line);background:var(--u-slide);border-radius:calc(var(--u-radius) - 4px);overflow:hidden}
+.uip-card .l{padding:1px 6px;font-size:7.5px;font-weight:700;background:var(--u-lblbg);color:var(--u-lblfg);text-transform:uppercase}
+.uip-card .t{padding:2px 6px 4px;font-size:9px}
+.uip-card.sel{background:var(--u-selbg);border-color:var(--u-selborder);color:var(--u-seltext)}
+.uip-card.sel .l{background:var(--u-lblbg-sel);color:var(--u-lblfg-sel)}
+.uip-song{padding:3px 6px;border-radius:var(--u-rbtn);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.uip-song.sel{background:var(--u-selbg);color:var(--u-seltext);font-weight:700;box-shadow:inset 3px 0 0 var(--u-accent)}
+.uip-tiles{display:grid;grid-template-columns:repeat(5,1fr);gap:3px}
+.uip-tiles i{aspect-ratio:16/9;border-radius:calc(var(--u-radius) - 6px);border:1px solid var(--u-line);display:block}
+.uip-mon{aspect-ratio:16/9;background:#000;border-radius:4px;color:#fff;display:grid;place-items:center;font:700 9px 'Times New Roman',serif}
+.uip-band{position:absolute;left:0;top:44%;transform:translateY(-50%);writing-mode:vertical-rl;background:var(--u-band);color:var(--u-band-ink);
+  font-size:8px;font-weight:700;letter-spacing:.08em;padding:7px 4px;border-radius:0 7px 7px 0;box-shadow:2px 2px 8px rgba(0,0,0,.2)}
