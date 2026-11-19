@@ -2,6 +2,12 @@
 
 Tất cả các thay đổi và cập nhật quan trọng của dự án được ghi lại tại đây.
 
+## [Chưa phát hành] - Header khớp mẫu demo, khung nhãn Edit Song theo màu chủ đạo
+
+- **Kích thước header/nút khớp mẫu demo** (đo trực tiếp demo ở Midnight/kiểu C): header panel **26px** (trước 24px), nút trên header **20px** (trước 18px). Viên "ON" của monitor có **chấm xanh** (xám khi OFF; `data-on` do `applyMonitorVisibility` đặt); dấu "≡" của Schedule thành **nút tròn "…"**; nút đóng Kênh Band là nút có viền, chữ × to hơn.
+- **Edit Song → tab Words**: khối lời đang soạn (đang focus) có **khung nhãn nền màu chủ đạo** của theme (chữ + số + biểu tượng mắt đổi sang màu tương phản) và vòng sáng theo màu chủ đạo. (Đã **hoàn tác** thay đổi nhầm ở nhãn slide Preview/Live — nhãn ở đó giữ như trước.)
+- Test cập nhật theo chiều cao header mới (`test/ui-skin.e2e.mjs`).
+
 ## [3.3.0] - Chọn giao diện (8 theme + 5 kiểu header), tiếng Anh, pop-up theo theme, thanh menu và khung Kênh Band mới
 
 > Chỉ cần bản app mới. Cognito đã chuyển sang account AWS mới và `cloud/identity` + `cloud/worker` đã deploy trước đó; lần phát hành này không đổi Worker. Giao diện **Cổ điển** vẫn là mặc định và giữ nguyên như cũ.

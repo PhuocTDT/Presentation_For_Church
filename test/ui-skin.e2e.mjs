@@ -105,13 +105,13 @@ test('skin áp vào giao diện thật: panel bo góc, header thấp, màu chọ
         footerR: cs('body > footer', 'borderTopLeftRadius'), tab: cs('#bandPanelTab', 'backgroundColor') };
     })()`);
     assert.equal(m.skin, 'mist'); assert.equal(m.dark, false);
-    assert.equal(m.bodyBg, 'rgb(228, 235, 238)'); assert.equal(m.panelR, '12px'); assert.equal(m.hdrH, 24);
+    assert.equal(m.bodyBg, 'rgb(228, 235, 238)'); assert.equal(m.panelR, '12px'); assert.equal(m.hdrH, 26);
     assert.equal(m.hdrBg, 'rgba(0, 0, 0, 0)', 'kiểu E: header không tô màu');
     assert.equal(m.topBar, 'rgb(13, 148, 136)', 'kiểu E: vạch màu nhấn trên đầu thẻ');
     assert.equal(m.sel, 'rgb(185, 231, 223)'); assert.equal(m.selText, 'rgb(3, 63, 57)');
     assert.equal(m.goLive, 'rgb(13, 148, 136)', 'Go Live dùng màu nhấn'); assert.equal(m.liveBtn, 'rgb(239, 75, 72)', 'nút Live dùng màu LIVE');
     assert.equal(m.libSel, 'rgb(185, 231, 223)', 'hàng bài đang chọn trong thư viện đổi theo màu chọn của skin (style JS dạng rgb)');
-    assert.deepEqual(m.monPanel, { own: true, mediaHasNone: true, hdrH: 24, n: 3, aligned: true }, 'Screen Monitor là panel RIÊNG (header 24px), không lồng trong Media, thẳng cột với Live');
+    assert.deepEqual(m.monPanel, { own: true, mediaHasNone: true, hdrH: 26, n: 3, aligned: true }, 'Screen Monitor là panel RIÊNG (header 26px), không lồng trong Media, thẳng cột với Live');
     assert.ok(m.tabIco && m.tabW >= 24 && m.tabW <= 32, 'nút Chat có icon và nhỏ gọn (rộng ' + m.tabW + 'px)');
     assert.equal(m.tabFont, '15px', 'chữ Chat to hơn');
     assert.equal(m.tabClears, true, 'nút Chat nằm trên header thư viện, không che chữ Songs');
@@ -127,7 +127,7 @@ test('skin áp vào giao diện thật: panel bo góc, header thấp, màu chọ
       document.getElementById('bandPanel').classList.remove('open'); document.body.classList.remove('bp-open'); return r; })()`);
     assert.ok(bp.top >= bp.barBottom - 1, 'khung Kênh Band nằm DƯỚI thanh menu (top ' + bp.top + ' ≥ ' + bp.barBottom + ')');
     assert.equal(bp.radius, '12px'); assert.equal(bp.bodyPad, '0px', 'thanh menu chạy hết chiều ngang (không dịch bằng padding body)'); assert.equal(bp.mainLeft, '340px');
-    assert.match(bp.line, /thành viên đang online$/); assert.equal(bp.lineShown, true); assert.equal(bp.headH, 24);
+    assert.match(bp.line, /thành viên đang online$/); assert.equal(bp.lineShown, true); assert.equal(bp.headH, 26);
     assert.deepEqual([bp.clearIcon, bp.linkIcon], ['"delete_sweep"', '"link"'], 'Xóa/Kết nối là icon');
     assert.equal(bp.goBg, 'rgb(47, 138, 85)', 'nút Bắt đầu: xanh lá có khung');
     assert.deepEqual(await app.ev(`['Phước Hạnh Channel', 'phước hạnh   CHANNEL ', 'Channel', 'Nhóm Channel Hát', ''].map(window.__bandDisplayName)`),

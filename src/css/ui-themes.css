@@ -13,9 +13,9 @@
    1) TOKEN MÀU / KÍCH THƯỚC THEO SKIN
    --------------------------------------------------------------------- */
 [data-ui-skin]{
-  --u-gap:4px;--u-phh:24px;--u-btnh:18px;
+  --u-gap:4px;--u-phh:26px;--u-btnh:20px;
   --u-hfont:'Inter',system-ui,sans-serif;--u-hsize:11.5px;--u-hweight:700;--u-hls:0;--u-hcase:none;
-  --u-lblbg:transparent;--u-lblfg:var(--u-muted);--u-lblbg-sel:var(--u-accent);--u-lblfg-sel:var(--u-accent-ink);
+  --u-lblbg:transparent;--u-lblfg:var(--u-muted);--u-lblbg-sel:transparent;--u-lblfg-sel:var(--u-seltext);
   --u-hdrline:0;
   color-scheme:light;
 }
@@ -165,6 +165,12 @@ html[data-ui-skin] .lib-tabs button{color:var(--u-hdrmute)!important;font-family
 html[data-ui-skin] .lib-tabs button.border-primary{color:var(--u-hdrtext)!important;border-bottom-color:var(--u-accent)!important}
 html[data-ui-skin] #library-search{background:var(--u-input)!important;color:var(--u-text)!important;border:1px solid var(--u-line2)!important;border-radius:var(--u-rbtn)!important;height:20px!important;font-size:10px!important}
 html[data-ui-skin] #library-search::placeholder{color:var(--u-faint)}
+/* nút bật/tắt monitor theo mẫu: viên thuốc có chấm xanh (xám khi OFF); dấu "≡" của Schedule thành nút tròn "…" */
+html[data-ui-skin] :is(#btn-toggle-preview-monitor,#btn-toggle-media-monitor){display:inline-flex!important;align-items:center;gap:5px}
+html[data-ui-skin] :is(#btn-toggle-preview-monitor,#btn-toggle-media-monitor)::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--u-ok,#16a37f);flex:none}
+html[data-ui-skin] :is(#btn-toggle-preview-monitor,#btn-toggle-media-monitor)[data-on="0"]::before{background:var(--u-faint)}
+html[data-ui-skin] #top-row>section:nth-of-type(1)>div:first-child>span{font-size:0!important;width:var(--u-btnh);height:var(--u-btnh);border-radius:999px;background:var(--u-btn);border:1px solid var(--u-line2);display:grid;place-items:center;color:var(--u-btntext,var(--u-text))!important}
+html[data-ui-skin] #top-row>section:nth-of-type(1)>div:first-child>span::before{content:"more_horiz";font-family:'Material Symbols Outlined';font-size:15px;font-weight:400;line-height:1;letter-spacing:normal;text-transform:none;color:var(--u-btntext,var(--u-text))}
 /* header Library theo mẫu: ô tìm kiếm cao 22px (gần hết chiều cao header 24px), chữ 11px, kính lúp rõ; 2 nút icon 20px */
 html[data-ui-skin] #library-search{height:22px!important;font-size:11px!important;padding-left:26px!important;border-radius:var(--u-rbtn)!important}
 html[data-ui-skin] .lib-tabs+div>.material-symbols-outlined{font-size:15px!important;left:8px!important;color:var(--u-muted)!important}
@@ -255,7 +261,7 @@ html[data-ui-skin] #bandPanel #bpClear,html[data-ui-skin] #bandPanel #bpDetailsT
 html[data-ui-skin] #bandPanel #bpClear::before,html[data-ui-skin] #bandPanel #bpDetailsToggle::before{font-family:'Material Symbols Outlined';font-size:15px;font-weight:400;line-height:1;letter-spacing:normal;text-transform:none;white-space:nowrap}
 html[data-ui-skin] #bandPanel #bpClear::before{content:"delete_sweep"}
 html[data-ui-skin] #bandPanel #bpDetailsToggle::before{content:"link"}
-html[data-ui-skin] #bandPanel .bp-x{font-size:15px;line-height:1;width:var(--u-btnh);height:var(--u-btnh);padding:0!important;border-radius:var(--u-rbtn)}
+html[data-ui-skin] #bandPanel .bp-x{font-size:20px;font-weight:700;line-height:1;width:var(--u-btnh);height:var(--u-btnh);padding:0!important;border-radius:var(--u-rbtn);background:var(--u-btn)!important;border:1px solid var(--u-line2)!important;color:var(--u-btntext,var(--u-text))!important}
 html[data-ui-skin] #bandPanel .bp-x:hover{background:var(--u-hover)}
 #bpOnlineLine{display:none}
 html[data-ui-skin] #bpOnlineLine{display:block;flex:none;text-align:center;padding:8px 12px 0;font-size:11px;color:var(--u-faint)}
@@ -272,7 +278,7 @@ html[data-ui-skin] #bandPanel .bp-btn:hover{background:var(--u-hover)!important}
 html[data-ui-skin] #bandPanel .bp-btn.go{background:#2f8a55!important;color:#fff!important;border:1px solid #1f6b3f!important;box-shadow:0 0 0 1px rgba(47,138,85,.35)}
 html[data-ui-skin] #bandPanel .bp-btn.go:hover{background:#38a064!important}
 html[data-ui-skin] #bandPanel .bp-btn.stop{background:var(--u-live)!important;color:var(--u-live-ink)!important;border-color:var(--u-live)!important}
-html[data-ui-skin] #bandPanel .bp-x{color:var(--u-hdrmute)!important}
+html[data-ui-skin] #bandPanel .bp-x{color:var(--u-btntext,var(--u-text))!important}
 html[data-ui-skin] #bandPanel input,html[data-ui-skin] #bandPanel textarea,html[data-ui-skin] #bandPanel select{background:var(--u-input)!important;color:var(--u-text)!important;border-color:var(--u-line2)!important}
 html[data-ui-skin] #bandPanel .bp-composer{background:var(--u-panel)!important;border-top:1px solid var(--u-line)!important}
 html[data-ui-skin] #bandPanel .bp-replies button{background:var(--u-btn)!important;border-color:var(--u-line2)!important;color:var(--u-text)!important;border-radius:var(--u-rbtn)!important}
@@ -395,6 +401,12 @@ html[data-ui-skin]:not([data-ui-skin="midnight"]):not([data-ui-skin="studio"]) #
   --se-ink:var(--u-text);--se-ink-dim:var(--u-muted);--se-ink-faint:var(--u-faint);
   --se-line:var(--u-line2);--se-line-soft:var(--u-line);--se-bg:var(--u-bg);--se-card:var(--u-panel)}
 html[data-ui-skin] #song-editor-modal .win-modal-container{border-radius:calc(var(--u-radius) + 2px)}
+/* tab Words: khối lời đang soạn (đang focus) có KHUNG NHÃN nền màu chủ đạo (+ vòng sáng theo màu chủ đạo) */
+html[data-ui-skin] #song-editor-modal .lyrics-slide-block:focus-within{border-color:var(--u-accent);box-shadow:0 0 0 1px var(--u-accent),0 0 0 4px color-mix(in srgb,var(--u-accent) 28%,transparent)}
+html[data-ui-skin] #song-editor-modal .lyrics-slide-block:focus-within .lyrics-slide-header{background:var(--u-accent);border-bottom-color:var(--u-accent)}
+html[data-ui-skin] #song-editor-modal .lyrics-slide-block:focus-within .lyrics-slide-header :is(input.lyrics-slide-label-input,.material-symbols-outlined,span){color:var(--u-accent-ink)!important}
+html[data-ui-skin] #song-editor-modal .lyrics-slide-block:focus-within .lyrics-slide-label-input::placeholder{color:color-mix(in srgb,var(--u-accent-ink) 62%,transparent)}
+html[data-ui-skin] #song-editor-modal .lyrics-slide-block:focus-within .lyrics-slide-num{background:color-mix(in srgb,var(--u-accent-ink) 22%,transparent);color:var(--u-accent-ink)}
 /* thẻ slide đang chọn trong tab Slides: NỀN = màu chủ đạo của theme (không còn nền trắng viền cam) */
 html[data-ui-skin] #song-editor-modal .se-thumb.is-selected{background:var(--u-accent);border-color:var(--u-accent);box-shadow:0 0 0 1px var(--u-accent),0 0 0 4px color-mix(in srgb,var(--u-accent) 30%,transparent)}
 html[data-ui-skin] #song-editor-modal .se-thumb.is-selected .se-thumb-lbl{color:var(--u-accent-ink)!important}

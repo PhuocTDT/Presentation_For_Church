@@ -8935,6 +8935,7 @@
             if (button) {
                 button.textContent = isOn ? 'ON' : 'OFF';
                 button.classList.toggle('opacity-60', !isOn);
+                button.dataset.on = isOn ? '1' : '0';
             }
             if (status) {
                 status.innerHTML = isOn
