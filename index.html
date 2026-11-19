@@ -2885,6 +2885,18 @@
               <h2 class="stg-pane-title">Chung</h2>
               <p class="stg-pane-desc">Hiệu năng và hành vi tổng thể của ứng dụng.</p>
               <div class="stg-section">
+                <div class="stg-row" data-search="ngôn ngữ language tiếng anh english tiếng việt vietnamese">
+                  <div class="stg-row-text">
+                    <div class="stg-label">Ngôn ngữ</div>
+                    <div class="stg-help">Chọn ngôn ngữ hiển thị của ứng dụng.</div>
+                  </div>
+                  <div class="stg-row-control">
+                    <select id="settings-language" class="stg-input" data-no-i18n>
+                      <option value="vi">Tiếng Việt</option>
+                      <option value="en">English</option>
+                    </select>
+                  </div>
+                </div>
                 <div class="stg-row" data-search="giao diện theme sáng tối dark light">
                   <div class="stg-row-text">
                     <div class="stg-label">Giao diện tối (Dark Mode)</div>
@@ -3357,6 +3369,8 @@
         </div>
     </div>
 
+    <script src="src/i18n/i18n.js"></script>
+    <script src="src/i18n/en.js"></script>
     <script src="src/editor/color-picker.js"></script>
     <script src="src/editor/color-dialog.js"></script>
     <script src="src/editor/rich-model.js"></script>
@@ -3483,6 +3497,7 @@
                 theme: 'light',
                 uiSkin: 'classic',   // skin giao diện operator (src/css/ui-themes.css); 'classic' = giao diện hiện tại
                 uiHeader: 'e',       // kiểu header a|b|c|d|e (chỉ nhóm tối giản)
+                language: 'vi',      // ngôn ngữ giao diện: 'vi' (gốc) | 'en' (src/i18n)
                 gpuAcceleration: true,
                 fontFamilySong: 'CMG Sans',
                 fontFamilyBible: 'Times New Roman',
@@ -4017,6 +4032,7 @@
             merged.shortcuts = { ...defaults.shortcuts, ...((saved && saved.shortcuts) || {}) };
             merged.uiSkin = UI_SKINS.some(k => k.id === (saved && saved.uiSkin)) ? saved.uiSkin : defaults.uiSkin;
             merged.uiHeader = UI_HEADERS.some(k => k.id === (saved && saved.uiHeader)) ? saved.uiHeader : defaults.uiHeader;
+            merged.language = saved && saved.language === 'en' ? 'en' : 'vi';
             merged.textMargin = { ...defaults.textMargin, ...((saved && saved.textMargin) || {}) };
             merged.textPadding = { ...defaults.textPadding, ...((saved && saved.textPadding) || {}) };
             merged.allowSingleDisplayLiveWindow = saved && typeof saved.allowSingleDisplayLiveWindow === 'boolean'
@@ -5213,7 +5229,7 @@
             grid.innerHTML = UI_SKINS.map(k => `<button type="button" class="uis-card" data-skin="${k.id}" title="${k.desc}" aria-pressed="${k.id === skin.id}">
                 <span class="uis-sw">${k.sw.map(c => `<i style="background:${c}"></i>`).join('')}</span>
                 <span class="uis-top"><span class="uis-name">${k.name}</span><span class="uis-tag">${k.tag}</span></span></button>`).join('');
-            hdrRow.innerHTML = UI_HEADERS.map(h => `<button type="button" class="uis-chip" data-hdr="${h.id}" title="${h.tip}" aria-pressed="${h.id === uiPick.hdr}" ${skin.hdr ? '' : 'disabled'}>${h.id.toUpperCase()} · ${h.name}</button>`).join('');
+            hdrRow.innerHTML = UI_HEADERS.map(h => `<button type="button" class="uis-chip" data-hdr="${h.id}" title="${h.tip}" aria-pressed="${h.id === uiPick.hdr}" ${skin.hdr ? '' : 'disabled'}>${h.id.toUpperCase()} · ${I18N.t(h.name)}</button>`).join('');
             const help = document.getElementById('uiHdrHelp');
             if (help) help.textContent = skin.hdr
                 ? 'Màu của thanh tiêu đề trên mỗi khu vực (áp dụng cho nhóm Mist, Iris, Honey, Sage, Midnight).'
@@ -5234,6 +5250,11 @@
         }
 
         (function bindUiSkinPane() {
+            // chọn ngôn ngữ trong Cài đặt: đổi thử ngay (Lưu mới giữ, Huỷ quay lại); dựng lại phần chữ do JS tự ghép khi đổi ngôn ngữ
+            document.addEventListener('change', function (e) {
+                if (e.target && e.target.id === 'settings-language') I18N.set(e.target.value === 'en' ? 'en' : 'vi');
+            });
+            window.addEventListener('i18n-change', function () { if (uiPickInit) renderUiSkinPane(); });
             document.addEventListener('click', function (e) {
                 const card = e.target.closest && e.target.closest('#uiSkinGrid [data-skin]');
                 if (card) { uiPick.skin = card.dataset.skin; uiPickInit = true; renderUiSkinPane(); return; }
@@ -5249,6 +5270,9 @@
             } else {
                 document.documentElement.classList.remove('dark');
             }
+
+            // Ngôn ngữ giao diện (vi | en)
+            if (window.I18N) I18N.set(globalSettings.language);
 
             // Skin giao diện (có thể ép/bỏ class dark theo skin)
             applyUiSkin();
@@ -5573,6 +5597,8 @@
                 ensureSelectHasOption(document.getElementById('settings-font-family-bible'), globalSettings.fontFamilyBible);
                 applyStgTheme();
                 initUiSkinPane();
+                const langEl = document.getElementById('settings-language');
+                if (langEl) langEl.value = globalSettings.language === 'en' ? 'en' : 'vi';
 
                 const gpuEl = document.getElementById('settings-gpu-acceleration');
                 if (gpuEl) gpuEl.checked = globalSettings.gpuAcceleration !== false;
@@ -5661,6 +5687,9 @@
         function closeSettings(canceled = true) {
             uiPickInit = false;
             applyUiSkin();   // bỏ phần đổi thử chưa lưu (Huỷ/X); sau Lưu thì globalSettings đã mang lựa chọn mới
+            if (window.I18N) I18N.set(globalSettings.language);   // ngôn ngữ cũng chỉ đổi thử → quay về ngôn ngữ đã lưu
+            const langBack = document.getElementById('settings-language');
+            if (langBack) langBack.value = globalSettings.language === 'en' ? 'en' : 'vi';
             if (canceled && settingsOpenTheme && globalSettings.theme !== settingsOpenTheme) {
                 globalSettings.theme = settingsOpenTheme;
                 applyStgTheme();
@@ -5750,6 +5779,8 @@
                 left: toNumber('settings-padding-left')
             };
 
+            const langSel = document.getElementById('settings-language');
+            if (langSel) globalSettings.language = langSel.value === 'en' ? 'en' : 'vi';
             if (uiPickInit) { globalSettings.uiSkin = uiPick.skin; globalSettings.uiHeader = uiPick.hdr; }
             await window.electronAPI.saveSettings(globalSettings);
             settingsOpenTheme = globalSettings.theme;

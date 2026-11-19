@@ -33,6 +33,17 @@
 - KHÔNG đổi: màn Live (`live.html` không nạp `ui-themes.css`), hộp Edit Song, hộp Cài đặt (giữ token `--stg-*`), menu hệ điều hành. Màu phẳng, không gradient.
 - Test: `test/ui-skin.e2e.mjs`.
 
+## Ngôn ngữ giao diện (Việt / Anh)
+
+- Chọn ở **Cài đặt → Chung → Ngôn ngữ**: đổi thử ngay, "Lưu thay đổi" mới giữ, "Huỷ"/X khôi phục đúng nguyên văn; lưu ở `settings.json` (`language`).
+- Văn bản gốc trong `index.html`/JS **vẫn là tiếng Việt**. Khi chọn Anh, `src/i18n/i18n.js` dịch TRỰC TIẾP trên DOM: tra từ điển `src/i18n/en.js` theo nguyên văn tiếng Việt (text node + `title`/`placeholder`/`aria-label`/`alt`), rồi theo dõi DOM (MutationObserver) để dịch cả nội dung do JS dựng động. Đổi về Việt thì khôi phục nguyên văn; ở tiếng Việt bộ máy không chạy gì (chỉ đặt `<html lang>`).
+- **Thêm chữ giao diện mới → thêm vào `src/i18n/en.js`** (khóa = nguyên văn tiếng Việt, gom khoảng trắng; chuỗi có tham số dùng `RULES` regex khớp TOÀN CHUỖI; ngoại lệ theo `id` ở `BYID`). `test/i18n.test.mjs` bắt buộc mọi chữ tiếng Việt TĨNH trong `index.html` đều có bản dịch.
+- KHÔNG dịch nội dung người dùng: bộ máy bỏ qua `#lyrics-editor-container`, thẻ slide Preview/Live, hàng thư viện, hàng Schedule, tin nhắn band, `.text-layer-box`, `textarea`/`input` (giá trị), và mọi phần tử có `data-no-i18n`.
+- Chuỗi JS tự ghép từ nhiều mảnh (vd. "Đã nhập … bài") và tên sách Kinh Thánh KHÔNG nằm trong từ điển → vẫn tiếng Việt. Dùng `I18N.t('chuỗi việt')` khi cần dịch một chuỗi do JS tự dựng mà không đi qua DOM.
+- Menu hệ điều hành dịch ở `main.js` (`MENU_EN`/`translateMenuTemplate`), dựng lại khi đổi ngôn ngữ. Không áp dụng cho: màn Live, trang điện thoại `comm/`, website.
+- Tên ngôn ngữ trong ô chọn ("Tiếng Việt", "English") luôn hiện bằng chính ngôn ngữ đó.
+- Test: `test/i18n.test.mjs` (từ điển/menu), `test/i18n.e2e.mjs` (app thật).
+
 ## Virtual canvas
 
 - Live/preview nên giữ logic canvas 16:9 ổn định

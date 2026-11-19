@@ -52,6 +52,7 @@ Settings hiện lưu trong `settings.json`. Các field quan trọng gồm:
 - `theme` (`light`/`dark`); chế độ sáng/tối của kiểu giao diện "Cổ điển" (các skin khác tự quyết định sáng/tối)
 - `uiSkin` (`classic` | `mist` | `iris` | `honey` | `sage` | `midnight` | `candy` | `studio`); skin giao diện cửa sổ operator, mặc định `classic` = giao diện gốc. Giá trị lạ/thiếu → `classic` (làm sạch trong `mergeGlobalSettings`). Chỉ index.html dùng; live.html không đọc
 - `uiHeader` (`a` | `b` | `c` | `d` | `e`); kiểu header cho nhóm skin tối giản (Mist/Iris/Honey/Sage/Midnight), mặc định `e`; Candy/Studio/Cổ điển bỏ qua. Giá trị lạ/thiếu → `e`
+- `language` (`vi` | `en`); ngôn ngữ giao diện cửa sổ operator, mặc định `vi`. Giá trị lạ/thiếu → `vi` (làm sạch trong `mergeGlobalSettings`). `main.js` đọc để dịch menu hệ điều hành và dựng lại menu khi đổi (`save-settings`)
 - `gpuAcceleration`
 - `fontFamilySong`
 - `fontFamilyBible`

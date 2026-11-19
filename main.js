@@ -1752,6 +1752,25 @@ function sendMenuAction(win, action) {
   }
 }
 
+// Nhãn menu hệ điều hành khi ngôn ngữ = 'en' (khóa = nhãn tiếng Việt). Không có trong bảng → giữ nguyên.
+const MENU_EN = {
+  'Tạo Schedule mới': 'New Schedule', 'Mở Schedule...': 'Open Schedule...', 'Lưu Schedule': 'Save Schedule',
+  'Tạo Bài hát mới': 'New Song', 'Nhập bài hát / Kinh Thánh...': 'Import Songs / Bible...', 'Nhập Media...': 'Import Media...',
+  'Tải file mẫu định dạng nhập dữ liệu...': 'Download data import template...', 'Sao lưu thư viện ra file...': 'Back up library to file...',
+  'Đồng bộ thư viện từ bản cũ...': 'Sync library from an older version...', 'Thêm vào Schedule': 'Add to Schedule',
+  'Bật/Tắt màn hình Live': 'Toggle Live window', 'Xóa màn hình Live': 'Clear Live screen', 'Cửa sổ mới': 'New Window',
+  'Cài đặt...': 'Settings...', 'Thoát ứng dụng': 'Quit', 'Kênh Band (sidebar)': 'Band Channel (sidebar)', 'Trợ giúp': 'Help',
+  'Chính sách riêng tư': 'Privacy Policy', 'Liên hệ hỗ trợ': 'Contact Support'
+};
+function translateMenuTemplate(items, lang) {
+  if (lang !== 'en' || !Array.isArray(items)) return items;
+  for (const it of items) {
+    if (it && typeof it.label === 'string' && Object.prototype.hasOwnProperty.call(MENU_EN, it.label)) it.label = MENU_EN[it.label];
+    if (it && Array.isArray(it.submenu)) translateMenuTemplate(it.submenu, lang);
+  }
+  return items;
+}
+
 function setupMenu(win) {
   const template = [
     {
@@ -1810,6 +1829,7 @@ function setupMenu(win) {
       ]
     }
   ];
+  translateMenuTemplate(template, globalSettings && globalSettings.language === 'en' ? 'en' : 'vi');
   const menu = Menu.buildFromTemplate(template);
   Menu.setApplicationMenu(menu);
 }
@@ -2113,8 +2133,11 @@ app.whenReady().then(() => {
       if (!sanitizeLiveWindowBounds(incoming.liveWindowBounds) && currentLiveBounds) {
         incoming.liveWindowBounds = currentLiveBounds;
       }
+      const prevLang = globalSettings && globalSettings.language === 'en' ? 'en' : 'vi';
       globalSettings = incoming; // Update local copy
       safeWriteSync(settingsFilePath, globalSettings);
+      // Đổi ngôn ngữ → dựng lại menu hệ điều hành (File/Edit/View/Channel/Trợ giúp) theo ngôn ngữ mới
+      if ((incoming.language === 'en' ? 'en' : 'vi') !== prevLang && mainWindow && !mainWindow.isDestroyed()) setupMenu(mainWindow);
       return { success: true };
     } catch (e) {
       console.error('Failed to save settings:', e);
