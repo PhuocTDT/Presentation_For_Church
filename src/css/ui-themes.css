@@ -5,7 +5,7 @@
    - Token (--u-*) đặt trên BẤT KỲ phần tử nào có data-ui-skin → dùng được cho cả cửa sổ chính lẫn khung xem trước.
    - Các luật ghi đè giao diện thật nằm dưới tiền tố  html[data-ui-skin]  và dùng !important vì giao diện gốc
      dùng class Tailwind + style inline (thẻ slide đang phát, hàng bài đang chọn).
-   - Chỉ ảnh hưởng cửa sổ operator. Cửa sổ Live (live.html), hộp Edit Song và hộp Cài đặt KHÔNG bị đổi.
+   - Chỉ ảnh hưởng cửa sổ operator (kể cả các pop-up/hộp thoại — mục 9). Cửa sổ Live (live.html) KHÔNG bị đổi.
    - Màu phẳng, không gradient. Docs: docs/ui-guidelines.md ("Skin giao diện").
    ===================================================================== */
 
@@ -169,7 +169,7 @@ html[data-ui-skin] #library-search::placeholder{color:var(--u-faint)}
 /* Schedule */
 html[data-ui-skin] [data-schedule-item]{color:var(--u-text)!important;border:1px solid transparent;border-radius:var(--u-rbtn)!important}
 html[data-ui-skin] [data-schedule-item]:hover{background:var(--u-hover)!important}
-html[data-ui-skin] [data-schedule-item].bg-blue-500{background:var(--u-selbg)!important;color:var(--u-seltext)!important;border-color:var(--u-selborder)!important}
+html[data-ui-skin] [data-schedule-item].bg-blue-500{background:var(--u-selbg)!important;color:var(--u-seltext)!important;border-color:var(--u-selborder)!important;box-shadow:inset 3px 0 0 var(--u-accent)}
 html[data-ui-skin] [data-schedule-item] .text-red-400,html[data-ui-skin] [data-schedule-item] .text-red-500{color:var(--u-live)!important}
 
 /* Thẻ slide (Preview + Live) */
@@ -182,11 +182,15 @@ html[data-ui-skin] :is(#preview-slides-container,#live-slides-container)>div>div
 html[data-ui-skin] #live-slides-container.ring-2{box-shadow:none}
 
 /* Library (danh sách bài) */
-html[data-ui-skin] tbody tr[data-library-key]{color:var(--u-text)}
+/* danh sách thư viện kiểu mẫu (Sage): hàng BO GÓC, thụt lề, không đường kẻ; hàng đang chọn có thanh trái cong theo góc bo */
+html[data-ui-skin] .panel table{display:block;width:100%}
+html[data-ui-skin] .panel tbody{display:block;padding:2px 0}
+html[data-ui-skin] tbody tr[data-library-key]{display:block;margin:1px 6px;border-radius:var(--u-rbtn);overflow:hidden;border-top-width:0!important;color:var(--u-text)}
+html[data-ui-skin] tbody tr[data-library-key]>td{display:block;border:0!important}
 html[data-ui-skin] tbody tr[data-library-key] [class*="text-slate-9"],html[data-ui-skin] tbody tr[data-library-key] [class*="text-slate-1"]{color:inherit!important}
 html[data-ui-skin] tbody tr[data-library-key]:hover{background:var(--u-hover)}
 html[data-ui-skin] tbody tr[data-library-key]:is([style*="86cdff"],[style*="134, 205, 255"]){background:var(--u-selbg)!important;color:var(--u-seltext)!important}
-html[data-ui-skin] tbody tr[data-library-key]:is([style*="86cdff"],[style*="134, 205, 255"]) td:first-child{box-shadow:inset 3px 0 0 var(--u-accent)}
+html[data-ui-skin] tbody tr[data-library-key]:is([style*="86cdff"],[style*="134, 205, 255"]){box-shadow:inset 3px 0 0 var(--u-accent)}
 html[data-ui-skin] tbody>tr>td,html[data-ui-skin] tbody td{border-color:var(--u-line)!important}
 html[data-ui-skin] .panel #library-primary-action-btn{background:var(--u-accent)!important;color:var(--u-accent-ink)!important;border:1px solid var(--u-accent)!important;border-radius:var(--u-rbtn)!important}
 html[data-ui-skin] .panel #library-add-new-song-btn{background:var(--u-btn)!important;color:var(--u-text)!important;border:1px solid var(--u-line2)!important;border-radius:var(--u-rbtn)!important}
@@ -223,7 +227,8 @@ html[data-ui-skin] body.bp-open>footer{margin-left:calc(var(--bp-w) + var(--u-ga
 html[data-ui-skin] #bandPanel{top:var(--u-menuh,28px)!important;left:var(--u-gap)!important;width:calc(var(--bp-w) - var(--u-gap)*2)!important;height:calc(100vh - var(--u-menuh,28px) - var(--u-gap))!important;
   border:1px solid var(--u-line)!important;border-top:var(--u-topbar,1px solid var(--u-line))!important;border-radius:var(--u-radius)!important;box-shadow:var(--u-shadow)}
 html[data-ui-skin] #bandPanel .bp-head{height:var(--u-phh);padding:0 8px 0 12px!important;gap:4px;border-radius:0!important;flex:none}
-html[data-ui-skin] #bandPanel .bp-title{font-size:12.5px;text-transform:none;letter-spacing:.01em;font-weight:var(--u-hweight);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* tên phòng: chữ thường, nhỏ, không giãn chữ để đọc đủ (luật !important vì phía dưới còn luật cũ dùng kiểu chữ của header) */
+html[data-ui-skin] #bandPanel .bp-head .bp-title{font-size:11px!important;text-transform:none!important;letter-spacing:0!important;font-weight:700!important;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
 html[data-ui-skin] #bandPanel .bp-head .bp-btn{height:var(--u-btnh);padding:0 8px!important;font-size:10px!important;line-height:1;display:inline-flex;align-items:center;justify-content:center;font-weight:600}
 /* Xóa / Kết nối → icon (Bắt đầu/Dừng giữ nguyên chữ) */
 html[data-ui-skin] #bandPanel #bpClear,html[data-ui-skin] #bandPanel #bpDetailsToggle{font-size:0!important;width:var(--u-btnh);padding:0!important}
@@ -243,7 +248,9 @@ html[data-ui-skin] #bandPanel .bp-head{background:var(--u-hdrbg)!important;color
 html[data-ui-skin] #bandPanel .bp-title{color:var(--u-hdrtext)!important;font-family:var(--u-hfont);letter-spacing:var(--u-hls);text-transform:var(--u-hcase)}
 html[data-ui-skin] #bandPanel .bp-btn{background:var(--u-btn)!important;color:var(--u-text)!important;border:1px solid var(--u-line2)!important;border-radius:var(--u-rbtn)!important}
 html[data-ui-skin] #bandPanel .bp-btn:hover{background:var(--u-hover)!important}
-html[data-ui-skin] #bandPanel .bp-btn.go{background:var(--u-accent)!important;color:var(--u-accent-ink)!important;border-color:var(--u-accent)!important}
+/* "Bắt đầu": nút XANH LÁ có khung (không theo màu nhấn của theme — nếu không sẽ hòa vào header cùng màu); "Dừng" giữ màu đỏ */
+html[data-ui-skin] #bandPanel .bp-btn.go{background:#2f8a55!important;color:#fff!important;border:1px solid #1f6b3f!important;box-shadow:0 0 0 1px rgba(47,138,85,.35)}
+html[data-ui-skin] #bandPanel .bp-btn.go:hover{background:#38a064!important}
 html[data-ui-skin] #bandPanel .bp-btn.stop{background:var(--u-live)!important;color:var(--u-live-ink)!important;border-color:var(--u-live)!important}
 html[data-ui-skin] #bandPanel .bp-x{color:var(--u-hdrmute)!important}
 html[data-ui-skin] #bandPanel input,html[data-ui-skin] #bandPanel textarea,html[data-ui-skin] #bandPanel select{background:var(--u-input)!important;color:var(--u-text)!important;border-color:var(--u-line2)!important}
@@ -327,7 +334,7 @@ html[data-ui-skin="studio"] #live-slides-container>div>div:first-child.bg-indigo
 .uip-b{padding:4px;display:flex;flex-direction:column;gap:3px;min-height:0}
 .uip-row{display:flex;align-items:center;gap:5px;padding:3px 5px;border-radius:var(--u-rbtn);border:1px solid transparent;font-weight:600;white-space:nowrap;overflow:hidden}
 .uip-row i{width:20px;height:11px;background:#000;border-radius:2px;flex:none}
-.uip-row.sel{background:var(--u-selbg);color:var(--u-seltext);border-color:var(--u-selborder)}
+.uip-row.sel{background:var(--u-selbg);color:var(--u-seltext);border-color:var(--u-selborder);box-shadow:inset 3px 0 0 var(--u-accent)}
 .uip-row .tg{margin-left:auto;font-size:8px;font-weight:800;color:var(--u-live)}
 .uip-row.sel .tg{color:inherit}
 .uip-card{border:1px solid var(--u-line);background:var(--u-slide);border-radius:calc(var(--u-radius) - 4px);overflow:hidden}
@@ -342,3 +349,80 @@ html[data-ui-skin="studio"] #live-slides-container>div>div:first-child.bg-indigo
 .uip-mon{aspect-ratio:16/9;background:#000;border-radius:4px;color:#fff;display:grid;place-items:center;font:700 9px 'Times New Roman',serif}
 .uip-band{position:absolute;left:0;top:44%;transform:translateY(-50%);writing-mode:vertical-rl;background:var(--u-band);color:var(--u-band-ink);
   font-size:8px;font-weight:700;letter-spacing:.08em;padding:7px 4px;border-radius:0 7px 7px 0;box-shadow:2px 2px 8px rgba(0,0,0,.2)}
+
+/* ---------------------------------------------------------------------
+   9) POP-UP / HỘP THOẠI theo skin
+   Cài đặt + QR (map --stg-* → --u-*), Edit Song (--se-*), các hộp .modal-overlay dùng class Tailwind
+   (Kinh Thánh, Mẫu style, Phím tắt…), hộp thoại trong trang (inPageDialog → .ws-dialog), menu chuột phải, cổng Kênh Band.
+   --------------------------------------------------------------------- */
+html[data-ui-skin] .modal-overlay{background:color-mix(in srgb,var(--u-bg) 35%,rgba(0,0,0,.55))}
+html[data-ui-skin] #song-editor-modal{background:color-mix(in srgb,var(--u-bg) 35%,rgba(0,0,0,.58))}
+
+/* Cài đặt + QR: đổi toàn bộ token --stg-* sang token skin (kể cả skin tối) */
+html[data-ui-skin] #settings-modal,html[data-ui-skin] #stg-qr-modal{
+  --stg-accent:var(--u-accent);--stg-accent-dim:color-mix(in srgb,var(--u-accent) 82%,#000);--stg-accent-soft:color-mix(in srgb,var(--u-accent) 14%,transparent);
+  --stg-accent-contrast:var(--u-accent-ink);
+  --stg-bg:var(--u-bg);--stg-surface:var(--u-panel);--stg-surface-2:var(--u-input);--stg-surface-3:var(--u-hover);
+  --stg-border:var(--u-line2);--stg-border-soft:var(--u-line);
+  --stg-text:var(--u-text);--stg-text-dim:var(--u-muted);--stg-text-faint:var(--u-faint);
+  --stg-shadow:rgba(0,0,0,.35)}
+html[data-ui-skin] #settings-modal .stg-modal,html[data-ui-skin] #stg-qr-modal .stg-modal{border-radius:calc(var(--u-radius) + 2px)}
+
+/* Edit Song: màu nhấn theo theme; skin SÁNG đổi cả nền/chữ (hộp luôn sáng nên skin tối giữ nền sáng, chỉ đổi màu nhấn) */
+html[data-ui-skin] #song-editor-modal{
+  --se-accent:var(--u-accent);--se-accent-dim:color-mix(in srgb,var(--u-accent) 82%,#000);--se-accent-soft:color-mix(in srgb,var(--u-accent) 12%,transparent);--se-accent-ring:color-mix(in srgb,var(--u-accent) 28%,transparent)}
+html[data-ui-skin]:not([data-ui-skin="midnight"]):not([data-ui-skin="studio"]) #song-editor-modal{
+  --se-ink:var(--u-text);--se-ink-dim:var(--u-muted);--se-ink-faint:var(--u-faint);
+  --se-line:var(--u-line2);--se-line-soft:var(--u-line);--se-bg:var(--u-bg);--se-card:var(--u-panel)}
+html[data-ui-skin] #song-editor-modal .win-modal-container{border-radius:calc(var(--u-radius) + 2px)}
+
+/* Hộp .modal-overlay dùng class Tailwind (Kinh Thánh, Quản lý bản Kinh Thánh, Mẫu style, Phím tắt …) — chỉ phần ruột, không đụng Cài đặt/Edit Song */
+html[data-ui-skin] .modal-overlay:not(#settings-modal):not(#song-editor-modal):not(#stg-qr-modal) :is(.win-modal-container,.bg-white,.bg-slate-50,.bg-gray-50,.bg-slate-100,.bg-gray-100,.bg-win-bg){background-color:var(--u-panel)!important;color:var(--u-text)!important}
+html[data-ui-skin] .modal-overlay:not(#settings-modal):not(#song-editor-modal):not(#stg-qr-modal) :is(.bg-slate-50,.bg-gray-50,.bg-slate-100,.bg-gray-100){background-color:var(--u-input)!important}
+html[data-ui-skin] .modal-overlay:not(#settings-modal):not(#song-editor-modal):not(#stg-qr-modal) :is(.win-modal-container,[class*="rounded"][class*="shadow"]){border:1px solid var(--u-line2)!important;border-radius:var(--u-radius)!important;box-shadow:0 20px 50px rgba(0,0,0,.35)!important}
+html[data-ui-skin] .modal-overlay:not(#settings-modal):not(#song-editor-modal):not(#stg-qr-modal) :is([class*="border-slate"],[class*="border-gray"],.border-win-border,[class*="border-b"],[class*="border-t"]){border-color:var(--u-line)!important}
+html[data-ui-skin] .modal-overlay:not(#settings-modal):not(#song-editor-modal):not(#stg-qr-modal) :is([class*="text-slate-6"],[class*="text-slate-5"],[class*="text-slate-4"],[class*="text-gray-5"],[class*="text-gray-6"]){color:var(--u-muted)!important}
+html[data-ui-skin] .modal-overlay:not(#settings-modal):not(#song-editor-modal):not(#stg-qr-modal) :is([class*="text-slate-7"],[class*="text-slate-8"],[class*="text-slate-9"],[class*="text-gray-7"],[class*="text-gray-8"],[class*="text-gray-9"]){color:var(--u-text)!important}
+html[data-ui-skin] .modal-overlay:not(#settings-modal):not(#song-editor-modal):not(#stg-qr-modal) :is(.text-blue-600,.text-blue-500,.text-blue-700){color:var(--u-accent)!important}
+html[data-ui-skin] .modal-overlay:not(#settings-modal):not(#song-editor-modal):not(#stg-qr-modal) :is(input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=color]),select,textarea){background:var(--u-input)!important;color:var(--u-text)!important;border:1px solid var(--u-line2)!important;border-radius:var(--u-rbtn)!important}
+html[data-ui-skin] .modal-overlay:not(#settings-modal):not(#song-editor-modal):not(#stg-qr-modal) :is(input,select,textarea):focus{border-color:var(--u-accent)!important;outline:0}
+html[data-ui-skin] .modal-overlay:not(#settings-modal):not(#song-editor-modal):not(#stg-qr-modal) :is(.win-button,.bg-blue-600,.bg-blue-500){border-radius:var(--u-rbtn)!important}
+html[data-ui-skin] .modal-overlay:not(#settings-modal):not(#song-editor-modal):not(#stg-qr-modal) .win-button{background:var(--u-btn)!important;color:var(--u-btntext,var(--u-text))!important;border:1px solid var(--u-line2)!important}
+html[data-ui-skin] .modal-overlay:not(#settings-modal):not(#song-editor-modal):not(#stg-qr-modal) .win-button:hover{background:var(--u-hover)!important}
+html[data-ui-skin] .modal-overlay:not(#settings-modal):not(#song-editor-modal):not(#stg-qr-modal) :is(.bg-blue-600,.bg-blue-500,.win-button.primary,.win-button.go){background:var(--u-accent)!important;color:var(--u-accent-ink)!important;border-color:var(--u-accent)!important}
+
+html[data-ui-skin] .modal-overlay:not(#settings-modal):not(#song-editor-modal):not(#stg-qr-modal) :is(footer,header)[class*="bg-[#f"]{background-color:var(--u-panel)!important;border-color:var(--u-line)!important}
+html[data-ui-skin] .modal-overlay:not(#settings-modal):not(#song-editor-modal):not(#stg-qr-modal) :is(.text-indigo-600,.text-indigo-500,.text-indigo-700){color:var(--u-accent)!important}
+html[data-ui-skin] .modal-overlay:not(#settings-modal):not(#song-editor-modal):not(#stg-qr-modal) .template-action-btn{background:var(--u-btn)!important;color:var(--u-btntext,var(--u-text))!important;border:1px solid var(--u-line2)!important;border-radius:var(--u-rbtn)!important}
+html[data-ui-skin] .modal-overlay:not(#settings-modal):not(#song-editor-modal):not(#stg-qr-modal) .template-action-btn:hover{background:var(--u-hover)!important}
+html[data-ui-skin] .modal-overlay:not(#settings-modal):not(#song-editor-modal):not(#stg-qr-modal) :is([class*="bg-indigo-6"],[class*="bg-indigo-5"]){background:var(--u-accent)!important;color:var(--u-accent-ink)!important;border-color:var(--u-accent)!important}
+html[data-ui-skin] .modal-overlay:not(#settings-modal):not(#song-editor-modal):not(#stg-qr-modal) .bg-indigo-50{background:var(--u-selbg)!important;color:var(--u-seltext)!important;border-color:var(--u-selborder)!important}
+html[data-ui-skin] .modal-overlay:not(#settings-modal):not(#song-editor-modal):not(#stg-qr-modal) .bg-indigo-50 *{color:inherit!important}
+html[data-ui-skin] .modal-overlay:not(#settings-modal):not(#song-editor-modal):not(#stg-qr-modal) .border-indigo-500{border-color:var(--u-selborder)!important}
+
+/* Hộp thoại trong trang (askConfirm / askPrompt / thông báo): inPageDialog gắn class ws-dialog-ov / ws-dialog */
+html[data-ui-skin] .ws-dialog-ov{background:color-mix(in srgb,var(--u-bg) 35%,rgba(0,0,0,.55))!important}
+html[data-ui-skin] .ws-dialog{background:var(--u-panel)!important;color:var(--u-text)!important;border:1px solid var(--u-line2);border-radius:var(--u-radius)!important}
+html[data-ui-skin] .ws-dialog .ws-dialog-msg{color:var(--u-muted)!important}
+html[data-ui-skin] .ws-dialog input{background:var(--u-input)!important;color:var(--u-text)!important;border:1px solid var(--u-line2)!important;border-radius:var(--u-rbtn)!important}
+html[data-ui-skin] .ws-dialog>div{border-color:var(--u-line)!important}
+html[data-ui-skin] .ws-dialog textarea{background:var(--u-input)!important;color:var(--u-text)!important;border:1px solid var(--u-line2)!important;border-radius:var(--u-rbtn)!important}
+html[data-ui-skin] .ws-dialog input:focus{border-color:var(--u-accent)!important;outline:0}
+html[data-ui-skin] .ws-dialog .ws-rv-btn{background:var(--u-btn);color:var(--u-btntext,var(--u-text));border:1px solid var(--u-line2);border-radius:var(--u-rbtn)}
+html[data-ui-skin] .ws-dialog .ws-rv-btn:hover{background:var(--u-hover)}
+html[data-ui-skin] .ws-dialog .ws-rv-btn.go{background:var(--u-accent);color:var(--u-accent-ink);border-color:var(--u-accent)}
+
+/* Menu chuột phải */
+html[data-ui-skin] #context-menu{background:var(--u-panel)!important;color:var(--u-text)!important;border:1px solid var(--u-line2)!important;border-radius:var(--u-rbtn)!important;box-shadow:0 10px 30px rgba(0,0,0,.3)!important}
+html[data-ui-skin] #context-menu :is([class*="text-slate"],[class*="text-gray"]){color:var(--u-text)!important}
+html[data-ui-skin] #context-menu :is(button,li,[class*="hover:bg"]):hover{background:var(--u-hover)!important}
+html[data-ui-skin] #context-menu :is([class*="border-slate"],hr){border-color:var(--u-line)!important}
+
+/* Cổng đăng nhập Kênh Band */
+html[data-ui-skin] #bandGateModal .opgate-card{background:var(--u-panel);color:var(--u-text);border:1px solid var(--u-line2);border-radius:var(--u-radius)}
+html[data-ui-skin] #bandGateModal :is(.opgate-desc,.opgate-step-label,.opgate-divider,.opgate-linklike,.opgate-close){color:var(--u-muted)}
+html[data-ui-skin] #bandGateModal .opgate-divider::before,html[data-ui-skin] #bandGateModal .opgate-divider::after{background:var(--u-line)}
+html[data-ui-skin] #bandGateModal .opgate-card :is(input,textarea,select){background:var(--u-input);color:var(--u-text);border:1px solid var(--u-line2);border-radius:var(--u-rbtn)}
+html[data-ui-skin] #bandGateModal .opgate-btn{background:var(--u-btn);color:var(--u-btntext,var(--u-text));border:1px solid var(--u-line2);border-radius:var(--u-rbtn)}
+html[data-ui-skin] #bandGateModal :is(.opgate-btn,.opgate-linklike,.opgate-close):hover{color:var(--u-text)}
+html[data-ui-skin] #bandGateModal .opgate-btn.primary{background:var(--u-accent);color:var(--u-accent-ink);border-color:var(--u-accent)}

@@ -123,12 +123,20 @@ test('skin áp vào giao diện thật: panel bo góc, header thấp, màu chọ
       const r = { top: Math.round(p.getBoundingClientRect().top), barBottom: Math.round(bar.bottom), radius: cs.borderTopLeftRadius, bodyPad: getComputedStyle(document.body).paddingLeft,
         mainLeft: getComputedStyle(document.getElementById('main-container')).marginLeft, line: line.textContent, lineShown: getComputedStyle(line).display !== 'none',
         clearIcon: getComputedStyle(document.getElementById('bpClear'), '::before').content, linkIcon: getComputedStyle(document.getElementById('bpDetailsToggle'), '::before').content,
-        headH: Math.round(document.querySelector('#bandPanel .bp-head').getBoundingClientRect().height), tabTop: getComputedStyle(document.getElementById('bandPanelTab')).top };
+        headH: Math.round(document.querySelector('#bandPanel .bp-head').getBoundingClientRect().height), goBg: getComputedStyle(document.getElementById('bpToggle')).backgroundColor, titleCss: (() => { const c = getComputedStyle(document.querySelector('#bandPanel .bp-title')); return [c.fontSize, c.textTransform, c.letterSpacing].join('|'); })(), tabTop: getComputedStyle(document.getElementById('bandPanelTab')).top };
       document.getElementById('bandPanel').classList.remove('open'); document.body.classList.remove('bp-open'); return r; })()`);
     assert.ok(bp.top >= bp.barBottom - 1, 'khung Kênh Band nằm DƯỚI thanh menu (top ' + bp.top + ' ≥ ' + bp.barBottom + ')');
     assert.equal(bp.radius, '12px'); assert.equal(bp.bodyPad, '0px', 'thanh menu chạy hết chiều ngang (không dịch bằng padding body)'); assert.equal(bp.mainLeft, '340px');
     assert.match(bp.line, /thành viên đang online$/); assert.equal(bp.lineShown, true); assert.equal(bp.headH, 24);
     assert.deepEqual([bp.clearIcon, bp.linkIcon], ['"delete_sweep"', '"link"'], 'Xóa/Kết nối là icon');
+    assert.equal(bp.goBg, 'rgb(47, 138, 85)', 'nút Bắt đầu: xanh lá có khung');
+    assert.deepEqual(await app.ev(`['Phước Hạnh Channel', 'phước hạnh   CHANNEL ', 'Channel', 'Nhóm Channel Hát', ''].map(window.__bandDisplayName)`),
+      ['Phước Hạnh', 'phước hạnh', 'Channel', 'Nhóm Channel Hát', ''], 'tên phòng bỏ chữ Channel ở cuối, không làm rỗng tên');
+    // danh sách thư viện kiểu Sage: hàng bo góc, thụt lề, hàng đang chọn có thanh trái
+    const rows = await app.ev(`(() => { const r = [...document.querySelectorAll('tbody tr[data-library-key]')].find((x) => x.style.backgroundColor); const c = r && getComputedStyle(r);
+      return r ? { radius: c.borderTopLeftRadius, margin: c.marginLeft, bar: c.boxShadow.includes('inset') } : null; })()`);
+    assert.deepEqual(rows, { radius: '8px', margin: '6px', bar: true }, 'hàng thư viện đang chọn: bo góc 8px, thụt lề 6px, có thanh trái'); 
+    assert.equal(bp.titleCss, '11px|none|normal', 'tên phòng: chữ thường, 11px, không giãn chữ (đọc đủ, không bị cắt)');
 
     // thanh menu tùy biến (thay thanh gốc của HĐH): có logo/tên app/5 menu thật/phiên bản, bo 2 góc DƯỚI; submenu mở bằng IPC
     for (let i = 0; i < 20 && !(await app.ev(`document.querySelectorAll('#ambMenus button').length`)); i++) await sleep(150);
@@ -158,6 +166,26 @@ test('skin áp vào giao diện thật: panel bo góc, header thấp, màu chọ
     await app.ev(`globalSettings.uiSkin = 'studio'; applySettings()`); await sleep(200);
     const stu = await app.ev(`({ dark: document.documentElement.classList.contains('dark'), top2: getComputedStyle(document.querySelectorAll('.panel')[1]).borderTopColor })`);
     assert.equal(stu.dark, true); assert.equal(stu.top2, 'rgb(34, 211, 238)', 'Studio: Preview có viền cyan');
+    // pop-up / hộp thoại theo skin (Studio, tối): Cài đặt, Edit Song (màu nhấn), hộp Tailwind (Kinh Thánh), hộp thoại trong trang, menu chuột phải
+    const pop = await app.ev(`(() => {
+      const col = (el, v) => { const p = document.createElement('i'); p.style.color = 'var(' + v + ')'; el.appendChild(p); const c = getComputedStyle(p).color; p.remove(); return c; };
+      const root = document.documentElement, rootAcc = (() => { const p = document.createElement('i'); p.style.color = 'var(--u-accent)'; root.appendChild(p); const c = getComputedStyle(p).color; p.remove(); return c; })();
+      const bible = document.querySelector('#bible-selector-modal > div'); document.getElementById('bible-selector-modal').style.display = 'flex';
+      askConfirm('Xoá thử?', { danger: true, okText: 'Xoá' });
+      const dlg = document.querySelector('.ws-dialog'), dbtn = dlg && dlg.querySelector('.ws-rv-btn:not(.danger)');
+      const r = {
+        rootAcc, stgAcc: col(document.getElementById('settings-modal'), '--stg-accent'), seAcc: col(document.getElementById('song-editor-modal'), '--se-accent'),
+        stgSurface: col(document.getElementById('settings-modal'), '--stg-surface'),
+        bibleBg: getComputedStyle(bible).backgroundColor, panelBg: getComputedStyle(document.querySelector('.panel')).backgroundColor,
+        dlgBg: dlg && getComputedStyle(dlg).backgroundColor, dlgBtn: dbtn && getComputedStyle(dbtn).backgroundColor, dlgRadius: dlg && getComputedStyle(dlg).borderTopLeftRadius,
+        ctxBg: getComputedStyle(document.getElementById('context-menu')).backgroundColor };
+      document.getElementById('bible-selector-modal').style.display = 'none'; document.querySelectorAll('.ws-dialog-ov').forEach((n) => n.remove());
+      return r; })()`);
+    assert.equal(pop.stgAcc, pop.rootAcc, 'Cài đặt dùng màu nhấn của skin'); assert.equal(pop.seAcc, pop.rootAcc, 'Edit Song dùng màu nhấn của skin');
+    assert.notEqual(pop.stgSurface, 'rgb(26, 24, 48)', 'Cài đặt không còn nền tím mặc định');
+    assert.equal(pop.bibleBg, pop.panelBg, 'hộp Kinh Thánh (class Tailwind) cùng màu nền panel của skin');
+    assert.equal(pop.dlgBg, pop.panelBg, 'hộp thoại xác nhận theo màu panel của skin'); assert.notEqual(pop.dlgBtn, 'rgb(255, 255, 255)', 'nút Hủy của hộp thoại không còn trắng');
+    assert.equal(pop.dlgRadius, '12px', 'hộp thoại bo góc theo skin'); assert.notEqual(pop.ctxBg, 'rgb(255, 255, 255)', 'menu chuột phải theo skin');
     // quay lại Cổ điển: sạch thuộc tính, giao diện gốc trở lại
     await app.ev(`globalSettings.uiSkin = 'classic'; applySettings()`); await sleep(200);
     const back = await app.ev(`({ skin: document.documentElement.getAttribute('data-ui-skin'), hdr: document.documentElement.getAttribute('data-ui-hdr'), bg: getComputedStyle(document.querySelector('.panel > div:first-child')).backgroundColor })`);

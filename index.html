@@ -920,7 +920,7 @@
          every app dialog / popover z-50..9999) so band-comm never bleeds over
          a modal such as Style Templates. */
       #bandPanelTab {
-        position: fixed; left: 0; top: 40%; transform: translateY(-50%);   /* cao hơn giữa cửa sổ: không che chữ "Songs" của header thư viện */
+        position: fixed; left: 0; top: 46%; transform: translateY(-50%);   /* thấp hơn 1 chút so với trước (40%) nhưng vẫn trên điểm giữa: không che chữ "Songs" của header thư viện */
         z-index: 40; background: #e8903f; color: #40260a;
         border: none; border-radius: 0 12px 12px 0;
         padding: 8px 6px 9px; font: 700 15px/1 "Segoe UI", system-ui, sans-serif;
@@ -9598,9 +9598,9 @@
             var reportText;
             try { reportText = await buildDiagnosticReport(); } catch (err) { reportText = 'Không tạo được báo cáo: ' + (err && err.message); }
             var ov = document.createElement('div');
-            ov.style.cssText = 'position:fixed;inset:0;z-index:100002;background:rgba(15,23,42,.6);display:flex;align-items:center;justify-content:center;padding:16px;';
+            ov.className = 'ws-dialog-ov'; ov.style.cssText = 'position:fixed;inset:0;z-index:100002;background:rgba(15,23,42,.6);display:flex;align-items:center;justify-content:center;padding:16px;';
             var box = document.createElement('div');
-            box.style.cssText = 'background:#fff;color:#1e293b;border-radius:12px;max-width:760px;width:100%;max-height:90vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.4);';
+            box.className = 'ws-dialog'; box.style.cssText = 'background:#fff;color:#1e293b;border-radius:12px;max-width:760px;width:100%;max-height:90vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.4);';
             var h = document.createElement('div'); h.style.cssText = 'padding:12px 16px;font-weight:700;border-bottom:1px solid #e2e8f0;'; h.textContent = 'Báo cáo chẩn đoán (gửi lại cho người hỗ trợ)';
             var ta = document.createElement('textarea'); ta.readOnly = true; ta.spellcheck = false;
             ta.style.cssText = 'margin:10px 16px;height:50vh;font:12px/1.45 Consolas,monospace;border:1px solid #cbd5e1;border-radius:8px;padding:8px;resize:none;white-space:pre;overflow:auto;';
@@ -9664,11 +9664,11 @@
                 var prev = document.activeElement;
                 var ov = document.createElement('div');
                 ov.setAttribute('role', 'dialog'); ov.setAttribute('aria-modal', 'true');
-                ov.style.cssText = 'position:fixed;inset:0;z-index:100002;background:rgba(15,23,42,.55);display:flex;align-items:center;justify-content:center;padding:16px;';
+                ov.className = 'ws-dialog-ov'; ov.style.cssText = 'position:fixed;inset:0;z-index:100002;background:rgba(15,23,42,.55);display:flex;align-items:center;justify-content:center;padding:16px;';
                 var box = document.createElement('div');
-                box.style.cssText = 'background:#fff;color:#1e293b;border-radius:12px;max-width:480px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.4);padding:18px 18px 14px;font-size:14px;';
+                box.className = 'ws-dialog'; box.style.cssText = 'background:#fff;color:#1e293b;border-radius:12px;max-width:480px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.4);padding:18px 18px 14px;font-size:14px;';
                 if (o.title) { var h = document.createElement('div'); h.style.cssText = 'font-weight:700;font-size:15px;margin-bottom:6px;'; h.textContent = o.title; box.appendChild(h); }
-                var msg = document.createElement('div'); msg.style.cssText = 'color:#334155;line-height:1.5;white-space:pre-line;word-break:break-word;'; msg.textContent = String(o.message == null ? '' : o.message); box.appendChild(msg);
+                var msg = document.createElement('div'); msg.className = 'ws-dialog-msg'; msg.style.cssText = 'color:#334155;line-height:1.5;white-space:pre-line;word-break:break-word;'; msg.textContent = String(o.message == null ? '' : o.message); box.appendChild(msg);
                 var inp = null;
                 if (o.input) {
                     inp = document.createElement('input'); inp.type = 'text'; inp.value = o.defaultValue || '';
@@ -10220,10 +10220,13 @@
       // Dòng số người online cố định dưới header (chỉ hiện khi dùng skin giao diện — xem ui-themes.css)
       function updateBpOnlineLine(n) { var el = $('bpOnlineLine'); if (el) el.textContent = n + ' thành viên đang online'; }
       // Skin: tiêu đề khung = TÊN PHÒNG (Cổ điển: giữ "Kênh Band")
+      // Hiển thị tên phòng KHÔNG kèm chữ "Channel" ở cuối ("Phước Hạnh Channel" → "Phước Hạnh"); tên chỉ có mỗi "Channel" thì giữ nguyên.
+      function bandDisplayName(n) { n = String(n || '').trim(); var s = n.replace(/\s+channel\s*$/i, '').trim(); return s || n; }
+      window.__bandDisplayName = bandDisplayName;
       function refreshBandTitle() {
         var t = document.querySelector('#bandPanel .bp-title'); if (!t) return;
         if (!document.documentElement.hasAttribute('data-ui-skin')) { t.textContent = 'Kênh Band'; return; }
-        api.getConfig().then(function (cfg) { var n = cfg && cfg.room && cfg.room.name; t.textContent = n ? n : 'Kênh Band'; }).catch(function () {});
+        api.getConfig().then(function (cfg) { var n = cfg && cfg.room && cfg.room.name; t.textContent = n ? bandDisplayName(n) : 'Kênh Band'; }).catch(function () {});
       }
       window.__bandRefreshTitle = refreshBandTitle;
       updateBpOnlineLine(0); refreshBandTitle();
