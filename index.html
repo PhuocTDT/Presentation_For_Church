@@ -923,14 +923,14 @@
         position: fixed; left: 0; top: 50%; transform: translateY(-50%);
         z-index: 40; background: #e8903f; color: #40260a;
         border: none; border-radius: 0 12px 12px 0;
-        padding: 10px 5px 11px; font: 700 11px/1 "Segoe UI", system-ui, sans-serif;
+        padding: 12px 7px 13px; font: 700 13px/1 "Segoe UI", system-ui, sans-serif;
         writing-mode: vertical-rl; text-orientation: mixed; cursor: pointer;
         letter-spacing: .08em; box-shadow: 3px 3px 14px rgba(80,45,10,.30);
-        display: flex; align-items: center; gap: 6px;
+        display: flex; align-items: center; gap: 7px;
       }
       #bandPanelTab:hover { background: #d97f2c; }
       /* icon bong bóng chat phía trên chữ "Chat" (icon nằm ngang, không xoay theo chữ dọc) */
-      #bandPanelTab .ico { writing-mode: horizontal-tb; font-size: 17px; line-height: 1; }
+      #bandPanelTab .ico { writing-mode: horizontal-tb; font-size: 21px; line-height: 1; }
       #bandPanelTab .nb { display: none; background: #ffdf6b; color: #4a3600;
         border-radius: 8px; padding: 1px 5px; font-size: 10px; writing-mode: horizontal-tb; }
       #bandPanelTab.has-unread .nb { display: inline-block; }
@@ -2150,7 +2150,7 @@
             <!-- Section 5: Media Library -->
             <section
                 class="panel bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden"
-                style="flex: 75 1 0;">
+                style="flex: 37.5 1 0;">
                 <div class="px-3 py-1 bg-slate-800 dark:bg-black flex items-center justify-between text-white shrink-0 rounded-t-[7px]">
                     <h3 class="text-[10px] font-bold uppercase tracking-wider opacity-80">Media</h3>
                     <div class="flex gap-1.5">
@@ -2160,33 +2160,38 @@
                     </div>
                 </div>
                 <div class="flex-1 min-h-0 flex">
-                    <div class="w-1/2 overflow-y-auto custom-scrollbar p-2" id="media-library-container">
+                    <div class="flex-1 overflow-y-auto custom-scrollbar p-2" id="media-library-container">
                         <div class="grid gap-1" style="grid-template-columns: repeat(5, 1fr);">
                             <!-- Data will be injected here -->
                         </div>
                     </div>
-                    <div
-                        class="w-1/2 min-w-[220px] border-l border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/30 flex flex-col">
-                        <div
-                            class="h-8 px-2 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between shrink-0">
-                            <span class="text-[10px] font-bold uppercase text-slate-600 dark:text-slate-300">Screen
-                                Monitor</span>
-                            <div class="flex items-center gap-1">
-                                <button
-                                    class="bg-slate-800/10 dark:bg-white/10 hover:bg-indigo-500 hover:text-white text-slate-700 dark:text-white text-[9px] font-bold py-0.5 px-1 rounded transition-colors flex items-center justify-center"
-                                    onclick="toggleNextVerseSetting()" id="btn-toggle-next-verse"
-                                    title="Bật/tắt hiển thị câu tiếp theo">
-                                    <span class="material-symbols-outlined text-[14px]">visibility</span>
-                                </button>
-                                <button
-                                    class="bg-slate-800/10 dark:bg-white/10 hover:bg-primary hover:text-white text-slate-700 dark:text-white text-[9px] font-bold py-0.5 px-1.5 rounded transition-colors"
-                                    onclick="toggleMonitor('media')" id="btn-toggle-media-monitor"
-                                    title="Bật/tắt monitor trong Media">
-                                    ON
-                                </button>
-                            </div>
-                        </div>
-                        <div class="flex-1 min-h-0 p-2 flex flex-col justify-center gap-2">
+                </div>
+            </section>
+
+            <div class="resizer-h" id="resizer-4"></div>
+
+            <!-- Section 6: Screen Monitor (panel riêng, thẳng cột với Live ở hàng trên) -->
+            <section
+                class="panel bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden min-w-[200px]"
+                style="flex: 37.5 1 0;">
+                <div class="px-3 py-1 bg-slate-800 dark:bg-black flex items-center justify-between text-white shrink-0 rounded-t-[7px]">
+                    <h3 class="text-[10px] font-bold uppercase tracking-wider opacity-80">Screen Monitor</h3>
+                    <div class="flex items-center gap-1">
+                        <button
+                            class="bg-white/10 hover:bg-white/25 text-white text-[9px] font-bold py-0.5 px-1 rounded transition-colors flex items-center"
+                            onclick="toggleNextVerseSetting()" id="btn-toggle-next-verse"
+                            title="Bật/tắt hiển thị câu tiếp theo">
+                            <span class="material-symbols-outlined text-[14px]">visibility</span>
+                        </button>
+                        <button
+                            class="bg-white/10 hover:bg-white/25 text-white text-[9px] font-bold py-0.5 px-1.5 rounded transition-colors"
+                            onclick="toggleMonitor('media')" id="btn-toggle-media-monitor"
+                            title="Bật/tắt monitor trong Media">
+                            ON
+                        </button>
+                    </div>
+                </div>
+                <div class="flex-1 min-h-0 p-2 flex flex-col justify-center gap-2">
                             <div class="w-full aspect-video bg-black rounded-md border border-slate-200 dark:border-slate-700 overflow-hidden relative shadow-sm"
                                 id="media-monitor-output-box">
                                 <img class="absolute inset-0 w-full h-full object-cover hidden"
@@ -2213,8 +2218,6 @@
                                 <span class="size-1 rounded-full bg-red-500"></span> MIRROR LIVE
                             </p>
                         </div>
-                    </div>
-                </div>
             </section>
         </div>
     </main>
@@ -5346,11 +5349,11 @@
 
             if (btn) {
                 if (isVisible) {
-                    btn.classList.add('bg-indigo-600', 'text-white');
-                    btn.classList.remove('bg-slate-800/10', 'dark:bg-white/10', 'text-slate-700', 'dark:text-white');
+                    btn.classList.add('bg-indigo-600');
+                    btn.classList.remove('bg-white/10');
                 } else {
-                    btn.classList.remove('bg-indigo-600', 'text-white');
-                    btn.classList.add('bg-slate-800/10', 'dark:bg-white/10', 'text-slate-700', 'dark:text-white');
+                    btn.classList.remove('bg-indigo-600');
+                    btn.classList.add('bg-white/10');
                 }
             }
         }
@@ -6000,6 +6003,7 @@
             setupResizer('resizer-2', panelsTop[1], panelsTop[2]);
             setupResizer('resizer-v-1', topRow, bottomRow, true);
             setupResizer('resizer-3', panelsBottom[0], panelsBottom[1]);
+            setupResizer('resizer-4', panelsBottom[1], panelsBottom[2]);
         }, 100);
 
         // --- Song Library & Editor ---

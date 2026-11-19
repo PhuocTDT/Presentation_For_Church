@@ -101,7 +101,7 @@ test('skin áp vào giao diện thật: panel bo góc, header thấp, màu chọ
         topBar: cs('.panel', 'borderTopColor'), sel: cs('[data-schedule-item].bg-blue-500', 'backgroundColor'), selText: cs('[data-schedule-item].bg-blue-500', 'color'),
         goLive: cs('button[onclick="goLiveFromPreview()"]', 'backgroundColor'), liveBtn: cs('button[onclick="liveCurrent()"]', 'backgroundColor'),
         libSel: (() => { const r = [...document.querySelectorAll('tbody tr[data-library-key]')].find((x) => x.style.backgroundColor); return r ? getComputedStyle(r).backgroundColor : 'không có hàng được chọn'; })(),
-        monSubH: Math.round(document.querySelector('.panel .h-8.shrink-0').getBoundingClientRect().height), tabIco: !!document.querySelector('#bandPanelTab .ico'), tabW: Math.round(document.getElementById('bandPanelTab').getBoundingClientRect().width),
+        monPanel: (() => { const sec = document.querySelector('#bottom-row > section:nth-of-type(3)'); const med = document.querySelector('#bottom-row > section:nth-of-type(2)'); return { own: !!sec && !!sec.querySelector('#media-monitor-output-box'), mediaHasNone: !med.querySelector('#media-monitor-output-box'), hdrH: Math.round(sec.firstElementChild.getBoundingClientRect().height), n: document.querySelectorAll('#bottom-row > section').length, aligned: Math.abs(sec.getBoundingClientRect().left - document.querySelector('#top-row > section:nth-of-type(3)').getBoundingClientRect().left) < 3 }; })(), tabIco: !!document.querySelector('#bandPanelTab .ico'), tabW: Math.round(document.getElementById('bandPanelTab').getBoundingClientRect().width),
         footerR: cs('body > footer', 'borderTopLeftRadius'), tab: cs('#bandPanelTab', 'backgroundColor') };
     })()`);
     assert.equal(m.skin, 'mist'); assert.equal(m.dark, false);
@@ -111,8 +111,8 @@ test('skin áp vào giao diện thật: panel bo góc, header thấp, màu chọ
     assert.equal(m.sel, 'rgb(185, 231, 223)'); assert.equal(m.selText, 'rgb(3, 63, 57)');
     assert.equal(m.goLive, 'rgb(13, 148, 136)', 'Go Live dùng màu nhấn'); assert.equal(m.liveBtn, 'rgb(239, 75, 72)', 'nút Live dùng màu LIVE');
     assert.equal(m.libSel, 'rgb(185, 231, 223)', 'hàng bài đang chọn trong thư viện đổi theo màu chọn của skin (style JS dạng rgb)');
-    assert.equal(m.monSubH, 22, 'thanh Screen Monitor là thanh con mảnh, không phải header');
-    assert.ok(m.tabIco && m.tabW <= 30, 'nút Chat có icon và gọn (rộng ' + m.tabW + 'px)');
+    assert.deepEqual(m.monPanel, { own: true, mediaHasNone: true, hdrH: 24, n: 3, aligned: true }, 'Screen Monitor là panel RIÊNG (header 24px), không lồng trong Media, thẳng cột với Live');
+    assert.ok(m.tabIco && m.tabW >= 26 && m.tabW <= 40, 'nút Chat có icon, cỡ vừa (rộng ' + m.tabW + 'px)');
     assert.equal(m.footerR, '12px'); assert.equal(m.tab, 'rgb(224, 138, 0)', 'nút Kênh Band có màu riêng (hổ phách trong Mist)');
 
     // đang lưu Mist: mở Cài đặt, thử Candy → cửa sổ chính thành Candy; Huỷ → trở lại đúng Mist/E
@@ -126,7 +126,10 @@ test('skin áp vào giao diện thật: panel bo góc, header thấp, màu chọ
     // đổi sang kiểu A → header tô màu đậm; Studio → viền màu theo khu vực
     await app.ev(`globalSettings.uiHeader = 'a'; applySettings()`); await sleep(200);
     assert.equal(await app.ev(`getComputedStyle(document.querySelector('.panel > div:first-child')).backgroundColor`), 'rgb(15, 90, 84)');
-    assert.equal(await app.ev(`getComputedStyle(document.querySelector('.panel .h-8.shrink-0')).backgroundColor`), 'rgba(0, 0, 0, 0)', 'kiểu header A không được tô thanh con Screen Monitor');
+    assert.equal(await app.ev(`getComputedStyle(document.querySelector('#bottom-row > section:nth-of-type(3)').firstElementChild).backgroundColor`), 'rgb(15, 90, 84)', 'header Screen Monitor theo kiểu header như mọi panel');
+    // nút ON/OFF của monitor và nút câu tiếp theo vẫn chạy sau khi tách panel
+    const mon = await app.ev(`(() => { toggleMonitor('media'); const off = document.getElementById('btn-toggle-media-monitor').textContent.trim(); const hidden = document.getElementById('media-monitor-output-box').classList.contains('hidden'); toggleMonitor('media'); return { off, hidden, on: document.getElementById('btn-toggle-media-monitor').textContent.trim() }; })()`);
+    assert.deepEqual(mon, { off: 'OFF', hidden: true, on: 'ON' });
     await app.ev(`globalSettings.uiSkin = 'studio'; applySettings()`); await sleep(200);
     const stu = await app.ev(`({ dark: document.documentElement.classList.contains('dark'), top2: getComputedStyle(document.querySelectorAll('.panel')[1]).borderTopColor })`);
     assert.equal(stu.dark, true); assert.equal(stu.top2, 'rgb(34, 211, 238)', 'Studio: Preview có viền cyan');
