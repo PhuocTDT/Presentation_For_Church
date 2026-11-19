@@ -2,6 +2,11 @@
 
 Tất cả các thay đổi và cập nhật quan trọng của dự án được ghi lại tại đây.
 
+## [Chưa phát hành] - Bỏ chip "Vùng chọn" ở Edit Song, căn giữa icon "…" và nút đóng Kênh Band
+
+- **Edit Song**: bỏ chip **"Vùng chọn: “…”"** trên thanh công cụ (phần tử `#se-scope-chip`, mã cập nhật trong `seRefreshToolbar` và CSS); định dạng theo vùng chọn vẫn hoạt động như cũ. `test/rich-editor.e2e.mjs` đổi sang kiểm tra chip không còn.
+- **Căn giữa icon**: ba chấm "…" của Schedule và dấu **X** của nút đóng Kênh Band nay vẽ bằng CSS, định vị tuyệt đối đúng tâm nút (trước đây dùng ký tự/glyph của font nên lệch lên trên hoặc xuống-phải).
+
 ## [3.3.1] - Header khớp mẫu demo, khung nhãn Edit Song theo màu chủ đạo, icon Go Live/Screen Live, chấm ON/OFF
 
 > Chỉ cần bản app mới (không đổi Worker). Sửa tinh chỉnh giao diện sau v3.3.0; Cổ điển không đổi.

@@ -58,8 +58,7 @@ test('trình soạn giàu định dạng: từ-theo-từ, nền, hoạt ảnh, l
     assert.equal((await runs()).length, 0, 'chưa có định dạng: xem trước là chữ thuần (không có span định dạng)');
     assert.equal(await ev(`document.getElementById('editor-preview-text').textContent`), BODY0);
     await selectText(0, 'VUA');
-    assert.equal(await ev(`document.getElementById('se-scope-chip').hidden`), false, 'chip phạm vi hiện khi có vùng chọn');
-    assert.match(await ev(`document.getElementById('se-scope-chip').textContent`), /VUA/);
+    assert.equal(await ev(`document.getElementById('se-scope-chip')`), null, 'không còn chip "Vùng chọn" trên thanh công cụ');
     await pickStd('#ffff00');
     let r = await runs();
     assert.deepEqual(r.map((x) => x.t).join(''), BODY0, 'chữ không đổi, chỉ tách đoạn');

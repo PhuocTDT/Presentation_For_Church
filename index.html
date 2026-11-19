@@ -1790,8 +1790,6 @@
       #song-editor-modal .se-seg-body[hidden] { display: none; }
       #song-editor-modal .se-seg-host { min-height: 30px; }
       /* chip phạm vi ở thanh công cụ: cho biết nút B/I/U/màu/cỡ đang áp cho vùng chọn hay cho cả bài */
-      #song-editor-modal #se-scope-chip { margin-left: auto; max-width: 190px; padding: 2px 8px; border-radius: 999px; background: var(--se-accent-soft); color: var(--se-accent); font-size: 10px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-      #song-editor-modal #se-scope-chip[hidden] { display: none; }
       #song-editor-modal .se-histbtns { display: inline-flex; gap: 2px; margin-left: 6px; }
       #song-editor-modal .se-histbtns button { width: 28px; height: 28px; border: 0; border-radius: 8px; background: transparent; color: var(--se-ink-dim); display: flex; align-items: center; justify-content: center; cursor: pointer; }
       #song-editor-modal .se-histbtns button .material-symbols-outlined { font-size: 18px; }
@@ -2453,7 +2451,6 @@
                     <div class="divider-win"></div>
                     <button id="reset-fmt-btn" class="toolbar-btn" type="button" title="Reset formatting (xoá định dạng riêng của phần đang chọn, hoặc của cả thẻ đang xem)"
                         aria-label="Reset formatting" onclick="seResetFormatting()"><span class="material-symbols-outlined text-sm">format_clear</span></button>
-                    <span id="se-scope-chip" hidden title="Các nút định dạng đang áp cho phần chữ đã tô chọn"></span>
                 </div>
             </header>
             <!-- Editor Content -->
@@ -7543,12 +7540,7 @@
         // ---- thanh công cụ phản ánh vùng chọn ----
         function seRefreshToolbar() {
             if (!editorStyle) return;
-            const a = seSel(), chip = document.getElementById('se-scope-chip');
             const sm = seSelSummary(), MIX = RichModel.MIXED;
-            if (chip) {
-                chip.hidden = !a;
-                if (a) { const t = a.block._txt.slice(a.s, a.e).replace(/\s+/g, ' ').trim(); chip.textContent = 'Vùng chọn: “' + (t.length > 18 ? t.slice(0, 18) + '…' : t) + '”'; }
-            }
             const val = (k, fb) => (!sm || sm[k] === undefined) ? fb : sm[k];
             const fs = document.getElementById('font-family'), fz = document.getElementById('font-size-input');
             const font = val('font', editorStyle.fontFamily), size = val('size', parseInt(editorStyle.fontSize) || 80);

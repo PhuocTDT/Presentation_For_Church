@@ -170,7 +170,8 @@ html[data-ui-skin] :is(#btn-toggle-preview-monitor,#btn-toggle-media-monitor){di
 html[data-ui-skin] :is(#btn-toggle-preview-monitor,#btn-toggle-media-monitor)::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--u-ok,#16a37f);flex:none}
 html[data-ui-skin] :is(#btn-toggle-preview-monitor,#btn-toggle-media-monitor)[data-on="0"]::before{background:var(--u-faint)}
 html[data-ui-skin] #top-row>section:nth-of-type(1)>div:first-child>span{font-size:0!important;line-height:0;flex:none;box-sizing:border-box;width:var(--u-btnh);height:var(--u-btnh);border-radius:var(--u-rbtn);background:var(--u-btn);border:1px solid var(--u-line2);display:grid;place-items:center;color:var(--u-btntext,var(--u-text))!important}
-html[data-ui-skin] #top-row>section:nth-of-type(1)>div:first-child>span::before{content:"";width:2.5px;height:2.5px;border-radius:50%;background:currentColor;box-shadow:-5px 0 0 currentColor,5px 0 0 currentColor}
+html[data-ui-skin] #top-row>section:nth-of-type(1)>div:first-child>span{position:relative}
+html[data-ui-skin] #top-row>section:nth-of-type(1)>div:first-child>span::before{content:"";position:absolute;left:calc(50% - 1.25px);top:calc(50% - 1.25px);width:2.5px;height:2.5px;border-radius:50%;background:currentColor;box-shadow:-5px 0 0 currentColor,5px 0 0 currentColor}
 /* icon cho "Go Live" (▷) và "Screen Live" (màn hình) như mẫu — dùng font Material Symbols có sẵn trong app */
 html[data-ui-skin] :is(button[onclick="goLiveFromPreview()"],#btn-screen-live){display:inline-flex!important;align-items:center;gap:4px}
 html[data-ui-skin] :is(button[onclick="goLiveFromPreview()"],#btn-screen-live)::before{font-family:'Material Symbols Outlined';font-size:14px;font-weight:400;line-height:1;letter-spacing:normal;text-transform:none;flex:none}
@@ -266,8 +267,11 @@ html[data-ui-skin] #bandPanel #bpClear,html[data-ui-skin] #bandPanel #bpDetailsT
 html[data-ui-skin] #bandPanel #bpClear::before,html[data-ui-skin] #bandPanel #bpDetailsToggle::before{font-family:'Material Symbols Outlined';font-size:15px;font-weight:400;line-height:1;letter-spacing:normal;text-transform:none;white-space:nowrap}
 html[data-ui-skin] #bandPanel #bpClear::before{content:"delete_sweep"}
 html[data-ui-skin] #bandPanel #bpDetailsToggle::before{content:"link"}
-html[data-ui-skin] #bandPanel .bp-x{font-size:20px;font-weight:700;line-height:1;width:var(--u-btnh);height:var(--u-btnh);padding:0!important;border-radius:var(--u-rbtn);background:var(--u-btn)!important;border:1px solid var(--u-line2)!important;color:var(--u-btntext,var(--u-text))!important}
+html[data-ui-skin] #bandPanel .bp-x{font-size:0!important;line-height:0;display:grid!important;place-items:center;box-sizing:border-box;width:var(--u-btnh);height:var(--u-btnh);padding:0!important;border-radius:var(--u-rbtn);background:var(--u-btn)!important;border:1px solid var(--u-line2)!important;color:var(--u-btntext,var(--u-text))!important}
 html[data-ui-skin] #bandPanel .bp-x:hover{background:var(--u-hover)}
+/* dấu X vẽ bằng CSS (2 gạch chéo) để nằm đúng tâm nút — ký tự "×" của font lệch xuống/phải */
+html[data-ui-skin] #bandPanel .bp-x{position:relative}
+html[data-ui-skin] #bandPanel .bp-x::before{content:"";position:absolute;left:calc(50% - 5.5px);top:calc(50% - 5.5px);width:11px;height:11px;background:linear-gradient(45deg,transparent 42%,currentColor 42% 58%,transparent 58%),linear-gradient(-45deg,transparent 42%,currentColor 42% 58%,transparent 58%)}
 #bpOnlineLine{display:none}
 html[data-ui-skin] #bpOnlineLine{display:block;flex:none;text-align:center;padding:8px 12px 0;font-size:11px;color:var(--u-faint)}
 
