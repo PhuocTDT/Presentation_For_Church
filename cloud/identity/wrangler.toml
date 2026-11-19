@@ -13,8 +13,8 @@ kv_namespaces = [
 # không để trong file này (xem cloud/identity-plan.md §2).
 [vars]
 AWS_REGION = "ap-southeast-2"
-COGNITO_USER_POOL_ID = "ap-southeast-2_OH1kbdXdE"
-COGNITO_CLIENT_ID = "7revs0o9tj9eqhpqrd03i3daof"
+COGNITO_USER_POOL_ID = "ap-southeast-2_AaE3NUC4f"
+COGNITO_CLIENT_ID = "5tealv7v8bos88jt2bi16ppjv7"
 MAIL_FROM = "Kenh Band <noreply@mail.worship-official.link>"
 
 [[routes]]

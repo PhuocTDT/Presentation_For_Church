@@ -38,7 +38,7 @@
            │ SigV4-signed HTTPS       └──────────┘
            ▼
 ┌──────────────────────┐
-│  AWS Cognito           │  region ap-southeast-2, account 717090908088
+│  AWS Cognito           │  region ap-southeast-2, account 966000660990
 │  User Pool             │  (đã có sẵn Amplify/tms-logistics pool khác trong
 │  "worship-band-users"  │   account này — resource mới đặt tên/tag riêng)
 │  - Chỉ 1 vai trò: API  │  JWKS PUBLIC, không cần SigV4 để fetch
@@ -74,9 +74,10 @@
       "cognito-idp:AdminInitiateAuth",
       "cognito-idp:AdminRespondToAuthChallenge",
       "cognito-idp:AdminSetUserPassword",
-      "cognito-idp:AdminGetUser"
+      "cognito-idp:AdminGetUser",
+      "cognito-idp:AdminDeleteUser"
     ],
-    "Resource": "arn:aws:cognito-idp:ap-southeast-2:717090908088:userpool/<poolId>"
+    "Resource": "arn:aws:cognito-idp:ap-southeast-2:966000660990:userpool/<poolId>"
   }
   ```
   Access Key/Secret của user này lưu làm Cloudflare Worker secret (`wrangler secret put`), **không commit vào repo**.
@@ -111,6 +112,7 @@
 ## 6. Thứ tự triển khai
 
 1. ✅ **Cognito User Pool + IAM user** — User Pool `worship-band-users` (`ap-southeast-2_OH1kbdXdE`), App Client `band-identity-worker` (`7revs0o9tj9eqhpqrd03i3daof`), IAM user `band-identity-worker` + policy hẹp 5 action. Verify thật: `AdminInitiateAuth` trả token thật, JWKS endpoint `HTTP 200`. User test đã xoá sạch sau verify.
+   > **Cập nhật 2026-11-19 — đã chuyển sang account AWS `966000660990`**: User Pool `worship-band-users` = `ap-southeast-2_AaE3NUC4f`, App Client `band-identity-worker` = `5tealv7v8bos88jt2bi16ppjv7`, IAM user `band-identity-worker` (policy 6 action, có thêm `AdminDeleteUser`). Các ID/ARN `717090908088` / `OH1kbdXdE` / `7revs0o9…` ở dòng trên là của account CŨ, chỉ còn giá trị lịch sử. Chi tiết: `changelog.md`.
 2. ✅ **Domain email cho Resend** — domain `mail.worship-official.link` đã verify trên Resend (3 bản ghi qua Cloudflare DNS: 2 CNAME `send.mail`/`rsend.mail` + 1 TXT DKIM `resend._domainkey.mail`), `RESEND_API_KEY` đã `wrangler secret put` vào Worker. Verify thật: gọi `/request-access` bằng email thật, theo dõi `wrangler tail` lúc gọi — không có lỗi Resend, tài khoản Cognito tạo thành công (`admin-get-user` xác nhận).
 3. ✅ **Worker `band-identity`** (`cloud/identity/src/worker.js`, deploy tại `identity.worship-official.link`) — `/request-access`, `/login` (cả 2 nhánh: mật khẩu thường + đổi mật khẩu tạm `NEW_PASSWORD_REQUIRED`), `/refresh`. Verify thật bằng Cognito thật: tạo user qua Worker (xác nhận bằng `admin-get-user`), toàn bộ luồng đổi mật khẩu tạm → nhận JWT, refresh token, và 3 trường hợp lỗi (sai mật khẩu/email không tồn tại/email sai định dạng) đều không lộ thông tin. `AWS_ACCESS_KEY_ID`/`AWS_SECRET_ACCESS_KEY` đã nằm trong Worker secrets (`wrangler secret put`), không có trong repo.
 4. ✅ **`server.js`: verify JWT offline** — `POST /api/login` nhận `{ idToken, name }` khi `authMode='cognito'`, verify bằng `src/band-comm/cognito-jwks.js` (`jose`). `POST /api/join-room` giữ nguyên (đã fix 1 bug lúc code: nhánh cognito không được gọi `accountsStore.findById()` vì id đó là Cognito `sub`, không tồn tại trong `accounts.js`). Verify thật bằng JWT thật lấy từ Worker: 16 test case PASS bao gồm **tắt hẳn `global.fetch` giữa chừng vẫn login được** (chứng minh không phát sinh request mạng khi key đã cache) + hồi quy 5 test case mô hình local vẫn PASS. (Field `role` đã bỏ hẳn khỏi toàn hệ thống ở 1 refactor song song — không còn phân biệt band/leader.)

@@ -8,8 +8,8 @@
 // RS256 bằng Web Crypto (`crypto.subtle`).
 
 const REGION = 'ap-southeast-2';
-const USER_POOL_ID = 'ap-southeast-2_OH1kbdXdE';
-const CLIENT_ID = '7revs0o9tj9eqhpqrd03i3daof';
+const USER_POOL_ID = 'ap-southeast-2_AaE3NUC4f';   // account AWS 966000660990 (chuyển từ 717090908088 ngày 2026-11-19)
+const CLIENT_ID = '5tealv7v8bos88jt2bi16ppjv7';
 const ISSUER = `https://cognito-idp.${REGION}.amazonaws.com/${USER_POOL_ID}`;
 const JWKS_URL = `${ISSUER}/.well-known/jwks.json`;
 const JWKS_TTL_MS = 24 * 60 * 60 * 1000;
