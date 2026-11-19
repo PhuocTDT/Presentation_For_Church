@@ -2927,7 +2927,13 @@
             <!-- GIAO DIỆN (skin cửa sổ điều khiển) -->
             <div class="stg-pane" id="stg-pane-giaodien">
               <h2 class="stg-pane-title">Giao diện</h2>
-              <p class="stg-pane-desc">Chọn phong cách cho cửa sổ điều khiển. Màn chiếu Live không bị đổi. Chọn thử bên dưới, bấm "Lưu thay đổi" để áp dụng.</p>
+              <p class="stg-pane-desc">Chọn phong cách cho cửa sổ điều khiển (màn chiếu Live không bị đổi). Cửa sổ phía sau đổi thử ngay khi bạn chọn — bấm "Lưu thay đổi" để giữ, "Huỷ" để quay lại như cũ.</p>
+              <div class="stg-section">
+                <div class="stg-row" style="display:block" data-search="xem trước giao diện preview">
+                  <div class="stg-label" style="margin-bottom:8px">Xem trước</div>
+                  <div class="uip" id="uiPreview" aria-label="Xem trước giao diện"></div>
+                </div>
+              </div>
               <div class="stg-section">
                 <div class="stg-row" style="display:block" data-search="giao diện theme skin phong cách màu mist iris honey sage midnight candy studio cổ điển">
                   <div class="stg-label" style="margin-bottom:8px">Phong cách</div>
@@ -2937,13 +2943,7 @@
                   <div class="stg-label">Kiểu header</div>
                   <div class="stg-help" id="uiHdrHelp" style="margin-bottom:8px">Màu của thanh tiêu đề trên mỗi khu vực.</div>
                   <div class="uis-hdr" id="uiHdrRow" role="group" aria-label="Kiểu header"></div>
-                </div>
-              </div>
-              <div class="stg-section">
-                <div class="stg-row" style="display:block" data-search="xem trước giao diện preview">
-                  <div class="stg-label" style="margin-bottom:8px">Xem trước</div>
-                  <div class="uip" id="uiPreview" aria-label="Xem trước giao diện"></div>
-                  <div class="uis-note">Bản xem trước chỉ mô phỏng bố cục. "Dark Mode" ở tab Chung chỉ áp dụng cho kiểu "Cổ điển" — các phong cách khác tự quyết định sáng/tối.</div>
+                  <div class="uis-note">"Dark Mode" ở tab Chung chỉ áp dụng cho kiểu "Cổ điển" — các phong cách khác tự quyết định sáng/tối.</div>
                 </div>
               </div>
             </div>
@@ -5162,18 +5162,26 @@
         let uiPick = { skin: 'classic', hdr: 'e' };   // lựa chọn đang xem trong Cài đặt (chưa lưu)
         let uiPickInit = false;                      // chỉ ghi uiPick vào cài đặt khi hộp Cài đặt đã khởi tạo nó
 
-        function applyUiSkin() {
-            const skin = UI_SKINS.find(k => k.id === globalSettings.uiSkin) || UI_SKINS[0];
-            const hdr = UI_HEADERS.some(k => k.id === globalSettings.uiHeader) ? globalSettings.uiHeader : 'e';
+        // Áp skin lên <html>. Dùng cho (1) skin đã lưu (applyUiSkin) và (2) ĐỔI THỬ tạm thời khi đang chọn trong Cài đặt
+        // (applyUiSkinFor với lựa chọn chưa lưu) — chỉ đổi thuộc tính/class trên <html>, KHÔNG ghi vào globalSettings.
+        function applyUiSkinFor(skinId, hdrId) {
+            const skin = UI_SKINS.find(k => k.id === skinId) || UI_SKINS[0];
+            const hdr = UI_HEADERS.some(k => k.id === hdrId) ? hdrId : 'e';
             const root = document.documentElement;
-            if (skin.id === 'classic') {                // Cổ điển: giữ nguyên hành vi cũ (class dark do applySettings đặt)
+            if (skin.id === 'classic') {                // Cổ điển: bỏ thuộc tính, class dark theo Dark Mode cũ (globalSettings.theme)
                 root.removeAttribute('data-ui-skin');
                 root.removeAttribute('data-ui-hdr');
+                root.classList.toggle('dark', globalSettings.theme === 'dark');
                 return;
             }
             root.setAttribute('data-ui-skin', skin.id);
             root.setAttribute('data-ui-hdr', hdr);
             root.classList.toggle('dark', !!skin.dark);
+        }
+        // Đang mở tab Giao diện (uiPickInit) → giữ lựa chọn đang thử; ngược lại dùng skin đã lưu.
+        function applyUiSkin() {
+            if (uiPickInit) applyUiSkinFor(uiPick.skin, uiPick.hdr);
+            else applyUiSkinFor(globalSettings.uiSkin, globalSettings.uiHeader);
         }
 
         function uiPreviewHtml() {
@@ -5213,6 +5221,7 @@
             prev.setAttribute('data-ui-skin', skin.id);
             prev.setAttribute('data-ui-hdr', uiPick.hdr);
             prev.innerHTML = uiPreviewHtml();
+            applyUiSkinFor(uiPick.skin, uiPick.hdr);   // đổi thử tạm thời trên cửa sổ chính; Huỷ/đóng sẽ khôi phục, Lưu mới giữ
         }
 
         function initUiSkinPane() {
@@ -5651,6 +5660,7 @@
 
         function closeSettings(canceled = true) {
             uiPickInit = false;
+            applyUiSkin();   // bỏ phần đổi thử chưa lưu (Huỷ/X); sau Lưu thì globalSettings đã mang lựa chọn mới
             if (canceled && settingsOpenTheme && globalSettings.theme !== settingsOpenTheme) {
                 globalSettings.theme = settingsOpenTheme;
                 applyStgTheme();

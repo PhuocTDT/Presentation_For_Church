@@ -57,10 +57,15 @@ test('Cổ điển là mặc định (không đổi giao diện); chọn + xem t
       hdrBg: getComputedStyle(document.querySelector('#uiPreview .uip-h')).backgroundColor })`);
     assert.deepEqual([prev.s, prev.h, prev.chipsDisabled], ['midnight', 'b', 0]);
     assert.equal(prev.hdrBg, 'rgb(28, 40, 69)', 'xem trước dùng đúng token header B của Midnight');
-    r = await root(app); assert.equal(r.skin, null, 'chưa bấm Lưu thì cửa sổ chính chưa đổi');
+    // cửa sổ chính phía sau đổi THỬ ngay (chỉ thuộc tính trên <html>), nhưng cài đặt đã lưu chưa đổi
+    r = await root(app);
+    assert.deepEqual([r.skin, r.hdr, r.dark], ['midnight', 'b', true], 'đổi thử trực tiếp trên cửa sổ chính');
+    assert.equal(r.saved, 'classic/e', 'đổi thử không được ghi vào cài đặt');
 
-    // --- Hủy: không đổi gì, và saveSettings() chạy từ chỗ khác KHÔNG ghi đè bằng lựa chọn bỏ dở ---
+    // --- Hủy: khôi phục giao diện cũ, và saveSettings() chạy từ chỗ khác KHÔNG ghi đè bằng lựa chọn bỏ dở ---
     await app.ev(`closeSettings(true)`);
+    r = await root(app);
+    assert.deepEqual([r.skin, r.hdr, r.dark], [null, null, false], 'Huỷ phải khôi phục Cổ điển (kể cả class dark)');
     await app.ev(`saveSettings()`); await sleep(300);
     r = await root(app); assert.equal(r.skin, null); assert.equal(readSettings(id).uiSkin, 'classic');
 
@@ -106,6 +111,14 @@ test('skin áp vào giao diện thật: panel bo góc, header thấp, màu chọ
     assert.equal(m.goLive, 'rgb(13, 148, 136)', 'Go Live dùng màu nhấn'); assert.equal(m.liveBtn, 'rgb(239, 75, 72)', 'nút Live dùng màu LIVE');
     assert.equal(m.libSel, 'rgb(185, 231, 223)', 'hàng bài đang chọn trong thư viện đổi theo màu chọn của skin (style JS dạng rgb)');
     assert.equal(m.footerR, '12px'); assert.equal(m.tab, 'rgb(224, 138, 0)', 'nút Kênh Band có màu riêng (hổ phách trong Mist)');
+
+    // đang lưu Mist: mở Cài đặt, thử Candy → cửa sổ chính thành Candy; Huỷ → trở lại đúng Mist/E
+    await app.ev(`openSettings(); document.querySelector('#settings-modal [data-tab="giaodien"]').click(); document.querySelector('#uiSkinGrid [data-skin="candy"]').click()`);
+    await sleep(200);
+    assert.equal(await app.ev(`document.documentElement.getAttribute('data-ui-skin')`), 'candy');
+    await app.ev(`closeSettings(true)`); await sleep(200);
+    const kept = await app.ev(`({ s: document.documentElement.getAttribute('data-ui-skin'), h: document.documentElement.getAttribute('data-ui-hdr') })`);
+    assert.deepEqual([kept.s, kept.h], ['mist', 'e'], 'Huỷ giữ nguyên skin ĐÃ LƯU, không phải skin đang thử');
 
     // đổi sang kiểu A → header tô màu đậm; Studio → viền màu theo khu vực
     await app.ev(`globalSettings.uiHeader = 'a'; applySettings()`); await sleep(200);
