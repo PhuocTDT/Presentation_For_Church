@@ -1971,6 +1971,25 @@ app.whenReady().then(() => {
 
   // --- IPC Handlers ---
   ipcMain.handle('get-app-version', () => app.getVersion());
+  // Thanh menu tùy biến (skin giao diện): trang tự vẽ thanh menu, ẩn thanh gốc của HĐH; nút bấm mở submenu THẬT của menu ứng dụng.
+  ipcMain.handle('app-menu-labels', () => {
+    const m = Menu.getApplicationMenu();
+    return m ? m.items.map((i) => String(i.label)) : [];
+  });
+  ipcMain.handle('app-menu-popup', (event, args) => {
+    const m = Menu.getApplicationMenu();
+    const idx = Number(args && args.index);
+    const item = m && Number.isInteger(idx) ? m.items[idx] : null;
+    const w = BrowserWindow.fromWebContents(event.sender);
+    if (!item || !item.submenu || !w || w.isDestroyed()) return false;
+    item.submenu.popup({ window: w, x: Math.round(Number(args.x) || 0), y: Math.round(Number(args.y) || 0) });
+    return true;
+  });
+  ipcMain.handle('app-menu-custom', (event, on) => {
+    const w = BrowserWindow.fromWebContents(event.sender);
+    if (w && !w.isDestroyed()) w.setMenuBarVisibility(!on);   // accelerator của menu vẫn hoạt động khi thanh gốc bị ẩn
+    return true;
+  });
   // Renderer phát hiện trang không có focus bàn phím lúc người dùng bấm chuột / vừa đóng alert-confirm → xin lấy lại.
   ipcMain.handle('refocus-page', async () => {
     if (!mainWindow || mainWindow.isDestroyed()) return null;

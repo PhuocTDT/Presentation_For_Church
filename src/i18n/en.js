@@ -282,6 +282,7 @@
  "Trình chiếu (Live)": "Live",
  "Trình chiếu Live (Bật/Tắt)": "Toggle Live window",
  "Trắng ngà ấm, nhấn hổ phách": "Warm off-white, amber accent",
+ "Trợ giúp": "Help",
  "Tuỳ chỉnh hiển thị, media và phím tắt": "Customize display, media and shortcuts",
  "Tuỳ chỉnh phím tắt cho các thao tác thường dùng.": "Customize shortcuts for common actions.",
  "Tên bản dịch không được để trống.": "Version name cannot be empty.",
@@ -412,6 +413,10 @@
  "🔄 Tự động quét & Đồng bộ bản cũ": "🔄 Auto-scan & sync old version"
 };
   var RULES = [
+ [
+  "^(\\d+) thành viên đang online$",
+  "$1 members online"
+ ],
  [
   "^\\((\\d+) ảnh\\)$",
   "($1 images)"

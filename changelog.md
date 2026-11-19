@@ -2,11 +2,19 @@
 
 Tất cả các thay đổi và cập nhật quan trọng của dự án được ghi lại tại đây.
 
+## [Chưa phát hành] - Skin: thanh menu tùy biến, khung Kênh Band theo mẫu, nút Chat nhỏ hơn + cao hơn
+
+- **Thanh menu theo mẫu (khi dùng skin)**: thay thanh menu gốc của hệ điều hành bằng thanh vẽ trong trang: logo "P" + "Presentation For Church" + các menu (File/Edit/View/Channel/Trợ giúp — **dựng từ menu thật** nên luôn khớp nhãn/ngôn ngữ) + phiên bản, cao 28px, **bo 2 góc dưới**. Bấm một nút mở đúng **submenu thật** của menu ứng dụng ngay dưới nút (accelerator vẫn chạy khi thanh gốc bị ẩn). Về "Cổ điển" thì trả lại thanh gốc. IPC mới: `app-menu-labels`, `app-menu-popup`, `app-menu-custom` (`main.js` + `preload.js`; `docs/ipc-audit.md`).
+- **Khung Kênh Band theo mẫu (khi dùng skin)**: thẻ bo góc nằm DƯỚI thanh menu (có vạch màu đầu thẻ ở kiểu E), nội dung chính đẩy sang phải bằng margin để thanh menu vẫn chạy hết chiều ngang; header giống header panel (24px) với **tên phòng** thay cho chữ "Kênh Band"; nút **Xóa / Kết nối thành icon** (Bắt đầu/Dừng giữ chữ); dòng **"N thành viên đang online"** cố định ngay dưới header (`#bpOnlineLine`, cập nhật cùng `bpCount`); vùng trả lời nhanh/ô nhập/tin nhắn theo tone theme. Cổ điển không đổi.
+- **Nút Chat**: nhỏ lại (rộng ~30px, cao ~74px) nhưng chữ to hơn (**15px**, icon 18px) và **thấp xuống một chút** (`top: 40%`) để vẫn không che chữ "Songs" của header thư viện.
+- **Demo thiết kế** (`docs/drafts/ui-styles`, chưa commit): Midnight đã quay lại màu chọn hổ phách; hàng được chọn có thanh dọc BO TRÒN lệch vào trong thay cho thanh sát mép.
+- Test `ui-skin.e2e.mjs` thêm: thanh menu tùy biến (5 menu thật, cao 28px, bo 2 góc dưới, phiên bản; Cổ điển thì ẩn; chỉ số menu sai → `appMenuPopup` trả `false`), khung Kênh Band (nằm dưới thanh menu, bo 12px, body không dịch bằng padding, `margin-left` = `--bp-w`, dòng online, icon Xóa/Kết nối), nút Chat (15px, 24–32px, nằm trên header thư viện).
+
 ## [Chưa phát hành] - Skin: header app thấp hơn, thanh Screen Monitor không còn chồng header, nút Chat có icon
 
 - **Header thấp hơn**: header panel 26px → **24px**, nút/ô trên header 20px → **18px** (Candy 26px). Đo thật trong app: mọi header đúng 24px; nội dung app dày hơn bản demo web nên 26px vẫn nặng mắt khi tô màu.
 - **Tách Screen Monitor thành panel riêng (mọi giao diện, kể cả Cổ điển)**: trước đây khối Screen Monitor nằm LỒNG trong panel Media (thanh "Screen Monitor" là thanh con) nên với kiểu header có màu thành hai thanh header chồng nhau. Nay hàng dưới là **3 panel**: Songs | Media | Screen Monitor, rộng 25 / 37.5 / 37.5 — thẳng cột với Schedule | Preview | Live ở hàng trên (độ rộng thực tế không đổi so với trước). Screen Monitor có header riêng (nút mắt "câu tiếp theo" + ON/OFF), thanh kéo mới `resizer-4` giữa Media và Screen Monitor (`setupResizer('resizer-4', …)`). Giữ nguyên mọi id (`media-monitor-*`, `btn-toggle-media-monitor`, `btn-toggle-next-verse`) nên mã vẽ monitor không đổi; riêng cặp class bật/tắt của nút "câu tiếp theo" đổi từ `bg-slate-800/10 … text-slate-700` (thiết kế cho thanh sáng) sang `bg-white/10` ↔ `bg-indigo-600` vì nút nay nằm trong header tối. CSS skin bỏ luật "thanh con" `.h-8.shrink-0`; Candy/Studio có màu khu vực cho panel thứ 3.
-- **Nút Chat**: thêm icon bong bóng chat phía trên chữ (như bản demo; icon nằm ngang, không xoay theo chữ dọc) và chỉnh cỡ: chữ 11 → **13px**, icon **21px**, padding 12/7, khoảng cách 7px (to hơn bản gốc 2 cỡ chữ theo yêu cầu). Áp dụng mọi giao diện, kể cả Cổ điển.
+- **Nút Chat**: thêm icon bong bóng chat phía trên chữ (như bản demo; icon nằm ngang, không xoay theo chữ dọc) và chỉnh cỡ: chữ 11 → **15px**, icon **18px**, nút NHỎ lại (padding 8/6, rộng ~27px) và đặt CAO hơn (`top: 34%` thay vì giữa cửa sổ) để không che chữ "Songs" của header thư viện. Áp dụng mọi giao diện, kể cả Cổ điển.
 - Test `ui-skin.e2e.mjs` cập nhật (header 24px, thanh Screen Monitor 22px và không tô màu kể cả kiểu A, nút Chat có icon và rộng ≤ 30px).
 
 ## [Chưa phát hành] - Thêm tiếng Anh: chọn ngôn ngữ ở Cài đặt → Chung

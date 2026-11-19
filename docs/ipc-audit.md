@@ -25,6 +25,9 @@ Mức rủi ro nếu renderer bị chiếm: **Cao** (đọc/ghi ngoài thư mụ
 | Channel | Tham số từ renderer | Tài nguyên | Kiểm tra hiện có | Rủi ro | Mức đọc | Ghi chú / việc cần làm |
 |---|---|---|---|---|---|---|
 | `get-app-version` | — | đọc | — | Thấp | 📝 | |
+| `app-menu-labels` | — | đọc | — | Thấp | 📝 | nhãn các mục menu ứng dụng (thanh menu tùy biến của skin) |
+| `app-menu-popup` | `{index,x,y}` | mở UI | — | Thấp | 📝 | mở submenu thật của menu ứng dụng tại tọa độ; chỉ số sai → `false` |
+| `app-menu-custom` | `boolean` | ghi | — | Thấp | 📝 | ẩn/hiện thanh menu gốc của HĐH của cửa sổ gọi (accelerator vẫn chạy) |
 | `get-cpu-usage` | — | đọc | — | Thấp | 📝 | |
 | `quit-app` | — | thoát app | — | Thấp | 🔍 | |
 | `select-folder` | — | dialog thư mục | Dialog của main; ghi nhận vào `approvedMediaFolders` | Thấp | 🔍 | |

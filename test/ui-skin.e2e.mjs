@@ -101,7 +101,7 @@ test('skin áp vào giao diện thật: panel bo góc, header thấp, màu chọ
         topBar: cs('.panel', 'borderTopColor'), sel: cs('[data-schedule-item].bg-blue-500', 'backgroundColor'), selText: cs('[data-schedule-item].bg-blue-500', 'color'),
         goLive: cs('button[onclick="goLiveFromPreview()"]', 'backgroundColor'), liveBtn: cs('button[onclick="liveCurrent()"]', 'backgroundColor'),
         libSel: (() => { const r = [...document.querySelectorAll('tbody tr[data-library-key]')].find((x) => x.style.backgroundColor); return r ? getComputedStyle(r).backgroundColor : 'không có hàng được chọn'; })(),
-        monPanel: (() => { const sec = document.querySelector('#bottom-row > section:nth-of-type(3)'); const med = document.querySelector('#bottom-row > section:nth-of-type(2)'); return { own: !!sec && !!sec.querySelector('#media-monitor-output-box'), mediaHasNone: !med.querySelector('#media-monitor-output-box'), hdrH: Math.round(sec.firstElementChild.getBoundingClientRect().height), n: document.querySelectorAll('#bottom-row > section').length, aligned: Math.abs(sec.getBoundingClientRect().left - document.querySelector('#top-row > section:nth-of-type(3)').getBoundingClientRect().left) < 3 }; })(), tabIco: !!document.querySelector('#bandPanelTab .ico'), tabW: Math.round(document.getElementById('bandPanelTab').getBoundingClientRect().width),
+        monPanel: (() => { const sec = document.querySelector('#bottom-row > section:nth-of-type(3)'); const med = document.querySelector('#bottom-row > section:nth-of-type(2)'); return { own: !!sec && !!sec.querySelector('#media-monitor-output-box'), mediaHasNone: !med.querySelector('#media-monitor-output-box'), hdrH: Math.round(sec.firstElementChild.getBoundingClientRect().height), n: document.querySelectorAll('#bottom-row > section').length, aligned: Math.abs(sec.getBoundingClientRect().left - document.querySelector('#top-row > section:nth-of-type(3)').getBoundingClientRect().left) < 3 }; })(), tabIco: !!document.querySelector('#bandPanelTab .ico'), tabW: Math.round(document.getElementById('bandPanelTab').getBoundingClientRect().width), tabClears: document.getElementById('bandPanelTab').getBoundingClientRect().bottom <= document.querySelector('#bottom-row > section:nth-of-type(1)').getBoundingClientRect().top, tabFont: getComputedStyle(document.getElementById('bandPanelTab')).fontSize,
         footerR: cs('body > footer', 'borderTopLeftRadius'), tab: cs('#bandPanelTab', 'backgroundColor') };
     })()`);
     assert.equal(m.skin, 'mist'); assert.equal(m.dark, false);
@@ -112,8 +112,33 @@ test('skin áp vào giao diện thật: panel bo góc, header thấp, màu chọ
     assert.equal(m.goLive, 'rgb(13, 148, 136)', 'Go Live dùng màu nhấn'); assert.equal(m.liveBtn, 'rgb(239, 75, 72)', 'nút Live dùng màu LIVE');
     assert.equal(m.libSel, 'rgb(185, 231, 223)', 'hàng bài đang chọn trong thư viện đổi theo màu chọn của skin (style JS dạng rgb)');
     assert.deepEqual(m.monPanel, { own: true, mediaHasNone: true, hdrH: 24, n: 3, aligned: true }, 'Screen Monitor là panel RIÊNG (header 24px), không lồng trong Media, thẳng cột với Live');
-    assert.ok(m.tabIco && m.tabW >= 26 && m.tabW <= 40, 'nút Chat có icon, cỡ vừa (rộng ' + m.tabW + 'px)');
+    assert.ok(m.tabIco && m.tabW >= 24 && m.tabW <= 32, 'nút Chat có icon và nhỏ gọn (rộng ' + m.tabW + 'px)');
+    assert.equal(m.tabFont, '15px', 'chữ Chat to hơn');
+    assert.equal(m.tabClears, true, 'nút Chat nằm trên header thư viện, không che chữ Songs');
     assert.equal(m.footerR, '12px'); assert.equal(m.tab, 'rgb(224, 138, 0)', 'nút Kênh Band có màu riêng (hổ phách trong Mist)');
+
+    // khung Kênh Band mở theo mẫu: thẻ bo góc nằm dưới thanh menu, có dòng số người online cố định, nút Xóa/Kết nối là icon
+    const bp = await app.ev(`(() => { document.getElementById('bandPanel').classList.add('open'); document.body.classList.add('bp-open');
+      const p = document.getElementById('bandPanel'), cs = getComputedStyle(p), bar = document.getElementById('appMenubar').getBoundingClientRect(), line = document.getElementById('bpOnlineLine');
+      const r = { top: Math.round(p.getBoundingClientRect().top), barBottom: Math.round(bar.bottom), radius: cs.borderTopLeftRadius, bodyPad: getComputedStyle(document.body).paddingLeft,
+        mainLeft: getComputedStyle(document.getElementById('main-container')).marginLeft, line: line.textContent, lineShown: getComputedStyle(line).display !== 'none',
+        clearIcon: getComputedStyle(document.getElementById('bpClear'), '::before').content, linkIcon: getComputedStyle(document.getElementById('bpDetailsToggle'), '::before').content,
+        headH: Math.round(document.querySelector('#bandPanel .bp-head').getBoundingClientRect().height), tabTop: getComputedStyle(document.getElementById('bandPanelTab')).top };
+      document.getElementById('bandPanel').classList.remove('open'); document.body.classList.remove('bp-open'); return r; })()`);
+    assert.ok(bp.top >= bp.barBottom - 1, 'khung Kênh Band nằm DƯỚI thanh menu (top ' + bp.top + ' ≥ ' + bp.barBottom + ')');
+    assert.equal(bp.radius, '12px'); assert.equal(bp.bodyPad, '0px', 'thanh menu chạy hết chiều ngang (không dịch bằng padding body)'); assert.equal(bp.mainLeft, '340px');
+    assert.match(bp.line, /thành viên đang online$/); assert.equal(bp.lineShown, true); assert.equal(bp.headH, 24);
+    assert.deepEqual([bp.clearIcon, bp.linkIcon], ['"delete_sweep"', '"link"'], 'Xóa/Kết nối là icon');
+
+    // thanh menu tùy biến (thay thanh gốc của HĐH): có logo/tên app/5 menu thật/phiên bản, bo 2 góc DƯỚI; submenu mở bằng IPC
+    for (let i = 0; i < 20 && !(await app.ev(`document.querySelectorAll('#ambMenus button').length`)); i++) await sleep(150);
+    const mb = await app.ev(`(() => { const b = document.getElementById('appMenubar'), cs = getComputedStyle(b);
+      return { shown: !b.hidden && cs.display !== 'none', labels: [...b.querySelectorAll('#ambMenus button')].map((x) => x.textContent.trim()), h: Math.round(b.getBoundingClientRect().height),
+        rBottom: cs.borderBottomLeftRadius, rTop: cs.borderTopLeftRadius, brand: b.querySelector('.amb-brand').textContent, ver: document.getElementById('ambVer').textContent }; })()`);
+    assert.equal(mb.shown, true); assert.deepEqual(mb.labels, ['File', 'Edit', 'View', 'Channel', 'Trợ giúp'], 'nút lấy từ menu thật');
+    assert.equal(mb.h, 28); assert.equal(mb.rBottom, '12px'); assert.equal(mb.rTop, '0px', 'chỉ bo 2 góc dưới'); assert.equal(mb.brand, 'Presentation For Church'); assert.match(mb.ver, /^v\d/);
+    assert.deepEqual(await app.ev(`electronAPI.appMenuLabels()`), mb.labels);
+    assert.equal(await app.ev(`electronAPI.appMenuPopup(99, 0, 0)`), false, 'chỉ số menu không tồn tại → không mở gì');
 
     // đang lưu Mist: mở Cài đặt, thử Candy → cửa sổ chính thành Candy; Huỷ → trở lại đúng Mist/E
     await app.ev(`openSettings(); document.querySelector('#settings-modal [data-tab="giaodien"]').click(); document.querySelector('#uiSkinGrid [data-skin="candy"]').click()`);
@@ -137,6 +162,7 @@ test('skin áp vào giao diện thật: panel bo góc, header thấp, màu chọ
     await app.ev(`globalSettings.uiSkin = 'classic'; applySettings()`); await sleep(200);
     const back = await app.ev(`({ skin: document.documentElement.getAttribute('data-ui-skin'), hdr: document.documentElement.getAttribute('data-ui-hdr'), bg: getComputedStyle(document.querySelector('.panel > div:first-child')).backgroundColor })`);
     assert.deepEqual([back.skin, back.hdr, back.bg], [null, null, 'rgb(30, 41, 59)']);
+    assert.equal(await app.ev(`document.getElementById('appMenubar').hidden`), true, 'Cổ điển: ẩn thanh menu tùy biến (dùng lại thanh gốc của HĐH)');
     assert.deepEqual(app.exceptions, [], 'không có exception');
   } finally { await app.close(); }
 

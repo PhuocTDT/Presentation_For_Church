@@ -920,17 +920,17 @@
          every app dialog / popover z-50..9999) so band-comm never bleeds over
          a modal such as Style Templates. */
       #bandPanelTab {
-        position: fixed; left: 0; top: 50%; transform: translateY(-50%);
+        position: fixed; left: 0; top: 40%; transform: translateY(-50%);   /* cao hơn giữa cửa sổ: không che chữ "Songs" của header thư viện */
         z-index: 40; background: #e8903f; color: #40260a;
         border: none; border-radius: 0 12px 12px 0;
-        padding: 12px 7px 13px; font: 700 13px/1 "Segoe UI", system-ui, sans-serif;
+        padding: 8px 6px 9px; font: 700 15px/1 "Segoe UI", system-ui, sans-serif;
         writing-mode: vertical-rl; text-orientation: mixed; cursor: pointer;
-        letter-spacing: .08em; box-shadow: 3px 3px 14px rgba(80,45,10,.30);
-        display: flex; align-items: center; gap: 7px;
+        letter-spacing: .02em; box-shadow: 3px 3px 14px rgba(80,45,10,.30);
+        display: flex; align-items: center; gap: 5px;
       }
       #bandPanelTab:hover { background: #d97f2c; }
       /* icon bong bóng chat phía trên chữ "Chat" (icon nằm ngang, không xoay theo chữ dọc) */
-      #bandPanelTab .ico { writing-mode: horizontal-tb; font-size: 21px; line-height: 1; }
+      #bandPanelTab .ico { writing-mode: horizontal-tb; font-size: 18px; line-height: 1; }
       #bandPanelTab .nb { display: none; background: #ffdf6b; color: #4a3600;
         border-radius: 8px; padding: 1px 5px; font-size: 10px; writing-mode: horizontal-tb; }
       #bandPanelTab.has-unread .nb { display: inline-block; }
@@ -1831,6 +1831,7 @@
         <button class="bp-btn go" id="bpToggle">Bắt đầu</button>
         <button class="bp-x" id="bpClose" title="Đóng">&times;</button>
       </div>
+      <div id="bpOnlineLine"></div>
       <div class="bp-error bp-hidden" id="bpError"></div>
 
       <!-- Connection info as a popup over the app (not inline in the column) -->
@@ -1924,6 +1925,14 @@
         </div>
       </div>
     </aside>
+
+    <!-- Thanh menu tùy biến (chỉ hiện khi dùng skin giao diện; thanh menu gốc của HĐH khi đó bị ẩn). Nút do JS dựng từ menu thật. -->
+    <div id="appMenubar" role="menubar" aria-label="Menu" hidden>
+      <span class="amb-logo" aria-hidden="true">P</span>
+      <span class="amb-brand">Presentation For Church</span>
+      <div class="amb-menus" id="ambMenus"></div>
+      <span class="amb-ver" id="ambVer"></span>
+    </div>
 
     <!-- Top Navigation Bar -->
     <!-- <header ...> ... </div> -->
@@ -5185,6 +5194,30 @@
 
         // Áp skin lên <html>. Dùng cho (1) skin đã lưu (applyUiSkin) và (2) ĐỔI THỬ tạm thời khi đang chọn trong Cài đặt
         // (applyUiSkinFor với lựa chọn chưa lưu) — chỉ đổi thuộc tính/class trên <html>, KHÔNG ghi vào globalSettings.
+        // Thanh menu tùy biến: bật khi dùng skin, tắt (và trả lại thanh gốc của HĐH) khi về Cổ điển.
+        let customMenubarOn = null;   // null = chưa từng đặt (Cổ điển lúc khởi động: không đụng thanh gốc)
+        function setAppMenubar(on) {
+            const bar = document.getElementById('appMenubar');
+            if (!bar) return;
+            bar.hidden = !on;
+            if (customMenubarOn === null && !on) { customMenubarOn = false; return; }
+            if (customMenubarOn !== on) {
+                customMenubarOn = on;
+                if (window.electronAPI && electronAPI.setCustomMenubar) electronAPI.setCustomMenubar(on).catch(() => {});
+            }
+            if (on) refreshAppMenubar();
+        }
+        async function refreshAppMenubar() {
+            const bar = document.getElementById('appMenubar');
+            if (!bar || bar.hidden || !window.electronAPI || !electronAPI.appMenuLabels) return;
+            try {
+                const labels = await electronAPI.appMenuLabels();
+                document.getElementById('ambMenus').innerHTML = labels.map((l, i) => `<button type="button" data-i="${i}" aria-haspopup="menu">${escapeHtml(l)}</button>`).join('');
+                const ver = await electronAPI.getAppVersion();
+                document.getElementById('ambVer').textContent = ver ? 'v' + ver : '';
+            } catch (e) { /* menu chưa sẵn sàng */ }
+        }
+
         function applyUiSkinFor(skinId, hdrId) {
             const skin = UI_SKINS.find(k => k.id === skinId) || UI_SKINS[0];
             const hdr = UI_HEADERS.some(k => k.id === hdrId) ? hdrId : 'e';
@@ -5193,11 +5226,15 @@
                 root.removeAttribute('data-ui-skin');
                 root.removeAttribute('data-ui-hdr');
                 root.classList.toggle('dark', globalSettings.theme === 'dark');
+                setAppMenubar(false);
+                if (window.__bandRefreshTitle) __bandRefreshTitle();
                 return;
             }
             root.setAttribute('data-ui-skin', skin.id);
             root.setAttribute('data-ui-hdr', hdr);
             root.classList.toggle('dark', !!skin.dark);
+            setAppMenubar(true);
+            if (window.__bandRefreshTitle) __bandRefreshTitle();
         }
         // Đang mở tab Giao diện (uiPickInit) → giữ lựa chọn đang thử; ngược lại dùng skin đã lưu.
         function applyUiSkin() {
@@ -5259,7 +5296,16 @@
             document.addEventListener('change', function (e) {
                 if (e.target && e.target.id === 'settings-language') I18N.set(e.target.value === 'en' ? 'en' : 'vi');
             });
-            window.addEventListener('i18n-change', function () { if (uiPickInit) renderUiSkinPane(); });
+            window.addEventListener('i18n-change', function () { if (uiPickInit) renderUiSkinPane(); refreshAppMenubar(); });
+            // bấm nút trên thanh menu tùy biến → mở submenu thật ngay dưới nút
+            document.addEventListener('click', async function (e) {
+                const b = e.target.closest && e.target.closest('#ambMenus [data-i]');
+                if (!b) return;
+                const r = b.getBoundingClientRect();
+                b.setAttribute('aria-expanded', 'true');
+                try { await electronAPI.appMenuPopup(Number(b.dataset.i), r.left, r.bottom); } catch (err) { /* bỏ qua */ }
+                b.removeAttribute('aria-expanded');
+            });
             document.addEventListener('click', function (e) {
                 const card = e.target.closest && e.target.closest('#uiSkinGrid [data-skin]');
                 if (card) { uiPick.skin = card.dataset.skin; uiPickInit = true; renderUiSkinPane(); return; }
@@ -5788,6 +5834,7 @@
             if (langSel) globalSettings.language = langSel.value === 'en' ? 'en' : 'vi';
             if (uiPickInit) { globalSettings.uiSkin = uiPick.skin; globalSettings.uiHeader = uiPick.hdr; }
             await window.electronAPI.saveSettings(globalSettings);
+            refreshAppMenubar();   // main vừa dựng lại menu nếu đổi ngôn ngữ
             settingsOpenTheme = globalSettings.theme;
             rebuildShortcutActionMap();
 
@@ -10170,6 +10217,17 @@
       var running = false, replies = [], unread = 0;
       var readyShown = false, lastQrText = '';
 
+      // Dòng số người online cố định dưới header (chỉ hiện khi dùng skin giao diện — xem ui-themes.css)
+      function updateBpOnlineLine(n) { var el = $('bpOnlineLine'); if (el) el.textContent = n + ' thành viên đang online'; }
+      // Skin: tiêu đề khung = TÊN PHÒNG (Cổ điển: giữ "Kênh Band")
+      function refreshBandTitle() {
+        var t = document.querySelector('#bandPanel .bp-title'); if (!t) return;
+        if (!document.documentElement.hasAttribute('data-ui-skin')) { t.textContent = 'Kênh Band'; return; }
+        api.getConfig().then(function (cfg) { var n = cfg && cfg.room && cfg.room.name; t.textContent = n ? n : 'Kênh Band'; }).catch(function () {});
+      }
+      window.__bandRefreshTitle = refreshBandTitle;
+      updateBpOnlineLine(0); refreshBandTitle();
+
       function revealPanel() {
         panel.classList.add('open');
         document.body.classList.add('bp-open');
@@ -10751,6 +10809,7 @@
         $('bpRoomCode').textContent = st.code || '—';
         $('bpPassword').textContent = st.password || '—';
         $('bpCount').textContent = (st.clients ? st.clients.length : 0);
+        updateBpOnlineLine(st.clients ? st.clients.length : 0);
 
         // Nhắc đổi mật khẩu sau 1 thời gian dùng — không tự hết hạn, chỉ có
         // nút 🔄 thủ công, nên dễ quên nếu không ai nhắc.
@@ -10806,6 +10865,7 @@
       api.onMessage(function (_e, env) { handle(env); });
       api.onPresence(function (_e, list) {
         $('bpCount').textContent = (list ? list.length : 0);
+        updateBpOnlineLine(list ? list.length : 0);
         // Danh sách "Đang kết nối" đang mở (bấm icon mắt) -> có người vào/
         // rời/bị kick thì cập nhật luôn, không cần đóng mở lại mới thấy đúng.
         if ($('bpOnlineSection') && !$('bpOnlineSection').classList.contains('bp-hidden')) refreshOnlineList();

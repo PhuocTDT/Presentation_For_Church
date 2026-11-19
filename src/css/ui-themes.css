@@ -202,6 +202,39 @@ html[data-ui-skin] body>footer{background:var(--u-panel)!important;color:var(--u
   border:1px solid var(--u-line)!important;border-bottom:0!important;border-radius:var(--u-radius) var(--u-radius) 0 0}
 html[data-ui-skin] body>footer *{color:inherit!important}
 
+/* Thanh menu tùy biến (thay thanh menu gốc của HĐH khi dùng skin): logo + tên app + menu + phiên bản; bo 2 góc DƯỚI */
+html[data-ui-skin] #appMenubar:not([hidden]){display:flex}
+html[data-ui-skin] #appMenubar{align-items:center;gap:2px;flex:none;height:var(--u-menuh,28px);padding:0 12px;margin:0 var(--u-gap);
+  background:var(--u-menubg,var(--u-panel));color:var(--u-text);border:1px solid var(--u-line);border-top:0;border-radius:0 0 var(--u-radius) var(--u-radius);font-size:12px}
+html[data-ui-skin] #appMenubar .amb-logo{width:18px;height:18px;border-radius:5px;background:var(--u-accent);color:var(--u-accent-ink);display:grid;place-items:center;font-size:11px;font-weight:800}
+html[data-ui-skin] #appMenubar .amb-brand{font-weight:700;margin:0 14px 0 8px;white-space:nowrap}
+html[data-ui-skin] #appMenubar .amb-menus{display:flex;gap:2px}
+html[data-ui-skin] #appMenubar .amb-menus button{padding:4px 9px;border:0;background:transparent;color:var(--u-muted);border-radius:6px;font:inherit;cursor:pointer}
+html[data-ui-skin] #appMenubar .amb-menus button:hover,html[data-ui-skin] #appMenubar .amb-menus button[aria-expanded="true"]{background:var(--u-hover);color:var(--u-text)}
+html[data-ui-skin] #appMenubar .amb-ver{margin-left:auto;color:var(--u-faint);font-size:11.5px}
+[data-ui-skin="mist"]{--u-menubg:#f2f7f8}[data-ui-skin="iris"]{--u-menubg:#f7f8fc}[data-ui-skin="honey"]{--u-menubg:#f6f5f2}[data-ui-skin="sage"]{--u-menubg:#f3f5f0}
+[data-ui-skin="midnight"]{--u-menubg:#0e1423}[data-ui-skin="candy"]{--u-menubg:#fff}[data-ui-skin="studio"]{--u-menubg:#0a1020}
+
+/* Khung Kênh Band theo mẫu: THẺ bo góc nằm DƯỚI thanh menu, header giống panel (tên phòng + nút icon), dòng "N thành viên đang online" cố định.
+   Nội dung chính bị đẩy sang phải bằng margin (không dùng padding của <body> để thanh menu vẫn chạy hết chiều ngang). */
+html[data-ui-skin] body.bp-open{padding-left:0!important}
+html[data-ui-skin] body.bp-open #main-container{margin-left:var(--bp-w)}
+html[data-ui-skin] body.bp-open>footer{margin-left:calc(var(--bp-w) + var(--u-gap))}
+html[data-ui-skin] #bandPanel{top:var(--u-menuh,28px)!important;left:var(--u-gap)!important;width:calc(var(--bp-w) - var(--u-gap)*2)!important;height:calc(100vh - var(--u-menuh,28px) - var(--u-gap))!important;
+  border:1px solid var(--u-line)!important;border-top:var(--u-topbar,1px solid var(--u-line))!important;border-radius:var(--u-radius)!important;box-shadow:var(--u-shadow)}
+html[data-ui-skin] #bandPanel .bp-head{height:var(--u-phh);padding:0 8px 0 12px!important;gap:4px;border-radius:0!important;flex:none}
+html[data-ui-skin] #bandPanel .bp-title{font-size:12.5px;text-transform:none;letter-spacing:.01em;font-weight:var(--u-hweight);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+html[data-ui-skin] #bandPanel .bp-head .bp-btn{height:var(--u-btnh);padding:0 8px!important;font-size:10px!important;line-height:1;display:inline-flex;align-items:center;justify-content:center;font-weight:600}
+/* Xóa / Kết nối → icon (Bắt đầu/Dừng giữ nguyên chữ) */
+html[data-ui-skin] #bandPanel #bpClear,html[data-ui-skin] #bandPanel #bpDetailsToggle{font-size:0!important;width:var(--u-btnh);padding:0!important}
+html[data-ui-skin] #bandPanel #bpClear::before,html[data-ui-skin] #bandPanel #bpDetailsToggle::before{font-family:'Material Symbols Outlined';font-size:15px;font-weight:400;line-height:1;letter-spacing:normal;text-transform:none;white-space:nowrap}
+html[data-ui-skin] #bandPanel #bpClear::before{content:"delete_sweep"}
+html[data-ui-skin] #bandPanel #bpDetailsToggle::before{content:"link"}
+html[data-ui-skin] #bandPanel .bp-x{font-size:15px;line-height:1;width:var(--u-btnh);height:var(--u-btnh);padding:0!important;border-radius:var(--u-rbtn)}
+html[data-ui-skin] #bandPanel .bp-x:hover{background:var(--u-hover)}
+#bpOnlineLine{display:none}
+html[data-ui-skin] #bpOnlineLine{display:block;flex:none;text-align:center;padding:8px 12px 0;font-size:11px;color:var(--u-faint)}
+
 /* Kênh Band: nút thu gọn nổi bật bằng MÀU RIÊNG của theme (không trùng màu nhấn); khi mở thì theo tone theme */
 html[data-ui-skin] #bandPanelTab:not(.has-alert){background:var(--u-band)!important;color:var(--u-band-ink)!important}
 html[data-ui-skin] #bandPanelTab:not(.has-alert):hover{filter:brightness(1.07)}

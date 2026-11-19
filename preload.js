@@ -2,6 +2,9 @@ const { contextBridge, ipcRenderer } = require('electron');
 
 contextBridge.exposeInMainWorld('electronAPI', {
   getAppVersion: () => ipcRenderer.invoke('get-app-version'),
+  appMenuLabels: () => ipcRenderer.invoke('app-menu-labels'),
+  appMenuPopup: (index, x, y) => ipcRenderer.invoke('app-menu-popup', { index, x, y }),
+  setCustomMenubar: (on) => ipcRenderer.invoke('app-menu-custom', !!on),
   refocusPage: () => ipcRenderer.invoke('refocus-page'),
   loadSongs: () => ipcRenderer.invoke('load-songs'),
   bulkReplaceLibraryText: (payload) => ipcRenderer.invoke('bulk-replace-library-text', payload),
