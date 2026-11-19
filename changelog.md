@@ -2,7 +2,9 @@
 
 Tất cả các thay đổi và cập nhật quan trọng của dự án được ghi lại tại đây.
 
-## [Chưa phát hành] - Header khớp mẫu demo, khung nhãn Edit Song theo màu chủ đạo
+## [3.3.1] - Header khớp mẫu demo, khung nhãn Edit Song theo màu chủ đạo, icon Go Live/Screen Live, chấm ON/OFF
+
+> Chỉ cần bản app mới (không đổi Worker). Sửa tinh chỉnh giao diện sau v3.3.0; Cổ điển không đổi.
 
 - **Kích thước header/nút khớp mẫu demo** (đo trực tiếp demo ở Midnight/kiểu C): header panel **26px** (trước 24px), nút trên header **20px** (trước 18px). Viên "ON" của monitor có **chấm xanh** (xám khi OFF; `data-on` do `applyMonitorVisibility` đặt); dấu "≡" của Schedule thành **nút tròn "…"**; nút đóng Kênh Band là nút có viền, chữ × to hơn.
 - **Icon cho "Go Live" (▷) và "Screen Live" (màn hình)** như mẫu; **tên phòng Kênh Band tăng 11px → 12px**.
