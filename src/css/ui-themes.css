@@ -298,6 +298,44 @@ html[data-ui-skin] #bandPanel .bp-row .send{background:var(--u-accent)!important
 html[data-ui-skin] #bandPanel .bp-msg{color:var(--u-text)!important;background:var(--u-hover)}
 html[data-ui-skin] #bandPanel .bp-msg.op{background:var(--u-selbg)!important;border-color:var(--u-selborder)!important;color:var(--u-seltext)!important}
 html[data-ui-skin] #bandPanel .bp-msg.sys,html[data-ui-skin] #bandPanel .bp-empty{background:transparent!important;color:var(--u-faint)!important}
+/* ===== Kênh chat theo ĐÚNG mẫu demo: tên + giờ nằm TRONG bong bóng; bong bóng member nền --u-hover, tin của mình nền màu chọn ===== */
+html[data-ui-skin] #bandPanel .bp-feed{padding:10px!important;gap:8px!important}
+html[data-ui-skin] #bandPanel .bp-fr{max-width:88%;align-items:stretch!important;padding:6px 10px;border-radius:calc(var(--u-radius) - 2px);background:var(--u-hover);border:1px solid transparent;color:var(--u-text)}
+html[data-ui-skin] #bandPanel .bp-fr.op{background:var(--u-selbg);border-color:var(--u-selborder);color:var(--u-seltext)}
+html[data-ui-skin] #bandPanel .bp-fr .who{font-size:10.5px!important;font-weight:600!important;margin:0 0 2px!important;color:var(--u-muted)!important;white-space:nowrap}
+html[data-ui-skin] #bandPanel .bp-fr .who .tm{display:inline;font-size:10px;font-weight:500;color:var(--u-faint);margin-left:6px}
+html[data-ui-skin] #bandPanel .bp-fr.op .who{color:inherit!important;opacity:.75;text-align:right}
+html[data-ui-skin] #bandPanel .bp-fr.op .who .tm{color:inherit}
+html[data-ui-skin] #bandPanel .bp-fr .bp-msg{background:transparent!important;border:0!important;border-radius:0!important;padding:0!important;font-size:12.5px;line-height:1.4;color:inherit!important}
+html[data-ui-skin] #bandPanel .bp-fr:has(>.alert-pending){border-color:var(--u-band,#e08a00);animation:bandAlertPulse 1s ease-in-out infinite;cursor:pointer}
+html[data-ui-skin] #bandPanel .bp-fr .bp-msg.alert-pending{animation:none!important;box-shadow:none!important}
+html[data-ui-skin] #bandPanel .bp-fr:has(>.alert-acked){opacity:.75}
+html[data-ui-skin] #bandPanel .bp-fr .bp-msg.alert-acked{opacity:1}
+html[data-ui-skin] #bandPanel .bp-msg.sys{font-size:11px!important;padding:2px 6px!important}
+/* ô nhập + câu trả lời nhanh đúng cỡ mẫu */
+html[data-ui-skin] #bandPanel .bp-replies button{height:24px;padding:0 10px!important;font-size:11.5px!important;font-weight:500;line-height:1}
+html[data-ui-skin] #bandPanel .bp-row input{height:30px;padding:0 10px!important;font-size:12.5px}
+html[data-ui-skin] #bandPanel .bp-row .send{height:30px;padding:0 16px!important;font-size:12px}
+/* nội dung kênh chat theo skin: bong bóng của member (JS gán nền pastel inline → chữ sáng trên nền sáng ở skin tối), tên người gửi,
+   thẻ setlist, hộp lỗi, danh sách ảnh — tất cả dùng token skin để luôn đọc được ở cả skin sáng lẫn tối */
+html[data-ui-skin] #bandPanel .bp-fr .who{color:var(--u-muted)!important}
+html[data-ui-skin] #bandPanel .bp-msg.alert-pending{border-color:var(--u-band,#e08a00)!important}
+html[data-ui-skin] #bandPanel .bp-msg.alert-pending::after{color:var(--u-muted)!important}
+html[data-ui-skin] #bandPanel .bp-msg .ackmark{color:var(--u-ok,#2f8a55)!important}
+html[data-ui-skin] #bandPanel .bp-slcard{background:var(--u-hover)!important;border-color:var(--u-line2)!important;color:var(--u-text)}
+html[data-ui-skin] #bandPanel .bp-slcard.loaded{background:color-mix(in srgb,var(--u-ok,#2f8a55) 16%,var(--u-panel))!important;border-color:var(--u-ok,#2f8a55)!important}
+html[data-ui-skin] #bandPanel .bp-slcard.rejected{background:color-mix(in srgb,#e5484d 16%,var(--u-panel))!important;border-color:#e5484d!important}
+html[data-ui-skin] #bandPanel .bp-slcard .bp-sl-name{color:var(--u-text)!important}
+html[data-ui-skin] #bandPanel .bp-slcard .bp-sl-sub{color:var(--u-muted)!important}
+html[data-ui-skin] #bandPanel .bp-slcard .bp-btn-mini:not(.reload){background:var(--u-btn)!important;color:var(--u-btntext,var(--u-text))!important;border-color:var(--u-line2)!important}
+html[data-ui-skin] #bandPanel .bp-slcard .bp-btn-mini:not(.reload):hover{background:var(--u-hover)!important}
+html[data-ui-skin] #bandPanel .bp-error{background:color-mix(in srgb,#e5484d 14%,var(--u-panel))!important;border-color:color-mix(in srgb,#e5484d 55%,var(--u-line2))!important;color:var(--u-text)!important}
+html[data-ui-skin] #bandPanel .bp-error :is(pre,.whoami){color:var(--u-muted)!important}
+html[data-ui-skin] #bandPanel .bp-error code{background:color-mix(in srgb,#e5484d 22%,var(--u-panel))!important;color:var(--u-text)!important}
+html[data-ui-skin] #bandPanel .bp-error .retry.alt{background:var(--u-btn)!important}
+html[data-ui-skin] #bandPanel .bp-conn .bp-gal :is(.gi,.empty,.bp-gal-select-bar){background:var(--u-input)!important;border-color:var(--u-line)!important;color:var(--u-text)!important}
+html[data-ui-skin] #bandPanel .bp-conn .bp-gal .gi.selected{background:var(--u-selbg)!important;border-color:var(--u-selborder)!important;color:var(--u-seltext)!important}
+html[data-ui-skin] #bandPanel .bp-conn .bp-gal .gi :is(.mv,.act){background:var(--u-btn)!important;color:var(--u-btntext,var(--u-text))!important;border-color:var(--u-line2)!important}
 html[data-ui-skin] #bandPanel .bp-conn{background:var(--u-panel)!important;color:var(--u-text)!important;border-color:var(--u-line)!important}
 html[data-ui-skin] #bandPanel .bp-conn :is(.k,label,.note,.bp-wizard-hint-in-conn,.bp-gal-count){color:var(--u-muted)!important}
 html[data-ui-skin] #bandPanel .bp-conn :is(.host,.v){color:var(--u-text)!important}

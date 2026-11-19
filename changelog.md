@@ -5,6 +5,7 @@ Tất cả các thay đổi và cập nhật quan trọng của dự án đượ
 ## [Chưa phát hành] - Bỏ chip "Vùng chọn" ở Edit Song, căn giữa icon "…" và nút đóng Kênh Band
 
 - **Edit Song**: bỏ chip **"Vùng chọn: “…”"** trên thanh công cụ (phần tử `#se-scope-chip`, mã cập nhật trong `seRefreshToolbar` và CSS); định dạng theo vùng chọn vẫn hoạt động như cũ. `test/rich-editor.e2e.mjs` đổi sang kiểm tra chip không còn.
+- **Kênh chat giống mẫu demo (khi dùng skin)**: bong bóng tin nhắn đúng bố cục mẫu — **tên người gửi + giờ (HH:MM) nằm TRONG bong bóng**, bong bóng member nền `--u-hover`, tin của mình nền màu chọn (tên/giờ căn phải), chữ 12.5px, bo góc `radius−2`, chiều rộng tối đa 88%, khoảng cách 8px; tin "báo khẩn" của member có viền màu Kênh Band + nhấp nháy ở cả khối. Sửa lỗi **chữ sáng trên nền pastel** ở skin tối (JS gán nền pastel inline cho bong bóng member → nay skin đè lại), kể cả thẻ setlist (chờ duyệt / đã nạp / từ chối), hộp lỗi, danh sách ảnh trong khung Kênh Band. Ô nhập 30px, câu trả lời nhanh 24px như mẫu. Mã: `addFeed` thêm `<span class="tm">` (mặc định ẩn nên **Cổ điển không đổi**).
 - **Căn giữa icon**: ba chấm "…" của Schedule và dấu **X** của nút đóng Kênh Band nay vẽ bằng CSS, định vị tuyệt đối đúng tâm nút (trước đây dùng ký tự/glyph của font nên lệch lên trên hoặc xuống-phải).
 
 ## [3.3.1] - Header khớp mẫu demo, khung nhãn Edit Song theo màu chủ đạo, icon Go Live/Screen Live, chấm ON/OFF

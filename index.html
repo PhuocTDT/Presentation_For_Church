@@ -1217,6 +1217,7 @@
       #bandPanel .bp-fr.band { align-self: flex-start; align-items: flex-start; }
       #bandPanel .bp-fr.op { align-self: flex-end; align-items: flex-end; }
       #bandPanel .bp-fr .who { font-size: .68rem; font-weight: 700; color: #8a93a3; margin: 0 5px 2px; }
+      #bandPanel .bp-fr .who .tm { display: none; }
 
       #bandPanel .bp-msg { padding: 6px 10px; border-radius: 11px; font-size: .85rem; border: 1px solid transparent; overflow-wrap: anywhere; color: #1e2430; }
       #bandPanel .bp-msg.op { background: #dfeeff; border-color: #b3d3f5; }
@@ -11397,6 +11398,10 @@
             w.className = 'who';
             w.textContent = who;
             if (kind === 'band') w.style.color = userHsl(who, 45, 40);
+            var tmEl = document.createElement('span');   // giờ gửi: chỉ hiện khi dùng skin (theo mẫu), Cổ điển ẩn
+            tmEl.className = 'tm'; var nowD = new Date();
+            tmEl.textContent = ('0' + nowD.getHours()).slice(-2) + ':' + ('0' + nowD.getMinutes()).slice(-2);
+            w.appendChild(tmEl);
             node.appendChild(w);
           }
           var el = document.createElement('div');

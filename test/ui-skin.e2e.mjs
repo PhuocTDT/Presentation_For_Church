@@ -175,6 +175,12 @@ test('skin áp vào giao diện thật: panel bo góc, header thấp, màu chọ
     // header Library theo mẫu: chỉ 1 nút "bài mới" (Import/Export ẩn, vẫn có ở menu File); ô tìm kiếm cao 22px
     const lh = await app.ev(`(() => { const d = (id) => getComputedStyle(document.getElementById(id)).display; return { nb: d('header-newsong-btn'), imp: d('header-import-btn'), exp: d('header-export-btn'), search: getComputedStyle(document.getElementById('library-search')).height }; })()`);
     assert.deepEqual(lh, { nb: 'flex', imp: 'none', exp: 'none', search: '22px' }, 'header Library: 1 nút bài mới, tìm kiếm 22px');
+    // bong bóng member trong kênh chat: JS gán nền pastel inline — skin phải đè lại để chữ luôn đọc được (skin sáng + tối)
+    const bub = await app.ev(`(async () => { const feed = document.getElementById('bpFeed'); const mk = () => { feed.insertAdjacentHTML('beforeend', '<div class="bp-fr band"><div class="who" style="color:hsl(300,45%,40%)">A</div><div class="bp-msg band" style="background:hsl(340,72%,94%);border-color:hsl(340,52%,80%)">xin tông G</div></div>'); const fr = feed.lastElementChild, m = fr.querySelector('.bp-msg'); return { bg: getComputedStyle(fr).backgroundColor, fg: getComputedStyle(m).color }; };
+      const out = {}; for (const sk of ['mist', 'midnight']) { globalSettings.uiSkin = sk; applySettings(); await new Promise((r) => setTimeout(r, 150)); out[sk] = mk(); } return out; })()`);
+    const lum = (rgb) => { const n = rgb.match(/\d+/g).map(Number); return 0.2126 * n[0] + 0.7152 * n[1] + 0.0722 * n[2]; };
+    for (const sk of ['mist', 'midnight']) assert.ok(Math.abs(lum(bub[sk].bg) - lum(bub[sk].fg)) > 90, 'bong bóng chat đủ tương phản ở ' + sk + ': ' + JSON.stringify(bub[sk]));
+    await app.ev(`globalSettings.uiSkin = 'studio'; applySettings()`); await sleep(150);
     // viên ON của monitor: chấm xanh khi bật, xám khi tắt; nút "…" của Schedule là ô vuông bo góc (không phải hình tròn)
     const dots = await app.ev(`(() => { const b = document.getElementById('btn-toggle-media-monitor'), d = () => getComputedStyle(b, '::before').backgroundColor; const on = d(); toggleMonitor('media'); const off = d(); toggleMonitor('media');
       const m = getComputedStyle(document.querySelector('#top-row > section:nth-of-type(1) > div:first-child > span')); return { on, off, more: m.borderTopLeftRadius, w: m.width, h: m.height }; })()`);
