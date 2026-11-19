@@ -136,7 +136,7 @@ test('skin áp vào giao diện thật: panel bo góc, header thấp, màu chọ
     const rows = await app.ev(`(() => { const r = [...document.querySelectorAll('tbody tr[data-library-key]')].find((x) => x.style.backgroundColor); const c = r && getComputedStyle(r);
       return r ? { radius: c.borderTopLeftRadius, margin: c.marginLeft, bar: c.boxShadow.includes('inset') } : null; })()`);
     assert.deepEqual(rows, { radius: '8px', margin: '6px', bar: true }, 'hàng thư viện đang chọn: bo góc 8px, thụt lề 6px, có thanh trái'); 
-    assert.equal(bp.titleCss, '11px|none|normal', 'tên phòng: chữ thường, 11px, không giãn chữ (đọc đủ, không bị cắt)');
+    assert.equal(bp.titleCss, '12px|none|normal', 'tên phòng: chữ thường, 12px, không giãn chữ (đọc đủ, không bị cắt)');
 
     // thanh menu tùy biến (thay thanh gốc của HĐH): có logo/tên app/5 menu thật/phiên bản, bo 2 góc DƯỚI; submenu mở bằng IPC
     for (let i = 0; i < 20 && !(await app.ev(`document.querySelectorAll('#ambMenus button').length`)); i++) await sleep(150);

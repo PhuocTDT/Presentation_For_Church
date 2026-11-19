@@ -5,6 +5,7 @@ Tất cả các thay đổi và cập nhật quan trọng của dự án đượ
 ## [Chưa phát hành] - Header khớp mẫu demo, khung nhãn Edit Song theo màu chủ đạo
 
 - **Kích thước header/nút khớp mẫu demo** (đo trực tiếp demo ở Midnight/kiểu C): header panel **26px** (trước 24px), nút trên header **20px** (trước 18px). Viên "ON" của monitor có **chấm xanh** (xám khi OFF; `data-on` do `applyMonitorVisibility` đặt); dấu "≡" của Schedule thành **nút tròn "…"**; nút đóng Kênh Band là nút có viền, chữ × to hơn.
+- **Icon cho "Go Live" (▷) và "Screen Live" (màn hình)** như mẫu; **tên phòng Kênh Band tăng 11px → 12px**.
 - **Edit Song → tab Words**: khối lời đang soạn (đang focus) có **khung nhãn nền màu chủ đạo** của theme (chữ + số + biểu tượng mắt đổi sang màu tương phản) và vòng sáng theo màu chủ đạo. (Đã **hoàn tác** thay đổi nhầm ở nhãn slide Preview/Live — nhãn ở đó giữ như trước.)
 - Test cập nhật theo chiều cao header mới (`test/ui-skin.e2e.mjs`).
 

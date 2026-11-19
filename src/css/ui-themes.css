@@ -171,6 +171,11 @@ html[data-ui-skin] :is(#btn-toggle-preview-monitor,#btn-toggle-media-monitor)::b
 html[data-ui-skin] :is(#btn-toggle-preview-monitor,#btn-toggle-media-monitor)[data-on="0"]::before{background:var(--u-faint)}
 html[data-ui-skin] #top-row>section:nth-of-type(1)>div:first-child>span{font-size:0!important;width:var(--u-btnh);height:var(--u-btnh);border-radius:999px;background:var(--u-btn);border:1px solid var(--u-line2);display:grid;place-items:center;color:var(--u-btntext,var(--u-text))!important}
 html[data-ui-skin] #top-row>section:nth-of-type(1)>div:first-child>span::before{content:"more_horiz";font-family:'Material Symbols Outlined';font-size:15px;font-weight:400;line-height:1;letter-spacing:normal;text-transform:none;color:var(--u-btntext,var(--u-text))}
+/* icon cho "Go Live" (▷) và "Screen Live" (màn hình) như mẫu — dùng font Material Symbols có sẵn trong app */
+html[data-ui-skin] :is(button[onclick="goLiveFromPreview()"],#btn-screen-live){display:inline-flex!important;align-items:center;gap:4px}
+html[data-ui-skin] :is(button[onclick="goLiveFromPreview()"],#btn-screen-live)::before{font-family:'Material Symbols Outlined';font-size:14px;font-weight:400;line-height:1;letter-spacing:normal;text-transform:none;flex:none}
+html[data-ui-skin] button[onclick="goLiveFromPreview()"]::before{content:"play_arrow"}
+html[data-ui-skin] #btn-screen-live::before{content:"desktop_windows"}
 /* header Library theo mẫu: ô tìm kiếm cao 22px (gần hết chiều cao header 24px), chữ 11px, kính lúp rõ; 2 nút icon 20px */
 html[data-ui-skin] #library-search{height:22px!important;font-size:11px!important;padding-left:26px!important;border-radius:var(--u-rbtn)!important}
 html[data-ui-skin] .lib-tabs+div>.material-symbols-outlined{font-size:15px!important;left:8px!important;color:var(--u-muted)!important}
@@ -254,7 +259,7 @@ html[data-ui-skin] #bandPanel{top:var(--u-menuh,28px)!important;left:var(--u-gap
   border:1px solid var(--u-line)!important;border-top:var(--u-topbar,1px solid var(--u-line))!important;border-radius:var(--u-radius)!important;box-shadow:var(--u-shadow)}
 html[data-ui-skin] #bandPanel .bp-head{height:var(--u-phh);padding:0 8px 0 12px!important;gap:4px;border-radius:0!important;flex:none}
 /* tên phòng: chữ thường, nhỏ, không giãn chữ để đọc đủ (luật !important vì phía dưới còn luật cũ dùng kiểu chữ của header) */
-html[data-ui-skin] #bandPanel .bp-head .bp-title{font-size:11px!important;text-transform:none!important;letter-spacing:0!important;font-weight:700!important;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+html[data-ui-skin] #bandPanel .bp-head .bp-title{font-size:12px!important;text-transform:none!important;letter-spacing:0!important;font-weight:700!important;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
 html[data-ui-skin] #bandPanel .bp-head .bp-btn{height:var(--u-btnh);padding:0 8px!important;font-size:10px!important;line-height:1;display:inline-flex;align-items:center;justify-content:center;font-weight:600}
 /* Xóa / Kết nối → icon (Bắt đầu/Dừng giữ nguyên chữ) */
 html[data-ui-skin] #bandPanel #bpClear,html[data-ui-skin] #bandPanel #bpDetailsToggle{font-size:0!important;width:var(--u-btnh);padding:0!important}
