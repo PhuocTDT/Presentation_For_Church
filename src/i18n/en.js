@@ -36,6 +36,7 @@
  "Bỏ chặn": "Unblock",
  "Bỏ nền": "Remove background",
  "Chung": "General",
+ "New song — tạo bài hát mới": "New song",
  "Chép file mẫu định dạng bài hát, Kinh Thánh và hướng dẫn ra một thư mục": "Copy the song/Bible format templates and guide to a folder",
  "Chưa chọn bản dịch": "No version selected",
  "Chưa có ai kết nối.": "No one is connected.",
