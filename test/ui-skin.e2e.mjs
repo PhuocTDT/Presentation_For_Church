@@ -101,15 +101,18 @@ test('skin áp vào giao diện thật: panel bo góc, header thấp, màu chọ
         topBar: cs('.panel', 'borderTopColor'), sel: cs('[data-schedule-item].bg-blue-500', 'backgroundColor'), selText: cs('[data-schedule-item].bg-blue-500', 'color'),
         goLive: cs('button[onclick="goLiveFromPreview()"]', 'backgroundColor'), liveBtn: cs('button[onclick="liveCurrent()"]', 'backgroundColor'),
         libSel: (() => { const r = [...document.querySelectorAll('tbody tr[data-library-key]')].find((x) => x.style.backgroundColor); return r ? getComputedStyle(r).backgroundColor : 'không có hàng được chọn'; })(),
+        monSubH: Math.round(document.querySelector('.panel .h-8.shrink-0').getBoundingClientRect().height), tabIco: !!document.querySelector('#bandPanelTab .ico'), tabW: Math.round(document.getElementById('bandPanelTab').getBoundingClientRect().width),
         footerR: cs('body > footer', 'borderTopLeftRadius'), tab: cs('#bandPanelTab', 'backgroundColor') };
     })()`);
     assert.equal(m.skin, 'mist'); assert.equal(m.dark, false);
-    assert.equal(m.bodyBg, 'rgb(228, 235, 238)'); assert.equal(m.panelR, '12px'); assert.equal(m.hdrH, 26);
+    assert.equal(m.bodyBg, 'rgb(228, 235, 238)'); assert.equal(m.panelR, '12px'); assert.equal(m.hdrH, 24);
     assert.equal(m.hdrBg, 'rgba(0, 0, 0, 0)', 'kiểu E: header không tô màu');
     assert.equal(m.topBar, 'rgb(13, 148, 136)', 'kiểu E: vạch màu nhấn trên đầu thẻ');
     assert.equal(m.sel, 'rgb(185, 231, 223)'); assert.equal(m.selText, 'rgb(3, 63, 57)');
     assert.equal(m.goLive, 'rgb(13, 148, 136)', 'Go Live dùng màu nhấn'); assert.equal(m.liveBtn, 'rgb(239, 75, 72)', 'nút Live dùng màu LIVE');
     assert.equal(m.libSel, 'rgb(185, 231, 223)', 'hàng bài đang chọn trong thư viện đổi theo màu chọn của skin (style JS dạng rgb)');
+    assert.equal(m.monSubH, 22, 'thanh Screen Monitor là thanh con mảnh, không phải header');
+    assert.ok(m.tabIco && m.tabW <= 30, 'nút Chat có icon và gọn (rộng ' + m.tabW + 'px)');
     assert.equal(m.footerR, '12px'); assert.equal(m.tab, 'rgb(224, 138, 0)', 'nút Kênh Band có màu riêng (hổ phách trong Mist)');
 
     // đang lưu Mist: mở Cài đặt, thử Candy → cửa sổ chính thành Candy; Huỷ → trở lại đúng Mist/E
@@ -123,6 +126,7 @@ test('skin áp vào giao diện thật: panel bo góc, header thấp, màu chọ
     // đổi sang kiểu A → header tô màu đậm; Studio → viền màu theo khu vực
     await app.ev(`globalSettings.uiHeader = 'a'; applySettings()`); await sleep(200);
     assert.equal(await app.ev(`getComputedStyle(document.querySelector('.panel > div:first-child')).backgroundColor`), 'rgb(15, 90, 84)');
+    assert.equal(await app.ev(`getComputedStyle(document.querySelector('.panel .h-8.shrink-0')).backgroundColor`), 'rgba(0, 0, 0, 0)', 'kiểu header A không được tô thanh con Screen Monitor');
     await app.ev(`globalSettings.uiSkin = 'studio'; applySettings()`); await sleep(200);
     const stu = await app.ev(`({ dark: document.documentElement.classList.contains('dark'), top2: getComputedStyle(document.querySelectorAll('.panel')[1]).borderTopColor })`);
     assert.equal(stu.dark, true); assert.equal(stu.top2, 'rgb(34, 211, 238)', 'Studio: Preview có viền cyan');

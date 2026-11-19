@@ -2,6 +2,13 @@
 
 Tất cả các thay đổi và cập nhật quan trọng của dự án được ghi lại tại đây.
 
+## [Chưa phát hành] - Skin: header app thấp hơn, thanh Screen Monitor không còn chồng header, nút Chat có icon
+
+- **Header thấp hơn**: header panel 26px → **24px**, nút/ô trên header 20px → **18px** (Candy 26px). Đo thật trong app: mọi header đúng 24px; nội dung app dày hơn bản demo web nên 26px vẫn nặng mắt khi tô màu.
+- **Lỗi trùng header (Screen Monitor)**: thanh "Screen Monitor" là thanh con nằm TRONG panel Media (không phải header thật) nhưng bị tô như header → với kiểu header có màu (A/B/C/D) thành hai thanh chồng nhau. Nay là thanh con mảnh 22px, không tô màu, chữ mờ, chỉ có đường kẻ dưới.
+- **Nút Chat**: thêm icon bong bóng chat phía trên chữ (như bản demo; icon nằm ngang, không xoay theo chữ dọc) và gọn lại (padding 14/6 → 10/5, khoảng cách 8 → 6px; rộng ~23px). Áp dụng mọi giao diện, kể cả Cổ điển.
+- Test `ui-skin.e2e.mjs` cập nhật (header 24px, thanh Screen Monitor 22px và không tô màu kể cả kiểu A, nút Chat có icon và rộng ≤ 30px).
+
 ## [Chưa phát hành] - Thêm tiếng Anh: chọn ngôn ngữ ở Cài đặt → Chung
 
 - **Tính năng**: **Cài đặt → Chung → Ngôn ngữ** (Tiếng Việt / English). Đổi thử ngay khi chọn; "Lưu thay đổi" mới giữ, "Huỷ"/X khôi phục đúng nguyên văn tiếng Việt. Lưu ở `settings.json` (`language`, mặc định `vi`, giá trị lạ → `vi`). Dịch toàn bộ hộp Cài đặt (mọi tab), hộp đăng nhập/khung Kênh Band (nút, mô tả, thông báo, tooltip), các hộp Kinh Thánh/Style/Phím tắt/Edit Song (nhãn, mẹo), thông báo và hộp xác nhận thường gặp, tên + mô tả các skin giao diện, và **menu hệ điều hành** (File/Edit/View/Channel/Help… dựng lại ngay khi đổi ngôn ngữ).

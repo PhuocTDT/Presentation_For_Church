@@ -13,7 +13,7 @@
    1) TOKEN MÀU / KÍCH THƯỚC THEO SKIN
    --------------------------------------------------------------------- */
 [data-ui-skin]{
-  --u-gap:4px;--u-phh:26px;--u-btnh:20px;
+  --u-gap:4px;--u-phh:24px;--u-btnh:18px;
   --u-hfont:'Inter',system-ui,sans-serif;--u-hsize:11.5px;--u-hweight:700;--u-hls:0;--u-hcase:none;
   --u-lblbg:transparent;--u-lblfg:var(--u-muted);--u-lblbg-sel:transparent;--u-lblfg-sel:var(--u-seltext);
   --u-hdrline:0;
@@ -78,7 +78,7 @@
   --u-selbg:#6d5dfc;--u-seltext:#fff;--u-selborder:#6d5dfc;
   --u-radius:10px;--u-rbtn:7px;--u-shadow:0 4px 12px rgba(80,72,229,.08);
   --u-band:#d946ef;--u-band-ink:#fff;
-  --u-phh:30px;
+  --u-phh:26px;
   --u-hfont:'Montserrat','Inter',sans-serif;--u-hsize:11px;--u-hweight:800;--u-hls:.04em;--u-hcase:uppercase;
   --u-pc:#6d5dfc;
   --u-hdrbg:color-mix(in srgb,var(--u-pc) 11%,#fff);--u-hdrtext:#1d1b4b;--u-hdrmute:#6468a3;
@@ -138,12 +138,12 @@ html[data-ui-skin] .panel [class*="border-slate-200"],html[data-ui-skin] .panel 
 html[data-ui-skin] .panel [class*="text-slate-4"],html[data-ui-skin] .panel [class*="text-slate-5"]{color:var(--u-muted)!important}
 
 /* header (6 header panel + header phụ của Screen Monitor) */
-html[data-ui-skin] .panel>div:first-child,html[data-ui-skin] .panel .h-8.shrink-0{
+html[data-ui-skin] .panel>div:first-child{
   background:var(--u-hdrbg)!important;color:var(--u-hdrtext)!important;
   height:var(--u-phh)!important;min-height:var(--u-phh)!important;padding:0 10px!important;
   border-radius:0!important;border-top:0!important;border-bottom:var(--u-hdrline)!important;
 }
-html[data-ui-skin] .panel>div:first-child h3,html[data-ui-skin] .panel .h-8.shrink-0>span{
+html[data-ui-skin] .panel>div:first-child h3{
   color:var(--u-hdrtext)!important;opacity:1!important;font-family:var(--u-hfont)!important;font-size:var(--u-hsize)!important;
   font-weight:var(--u-hweight)!important;letter-spacing:var(--u-hls)!important;text-transform:var(--u-hcase)!important;line-height:1;
 }
@@ -156,15 +156,18 @@ html[data-ui-skin] .panel .h-8.shrink-0 button{
   display:inline-flex!important;align-items:center;justify-content:center;gap:4px;
 }
 html[data-ui-skin] .panel>div:first-child button:not([id^="tab-"]):hover,html[data-ui-skin] .panel .h-8.shrink-0 button:hover{background:var(--u-hover)!important}
+/* Thanh con "Screen Monitor" nằm TRONG panel Media (không phải header thật): thanh mảnh, không tô màu, để không thành hai header chồng nhau */
+html[data-ui-skin] .panel .h-8.shrink-0{background:transparent!important;color:var(--u-muted)!important;height:22px!important;min-height:22px!important;padding:0 8px!important;border-bottom:1px solid var(--u-line)!important;border-radius:0!important}
+html[data-ui-skin] .panel .h-8.shrink-0>span{color:var(--u-muted)!important;font-family:var(--u-hfont)!important;font-size:calc(var(--u-hsize) - .5px)!important;font-weight:var(--u-hweight)!important;letter-spacing:var(--u-hls)!important;text-transform:var(--u-hcase)!important;line-height:1}
 html[data-ui-skin] .panel>div:first-child button .material-symbols-outlined,html[data-ui-skin] .panel .h-8.shrink-0 button .material-symbols-outlined{color:inherit!important;font-size:14px!important}
-html[data-ui-skin] .panel>div:first-child button.size-5,html[data-ui-skin] .lib-actions button{width:var(--u-btnh)!important;padding:0!important}
+html[data-ui-skin] .panel>div:first-child button.size-5,html[data-ui-skin] .lib-actions button{width:var(--u-btnh)!important;height:var(--u-btnh)!important;padding:0!important}
 html[data-ui-skin] .panel>div:first-child button.bg-primary{background:var(--u-primary-in-hdr-bg,var(--u-accent))!important;color:var(--u-primary-in-hdr-fg,var(--u-accent-ink))!important;border-color:var(--u-primary-in-hdr-bg,var(--u-accent))!important}
 html[data-ui-skin] .panel>div:first-child button.bg-red-600{background:var(--u-live)!important;color:var(--u-live-ink)!important;border-color:var(--u-live)!important}
 /* tab Songs/Bible + ô tìm kiếm trong header Library */
 html[data-ui-skin] .lib-tabs{border-bottom:0!important}
 html[data-ui-skin] .lib-tabs button{color:var(--u-hdrmute)!important;font-family:var(--u-hfont)!important;font-size:var(--u-hsize)!important;font-weight:var(--u-hweight)!important;letter-spacing:var(--u-hls)!important;text-transform:var(--u-hcase)!important;border-bottom:2px solid transparent!important;padding:0 8px!important;height:var(--u-phh)}
 html[data-ui-skin] .lib-tabs button.border-primary{color:var(--u-hdrtext)!important;border-bottom-color:var(--u-accent)!important}
-html[data-ui-skin] #library-search{background:var(--u-input)!important;color:var(--u-text)!important;border:1px solid var(--u-line2)!important;border-radius:var(--u-rbtn)!important;height:24px!important}
+html[data-ui-skin] #library-search{background:var(--u-input)!important;color:var(--u-text)!important;border:1px solid var(--u-line2)!important;border-radius:var(--u-rbtn)!important;height:20px!important;font-size:10px!important}
 html[data-ui-skin] #library-search::placeholder{color:var(--u-faint)}
 
 /* Schedule */
@@ -287,7 +290,7 @@ html[data-ui-skin="studio"] #live-slides-container>div>div:first-child.bg-indigo
 .uip-h .tab{font-family:var(--u-hfont);font-size:calc(var(--u-hsize) - 1px);font-weight:var(--u-hweight);letter-spacing:var(--u-hls);text-transform:var(--u-hcase);color:var(--u-hdrmute);white-space:nowrap}
 .uip-h .tab.on{color:var(--u-hdrtext);border-bottom:2px solid var(--u-accent)}
 .uip-h .tab+.tab{margin-right:auto}
-.uip-btn{height:16px;padding:0 6px;display:inline-flex;align-items:center;border-radius:var(--u-rbtn);border:1px solid var(--u-line2);background:var(--u-btn);color:var(--u-btntext,var(--u-text));font-size:8px;font-weight:600;white-space:nowrap}
+.uip-btn{height:15px;padding:0 6px;display:inline-flex;align-items:center;border-radius:var(--u-rbtn);border:1px solid var(--u-line2);background:var(--u-btn);color:var(--u-btntext,var(--u-text));font-size:8px;font-weight:600;white-space:nowrap}
 .uip-btn.pri{background:var(--u-primary-in-hdr-bg,var(--u-accent));color:var(--u-primary-in-hdr-fg,var(--u-accent-ink));border-color:var(--u-primary-in-hdr-bg,var(--u-accent))}
 .uip-btn.live{background:var(--u-live);color:var(--u-live-ink);border-color:var(--u-live)}
 .uip-b{padding:4px;display:flex;flex-direction:column;gap:3px;min-height:0}

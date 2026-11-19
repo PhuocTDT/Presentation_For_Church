@@ -923,12 +923,14 @@
         position: fixed; left: 0; top: 50%; transform: translateY(-50%);
         z-index: 40; background: #e8903f; color: #40260a;
         border: none; border-radius: 0 12px 12px 0;
-        padding: 14px 6px; font: 700 11px/1 "Segoe UI", system-ui, sans-serif;
+        padding: 10px 5px 11px; font: 700 11px/1 "Segoe UI", system-ui, sans-serif;
         writing-mode: vertical-rl; text-orientation: mixed; cursor: pointer;
         letter-spacing: .08em; box-shadow: 3px 3px 14px rgba(80,45,10,.30);
-        display: flex; align-items: center; gap: 8px;
+        display: flex; align-items: center; gap: 6px;
       }
       #bandPanelTab:hover { background: #d97f2c; }
+      /* icon bong bóng chat phía trên chữ "Chat" (icon nằm ngang, không xoay theo chữ dọc) */
+      #bandPanelTab .ico { writing-mode: horizontal-tb; font-size: 17px; line-height: 1; }
       #bandPanelTab .nb { display: none; background: #ffdf6b; color: #4a3600;
         border-radius: 8px; padding: 1px 5px; font-size: 10px; writing-mode: horizontal-tb; }
       #bandPanelTab.has-unread .nb { display: inline-block; }
@@ -1818,7 +1820,7 @@
     </div>
 
     <!-- Kênh Band sidebar (toggle: "Channel" menu / Ctrl+Shift+B / edge tab) -->
-    <button id="bandPanelTab" type="button" title="Kênh Band (Ctrl+Shift+B)">Chat<span class="nb" id="bandPanelTabCount">0</span></button>
+    <button id="bandPanelTab" type="button" title="Kênh Band (Ctrl+Shift+B)"><span class="material-symbols-outlined ico" aria-hidden="true">forum</span>Chat<span class="nb" id="bandPanelTabCount">0</span></button>
     <aside id="bandPanel" aria-label="Kênh Band">
       <div id="bpResize" title="Kéo để đổi độ rộng"></div>
       <div class="bp-head">
