@@ -15,7 +15,7 @@
 [data-ui-skin]{
   --u-gap:4px;--u-phh:24px;--u-btnh:18px;
   --u-hfont:'Inter',system-ui,sans-serif;--u-hsize:11.5px;--u-hweight:700;--u-hls:0;--u-hcase:none;
-  --u-lblbg:transparent;--u-lblfg:var(--u-muted);--u-lblbg-sel:transparent;--u-lblfg-sel:var(--u-seltext);
+  --u-lblbg:transparent;--u-lblfg:var(--u-muted);--u-lblbg-sel:var(--u-accent);--u-lblfg-sel:var(--u-accent-ink);
   --u-hdrline:0;
   color-scheme:light;
 }
@@ -165,6 +165,18 @@ html[data-ui-skin] .lib-tabs button{color:var(--u-hdrmute)!important;font-family
 html[data-ui-skin] .lib-tabs button.border-primary{color:var(--u-hdrtext)!important;border-bottom-color:var(--u-accent)!important}
 html[data-ui-skin] #library-search{background:var(--u-input)!important;color:var(--u-text)!important;border:1px solid var(--u-line2)!important;border-radius:var(--u-rbtn)!important;height:20px!important;font-size:10px!important}
 html[data-ui-skin] #library-search::placeholder{color:var(--u-faint)}
+/* header Library theo mẫu: ô tìm kiếm cao 22px (gần hết chiều cao header 24px), chữ 11px, kính lúp rõ; 2 nút icon 20px */
+html[data-ui-skin] #library-search{height:22px!important;font-size:11px!important;padding-left:26px!important;border-radius:var(--u-rbtn)!important}
+html[data-ui-skin] .lib-tabs+div>.material-symbols-outlined{font-size:15px!important;left:8px!important;color:var(--u-muted)!important}
+html[data-ui-skin] .lib-actions button{width:20px!important;height:20px!important;border-radius:var(--u-rbtn)!important}
+/* theo mẫu: header Library chỉ có nút "bài mới" (Import/Export ẩn khỏi header, vẫn có ở menu File → Nhập / Sao lưu) */
+.lib-newsong,.lib-newsong[hidden]{display:none!important}
+html[data-ui-skin] .lib-newsong:not([hidden]){display:flex!important;align-items:center;justify-content:center;background:var(--u-btn);color:var(--u-btntext,var(--u-text));border:1px solid var(--u-line2);cursor:pointer;padding:0}
+html[data-ui-skin] .lib-newsong:hover{background:var(--u-hover)}
+html[data-ui-skin] #header-import-btn,html[data-ui-skin] #header-export-btn{display:none!important}
+/* gạch chân tab đang chọn: header màu đặc (C) thì dùng màu chữ header để nhìn thấy được (gạch màu nhấn sẽ chìm vào nền) */
+html[data-ui-hdr="c"] .lib-tabs button.border-primary{border-bottom-color:var(--u-hdrtext)!important}
+html[data-ui-skin] .lib-actions .material-symbols-outlined{font-size:15px!important}
 
 /* Schedule */
 html[data-ui-skin] [data-schedule-item]{color:var(--u-text)!important;border:1px solid transparent;border-radius:var(--u-rbtn)!important}
@@ -180,6 +192,14 @@ html[data-ui-skin] :is(#preview-slides-container,#live-slides-container)>div>div
 html[data-ui-skin] :is(#preview-slides-container,#live-slides-container)>div:has(>div[style*="b3e4ff"]){background:var(--u-selbg)!important;border-color:var(--u-selborder)!important}
 html[data-ui-skin] :is(#preview-slides-container,#live-slides-container)>div>div[style*="b3e4ff"]{color:var(--u-seltext)!important}
 html[data-ui-skin] #live-slides-container.ring-2{box-shadow:none}
+/* chữ trong thẻ slide: KHÔNG đậm khi đang chọn (app gốc để font-bold làm câu dài bị rớt dòng) — giống mẫu */
+html[data-ui-skin] :is(#preview-slides-container,#live-slides-container)>div>div:last-child{font-weight:500!important}
+/* hàng đang chọn (thư viện, Schedule) cũng KHÔNG in đậm: chữ đậm rộng hơn nên tên dài bị rớt dòng khi chọn */
+html[data-ui-skin] :is(tbody tr[data-library-key]:is([style*="86cdff"],[style*="134, 205, 255"]),[data-schedule-item].bg-blue-500),html[data-ui-skin] :is(tbody tr[data-library-key]:is([style*="86cdff"],[style*="134, 205, 255"]),[data-schedule-item].bg-blue-500) :is(td,span,div){font-weight:500!important}
+/* nhãn "ON AIR": viên thuốc đỏ có chấm tròn như mẫu (trước là ô xám mờ 7px) */
+html[data-ui-skin] #live-slides-container>div>div:first-child{display:flex!important;align-items:center;gap:8px}
+html[data-ui-skin] #live-slides-container>div>div:first-child>[class*="text-[7px]"]{margin-left:auto;display:inline-flex;align-items:center;gap:4px;font-size:8px!important;font-weight:800;letter-spacing:.08em;line-height:1.3;padding:1px 6px!important;border-radius:99px!important;background:var(--u-live)!important;color:var(--u-live-ink)!important}
+html[data-ui-skin] #live-slides-container>div>div:first-child>[class*="text-[7px]"]::before{content:"";width:4px;height:4px;border-radius:50%;background:currentColor}
 
 /* Library (danh sách bài) */
 /* danh sách thư viện kiểu mẫu (Sage): hàng BO GÓC, thụt lề, không đường kẻ; hàng đang chọn có thanh trái cong theo góc bo */
@@ -241,7 +261,7 @@ html[data-ui-skin] #bandPanel .bp-x:hover{background:var(--u-hover)}
 html[data-ui-skin] #bpOnlineLine{display:block;flex:none;text-align:center;padding:8px 12px 0;font-size:11px;color:var(--u-faint)}
 
 /* Kênh Band: nút thu gọn nổi bật bằng MÀU RIÊNG của theme (không trùng màu nhấn); khi mở thì theo tone theme */
-html[data-ui-skin] #bandPanelTab:not(.has-alert){background:var(--u-band)!important;color:var(--u-band-ink)!important}
+html[data-ui-skin] #bandPanelTab:not(.has-alert){background:var(--u-band)!important;color:var(--u-band-ink)!important;--tab-wave:var(--u-band)}
 html[data-ui-skin] #bandPanelTab:not(.has-alert):hover{filter:brightness(1.07)}
 html[data-ui-skin] #bandPanel{background:var(--u-panel)!important;color:var(--u-text)!important;border-right:1px solid var(--u-line)!important}
 html[data-ui-skin] #bandPanel .bp-head{background:var(--u-hdrbg)!important;color:var(--u-hdrtext)!important;border-radius:0!important;border-bottom:var(--u-hdrline)!important;padding-top:3px;padding-bottom:3px}
@@ -375,6 +395,10 @@ html[data-ui-skin]:not([data-ui-skin="midnight"]):not([data-ui-skin="studio"]) #
   --se-ink:var(--u-text);--se-ink-dim:var(--u-muted);--se-ink-faint:var(--u-faint);
   --se-line:var(--u-line2);--se-line-soft:var(--u-line);--se-bg:var(--u-bg);--se-card:var(--u-panel)}
 html[data-ui-skin] #song-editor-modal .win-modal-container{border-radius:calc(var(--u-radius) + 2px)}
+/* thẻ slide đang chọn trong tab Slides: NỀN = màu chủ đạo của theme (không còn nền trắng viền cam) */
+html[data-ui-skin] #song-editor-modal .se-thumb.is-selected{background:var(--u-accent);border-color:var(--u-accent);box-shadow:0 0 0 1px var(--u-accent),0 0 0 4px color-mix(in srgb,var(--u-accent) 30%,transparent)}
+html[data-ui-skin] #song-editor-modal .se-thumb.is-selected .se-thumb-lbl{color:var(--u-accent-ink)!important}
+html[data-ui-skin] #song-editor-modal .se-thumb.is-selected .se-thumb-num{background:color-mix(in srgb,var(--u-accent-ink) 22%,transparent);color:var(--u-accent-ink)}
 
 /* Hộp .modal-overlay dùng class Tailwind (Kinh Thánh, Quản lý bản Kinh Thánh, Mẫu style, Phím tắt …) — chỉ phần ruột, không đụng Cài đặt/Edit Song */
 html[data-ui-skin] .modal-overlay:not(#settings-modal):not(#song-editor-modal):not(#stg-qr-modal) :is(.win-modal-container,.bg-white,.bg-slate-50,.bg-gray-50,.bg-slate-100,.bg-gray-100,.bg-win-bg){background-color:var(--u-panel)!important;color:var(--u-text)!important}

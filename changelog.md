@@ -5,7 +5,12 @@ Tất cả các thay đổi và cập nhật quan trọng của dự án đượ
 ## [Chưa phát hành] - Skin: mọi pop-up/hộp thoại theo theme đang chọn, nút Chat thấp hơn
 
 - **Pop-up theo skin**: trước đây chỉ cửa sổ chính đổi theo theme, còn hộp Cài đặt, Edit Song, Kinh Thánh, Style Templates, Phím tắt, hộp xác nhận/nhập tên, menu chuột phải, cổng đăng nhập Kênh Band vẫn giữ giao diện cũ (tím/trắng). Nay tất cả lấy màu nền, viền, chữ, màu nhấn, độ bo góc từ skin (`src/css/ui-themes.css` mục 9): Cài đặt/QR map `--stg-*` → `--u-*` (cả skin tối); Edit Song đổi màu nhấn theo skin, và nền/chữ ở skin sáng (skin tối giữ nền sáng vì hộp này luôn sáng); các hộp Tailwind được ghi đè theo class; `inPageDialog` và hộp báo cáo chẩn đoán gắn class `ws-dialog-ov`/`ws-dialog`/`ws-dialog-msg`. Cổ điển KHÔNG đổi (mọi luật nằm dưới `html[data-ui-skin]`). Test: `test/ui-skin.e2e.mjs` (kiểm tra Cài đặt/Edit Song/Kinh Thánh/hộp thoại/menu chuột phải dưới Studio); `docs/ui-guidelines.md` cập nhật.
-- **Nút Chat thấp hơn nữa**: `top: 40%` → `46%` (vẫn nằm trên header thư viện, không che chữ "Songs").
+- **Nút Chat neo theo cạnh dưới**: trước đây neo giữa (`top`) nên khi hiện badge số tin chưa đọc nút dài ra cả hai phía và đè lên header "Songs". Nay neo cạnh dưới (`bottom: calc(50% + 16px)`) nên chỉ mọc lên trên. Có tin chưa đọc: nút **đập như nhịp tim** (phóng to–nhỏ 2 nhịp) + **2 vòng sóng lan toả** (màu theo theme; tin khẩn thì đỏ và nhanh hơn); tôn trọng `prefers-reduced-motion`.
+- **Header Library theo mẫu**: ô tìm kiếm cao 22px, chữ 11px, kính lúp rõ hơn; **chỉ còn một nút "bài mới"** (`music_note_add`, chỉ ở tab Songs) thay cho hai nút Import/Export (vẫn dùng được ở menu File → Nhập bài hát / Kinh Thánh, Sao lưu thư viện); tab đang chọn có gạch chân màu chữ header khi header màu đặc (kiểu C — gạch màu nhấn trước đó chìm vào nền). Cổ điển giữ nguyên hai nút cũ.
+- **Nhãn slide đang chọn theo màu chủ đạo**: ô nhãn ("SLIDE 1", "ĐIỆP KHÚC…") của thẻ slide đang chọn ở Preview/Live có nền màu chủ đạo của theme + chữ tương phản (các skin Candy/Studio/Cổ điển giữ màu nhãn riêng).
+- **Không in đậm mục đang chọn**: thẻ slide (Preview/Live), hàng thư viện và hàng Schedule đang chọn dùng chữ thường (500) — chữ đậm rộng hơn nên câu dài bị rớt dòng khi chọn.
+- **"ON AIR" theo mẫu**: viên thuốc đỏ có chấm tròn (trước là ô xám mờ 7px).
+- **Edit Song → tab Slides**: thẻ slide đang chọn có NỀN màu chủ đạo của theme (trước là nền trắng viền cam); bỏ nhãn "VIDEO" đè lên hình xem trước (chỉ còn khi không dựng được khung hình xem trước).
 
 ## [Chưa phát hành] - Skin: thanh menu tùy biến, khung Kênh Band theo mẫu, nút Chat nhỏ hơn + cao hơn
 

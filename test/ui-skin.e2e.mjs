@@ -166,6 +166,21 @@ test('skin áp vào giao diện thật: panel bo góc, header thấp, màu chọ
     await app.ev(`globalSettings.uiSkin = 'studio'; applySettings()`); await sleep(200);
     const stu = await app.ev(`({ dark: document.documentElement.classList.contains('dark'), top2: getComputedStyle(document.querySelectorAll('.panel')[1]).borderTopColor })`);
     assert.equal(stu.dark, true); assert.equal(stu.top2, 'rgb(34, 211, 238)', 'Studio: Preview có viền cyan');
+    // nút Chat khi có tin chưa đọc: dài ra thì mọc lên trên (không đè header "Songs"), có nhịp tim + 2 vòng sóng
+    const unread = await app.ev(`(() => { const t = document.getElementById('bandPanelTab'), top0 = t.getBoundingClientRect().bottom; t.classList.add('has-unread'); document.getElementById('bandPanelTabCount').textContent = '12';
+      const r = t.getBoundingClientRect(), hdr = document.querySelector('#bottom-row > section:nth-of-type(1)').getBoundingClientRect();
+      const out = { bottomSame: Math.abs(r.bottom - top0) < 1.5, clears: r.bottom <= hdr.top, anim: getComputedStyle(t).animationName, wave: getComputedStyle(t, '::before').animationName + '|' + getComputedStyle(t, '::after').animationName };
+      t.classList.remove('has-unread'); return out; })()`);
+    assert.deepEqual(unread, { bottomSame: true, clears: true, anim: 'bpTabBeat', wave: 'bpTabWave|bpTabWave' }, 'nút Chat có tin mới: neo cạnh dưới, không đè Songs, có heartbeat + sóng lan');
+    // header Library theo mẫu: chỉ 1 nút "bài mới" (Import/Export ẩn, vẫn có ở menu File); ô tìm kiếm cao 22px
+    const lh = await app.ev(`(() => { const d = (id) => getComputedStyle(document.getElementById(id)).display; return { nb: d('header-newsong-btn'), imp: d('header-import-btn'), exp: d('header-export-btn'), search: getComputedStyle(document.getElementById('library-search')).height }; })()`);
+    assert.deepEqual(lh, { nb: 'flex', imp: 'none', exp: 'none', search: '22px' }, 'header Library: 1 nút bài mới, tìm kiếm 22px');
+    // mục đang chọn KHÔNG in đậm (chữ đậm rộng hơn → câu dài rớt dòng); nhãn ON AIR là viên thuốc đỏ như mẫu
+    const w = await app.ev(`(() => { const r = [...document.querySelectorAll('tbody tr[data-library-key]')].find((x) => x.style.backgroundColor), s = document.querySelector('[data-schedule-item].bg-blue-500'), sl = document.querySelector('#live-slides-container > div > div:last-child, #preview-slides-container > div > div:last-child');
+      const chip = document.querySelector('#live-slides-container [class*="text-[7px]"]');
+      return { lib: r && getComputedStyle(r.querySelector('td')).fontWeight, sch: s && getComputedStyle(s.querySelector('span,div')).fontWeight, slide: sl && getComputedStyle(sl).fontWeight, chipRadius: chip && getComputedStyle(chip).borderTopLeftRadius, chipBg: chip && getComputedStyle(chip).backgroundColor }; })()`);
+    assert.deepEqual([w.lib, w.sch, w.slide].filter((x) => x != null), ['500', '500', '500'].slice(0, [w.lib, w.sch, w.slide].filter((x) => x != null).length), 'mục đang chọn không in đậm ' + JSON.stringify(w)); assert.ok(w.sch === '500' && w.slide === '500', 'Schedule + slide đang chọn: ' + JSON.stringify(w));
+    if (w.chipRadius) { assert.equal(w.chipRadius, '99px', 'ON AIR là viên thuốc'); assert.notEqual(w.chipBg, 'rgba(255, 255, 255, 0.2)', 'ON AIR không còn ô xám mờ'); }
     // pop-up / hộp thoại theo skin (Studio, tối): Cài đặt, Edit Song (màu nhấn), hộp Tailwind (Kinh Thánh), hộp thoại trong trang, menu chuột phải
     const pop = await app.ev(`(() => {
       const col = (el, v) => { const p = document.createElement('i'); p.style.color = 'var(' + v + ')'; el.appendChild(p); const c = getComputedStyle(p).color; p.remove(); return c; };
@@ -187,6 +202,9 @@ test('skin áp vào giao diện thật: panel bo góc, header thấp, màu chọ
     assert.equal(pop.dlgBg, pop.panelBg, 'hộp thoại xác nhận theo màu panel của skin'); assert.notEqual(pop.dlgBtn, 'rgb(255, 255, 255)', 'nút Hủy của hộp thoại không còn trắng');
     assert.equal(pop.dlgRadius, '12px', 'hộp thoại bo góc theo skin'); assert.notEqual(pop.ctxBg, 'rgb(255, 255, 255)', 'menu chuột phải theo skin');
     // quay lại Cổ điển: sạch thuộc tính, giao diện gốc trở lại
+    await app.ev(`globalSettings.uiSkin = 'classic'; applySettings()`); await sleep(200);
+    assert.deepEqual(await app.ev(`['header-newsong-btn', 'header-import-btn'].map((id) => getComputedStyle(document.getElementById(id)).display)`), ['none', 'flex'], 'Cổ điển: header Library giữ Import/Export, không có nút bài mới');
+    await app.ev(`globalSettings.uiSkin = 'studio'; applySettings()`); await sleep(200);
     await app.ev(`globalSettings.uiSkin = 'classic'; applySettings()`); await sleep(200);
     const back = await app.ev(`({ skin: document.documentElement.getAttribute('data-ui-skin'), hdr: document.documentElement.getAttribute('data-ui-hdr'), bg: getComputedStyle(document.querySelector('.panel > div:first-child')).backgroundColor })`);
     assert.deepEqual([back.skin, back.hdr, back.bg], [null, null, 'rgb(30, 41, 59)']);

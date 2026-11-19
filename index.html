@@ -920,7 +920,7 @@
          every app dialog / popover z-50..9999) so band-comm never bleeds over
          a modal such as Style Templates. */
       #bandPanelTab {
-        position: fixed; left: 0; top: 46%; transform: translateY(-50%);   /* thấp hơn 1 chút so với trước (40%) nhưng vẫn trên điểm giữa: không che chữ "Songs" của header thư viện */
+        position: fixed; left: 0; bottom: calc(50% + 16px); --tab-wave: #e8903f; transform-origin: left center;   /* NEO THEO CẠNH DƯỚI (cách đường giữa 16px): khi hiện badge số tin chưa đọc nút dài ra thì mọc lên TRÊN, không đè header thư viện ("Songs") */
         z-index: 40; background: #e8903f; color: #40260a;
         border: none; border-radius: 0 12px 12px 0;
         padding: 8px 6px 9px; font: 700 15px/1 "Segoe UI", system-ui, sans-serif;
@@ -936,12 +936,31 @@
       #bandPanelTab.has-unread .nb { display: inline-block; }
       /* Cảnh báo band bấm nút (khẩn, cần xử lý ngay) trong lúc khung đang đóng
          -> đỏ + vòng sóng lan toả, nổi bật rõ hơn hẳn badge vàng thường. */
-      #bandPanelTab.has-alert { background: #dc2626; color: #fff; animation: bpTabPulse 1.4s ease-in-out infinite; }
+      /* Có tin mới (chưa đọc): nút đập như nhịp tim (phóng to–nhỏ 2 nhịp) + 2 vòng sóng lan toả ra ngoài. Khẩn (band bấm nút) = đỏ + nhanh hơn. */
+      #bandPanelTab.has-unread { animation: bpTabBeat 1.8s ease-in-out infinite; }
+      #bandPanelTab.has-unread::before, #bandPanelTab.has-unread::after {
+        content: ""; position: absolute; inset: 0; border-radius: inherit; border: 2px solid var(--tab-wave);
+        pointer-events: none; opacity: 0; animation: bpTabWave 1.8s ease-out infinite;
+      }
+      #bandPanelTab.has-unread::after { animation-delay: .6s; }
+      #bandPanelTab.has-alert { background: #dc2626; color: #fff; --tab-wave: #dc2626; animation-duration: 1.1s; }
+      #bandPanelTab.has-alert::before, #bandPanelTab.has-alert::after { animation-duration: 1.1s; }
+      #bandPanelTab.has-alert::after { animation-delay: .37s; }
       #bandPanelTab.has-alert:hover { background: #b91c1c; }
       #bandPanelTab.has-alert .nb { background: #fff; color: #b91c1c; }
-      @keyframes bpTabPulse {
-        0%, 100% { box-shadow: 3px 3px 14px rgba(80,45,10,.30), 0 0 0 0 rgba(220,38,38,.55); }
-        50% { box-shadow: 3px 3px 14px rgba(80,45,10,.30), 0 0 0 9px rgba(220,38,38,0); }
+      @keyframes bpTabBeat {
+        0%, 100% { transform: scale(1); }
+        12% { transform: scale(1.13); }
+        24% { transform: scale(1); }
+        36% { transform: scale(1.09); }
+        50% { transform: scale(1); }
+      }
+      @keyframes bpTabWave {
+        0% { transform: scale(1); opacity: .75; }
+        100% { transform: scale(1.9, 1.35); opacity: 0; }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        #bandPanelTab.has-unread, #bandPanelTab.has-unread::before, #bandPanelTab.has-unread::after { animation: none !important; }
       }
       body.bp-open #bandPanelTab { display: none !important; }
 
@@ -2099,6 +2118,11 @@
                             onkeydown="if((event.ctrlKey || event.metaKey) && event.key === 'a') { this.select(); event.preventDefault(); }" />
                     </div>
                     <div class="lib-actions flex items-center gap-1 shrink-0">
+                        <!-- Chỉ hiện khi dùng skin (theo mẫu: header Library có 1 nút "bài mới"); Import/Export vẫn có ở menu File -->
+                        <button id="header-newsong-btn" class="lib-newsong" type="button" title="New song — tạo bài hát mới"
+                            onclick="currentEditingSong = null; openSongEditor('Create New Song')">
+                            <span class="material-symbols-outlined">music_note_add</span>
+                        </button>
                         <button id="header-import-btn" onclick="handleMainImport()" title="Import dữ liệu"
                             class="flex items-center justify-center rounded bg-white/10 hover:bg-white/25 transition-colors">
                             <span class="material-symbols-outlined text-white">upload_file</span>
@@ -6420,6 +6444,8 @@
             if (exportBtn) {
                 exportBtn.classList.toggle('hidden', !isSongs);
             }
+            const newSongHdrBtn = document.getElementById('header-newsong-btn');   // nút "bài mới" của skin: chỉ ở tab Songs
+            if (newSongHdrBtn) newSongHdrBtn.hidden = !isSongs;
             if (primaryActionBtn) {
                 primaryActionBtn.textContent = 'ADD TO SCHEDULE';
             }
@@ -7892,8 +7918,9 @@
                     const vid = document.createElement('video'); vid.className = 'se-thumb-video'; vid.muted = true; vid.playsInline = true; vid.preload = 'metadata';
                     vid.addEventListener('loadedmetadata', () => { try { vid.currentTime = 0.1; } catch (e) {} }, { once: true });
                     vid.src = bg.url; stage.appendChild(vid);
+                } else {   // không có khung hình xem trước (quá nhiều slide) mới cần nhãn VIDEO để thẻ không trông như slide trống
+                    const v = document.createElement('span'); v.className = 'se-thumb-vid'; v.textContent = 'VIDEO'; stage.appendChild(v);
                 }
-                const v = document.createElement('span'); v.className = 'se-thumb-vid'; v.textContent = 'VIDEO'; stage.appendChild(v);
             }
             const canvas = document.createElement('div'); canvas.className = 'se-thumb-canvas'; stage.appendChild(canvas);
             const empty = document.createElement('span'); empty.className = 'se-thumb-empty'; empty.textContent = 'Slide trống'; stage.appendChild(empty);
