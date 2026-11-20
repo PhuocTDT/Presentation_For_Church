@@ -1278,6 +1278,26 @@ function initializeData() {
   }
 }
 
+// Screen Live đè lên chính màn hình của cửa sổ điều khiển (1 màn hình, chưa cắm HDMI/máy chiếu) thì dễ chìm vào
+// giao diện tối → live.html vẽ viền trắng dày. Khi Live đã nằm trên màn hình RIÊNG (đã cắm dây, chế độ mở rộng)
+// thì tắt viền để không lọt lên màn chiếu. (Chế độ nhân bản màn hình HĐH chỉ báo 1 màn hình nên vẫn có viền.)
+let liveFrameHintTimer = null;
+function scheduleLiveFrameHint(ms = 300) {
+  clearTimeout(liveFrameHintTimer);
+  liveFrameHintTimer = setTimeout(updateLiveFrameHint, ms);
+}
+function updateLiveFrameHint() {
+  if (!liveWindow || liveWindow.isDestroyed() || liveWindow.webContents.isDestroyed()) return;
+  let overlap = false;
+  try {
+    if (screen.getAllDisplays().length <= 1) overlap = true;
+    else if (mainWindow && !mainWindow.isDestroyed()) {
+      overlap = screen.getDisplayMatching(liveWindow.getBounds()).id === screen.getDisplayMatching(mainWindow.getBounds()).id;
+    }
+  } catch (e) { overlap = false; }
+  liveWindow.webContents.send('live-frame-hint', overlap);
+}
+
 function createLiveWindow(initialBounds = null) {
   if (liveWindow) {
     if (initialBounds) {
@@ -1353,6 +1373,9 @@ function createLiveWindow(initialBounds = null) {
 
   liveWindow.on('move', updateRequestedBounds);
   liveWindow.on('resize', updateRequestedBounds);
+  liveWindow.on('move', () => scheduleLiveFrameHint(400));
+  liveWindow.on('resize', () => scheduleLiveFrameHint(400));
+  liveWindow.webContents.on('did-finish-load', () => scheduleLiveFrameHint(150));
 
   liveWindow.once('ready-to-show', () => {
     if (!liveWindow || liveWindow.isDestroyed()) return;
@@ -1360,6 +1383,7 @@ function createLiveWindow(initialBounds = null) {
     if (screen.getAllDisplays().length === 1) {
       persistLiveWindowBounds(liveWindow.getBounds());
     }
+    scheduleLiveFrameHint(500);
     if (mainWindow && !mainWindow.isDestroyed()) {
       mainWindow.webContents.send('live-window-opened');
     }
@@ -1695,6 +1719,7 @@ function createWindow() {
   // Không tin webContents.isFocused() (chính nó có thể báo sai) — ensurePageFocus hỏi thẳng trang.
   win.on('focus', () => { setTimeout(() => ensurePageFocus('window-focus'), 0); });
   win.on('blur', () => { mainWindowBlurAt = Date.now(); });
+  win.on('move', () => scheduleLiveFrameHint(600));
   win.setTitle(fullBaseTitle);
   win.on('page-title-updated', (e, title) => {
     e.preventDefault();
@@ -1955,9 +1980,9 @@ app.whenReady().then(() => {
   if (bandOperatorAuthStore.isLoggedIn()) {
     startBandComm();
   }
-  screen.on('display-added', () => scheduleLiveWindowSync('display-added', true, 250));
-  screen.on('display-removed', () => scheduleLiveWindowSync('display-removed', true, 250));
-  screen.on('display-metrics-changed', () => scheduleLiveWindowSync('display-metrics-changed', true, 250));
+  screen.on('display-added', () => { scheduleLiveWindowSync('display-added', true, 250); scheduleLiveFrameHint(900); });
+  screen.on('display-removed', () => { scheduleLiveWindowSync('display-removed', true, 250); scheduleLiveFrameHint(900); });
+  screen.on('display-metrics-changed', () => { scheduleLiveWindowSync('display-metrics-changed', true, 250); scheduleLiveFrameHint(900); });
 
   // Register app-media:// protocol to serve local media files
   protocol.handle('app-media', (request) => {
@@ -2996,6 +3021,7 @@ app.whenReady().then(() => {
     if (d.action === 'load') {
       if (!YouTubeUtil.isValidId(d.id)) return false;
       msg.id = d.id;
+      msg.start = Math.max(0, Math.min(86400, Math.floor(Number(d.start) || 0)));   // giây bắt đầu (đã chọn ở Screen Monitor)
     }
     if (d.action === 'seek') { msg.sec = Math.max(0, Math.min(86400, Number(d.sec) || 0)); }
     if (d.action === 'volume') { msg.vol = Math.max(0, Math.min(100, Math.round(Number(d.vol) || 0))); }

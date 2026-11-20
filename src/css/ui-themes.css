@@ -316,13 +316,15 @@ html[data-ui-skin] #bandPanel .bp-msg.sys{font-size:11px!important;padding:2px 6
 html[data-ui-skin] #bandPanel .bp-replies button{height:24px;padding:0 10px!important;font-size:11.5px!important;font-weight:500;line-height:1}
 html[data-ui-skin] #bandPanel .bp-row input{height:30px;padding:0 10px!important;font-size:12.5px}
 html[data-ui-skin] #bandPanel .bp-row .send{height:30px;padding:0 16px!important;font-size:12px}
-/* ===== YouTube trên Screen Live: thanh điều khiển theo skin (nút phát = màu chủ đạo; logo giữ đỏ thương hiệu) ===== */
-html[data-ui-skin] #yt-bar{background:var(--u-hover)!important;border-bottom:1px solid var(--u-line2)!important;color:var(--u-text)!important}
-html[data-ui-skin] #yt-bar button{background:color-mix(in srgb,var(--u-text) 9%,transparent)!important;color:var(--u-text)!important;border-radius:calc(var(--u-radius) - 4px)!important}
-html[data-ui-skin] #yt-bar button:hover{background:color-mix(in srgb,var(--u-text) 17%,transparent)!important}
-html[data-ui-skin] #yt-bar #yt-toggle{background:var(--u-accent)!important;color:var(--u-accent-ink)!important}
-html[data-ui-skin] #yt-bar #yt-seek{accent-color:var(--u-accent)}
-html[data-ui-skin] #yt-bar .yt-status.err{color:var(--u-live,#dc2626)}
+/* ===== YouTube: thanh điều khiển (Live) + xem trước (Screen Monitor) theo skin; nút chính = màu chủ đạo, logo giữ đỏ thương hiệu ===== */
+html[data-ui-skin] #yt-bar{background:var(--u-hover)!important;border-bottom:1px solid var(--u-line2)!important}
+html[data-ui-skin] .yt-ctl{color:var(--u-text)!important}
+html[data-ui-skin] .yt-ctl button{background:color-mix(in srgb,var(--u-text) 9%,transparent)!important;color:var(--u-text)!important;border-radius:calc(var(--u-radius) - 4px)!important}
+html[data-ui-skin] .yt-ctl button:hover{background:color-mix(in srgb,var(--u-text) 17%,transparent)!important}
+html[data-ui-skin] .yt-ctl button.yt-main,html[data-ui-skin] .yt-ctl button.ytp-go{background:var(--u-accent)!important;color:var(--u-accent-ink)!important}
+html[data-ui-skin] .yt-ctl button.yt-main:hover,html[data-ui-skin] .yt-ctl button.ytp-go:hover{filter:brightness(1.08)}
+html[data-ui-skin] .yt-ctl input[type=range]{accent-color:var(--u-accent)}
+html[data-ui-skin] .yt-ctl .yt-status.err{color:var(--u-live,#dc2626)}
 /* nội dung kênh chat theo skin: bong bóng của member (JS gán nền pastel inline → chữ sáng trên nền sáng ở skin tối), tên người gửi,
    thẻ setlist, hộp lỗi, danh sách ảnh — tất cả dùng token skin để luôn đọc được ở cả skin sáng lẫn tối */
 html[data-ui-skin] #bandPanel .bp-fr .who{color:var(--u-muted)!important}

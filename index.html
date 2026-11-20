@@ -4,7 +4,7 @@
 
 <head>
     <meta charset="utf-8" />
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self' file: data:; img-src 'self' data: blob: file: app-media:; media-src 'self' blob: file: app-media:; connect-src 'self' app-media:; object-src 'none'; base-uri 'none'; form-action 'none'; frame-src 'none'" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self' file: data:; img-src 'self' data: blob: file: app-media:; media-src 'self' blob: file: app-media:; connect-src 'self' app-media:; object-src 'none'; base-uri 'none'; form-action 'none'; frame-src https://www.youtube-nocookie.com" />
     <meta content="width=device-width, initial-scale=1.0" name="viewport" />
     <title>Presentation For Church</title>
     <link rel="stylesheet" href="src/css/google-fonts.css" />
@@ -937,26 +937,56 @@
       /* Cảnh báo band bấm nút (khẩn, cần xử lý ngay) trong lúc khung đang đóng
          -> đỏ + vòng sóng lan toả, nổi bật rõ hơn hẳn badge vàng thường. */
 
-      /* ===== YouTube trên Screen Live: thanh điều khiển trong khung Live (chỉ hiện khi đang chiếu video) ===== */
-      #yt-bar { display: flex; align-items: center; gap: 4px; padding: 5px 8px; flex-shrink: 0; background: #fef2f2; border-bottom: 1px solid #fecaca; color: #1e293b; }
+      /* ===== YouTube: thanh điều khiển ở khung Live + khung xem trước ở Screen Monitor ===== */
+      .yt-ctl { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; color: #1e293b; }
+      .dark .yt-ctl { color: #e2e8f0; }
+      #yt-bar { padding: 5px 8px; flex-shrink: 0; background: #fef2f2; border-bottom: 1px solid #fecaca; }
       #yt-bar.hidden { display: none; }
-      .dark #yt-bar { background: #1c1214; border-bottom-color: #4c1d1d; color: #e2e8f0; }
-      #yt-bar .yt-ic { font-size: 18px; color: #dc2626; flex-shrink: 0; }
-      #yt-bar .yt-meta { min-width: 0; flex: 1 1 auto; line-height: 1.25; }
-      #yt-bar .yt-title { font-size: 11px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-      #yt-bar .yt-status { font-size: 10px; opacity: .7; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-      #yt-bar .yt-status.err { color: #dc2626; opacity: 1; font-weight: 600; }
-      #yt-bar button { width: 24px; height: 24px; border-radius: 6px; border: 0; background: rgba(0,0,0,.07); color: inherit; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; padding: 0; }
-      .dark #yt-bar button { background: rgba(255,255,255,.1); }
-      #yt-bar button:hover { background: rgba(0,0,0,.14); }
-      .dark #yt-bar button:hover { background: rgba(255,255,255,.2); }
-      #yt-bar button .material-symbols-outlined { font-size: 17px; }
-      #yt-bar #yt-toggle { background: #dc2626; color: #fff; }
-      #yt-bar #yt-toggle:hover { background: #b91c1c; }
-      #yt-bar #yt-seek { width: 70px; height: 4px; flex-shrink: 1; min-width: 36px; accent-color: #dc2626; }
-      #yt-bar .yt-time { font-size: 10px; font-variant-numeric: tabular-nums; opacity: .75; min-width: 62px; text-align: right; }
+      .dark #yt-bar { background: #1c1214; border-bottom-color: #4c1d1d; }
+      .yt-ctl .yt-ic { font-size: 18px; color: #dc2626; flex-shrink: 0; }
+      .yt-ctl .yt-meta { min-width: 0; flex: 1 1 80px; line-height: 1.25; }
+      .yt-ctl .yt-title { font-size: 11px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      .yt-ctl .yt-status { font-size: 10px; opacity: .7; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+      .yt-ctl .yt-status.err { color: #dc2626; opacity: 1; font-weight: 600; }
+      .yt-ctl button { width: 24px; height: 24px; border-radius: 6px; border: 0; background: rgba(0,0,0,.07); color: inherit; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; padding: 0; }
+      .dark .yt-ctl button { background: rgba(255,255,255,.1); }
+      .yt-ctl button:hover { background: rgba(0,0,0,.14); }
+      .dark .yt-ctl button:hover { background: rgba(255,255,255,.2); }
+      .yt-ctl button .material-symbols-outlined { font-size: 17px; }
+      .yt-ctl .yt-main { background: #dc2626; color: #fff; }
+      .yt-ctl .yt-main:hover { background: #b91c1c; }
+      /* thanh thời gian nằm DÒNG RIÊNG, rộng hết khung để kéo/thả chính xác */
+      .yt-seekrow { flex: 1 0 100%; display: flex; align-items: center; gap: 8px; }
+      .yt-ctl input[type=range] { flex: 1 1 auto; min-width: 0; height: 20px; margin: 0; accent-color: #dc2626; cursor: pointer; }
+      .yt-ctl .yt-time { font-size: 10px; font-variant-numeric: tabular-nums; opacity: .8; white-space: nowrap; }
       .yt-thumb { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, #7f1d1d, #dc2626); color: #fff; }
       .yt-thumb .material-symbols-outlined { font-size: 22px; }
+      /* --- Screen Monitor ở chế độ YouTube: khung video thu theo chiều cao còn lại, thanh điều khiển nằm dưới --- */
+      #ytp-stage { position: absolute; inset: 0; z-index: 5; background: #0b0b0f; color: #fff; }
+      #ytp-stage.hidden, #ytp-stage .hidden { display: none !important; }
+      #ytp-poster { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; padding: 10px 14px; text-align: center; }
+      #ytp-poster .ytp-pic { font-size: 30px; color: #ef4444; }
+      #ytp-ptitle { font-size: 12px; font-weight: 600; max-width: 100%; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+      #ytp-play { height: 28px; padding: 0 16px; border-radius: 6px; border: 0; background: #fff; color: #111; font-weight: 700; font-size: 12px; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; }
+      #ytp-play:hover { background: #e5e7eb; }
+      #ytp-hint { font-size: 10px; line-height: 1.35; opacity: .72; max-width: 92%; }
+      #ytp-livenote { font-size: 10px; font-weight: 700; color: #f87171; }
+      #ytp-frame-wrap { position: absolute; inset: 0; }
+      #ytp-frame-wrap iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+      #ytp-bar { display: none; flex-direction: column; align-items: stretch; flex-wrap: nowrap; gap: 5px; }
+      #screen-monitor-panel.yt-mode #ytp-bar { display: flex; }
+      #screen-monitor-panel.yt-mode #media-monitor-status { display: none; }
+      #screen-monitor-panel.yt-mode #media-monitor-output-box { width: auto; flex: 1 1 0; min-height: 0; max-width: 100%; align-self: center; aspect-ratio: 16 / 9; }
+      #ytp-ctrls { display: flex; flex-direction: column; gap: 4px; }
+      #ytp-ctrls.hidden { display: none; }
+      #ytp-ctrls .yt-seekrow { flex: 0 0 auto; }   /* cột flex: flex-basis 100% sẽ phình theo CHIỀU CAO → đè nút GO LIVE */
+      #ytp-ctrls .yt-row { flex-wrap: nowrap; }
+      #ytp-poster.is-live #ytp-hint { display: none; }
+      .yt-row { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
+      .yt-row .yt-status { flex: 1 1 60px; }
+      .yt-ctl button.ytp-go { width: 100%; height: 28px; gap: 5px; background: #dc2626; color: #fff; font-size: 11px; font-weight: 700; letter-spacing: .02em; }
+      .yt-ctl button.ytp-go:hover { background: #b91c1c; }
+      .yt-ctl button.ytp-go .material-symbols-outlined { font-size: 16px; }
       /* Có tin mới (chưa đọc): nút đập như nhịp tim (phóng to–nhỏ 2 nhịp) + 2 vòng sóng lan toả ra ngoài. Khẩn (band bấm nút) = đỏ + nhanh hơn. */
       #bandPanelTab.has-unread { animation: bpTabBeat 1.8s ease-in-out infinite; }
       #bandPanelTab.has-unread::before, #bandPanelTab.has-unread::after {
@@ -2098,16 +2128,18 @@
                             onclick="liveCurrent()">Live</button>
                     </div>
                 </div>
-                <div id="yt-bar" class="hidden" role="group" aria-label="YouTube">
+                <div id="yt-bar" class="yt-ctl hidden" role="group" aria-label="YouTube">
                     <span class="material-symbols-outlined yt-ic">smart_display</span>
                     <div class="yt-meta"><div class="yt-title" id="yt-title"></div><div class="yt-status" id="yt-status"></div></div>
                     <button type="button" id="yt-back" title="Lùi 10 giây"><span class="material-symbols-outlined">replay_10</span></button>
-                    <button type="button" id="yt-toggle" title="Phát / Tạm dừng"><span class="material-symbols-outlined">pause</span></button>
+                    <button type="button" id="yt-toggle" class="yt-main" title="Phát / Tạm dừng"><span class="material-symbols-outlined">pause</span></button>
                     <button type="button" id="yt-fwd" title="Tới 10 giây"><span class="material-symbols-outlined">forward_10</span></button>
-                    <input type="range" id="yt-seek" min="0" max="0" step="1" value="0" aria-label="Tua video" />
-                    <span class="yt-time" id="yt-time">0:00 / 0:00</span>
                     <button type="button" id="yt-mute" title="Tắt / bật tiếng"><span class="material-symbols-outlined">volume_up</span></button>
                     <button type="button" id="yt-stop" title="Dừng video và tắt khỏi Screen Live"><span class="material-symbols-outlined">stop</span></button>
+                    <div class="yt-seekrow">
+                        <input type="range" id="yt-seek" min="0" max="0" step="1" value="0" aria-label="Tua video" />
+                        <span class="yt-time" id="yt-time">0:00 / 0:00</span>
+                    </div>
                 </div>
                 <div class="flex-1 overflow-y-auto custom-scrollbar p-2 space-y-2 bg-slate-50 dark:bg-slate-950/30"
                     id="live-slides-container"
@@ -2238,7 +2270,7 @@
             <div class="resizer-h" id="resizer-4"></div>
 
             <!-- Section 6: Screen Monitor (panel riêng, thẳng cột với Live ở hàng trên) -->
-            <section
+            <section id="screen-monitor-panel"
                 class="panel bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden min-w-[200px]"
                 style="flex: 37.5 1 0;">
                 <div class="px-3 py-1 bg-slate-800 dark:bg-black flex items-center justify-between text-white shrink-0 rounded-t-[7px]">
@@ -2279,6 +2311,34 @@
                                         </div>
                                     </div>
                                 </div>
+                                <!-- Xem trước YouTube (chỉ hiện khi mục Schedule đang chọn là video YouTube) -->
+                                <div id="ytp-stage" class="hidden">
+                                    <div id="ytp-poster">
+                                        <span class="material-symbols-outlined ytp-pic">smart_display</span>
+                                        <div id="ytp-ptitle"></div>
+                                        <button type="button" id="ytp-play"><span class="material-symbols-outlined" style="font-size:18px">play_arrow</span><span>Xem trước</span></button>
+                                        <div id="ytp-hint">Xem trước trên máy này (mặc định tắt tiếng). Nếu có quảng cáo, bấm “Bỏ qua” ngay trên khung khi nút hiện; sau đó kéo thanh thời gian tới đoạn cần chiếu rồi bấm GO LIVE.</div>
+                                        <div id="ytp-livenote" class="hidden">Đang chiếu trên Screen Live</div>
+                                    </div>
+                                    <div id="ytp-frame-wrap" class="hidden"></div>
+                                </div>
+                            </div>
+                            <div id="ytp-bar" class="yt-ctl" role="group" aria-label="YouTube">
+                                <div id="ytp-ctrls" class="hidden">
+                                    <div class="yt-row">
+                                        <button type="button" id="ytp-back" title="Lùi 10 giây"><span class="material-symbols-outlined">replay_10</span></button>
+                                        <button type="button" id="ytp-toggle" class="yt-main" title="Phát / Tạm dừng"><span class="material-symbols-outlined">pause</span></button>
+                                        <button type="button" id="ytp-fwd" title="Tới 10 giây"><span class="material-symbols-outlined">forward_10</span></button>
+                                        <span class="yt-status" id="ytp-status"></span>
+                                        <button type="button" id="ytp-mute" title="Tắt / bật tiếng xem trước"><span class="material-symbols-outlined">volume_off</span></button>
+                                        <button type="button" id="ytp-stop" title="Dừng xem trước"><span class="material-symbols-outlined">stop</span></button>
+                                    </div>
+                                    <div class="yt-seekrow">
+                                        <input type="range" id="ytp-seek" min="0" max="0" step="1" value="0" aria-label="Tua video" />
+                                        <span class="yt-time" id="ytp-time">0:00 / 0:00</span>
+                                    </div>
+                                </div>
+                                <button type="button" id="ytp-golive" class="ytp-go" title="Chiếu trên Screen Live từ vị trí đang xem trước"><span class="material-symbols-outlined">play_arrow</span><span id="ytp-golive-label">GO LIVE · 0:00</span></button>
                             </div>
                             <p class="text-[9px] text-red-500 font-semibold flex items-center gap-1"
                                 id="media-monitor-status">
@@ -8332,16 +8392,20 @@
             if (!r.online) alert('Không lấy được tên video (đang offline?). Đã thêm với tên mặc định.');
         }
 
-        async function startYoutubeLive(index) {
+        async function startYoutubeLive(index, startSec) {
             const item = schedule[index];
             if (!isYoutubeItem(item)) return;
             if (!isLiveWindowOpen) { alert('Hãy bật Screen Live (màn chiếu) trước khi chiếu video YouTube.'); return; }
+            // mốc bắt đầu: mặc định lấy đúng vị trí đã kéo tới ở Screen Monitor (nếu đang xem trước chính video này)
+            if (startSec === undefined) startSec = (ytPrev && ytPrev.active && ytPrev.scheduleId === item.scheduleId) ? Math.floor(ytPrev.cur) : 0;
+            startSec = Math.max(0, Math.floor(Number(startSec) || 0));
+            ytpDestroyFrame();   // chỉ phát ở MỘT nơi: tắt xem trước để không có 2 luồng âm thanh
             currentLiveScheduleIndex = index;
             liveSlides = []; currentLiveIndex = -1; currentLiveSlideIndex = -1; renderLiveSlides();   // bỏ thẻ slide cũ (tránh bấm nhầm bật lại bài trước)
-            ytLive = { id: item.ytId, title: item.title, state: -1, cur: 0, dur: 0, muted: false, err: 0 };
+            ytLive = { id: item.ytId, title: item.title, state: -1, cur: startSec, dur: 0, muted: false, err: 0 };
             updateMediaMonitorOutput('▶ ' + item.title);
             renderYtBar(); renderSchedule();
-            await window.electronAPI.liveSendYoutube({ action: 'load', id: item.ytId });
+            await window.electronAPI.liveSendYoutube({ action: 'load', id: item.ytId, start: startSec });
         }
 
         function stopYoutube() {
@@ -8354,6 +8418,7 @@
         function renderYtBar() {
             const bar = document.getElementById('yt-bar');
             if (!bar) return;
+            renderYtp();
             if (!ytLive) { bar.classList.add('hidden'); return; }
             bar.classList.remove('hidden');
             const st = document.getElementById('yt-status');
@@ -8371,6 +8436,128 @@
             const seek = document.getElementById('yt-seek');
             seek.max = String(Math.max(0, Math.floor(ytLive.dur))); if (!seek._drag) seek.value = String(Math.floor(ytLive.cur));
             document.getElementById('yt-time').textContent = ytFmt(ytLive.cur) + ' / ' + ytFmt(ytLive.dur);
+        }
+
+        // ---- Xem trước ở Screen Monitor ----
+        // Trình phát CỤC BỘ trong cửa sổ điều khiển để operator kiểm tra quảng cáo / chọn mốc bắt đầu TRƯỚC khi chiếu.
+        // Iframe bị sandbox (không popup, không điều hướng cửa sổ chính, không form), chỉ trỏ tới youtube-nocookie.com.
+        // Nút "Bỏ qua quảng cáo" là của YouTube bên trong khung: người vận hành tự bấm (app không tự bấm/chặn quảng cáo).
+        let ytPrev = null;   // { id, title, scheduleId, active, frame, timer, state, cur, dur, muted, err }
+        const YTP_ORIGIN = YouTubeUtil.EMBED_ORIGIN;
+        function ytpPost(func, args) {
+            if (ytPrev && ytPrev.frame && ytPrev.frame.contentWindow) {
+                ytPrev.frame.contentWindow.postMessage(JSON.stringify({ event: 'command', func: func, args: args || [] }), YTP_ORIGIN);
+            }
+        }
+        function ytpDestroyFrame() {
+            if (!ytPrev) return;
+            clearInterval(ytPrev.timer); ytPrev.timer = 0;
+            if (ytPrev.frame) { try { ytPrev.frame.src = 'about:blank'; } catch (e) {} ytPrev.frame.remove(); ytPrev.frame = null; }
+            ytPrev.active = false; ytPrev.state = -1; ytPrev.err = 0;
+            renderYtp();
+        }
+        function showYtStage(item) {
+            if (ytPrev && ytPrev.scheduleId === item.scheduleId && ytPrev.id === item.ytId) { renderYtp(); return; }   // gọi lại cho cùng mục: giữ nguyên
+            ytpDestroyFrame();
+            ytPrev = { id: item.ytId, title: item.title, scheduleId: item.scheduleId, active: false, frame: null, timer: 0, state: -1, cur: 0, dur: 0, muted: true, err: 0 };
+            renderYtp();
+        }
+        function hideYtStage() {
+            if (!ytPrev) return;
+            ytpDestroyFrame();
+            ytPrev = null;
+            renderYtp();
+        }
+        function ytpStartPreview() {
+            if (!ytPrev) return;
+            ytpDestroyFrame();
+            const f = document.createElement('iframe');
+            f.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-presentation');
+            f.setAttribute('allow', 'autoplay; encrypted-media; fullscreen');
+            f.setAttribute('referrerpolicy', 'strict-origin-when-cross-origin');
+            f.src = YouTubeUtil.embedUrl(ytPrev.id, { controls: 1, mute: ytPrev.muted ? 1 : 0 });
+            const listen = () => { try { f.contentWindow.postMessage(JSON.stringify({ event: 'listening', id: 1, channel: 'widget' }), YTP_ORIGIN); } catch (e) {} };
+            f.addEventListener('load', listen);
+            document.getElementById('ytp-frame-wrap').appendChild(f);
+            ytPrev.frame = f; ytPrev.active = true; ytPrev.cur = 0; ytPrev.dur = 0; ytPrev.state = -1; ytPrev.err = 0;
+            let tries = 0;
+            ytPrev.timer = setInterval(() => { if (!ytPrev || !ytPrev.frame || ++tries > 20) { if (ytPrev) { clearInterval(ytPrev.timer); ytPrev.timer = 0; } return; } listen(); }, 500);
+            renderYtp();
+        }
+        function renderYtp() {
+            const panel = document.getElementById('screen-monitor-panel');
+            const stage = document.getElementById('ytp-stage');
+            if (!panel || !stage) return;
+            if (!ytPrev) { panel.classList.remove('yt-mode'); stage.classList.add('hidden'); return; }
+            panel.classList.add('yt-mode'); stage.classList.remove('hidden');
+            const $ = (id) => document.getElementById(id);
+            const isLiveNow = !!(ytLive && ytLive.id === ytPrev.id);
+            $('ytp-poster').classList.toggle('hidden', ytPrev.active);
+            $('ytp-frame-wrap').classList.toggle('hidden', !ytPrev.active);
+            $('ytp-ctrls').classList.toggle('hidden', !ytPrev.active);
+            $('ytp-ptitle').textContent = ytPrev.title;
+            $('ytp-livenote').classList.toggle('hidden', !isLiveNow);
+            $('ytp-poster').classList.toggle('is-live', isLiveNow);
+            const st = $('ytp-status');
+            let txt = 'Đang tải…', err = false;
+            if (ytPrev.err) { txt = (YT_ERR_TEXT[ytPrev.err] || 'Không phát được') + ' (mã ' + ytPrev.err + ')'; err = true; }
+            else if (ytPrev.state === 1) txt = 'Đang phát';
+            else if (ytPrev.state === 2) txt = 'Tạm dừng';
+            else if (ytPrev.state === 3) txt = 'Đang đệm…';
+            else if (ytPrev.state === 0) txt = 'Đã phát xong';
+            st.textContent = txt; st.classList.toggle('err', err);
+            const playing = ytPrev.state === 1 || ytPrev.state === 3;
+            $('ytp-toggle').querySelector('.material-symbols-outlined').textContent = playing ? 'pause' : 'play_arrow';
+            $('ytp-mute').querySelector('.material-symbols-outlined').textContent = ytPrev.muted ? 'volume_off' : 'volume_up';
+            const seek = $('ytp-seek');
+            seek.max = String(Math.max(0, Math.floor(ytPrev.dur)));
+            if (!seek._drag) seek.value = String(Math.floor(ytPrev.cur));
+            $('ytp-time').textContent = ytFmt(ytPrev.cur) + ' / ' + ytFmt(ytPrev.dur);
+            $('ytp-golive-label').textContent = 'GO LIVE · ' + ytFmt(ytPrev.active ? ytPrev.cur : 0);
+        }
+        function initYoutubePreviewUi() {
+            const $ = (id) => document.getElementById(id);
+            if (!$('ytp-stage')) return;
+            $('ytp-play').addEventListener('click', ytpStartPreview);
+            $('ytp-toggle').addEventListener('click', () => {
+                if (!ytPrev || !ytPrev.active) return;
+                const playing = ytPrev.state === 1 || ytPrev.state === 3;
+                if (ytPrev.state === 0) ytpPost('seekTo', [0, true]);
+                ytpPost(playing ? 'pauseVideo' : 'playVideo');
+                ytPrev.state = playing ? 2 : 1; renderYtp();
+            });
+            $('ytp-back').addEventListener('click', () => { if (ytPrev && ytPrev.active) ytpPost('seekTo', [Math.max(0, ytPrev.cur - 10), true]); });
+            $('ytp-fwd').addEventListener('click', () => { if (ytPrev && ytPrev.active) ytpPost('seekTo', [ytPrev.cur + 10, true]); });
+            $('ytp-mute').addEventListener('click', () => {
+                if (!ytPrev) return;
+                ytPrev.muted = !ytPrev.muted;
+                ytpPost(ytPrev.muted ? 'mute' : 'unMute'); renderYtp();
+            });
+            $('ytp-stop').addEventListener('click', ytpDestroyFrame);
+            const seek = $('ytp-seek');
+            seek.addEventListener('pointerdown', () => { seek._drag = true; });
+            seek.addEventListener('input', () => { if (ytPrev) { ytPrev.cur = Number(seek.value) || 0; $('ytp-time').textContent = ytFmt(ytPrev.cur) + ' / ' + ytFmt(ytPrev.dur); $('ytp-golive-label').textContent = 'GO LIVE · ' + ytFmt(ytPrev.cur); } });   // kéo tới đâu, nút GO LIVE hiện mốc tới đó
+            seek.addEventListener('change', () => { seek._drag = false; if (ytPrev && ytPrev.active) ytpPost('seekTo', [Number(seek.value) || 0, true]); });
+            $('ytp-golive').addEventListener('click', () => {
+                if (!ytPrev) return;
+                const idx = schedule.findIndex(it => it && it.scheduleId === ytPrev.scheduleId);
+                if (idx >= 0) startYoutubeLive(idx);   // mốc bắt đầu tự lấy từ vị trí đang xem trước
+            });
+            // Phản hồi từ trình phát: chỉ tin khi đúng iframe của mình + đúng origin
+            window.addEventListener('message', (ev) => {
+                if (!ytPrev || !ytPrev.frame || ev.source !== ytPrev.frame.contentWindow || ev.origin !== YTP_ORIGIN) return;
+                let d = ev.data;
+                if (typeof d === 'string') { try { d = JSON.parse(d); } catch (e) { return; } }
+                if (!d || typeof d !== 'object') return;
+                if (d.event === 'onError') { ytPrev.err = Number(d.info) || 1; renderYtp(); return; }
+                if (d.event === 'onStateChange') { ytPrev.state = Number(d.info); ytPrev.err = 0; renderYtp(); return; }
+                if (d.event === 'infoDelivery' && d.info && typeof d.info === 'object') {
+                    if (typeof d.info.playerState === 'number') { ytPrev.state = d.info.playerState; ytPrev.err = 0; }
+                    if (typeof d.info.duration === 'number' && d.info.duration > 0) ytPrev.dur = d.info.duration;
+                    if (typeof d.info.currentTime === 'number' && !seek._drag) ytPrev.cur = d.info.currentTime;
+                    renderYtp();
+                }
+            });
         }
 
         function initYoutubeUi() {
@@ -8408,6 +8595,7 @@
             if (addBtn) addBtn.addEventListener('click', addYoutubeToSchedule);
         }
         initYoutubeUi();
+        initYoutubePreviewUi();
 
         function addMediaToSchedule(mediaItem) {
             const background = normalizeSlideBackground(mediaItem);
@@ -8557,6 +8745,7 @@
         function removeFromSchedule(index) {
             schedule.splice(index, 1);
             if (currentScheduleIndex === index) {
+                hideYtStage();
                 currentScheduleIndex = -1;
                 currentSlides = [];
                 renderPreview();
@@ -8655,8 +8844,10 @@
 
         function loadToPreview(song) {
             console.log('Loading to preview:', song.title, song.style);
+            if (!isYoutubeItem(song)) hideYtStage();   // đổi sang mục khác: tắt xem trước YouTube
 
             if (isYoutubeItem(song)) {   // YouTube: xem trước chỉ là thẻ tên video (iframe chỉ có ở Screen Live)
+                showYtStage(song);
                 currentSlides = [{ content: '▶ ' + song.title, label: 'YouTube', isBible: false }];
                 currentPreviewIndex = 0;
                 renderPreview();

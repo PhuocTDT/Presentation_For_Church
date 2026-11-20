@@ -61,6 +61,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.removeAllListeners('live-youtube');
     ipcRenderer.on('live-youtube', callback);
   },
+  onLiveFrameHint: (callback) => {
+    ipcRenderer.removeAllListeners('live-frame-hint');
+    ipcRenderer.on('live-frame-hint', callback);
+  },
   onYoutubeState: (callback) => {
     ipcRenderer.removeAllListeners('youtube-state');
     ipcRenderer.on('youtube-state', callback);

@@ -49,6 +49,14 @@ test('embedUrl chỉ dựng từ ID sạch, luôn trỏ youtube-nocookie', () =>
   assert.equal(u.origin, 'https://www.youtube-nocookie.com');
   assert.equal(u.pathname, '/embed/' + ID);
   assert.equal(u.searchParams.get('enablejsapi'), '1');
+  assert.equal(u.searchParams.get('controls'), '0');
+  assert.equal(u.searchParams.get('start'), null);
+  assert.equal(u.searchParams.get('mute'), null);
+  const p = new URL(YT.embedUrl(ID, { controls: 1, mute: 1, start: 125.9 }));
+  assert.equal(p.searchParams.get('controls'), '1'); assert.equal(p.searchParams.get('mute'), '1'); assert.equal(p.searchParams.get('start'), '125');
+  assert.equal(new URL(YT.embedUrl(ID, { start: '12&evil=1' })).searchParams.get('evil'), null, 'tham số chỉ là số');
+  assert.equal(new URL(YT.embedUrl(ID, { start: 1e9 })).searchParams.get('start'), '86400');
+  assert.equal(new URL(YT.embedUrl(ID, { start: -5 })).searchParams.get('start'), null);
   assert.equal(YT.embedUrl('../../evil'), null);
   assert.equal(YT.embedUrl(`${ID}"onload="x`), null);
   assert.equal(YT.isValidId(ID), true);

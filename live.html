@@ -114,6 +114,8 @@
 
         .hidden { display: none !important; }
         /* YouTube nhúng: phủ kín Live (trên chữ + nền). Chỉ tồn tại khi đang chiếu video. */
+        /* Viền nhận diện khi Screen Live đè lên màn hình điều khiển (main bật class này; tắt khi đã sang màn hình riêng) */
+        html.frame-hint body::after { content: ""; position: fixed; inset: 0; border: 4px solid #fff; box-shadow: inset 0 0 0 1px rgba(0,0,0,.55); pointer-events: none; z-index: 2147483647; }
         #yt-layer { position: fixed; inset: 0; z-index: 50; background: #000; }
         #yt-layer iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
         .next-verse-box {
@@ -555,6 +557,8 @@
             setBackground(data);
         });
 
+        window.electronAPI.onLiveFrameHint((event, on) => { document.documentElement.classList.toggle('frame-hint', !!on); });
+
         window.electronAPI.onLiveClear(() => {
             console.log('[Live] Clear');
             ytStop();
@@ -580,7 +584,7 @@
         function ytReport(state, cur, dur, err) {
             try { window.electronAPI.youtubeReportState({ state: state, cur: cur || 0, dur: dur || 0, err: err || 0 }); } catch (e) {}
         }
-        function ytLoad(id) {
+        function ytLoad(id, start) {
             ytStop();
             // Chỉ nhận ID hợp lệ (main đã kiểm, kiểm lại ở đây vì đây là chỗ dựng URL)
             if (!/^[A-Za-z0-9_-]{11}$/.test(id)) return;
@@ -589,7 +593,8 @@
             f.setAttribute('allow', 'autoplay; encrypted-media; fullscreen');
             f.setAttribute('allowfullscreen', '');
             f.setAttribute('referrerpolicy', 'strict-origin-when-cross-origin');
-            f.src = YT_ORIGIN + '/embed/' + id + '?autoplay=1&enablejsapi=1&rel=0&playsinline=1&iv_load_policy=3&controls=0&disablekb=1';
+            const st = Math.max(0, Math.min(86400, Math.floor(Number(start) || 0)));   // mốc bắt đầu (giây) do operator chọn ở Screen Monitor
+            f.src = YT_ORIGIN + '/embed/' + id + '?autoplay=1&enablejsapi=1&rel=0&playsinline=1&iv_load_policy=3&controls=0&disablekb=1' + (st > 0 ? '&start=' + st : '');
             f.addEventListener('load', function () {
                 // đăng ký nhận sự kiện (onStateChange/infoDelivery/onError) từ trình phát
                 try { f.contentWindow.postMessage(JSON.stringify({ event: 'listening', id: 1, channel: 'widget' }), YT_ORIGIN); } catch (e) {}
@@ -619,7 +624,7 @@
         window.electronAPI.onLiveYoutube((event, m) => {
             if (!m || typeof m !== 'object') return;
             switch (m.action) {
-                case 'load': ytLoad(String(m.id || '')); break;
+                case 'load': ytLoad(String(m.id || ''), m.start); break;
                 case 'stop': ytStop(); break;
                 case 'play': ytCmd('playVideo'); break;
                 case 'pause': ytCmd('pauseVideo'); break;

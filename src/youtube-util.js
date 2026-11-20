@@ -44,10 +44,18 @@
     return isValidId(id) ? id : null;
   }
 
-  // URL iframe: chỉ từ ID đã kiểm. rel=0: gợi ý cuối video chỉ lấy cùng kênh; iv_load_policy=3: ẩn chú thích.
-  function embedUrl(id) {
+  // URL iframe: chỉ từ ID đã kiểm; mọi tham số là SỐ do hàm ép kiểu (không nhận chuỗi tự do).
+  // rel=0: gợi ý cuối video chỉ lấy cùng kênh; iv_load_policy=3: ẩn chú thích.
+  // opts: controls (0|1, mặc định 0 = Live không hiện nút), mute (0|1), start (giây, 0..86400).
+  function embedUrl(id, opts) {
     if (!isValidId(id)) return null;
-    return EMBED_ORIGIN + '/embed/' + id + '?autoplay=1&enablejsapi=1&rel=0&playsinline=1&iv_load_policy=3&controls=0&disablekb=1';
+    opts = opts || {};
+    var controls = opts.controls ? 1 : 0;
+    var start = Math.max(0, Math.min(86400, Math.floor(Number(opts.start) || 0)));
+    var q = 'autoplay=1&enablejsapi=1&rel=0&playsinline=1&iv_load_policy=3&controls=' + controls + (controls ? '' : '&disablekb=1');
+    if (opts.mute) q += '&mute=1';
+    if (start > 0) q += '&start=' + start;
+    return EMBED_ORIGIN + '/embed/' + id + '?' + q;
   }
 
   function watchUrl(id) { return isValidId(id) ? 'https://www.youtube.com/watch?v=' + id : null; }
