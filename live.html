@@ -113,9 +113,9 @@
         }
 
         .hidden { display: none !important; }
-        /* YouTube nhúng: phủ kín Live (trên chữ + nền). Chỉ tồn tại khi đang chiếu video. */
         /* Viền nhận diện khi Screen Live đè lên màn hình điều khiển (main bật class này; tắt khi đã sang màn hình riêng) */
         html.frame-hint body::after { content: ""; position: fixed; inset: 0; border: 4px solid #fff; box-shadow: inset 0 0 0 1px rgba(0,0,0,.55); pointer-events: none; z-index: 2147483647; }
+        /* YouTube nhúng: phủ kín Live (trên chữ + nền). Chỉ tồn tại khi đang chiếu video. */
         #yt-layer { position: fixed; inset: 0; z-index: 50; background: #000; }
         #yt-layer iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; pointer-events: none; }   /* chuột không chạm vào trình phát → YouTube không bật thanh tiêu đề/nút khi rê chuột */
         /* Rèm đen: che giao diện của YouTube khi tạm dừng / hết video / lỗi (tên kênh, "More videos", logo, video gợi ý) */
@@ -600,6 +600,7 @@
             if (!/^[A-Za-z0-9_-]{11}$/.test(id)) return;
             const layer = document.getElementById('yt-layer');
             const f = document.createElement('iframe');
+            f.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-presentation');   // như khung xem trước: không popup/điều hướng cửa sổ/form
             f.setAttribute('allow', 'autoplay; encrypted-media; fullscreen');
             f.setAttribute('allowfullscreen', '');
             f.setAttribute('referrerpolicy', 'strict-origin-when-cross-origin');

@@ -8388,8 +8388,9 @@
         }
 
         // ===================== YouTube trên Screen Live =====================
-        // Mô hình: mục Schedule {type:'youtube', ytId, title, isMediaOnly:true}. KHÔNG có iframe ở cửa sổ điều khiển
-        // (CSP frame-src 'none' giữ nguyên) — iframe youtube-nocookie chỉ nằm trong live.html; ở đây chỉ gửi lệnh qua main.
+        // Mô hình: mục Schedule {type:'youtube', ytId, title, ytMode, isMediaOnly:true}. Iframe youtube-nocookie nằm ở
+        // live.html (chế độ video) và ở khung Screen Monitor (xem trước + nguồn tiếng của chế độ nhạc, có sandbox);
+        // CSP của cả hai cửa sổ chỉ mở frame-src đúng origin đó. Lệnh tới Screen Live đi qua main (IPC có allowlist).
         let ytLive = null;   // { id, title, state, cur, dur, muted, err }
         const YT_ERR_TEXT = { 2: 'Link/ID video không hợp lệ', 5: 'Trình phát gặp lỗi', 100: 'Video không còn tồn tại hoặc là riêng tư', 101: 'Chủ video không cho phép nhúng', 150: 'Chủ video không cho phép nhúng', 153: 'YouTube từ chối nhúng (thiếu Referer)' };
         function isYoutubeItem(it) { return !!(it && it.type === 'youtube' && window.YouTubeUtil && YouTubeUtil.isValidId(it.ytId)); }
@@ -8726,7 +8727,7 @@
             seek.addEventListener('pointerdown', () => { seek._drag = true; });
             seek.addEventListener('change', () => { seek._drag = false; if (ytLive) ytLiveCmd({ action: 'seek', sec: Number(seek.value) || 0 }); });
             window.electronAPI.onYoutubeState((_e, s) => {
-                if (!ytLive || !s) return;
+                if (!ytLive || ytLive.mode !== 'video' || !s) return;   // chế độ nhạc: trạng thái lấy từ trình phát ở Screen Monitor, bỏ qua báo cáo muộn từ Live
                 if (s.err) { ytLive.err = s.err; }
                 else {
                     if (s.state !== -2) { ytLive.state = s.state; ytLive.err = 0; }

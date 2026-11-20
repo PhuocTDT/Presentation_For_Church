@@ -237,7 +237,7 @@ test('"Chỉ phát nhạc": Live chỉ hiện tên video + nền đen, KHÔNG t�
   const app = await open();
   let live = null;
   try {
-    await app.ev(`(() => { addToSchedule(songLibrary[0]); schedule.push(normalizeScheduleItem({ type: 'youtube', ytId: '${ID}', title: 'Video [Official] thử' })); renderSchedule(); })()`);
+    await app.ev(`(() => { addToSchedule(songLibrary[0]); schedule.push(normalizeScheduleItem({ type: 'youtube', ytId: '${ID}', title: 'Video [Official] <b>thử</b> <img src=x onerror=alert(1)>' })); renderSchedule(); })()`);
     const ytIdx = await app.ev(`schedule.findIndex(s => s.type === 'youtube')`);
     await app.ev(`toggleLiveWindow()`);
     live = await app.attach(/live\.html/);
@@ -253,7 +253,8 @@ test('"Chỉ phát nhạc": Live chỉ hiện tên video + nền đen, KHÔNG t�
     await sleep(900);
     // Live: không có iframe; chỉ tên video (nguyên văn, không bị cắt [Official]); nền đen
     assert.equal(await live.ev(`!!document.querySelector('#yt-layer iframe')`), false, 'Screen Live không tải video nào');
-    assert.equal(await live.ev(`document.getElementById('lyrics-text').textContent.trim()`), 'Video [Official] thử');
+    assert.equal(await live.ev(`document.getElementById('lyrics-text').textContent.trim()`), 'Video [Official] <b>thử</b> <img src=x onerror=alert(1)>', 'tên video hiện đúng là CHỮ (không dựng HTML)');
+    assert.equal(await live.ev(`document.querySelectorAll('#lyrics-text b, #lyrics-text img').length`), 0);
     assert.equal(await live.ev(`['bg-img-a', 'bg-img-b', 'bg-video-a', 'bg-video-b'].every(id => document.getElementById(id).classList.contains('hidden'))`), true, 'nền đen (không có media nền)');
     // Screen Monitor: trình phát chạy và CÓ TIẾNG (không mute) → ra loa/đường dây âm thanh của máy
     const f = await app.ev(`(() => { const f = document.querySelector('#ytp-frame-wrap iframe'); return f ? f.src : null; })()`);
@@ -276,6 +277,7 @@ test('"Chỉ phát nhạc": Live chỉ hiện tên video + nền đen, KHÔNG t�
     await app.ev(`ytLive.cur = 42; document.getElementById('ytp-mode-video').click()`);
     await sleep(900);
     const lf = await live.ev(`(() => { const f = document.querySelector('#yt-layer iframe'); return f ? f.src : null; })()`);
+    assert.equal(await live.ev(`document.querySelector('#yt-layer iframe').getAttribute('sandbox')`), 'allow-scripts allow-same-origin allow-presentation', 'iframe ở Live cũng bị sandbox');
     assert.ok(lf, 'chế độ video: Live có iframe'); assert.equal(new URL(lf).searchParams.get('start'), '42');
     assert.equal(await app.ev(`!!document.querySelector('#ytp-frame-wrap iframe')`), false, 'Monitor tắt phát (một nơi duy nhất)');
     assert.equal(await app.ev(`ytLive.mode`), 'video');
