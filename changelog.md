@@ -2,7 +2,7 @@
 
 Tất cả các thay đổi và cập nhật quan trọng của dự án được ghi lại tại đây.
 
-## [Chưa phát hành] - YouTube nhúng trên Screen Live (thử nghiệm, nhánh `feature/youtube`)
+## [3.4.0] - YouTube nhúng: xem trước ở Screen Monitor, chiếu từ mốc bất kỳ, chế độ chỉ phát nhạc; viền nhận diện cho Screen Live
 
 > Chỉ cần bản app mới (không đổi Worker). Cần Internet khi chiếu video; app vẫn chạy offline bình thường khi không dùng.
 
