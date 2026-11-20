@@ -49,14 +49,18 @@ test('ranh giới tin cậy: link/ID/lệnh xấu bị main từ chối; dữ li
         { type: 'youtube', ytId: '${ID}', title: 'T'.repeat(500), lyrics: 'không giữ', background: { mediaType: 'video', url: 'http://evil/x.mp4' }, style: { color: 'red' }, onload: 'x', isMediaOnly: false }
       ]);
       out.kept = list.length; out.item = list[0];
+      out.modes = normalizeScheduleList([{ type: 'youtube', ytId: '${ID}', ytMode: 'audio' }, { type: 'youtube', ytId: '${ID}', ytMode: '<img>' }, { type: 'youtube', ytId: '${ID}' }]).map(i => i.ytMode);
+      out.badMode = await window.electronAPI.liveSendYoutube({ action: 'mode', mode: 'evil' });
       return out;
     })()`);
     assert.equal(r.evilHost, false); assert.equal(r.userinfo, false); assert.equal(r.script, false); assert.equal(r.notString, false);
     assert.equal(r.noLive, false); assert.equal(r.badAction, false); assert.equal(r.badId, false); assert.equal(r.badId2, false); assert.equal(r.nullMsg, false);
     assert.equal(r.kept, 1, 'chỉ mục có ID hợp lệ được giữ');
     assert.equal(r.item.ytId, ID); assert.equal(r.item.isMediaOnly, true); assert.equal(r.item.title.length, 200);
+    assert.deepEqual(r.modes, ['audio', 'video', 'video'], 'ytMode chỉ nhận audio|video, còn lại = video');
+    assert.equal(r.badMode, false, 'chưa có Live → không nơi nhận');
     assert.equal(r.item.lyrics, ''); assert.equal(r.item.background, null);
-    assert.deepEqual(Object.keys(r.item).sort(), ['background', 'id', 'isMediaOnly', 'lyrics', 'scheduleId', 'title', 'type', 'ytId'], 'không giữ trường lạ');
+    assert.deepEqual(Object.keys(r.item).sort(), ['background', 'id', 'isMediaOnly', 'lyrics', 'scheduleId', 'title', 'type', 'ytId', 'ytMode'], 'không giữ trường lạ');
     assert.deepEqual(app.exceptions, []);
   } finally { await app.close(); }
 });
@@ -152,6 +156,17 @@ test('xem trước ở Screen Monitor: iframe sandbox, kéo mốc rồi GO LIVE 
     assert.equal(u.searchParams.get('controls'), '1'); assert.equal(u.searchParams.get('mute'), '1'); assert.equal(u.searchParams.get('start'), null);
     assert.ok(/allow-scripts/.test(f.sandbox) && !/allow-popups|allow-top-navigation|allow-forms/.test(f.sandbox), 'sandbox chặn popup/điều hướng/form: ' + f.sandbox);
     assert.equal(await vis('#ytp-ctrls'), true); assert.equal(await vis('#ytp-seek'), true);
+    // giống Screen Live: khung không nhận chuột + có rèm đen (đen cho tới khi video chạy); nút bàn tay bật chuột tạm thời
+    assert.equal(await app.ev(`getComputedStyle(document.querySelector('#ytp-frame-wrap iframe')).pointerEvents`), 'none');
+    assert.equal(await app.ev(`document.querySelectorAll('#ytp-curtain').length`), 1);
+    await app.ev(`document.getElementById('ytp-click').click()`);
+    assert.equal(await app.ev(`getComputedStyle(document.querySelector('#ytp-frame-wrap iframe')).pointerEvents`), 'auto', 'bật cho phép bấm để Bỏ qua quảng cáo');
+    await app.ev(`document.getElementById('ytp-click').click()`);
+    assert.equal(await app.ev(`getComputedStyle(document.querySelector('#ytp-frame-wrap iframe')).pointerEvents`), 'none');
+    await app.ev(`ytPrev.state = 2; renderYtp()`);
+    assert.equal(await app.ev(`document.getElementById('ytp-curtain').classList.contains('on')`), true, 'tạm dừng → rèm đen');
+    await app.ev(`ytPrev.state = 1; renderYtp()`);
+    assert.equal(await app.ev(`document.getElementById('ytp-curtain').classList.contains('on')`), false, 'đang phát → trong suốt');
     // đổi sang mục khác thì xem trước tắt
     await app.ev(`selectScheduleItem(0)`);
     assert.equal(await app.ev(`document.querySelectorAll('iframe').length`), 0, 'đổi mục → gỡ iframe');
@@ -184,6 +199,43 @@ test('xem trước ở Screen Monitor: iframe sandbox, kéo mốc rồi GO LIVE 
       assert.equal(await live.ev(`document.documentElement.classList.contains('frame-hint')`), true, '1 màn hình → Live có viền trắng');
       assert.equal(await live.ev(`getComputedStyle(document.body, '::after').borderTopWidth`), '4px');
     }
+    assert.deepEqual(app.exceptions, []);
+  } finally { try { live && live.close(); } catch (e) { /* đã đóng */ } await app.close(); }
+});
+
+test('chế độ "chỉ phát nhạc" vs "phát video": Live trong suốt khi chỉ nhạc, giữ nền, lưu theo mục, đổi nóng khi đang chiếu', async () => {
+  const app = await open();
+  let live = null;
+  try {
+    await app.ev(`(() => { addToSchedule(songLibrary[0]); schedule.push(normalizeScheduleItem({ type: 'youtube', ytId: '${ID}', title: 'Video thử' })); renderSchedule(); })()`);
+    const ytIdx = await app.ev(`schedule.findIndex(s => s.type === 'youtube')`);
+    await app.ev(`toggleLiveWindow()`);
+    live = await app.attach(/live\.html/);
+    await sleep(1200);
+    // mặc định = video
+    await app.ev(`selectScheduleItem(${ytIdx})`);
+    assert.equal(await app.ev(`document.getElementById('ytp-mode-video').classList.contains('on')`), true);
+    // chiếu chữ trước (để kiểm tra chữ cũ được dọn khi chỉ phát nhạc)
+    await app.ev(`selectScheduleItem(0); goLiveFromPreview()`);
+    await sleep(500);
+    // chọn "Chỉ phát nhạc" ở Screen Monitor → lưu vào mục
+    await app.ev(`selectScheduleItem(${ytIdx}); document.getElementById('ytp-mode-audio').click()`);
+    assert.equal(await app.ev(`schedule[${ytIdx}].ytMode`), 'audio'); assert.equal(await app.ev(`document.getElementById('ytp-mode-audio').classList.contains('on')`), true);
+    await app.ev(`document.getElementById('ytp-golive').click()`);
+    await sleep(800);
+    assert.equal(await live.ev(`document.getElementById('yt-layer').classList.contains('audio-only')`), true, 'chỉ nhạc → lớp video trong suốt');
+    assert.equal(await live.ev(`getComputedStyle(document.getElementById('yt-layer')).opacity`), '0');
+    assert.ok(await live.ev(`!!document.querySelector('#yt-layer iframe')`), 'trình phát vẫn chạy (để có tiếng)');
+    assert.equal(await live.ev(`document.getElementById('lyrics-text').textContent.trim()`), '', 'chữ cũ được dọn');
+    // đổi nóng sang video bằng nút ở thanh Live
+    await app.ev(`document.getElementById('yt-mode').click()`);
+    await sleep(400);
+    assert.equal(await live.ev(`document.getElementById('yt-layer').classList.contains('audio-only')`), false);
+    assert.equal(await app.ev(`schedule[${ytIdx}].ytMode`), 'video'); assert.equal(await app.ev(`ytLive.mode`), 'video');
+    // đổi nóng lại sang nhạc từ Screen Monitor khi đang chiếu
+    await app.ev(`document.getElementById('ytp-mode-audio').click()`);
+    await sleep(400);
+    assert.equal(await live.ev(`document.getElementById('yt-layer').classList.contains('audio-only')`), true);
     assert.deepEqual(app.exceptions, []);
   } finally { try { live && live.close(); } catch (e) { /* đã đóng */ } await app.close(); }
 });

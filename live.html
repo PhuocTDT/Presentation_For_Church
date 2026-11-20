@@ -117,6 +117,8 @@
         /* Viền nhận diện khi Screen Live đè lên màn hình điều khiển (main bật class này; tắt khi đã sang màn hình riêng) */
         html.frame-hint body::after { content: ""; position: fixed; inset: 0; border: 4px solid #fff; box-shadow: inset 0 0 0 1px rgba(0,0,0,.55); pointer-events: none; z-index: 2147483647; }
         #yt-layer { position: fixed; inset: 0; z-index: 50; background: #000; }
+        /* Chế độ "chỉ phát nhạc": trình phát vẫn chạy (nên có tiếng) nhưng trong suốt → màn chiếu hiện nền/lời bên dưới */
+        #yt-layer.audio-only { opacity: 0; pointer-events: none; }
         #yt-layer iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; pointer-events: none; }   /* chuột không chạm vào trình phát → YouTube không bật thanh tiêu đề/nút khi rê chuột */
         /* Rèm đen: che giao diện của YouTube khi tạm dừng / hết video / lỗi (tên kênh, "More videos", logo, video gợi ý) */
         #yt-curtain { position: absolute; inset: 0; background: #000; opacity: 0; transition: opacity .25s ease; pointer-events: none; }
@@ -594,7 +596,11 @@
         function ytReport(state, cur, dur, err) {
             try { window.electronAPI.youtubeReportState({ state: state, cur: cur || 0, dur: dur || 0, err: err || 0 }); } catch (e) {}
         }
-        function ytLoad(id, start) {
+        function ytSetMode(mode) {
+            const l = document.getElementById('yt-layer');
+            if (l) l.classList.toggle('audio-only', mode === 'audio');
+        }
+        function ytLoad(id, start, mode) {
             ytStop(); ytCaptionsOff = false;
             // Chỉ nhận ID hợp lệ (main đã kiểm, kiểm lại ở đây vì đây là chỗ dựng URL)
             if (!/^[A-Za-z0-9_-]{11}$/.test(id)) return;
@@ -612,6 +618,7 @@
             layer.appendChild(f);
             const cur = document.createElement('div'); cur.id = 'yt-curtain'; cur.className = 'on'; layer.appendChild(cur);   // đen cho tới khi video thực sự chạy
             layer.classList.remove('hidden');
+            ytSetMode(mode);
             ytFrame = f;
             // YouTube chỉ gửi infoDelivery khi có "listening"; nhắc lại vài lần cho tới khi trình phát sẵn sàng
             let tries = 0;
@@ -636,7 +643,8 @@
         window.electronAPI.onLiveYoutube((event, m) => {
             if (!m || typeof m !== 'object') return;
             switch (m.action) {
-                case 'load': ytLoad(String(m.id || ''), m.start); break;
+                case 'load': ytLoad(String(m.id || ''), m.start, m.mode); break;
+                case 'mode': ytSetMode(m.mode); break;
                 case 'stop': ytStop(); break;
                 case 'play': ytCmd('playVideo'); break;
                 case 'pause': ytCmd('pauseVideo'); break;

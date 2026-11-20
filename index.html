@@ -972,7 +972,14 @@
       #ytp-hint { font-size: 10px; line-height: 1.35; opacity: .72; max-width: 92%; }
       #ytp-livenote { font-size: 10px; font-weight: 700; color: #f87171; }
       #ytp-frame-wrap { position: absolute; inset: 0; }
-      #ytp-frame-wrap iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+      #ytp-frame-wrap iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; pointer-events: none; }   /* giống Screen Live: chuột không chạm trình phát → không bật thanh tiêu đề/nút */
+      #ytp-frame-wrap.interactive iframe { pointer-events: auto; }   /* bật tạm để bấm "Bỏ qua" quảng cáo của YouTube */
+      #ytp-curtain { position: absolute; inset: 0; background: #000; opacity: 0; transition: opacity .25s ease; pointer-events: none; }
+      #ytp-curtain.on { opacity: 1; }
+      .yt-ctl button.on { background: #dc2626 !important; color: #fff !important; }
+      .yt-seg { display: flex; gap: 4px; }
+      .yt-ctl .yt-seg button { width: auto; flex: 1 1 0; padding: 0 8px; gap: 4px; font-size: 11px; font-weight: 600; height: 24px; }
+      .yt-ctl .yt-seg button .material-symbols-outlined { font-size: 15px; }
       #ytp-bar { display: none; flex-direction: column; align-items: stretch; flex-wrap: nowrap; gap: 5px; }
       #screen-monitor-panel.yt-mode #ytp-bar { display: flex; }
       #screen-monitor-panel.yt-mode #media-monitor-status { display: none; }
@@ -2134,6 +2141,7 @@
                     <button type="button" id="yt-back" title="Lùi 10 giây"><span class="material-symbols-outlined">replay_10</span></button>
                     <button type="button" id="yt-toggle" class="yt-main" title="Phát / Tạm dừng"><span class="material-symbols-outlined">pause</span></button>
                     <button type="button" id="yt-fwd" title="Tới 10 giây"><span class="material-symbols-outlined">forward_10</span></button>
+                    <button type="button" id="yt-mode" title="Chuyển giữa phát video / chỉ phát nhạc"><span class="material-symbols-outlined">videocam</span></button>
                     <button type="button" id="yt-mute" title="Tắt / bật tiếng"><span class="material-symbols-outlined">volume_up</span></button>
                     <button type="button" id="yt-stop" title="Dừng video và tắt khỏi Screen Live"><span class="material-symbols-outlined">stop</span></button>
                     <div class="yt-seekrow">
@@ -2317,19 +2325,24 @@
                                         <span class="material-symbols-outlined ytp-pic">smart_display</span>
                                         <div id="ytp-ptitle"></div>
                                         <button type="button" id="ytp-play"><span class="material-symbols-outlined" style="font-size:18px">play_arrow</span><span>Xem trước</span></button>
-                                        <div id="ytp-hint">Xem trước trên máy này (mặc định tắt tiếng). Nếu có quảng cáo, bấm “Bỏ qua” ngay trên khung khi nút hiện; sau đó kéo thanh thời gian tới đoạn cần chiếu rồi bấm GO LIVE.</div>
+                                        <div id="ytp-hint">Xem trước giống hệt màn chiếu (mặc định tắt tiếng; tạm dừng thì màn đen). Nếu có quảng cáo, bấm nút bàn tay bên dưới để cho phép bấm trên khung rồi bấm “Bỏ qua”; sau đó kéo thanh thời gian tới đoạn cần chiếu và bấm GO LIVE.</div>
                                         <div id="ytp-livenote" class="hidden">Đang chiếu trên Screen Live</div>
                                     </div>
                                     <div id="ytp-frame-wrap" class="hidden"></div>
                                 </div>
                             </div>
                             <div id="ytp-bar" class="yt-ctl" role="group" aria-label="YouTube">
+                                <div class="yt-seg" role="group" aria-label="Chế độ chiếu">
+                                    <button type="button" id="ytp-mode-video" title="Chiếu cả hình và tiếng lên Screen Live"><span class="material-symbols-outlined">videocam</span><span>Phát video</span></button>
+                                    <button type="button" id="ytp-mode-audio" title="Chỉ phát tiếng; Screen Live giữ nền/lời hiện có (video vẫn được tải ngầm)"><span class="material-symbols-outlined">music_note</span><span>Chỉ phát nhạc</span></button>
+                                </div>
                                 <div id="ytp-ctrls" class="hidden">
                                     <div class="yt-row">
                                         <button type="button" id="ytp-back" title="Lùi 10 giây"><span class="material-symbols-outlined">replay_10</span></button>
                                         <button type="button" id="ytp-toggle" class="yt-main" title="Phát / Tạm dừng"><span class="material-symbols-outlined">pause</span></button>
                                         <button type="button" id="ytp-fwd" title="Tới 10 giây"><span class="material-symbols-outlined">forward_10</span></button>
                                         <span class="yt-status" id="ytp-status"></span>
+                                        <button type="button" id="ytp-click" title="Cho phép bấm trên khung (để bấm “Bỏ qua” quảng cáo)"><span class="material-symbols-outlined">touch_app</span></button>
                                         <button type="button" id="ytp-mute" title="Tắt / bật tiếng xem trước"><span class="material-symbols-outlined">volume_off</span></button>
                                         <button type="button" id="ytp-stop" title="Dừng xem trước"><span class="material-symbols-outlined">stop</span></button>
                                     </div>
@@ -4343,6 +4356,7 @@
                 if (!window.YouTubeUtil || !YouTubeUtil.isValidId(normalized.ytId)) return null;
                 return {
                     id: null, scheduleId: normalized.scheduleId, type: 'youtube', ytId: normalized.ytId, isMediaOnly: true,
+                    ytMode: normalized.ytMode === 'audio' ? 'audio' : 'video',
                     title: String(normalized.title || '').slice(0, 200) || ('YouTube ' + normalized.ytId), lyrics: '', background: null
                 };
             }
@@ -8387,7 +8401,7 @@
                 alert(r && r.error === 'not-embeddable' ? 'Video này riêng tư, không tồn tại hoặc chủ video không cho phép nhúng.' : 'Link YouTube không hợp lệ.');
                 return;
             }
-            schedule.push({ id: null, title: r.title || ('YouTube ' + r.id), lyrics: '', scheduleId: Date.now() + Math.random(), type: 'youtube', ytId: r.id, isMediaOnly: true, background: null });
+            schedule.push({ id: null, title: r.title || ('YouTube ' + r.id), lyrics: '', scheduleId: Date.now() + Math.random(), type: 'youtube', ytId: r.id, ytMode: 'video', isMediaOnly: true, background: null });
             renderSchedule();
             if (!r.online) alert('Không lấy được tên video (đang offline?). Đã thêm với tên mặc định.');
         }
@@ -8402,10 +8416,22 @@
             ytpDestroyFrame();   // chỉ phát ở MỘT nơi: tắt xem trước để không có 2 luồng âm thanh
             currentLiveScheduleIndex = index;
             liveSlides = []; currentLiveIndex = -1; currentLiveSlideIndex = -1; renderLiveSlides();   // bỏ thẻ slide cũ (tránh bấm nhầm bật lại bài trước)
-            ytLive = { id: item.ytId, title: item.title, state: -1, cur: startSec, dur: 0, muted: false, err: 0 };
-            updateMediaMonitorOutput('▶ ' + item.title);
+            const mode = item.ytMode === 'audio' ? 'audio' : 'video';
+            ytLive = { id: item.ytId, title: item.title, state: -1, cur: startSec, dur: 0, muted: false, err: 0, mode: mode };
+            if (mode === 'audio') sendToLiveWindow({ text: '' });   // bỏ chữ cũ còn trên màn; giữ nguyên nền
+            updateMediaMonitorOutput((mode === 'audio' ? '♪ ' : '▶ ') + item.title);
             renderYtBar(); renderSchedule();
-            await window.electronAPI.liveSendYoutube({ action: 'load', id: item.ytId, start: startSec });
+            await window.electronAPI.liveSendYoutube({ action: 'load', id: item.ytId, start: startSec, mode: mode });
+        }
+
+        // Đổi chế độ khi video đang chiếu: 'audio' = trong suốt (hiện nền/lời bên dưới, vẫn có tiếng), 'video' = hiện hình
+        function applyLiveYtMode(mode) {
+            if (!ytLive) return;
+            ytLive.mode = mode;
+            if (mode === 'audio') sendToLiveWindow({ text: '' });
+            window.electronAPI.liveSendYoutube({ action: 'mode', mode: mode });
+            updateMediaMonitorOutput((mode === 'audio' ? '♪ ' : '▶ ') + ytLive.title);
+            renderYtBar();
         }
 
         function stopYoutube() {
@@ -8433,6 +8459,8 @@
             const playing = ytLive.state === 1 || ytLive.state === 3;
             document.querySelector('#yt-toggle .material-symbols-outlined').textContent = playing ? 'pause' : 'play_arrow';
             document.querySelector('#yt-mute .material-symbols-outlined').textContent = ytLive.muted ? 'volume_off' : 'volume_up';
+            document.querySelector('#yt-mode .material-symbols-outlined').textContent = ytLive.mode === 'audio' ? 'music_note' : 'videocam';
+            document.getElementById('yt-mode').classList.toggle('on', ytLive.mode === 'audio');
             const seek = document.getElementById('yt-seek');
             seek.max = String(Math.max(0, Math.floor(ytLive.dur))); if (!seek._drag) seek.value = String(Math.floor(ytLive.cur));
             document.getElementById('yt-time').textContent = ytFmt(ytLive.cur) + ' / ' + ytFmt(ytLive.dur);
@@ -8453,6 +8481,7 @@
             if (!ytPrev) return;
             clearInterval(ytPrev.timer); ytPrev.timer = 0;
             if (ytPrev.frame) { try { ytPrev.frame.src = 'about:blank'; } catch (e) {} ytPrev.frame.remove(); ytPrev.frame = null; }
+            const oldCur = document.getElementById('ytp-curtain'); if (oldCur) oldCur.remove();
             ytPrev.active = false; ytPrev.state = -1; ytPrev.err = 0;
             renderYtp();
         }
@@ -8478,13 +8507,18 @@
             f.src = YouTubeUtil.embedUrl(ytPrev.id, { controls: 1, mute: ytPrev.muted ? 1 : 0 });
             const listen = () => { try { f.contentWindow.postMessage(JSON.stringify({ event: 'listening', id: 1, channel: 'widget' }), YTP_ORIGIN); } catch (e) {} };
             f.addEventListener('load', listen);
-            document.getElementById('ytp-frame-wrap').appendChild(f);
+            const wrap = document.getElementById('ytp-frame-wrap');
+            wrap.classList.remove('interactive'); document.getElementById('ytp-click').classList.remove('on');
+            wrap.appendChild(f);
+            const cur = document.createElement('div'); cur.id = 'ytp-curtain'; cur.className = 'on'; wrap.appendChild(cur);   // rèm đen như Screen Live: chỉ trong suốt khi đang phát/đệm
             ytPrev.capOff = false; ytPrev.frame = f; ytPrev.active = true; ytPrev.cur = 0; ytPrev.dur = 0; ytPrev.state = -1; ytPrev.err = 0;
             let tries = 0;
             ytPrev.timer = setInterval(() => { if (!ytPrev || !ytPrev.frame || ++tries > 20) { if (ytPrev) { clearInterval(ytPrev.timer); ytPrev.timer = 0; } return; } listen(); }, 500);
             renderYtp();
         }
         function renderYtp() {
+            const curt = document.getElementById('ytp-curtain');
+            if (curt) curt.classList.toggle('on', !ytPrev || ytPrev.err > 0 || !(ytPrev.state === 1 || ytPrev.state === 3));
             const panel = document.getElementById('screen-monitor-panel');
             const stage = document.getElementById('ytp-stage');
             if (!panel || !stage) return;
@@ -8514,6 +8548,9 @@
             if (!seek._drag) seek.value = String(Math.floor(ytPrev.cur));
             $('ytp-time').textContent = ytFmt(ytPrev.cur) + ' / ' + ytFmt(ytPrev.dur);
             $('ytp-golive-label').textContent = 'GO LIVE · ' + ytFmt(ytPrev.active ? ytPrev.cur : 0);
+            const mIt = schedule.find(it => it && it.scheduleId === ytPrev.scheduleId);
+            const audio = !!(mIt && mIt.ytMode === 'audio');
+            $('ytp-mode-audio').classList.toggle('on', audio); $('ytp-mode-video').classList.toggle('on', !audio);
         }
         function initYoutubePreviewUi() {
             const $ = (id) => document.getElementById(id);
@@ -8534,6 +8571,19 @@
                 ytpPost(ytPrev.muted ? 'mute' : 'unMute'); renderYtp();
             });
             $('ytp-stop').addEventListener('click', ytpDestroyFrame);
+            const setMode = (mode) => {   // lưu vào mục Schedule (theo cùng .bcsch) + áp ngay nếu video này đang chiếu
+                if (!ytPrev) return;
+                const it = schedule.find(x => x && x.scheduleId === ytPrev.scheduleId);
+                if (it) it.ytMode = mode;
+                if (ytLive && ytLive.id === ytPrev.id) applyLiveYtMode(mode);
+                renderYtp();
+            };
+            $('ytp-mode-video').addEventListener('click', () => setMode('video'));
+            $('ytp-mode-audio').addEventListener('click', () => setMode('audio'));
+            $('ytp-click').addEventListener('click', () => {
+                const on = $('ytp-frame-wrap').classList.toggle('interactive');
+                $('ytp-click').classList.toggle('on', on);
+            });
             const seek = $('ytp-seek');
             seek.addEventListener('pointerdown', () => { seek._drag = true; });
             seek.addEventListener('input', () => { if (ytPrev) { ytPrev.cur = Number(seek.value) || 0; $('ytp-time').textContent = ytFmt(ytPrev.cur) + ' / ' + ytFmt(ytPrev.dur); $('ytp-golive-label').textContent = 'GO LIVE · ' + ytFmt(ytPrev.cur); } });   // kéo tới đâu, nút GO LIVE hiện mốc tới đó
@@ -8579,6 +8629,14 @@
                 window.electronAPI.liveSendYoutube({ action: ytLive.muted ? 'mute' : 'unmute' }); renderYtBar();
             });
             $('yt-stop').addEventListener('click', stopYoutube);
+            $('yt-mode').addEventListener('click', () => {
+                if (!ytLive) return;
+                const mode = ytLive.mode === 'audio' ? 'video' : 'audio';
+                const it = schedule.find(x => isYoutubeItem(x) && x.ytId === ytLive.id && schedule.indexOf(x) === currentLiveScheduleIndex);
+                if (it) it.ytMode = mode;
+                applyLiveYtMode(mode);
+                renderYtp();
+            });
             const seek = $('yt-seek');
             seek.addEventListener('pointerdown', () => { seek._drag = true; });
             seek.addEventListener('change', () => { seek._drag = false; if (ytLive) window.electronAPI.liveSendYoutube({ action: 'seek', sec: Number(seek.value) || 0 }); });

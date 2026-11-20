@@ -2994,7 +2994,7 @@ app.whenReady().then(() => {
 
   // ---- YouTube nhúng trên Screen Live ----
   // Renderer KHÔNG tự dựng URL: chỉ gửi ID/lệnh, main kiểm lại (allowlist lệnh + ID 11 ký tự) rồi mới chuyển cho Live.
-  const YT_ACTIONS = new Set(['load', 'play', 'pause', 'stop', 'mute', 'unmute', 'seek', 'volume']);
+  const YT_ACTIONS = new Set(['load', 'play', 'pause', 'stop', 'mute', 'unmute', 'seek', 'volume', 'mode']);
   ipcMain.handle('youtube-resolve', async (_e, input) => {
     const id = YouTubeUtil.parseYouTubeId(input);
     if (!id) return { ok: false, error: 'invalid-link' };
@@ -3023,6 +3023,7 @@ app.whenReady().then(() => {
       msg.id = d.id;
       msg.start = Math.max(0, Math.min(86400, Math.floor(Number(d.start) || 0)));   // giây bắt đầu (đã chọn ở Screen Monitor)
     }
+    if (d.action === 'load' || d.action === 'mode') msg.mode = d.mode === 'audio' ? 'audio' : 'video';   // enum, mọi giá trị khác = video
     if (d.action === 'seek') { msg.sec = Math.max(0, Math.min(86400, Number(d.sec) || 0)); }
     if (d.action === 'volume') { msg.vol = Math.max(0, Math.min(100, Math.round(Number(d.vol) || 0))); }
     if (!liveWindow || liveWindow.isDestroyed()) return false;

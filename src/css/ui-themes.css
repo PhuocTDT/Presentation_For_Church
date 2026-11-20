@@ -322,6 +322,7 @@ html[data-ui-skin] .yt-ctl{color:var(--u-text)!important}
 html[data-ui-skin] .yt-ctl button{background:color-mix(in srgb,var(--u-text) 9%,transparent)!important;color:var(--u-text)!important;border-radius:calc(var(--u-radius) - 4px)!important}
 html[data-ui-skin] .yt-ctl button:hover{background:color-mix(in srgb,var(--u-text) 17%,transparent)!important}
 html[data-ui-skin] .yt-ctl button.yt-main,html[data-ui-skin] .yt-ctl button.ytp-go{background:var(--u-accent)!important;color:var(--u-accent-ink)!important}
+html[data-ui-skin] .yt-ctl button.on{background:var(--u-accent)!important;color:var(--u-accent-ink)!important}   /* chế độ đang chọn (Phát video / Chỉ phát nhạc), bàn tay, nút nhạc ở thanh Live */
 html[data-ui-skin] .yt-ctl button.yt-main:hover,html[data-ui-skin] .yt-ctl button.ytp-go:hover{filter:brightness(1.08)}
 html[data-ui-skin] .yt-ctl input[type=range]{accent-color:var(--u-accent)}
 html[data-ui-skin] .yt-ctl .yt-status.err{color:var(--u-live,#dc2626)}
