@@ -8459,7 +8459,7 @@
         function showYtStage(item) {
             if (ytPrev && ytPrev.scheduleId === item.scheduleId && ytPrev.id === item.ytId) { renderYtp(); return; }   // gọi lại cho cùng mục: giữ nguyên
             ytpDestroyFrame();
-            ytPrev = { id: item.ytId, title: item.title, scheduleId: item.scheduleId, active: false, frame: null, timer: 0, state: -1, cur: 0, dur: 0, muted: true, err: 0 };
+            ytPrev = { capOff: false, id: item.ytId, title: item.title, scheduleId: item.scheduleId, active: false, frame: null, timer: 0, state: -1, cur: 0, dur: 0, muted: true, err: 0 };
             renderYtp();
         }
         function hideYtStage() {
@@ -8479,7 +8479,7 @@
             const listen = () => { try { f.contentWindow.postMessage(JSON.stringify({ event: 'listening', id: 1, channel: 'widget' }), YTP_ORIGIN); } catch (e) {} };
             f.addEventListener('load', listen);
             document.getElementById('ytp-frame-wrap').appendChild(f);
-            ytPrev.frame = f; ytPrev.active = true; ytPrev.cur = 0; ytPrev.dur = 0; ytPrev.state = -1; ytPrev.err = 0;
+            ytPrev.capOff = false; ytPrev.frame = f; ytPrev.active = true; ytPrev.cur = 0; ytPrev.dur = 0; ytPrev.state = -1; ytPrev.err = 0;
             let tries = 0;
             ytPrev.timer = setInterval(() => { if (!ytPrev || !ytPrev.frame || ++tries > 20) { if (ytPrev) { clearInterval(ytPrev.timer); ytPrev.timer = 0; } return; } listen(); }, 500);
             renderYtp();
@@ -8553,6 +8553,7 @@
                 if (d.event === 'onStateChange') { ytPrev.state = Number(d.info); ytPrev.err = 0; renderYtp(); return; }
                 if (d.event === 'infoDelivery' && d.info && typeof d.info === 'object') {
                     if (typeof d.info.playerState === 'number') { ytPrev.state = d.info.playerState; ytPrev.err = 0; }
+                    if (ytPrev.state === 1 && !ytPrev.capOff) { ytPrev.capOff = true; ytpPost('unloadModule', ['captions']); ytpPost('setOption', ['captions', 'track', {}]); }   // tắt phụ đề tự bật
                     if (typeof d.info.duration === 'number' && d.info.duration > 0) ytPrev.dur = d.info.duration;
                     if (typeof d.info.currentTime === 'number' && !seek._drag) ytPrev.cur = d.info.currentTime;
                     renderYtp();

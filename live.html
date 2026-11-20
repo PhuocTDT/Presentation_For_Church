@@ -117,7 +117,10 @@
         /* Viền nhận diện khi Screen Live đè lên màn hình điều khiển (main bật class này; tắt khi đã sang màn hình riêng) */
         html.frame-hint body::after { content: ""; position: fixed; inset: 0; border: 4px solid #fff; box-shadow: inset 0 0 0 1px rgba(0,0,0,.55); pointer-events: none; z-index: 2147483647; }
         #yt-layer { position: fixed; inset: 0; z-index: 50; background: #000; }
-        #yt-layer iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+        #yt-layer iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; pointer-events: none; }   /* chuột không chạm vào trình phát → YouTube không bật thanh tiêu đề/nút khi rê chuột */
+        /* Rèm đen: che giao diện của YouTube khi tạm dừng / hết video / lỗi (tên kênh, "More videos", logo, video gợi ý) */
+        #yt-curtain { position: absolute; inset: 0; background: #000; opacity: 0; transition: opacity .25s ease; pointer-events: none; }
+        #yt-curtain.on { opacity: 1; }
         .next-verse-box {
             position: absolute;
             bottom: 20px;
@@ -579,13 +582,20 @@
             clearInterval(ytTimer); ytTimer = 0;
             if (ytFrame) { try { ytFrame.src = 'about:blank'; } catch (e) {} ytFrame.remove(); ytFrame = null; }
             const layer = document.getElementById('yt-layer');
+            const oldCur = document.getElementById('yt-curtain'); if (oldCur) oldCur.remove();
             if (layer) layer.classList.add('hidden');
+        }
+        let ytCaptionsOff = false;
+        function ytCurtain(state) {
+            const c = document.getElementById('yt-curtain');
+            if (c) c.classList.toggle('on', !(state === 1 || state === 3));   // chỉ trong suốt khi đang phát/đệm
+            if (!ytCaptionsOff && state === 1) { ytCaptionsOff = true; ytCmd('unloadModule', ['captions']); ytCmd('setOption', ['captions', 'track', {}]); }   // tắt phụ đề tự bật theo tuỳ chọn đã lưu của YouTube
         }
         function ytReport(state, cur, dur, err) {
             try { window.electronAPI.youtubeReportState({ state: state, cur: cur || 0, dur: dur || 0, err: err || 0 }); } catch (e) {}
         }
         function ytLoad(id, start) {
-            ytStop();
+            ytStop(); ytCaptionsOff = false;
             // Chỉ nhận ID hợp lệ (main đã kiểm, kiểm lại ở đây vì đây là chỗ dựng URL)
             if (!/^[A-Za-z0-9_-]{11}$/.test(id)) return;
             const layer = document.getElementById('yt-layer');
@@ -599,7 +609,9 @@
                 // đăng ký nhận sự kiện (onStateChange/infoDelivery/onError) từ trình phát
                 try { f.contentWindow.postMessage(JSON.stringify({ event: 'listening', id: 1, channel: 'widget' }), YT_ORIGIN); } catch (e) {}
             });
-            layer.appendChild(f); layer.classList.remove('hidden');
+            layer.appendChild(f);
+            const cur = document.createElement('div'); cur.id = 'yt-curtain'; cur.className = 'on'; layer.appendChild(cur);   // đen cho tới khi video thực sự chạy
+            layer.classList.remove('hidden');
             ytFrame = f;
             // YouTube chỉ gửi infoDelivery khi có "listening"; nhắc lại vài lần cho tới khi trình phát sẵn sàng
             let tries = 0;
@@ -613,11 +625,11 @@
             let d = ev.data;
             if (typeof d === 'string') { try { d = JSON.parse(d); } catch (e) { return; } }
             if (!d || typeof d !== 'object') return;
-            if (d.event === 'onError') { ytReport(-1, 0, 0, Number(d.info) || 1); return; }
-            if (d.event === 'onStateChange') { ytReport(Number(d.info), 0, 0, 0); return; }
+            if (d.event === 'onError') { ytCurtain(-1); ytReport(-1, 0, 0, Number(d.info) || 1); return; }
+            if (d.event === 'onStateChange') { ytCurtain(Number(d.info)); ytReport(Number(d.info), 0, 0, 0); return; }
             if (d.event === 'infoDelivery' && d.info && typeof d.info === 'object') {
                 const now = Date.now();
-                if (typeof d.info.playerState === 'number') { ytReport(d.info.playerState, d.info.currentTime, d.info.duration, 0); ytLastReport = now; }
+                if (typeof d.info.playerState === 'number') { ytCurtain(d.info.playerState); ytReport(d.info.playerState, d.info.currentTime, d.info.duration, 0); ytLastReport = now; }
                 else if (typeof d.info.currentTime === 'number' && now - ytLastReport > 900) { ytLastReport = now; ytReport(-2, d.info.currentTime, d.info.duration, 0); }
             }
         });
