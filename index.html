@@ -964,6 +964,9 @@
       /* --- Screen Monitor ở chế độ YouTube: khung video thu theo chiều cao còn lại, thanh điều khiển nằm dưới --- */
       #ytp-stage { position: absolute; inset: 0; z-index: 5; background: #0b0b0f; color: #fff; }
       #ytp-stage.hidden, #ytp-stage .hidden { display: none !important; }
+      #ytp-stage.offscreen { position: fixed; inset: auto; left: -10000px; top: 0; width: 480px; height: 270px; }   /* nhạc phát ngầm: giữ nguyên trình phát nhưng ngoài màn hình */
+      @keyframes ytFlash { 0%, 100% { box-shadow: 0 0 0 0 rgba(220,38,38,0); } 50% { box-shadow: 0 0 0 4px rgba(220,38,38,.85); } }
+      #ytp-bar.flash .ytp-go { animation: ytFlash .5s ease-in-out 3; }
       #ytp-poster { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; padding: 10px 14px; text-align: center; }
       #ytp-poster .ytp-pic { font-size: 30px; color: #ef4444; }
       #ytp-ptitle { font-size: 12px; font-weight: 600; max-width: 100%; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
@@ -2334,7 +2337,7 @@
                             <div id="ytp-bar" class="yt-ctl" role="group" aria-label="YouTube">
                                 <div class="yt-seg" role="group" aria-label="Chế độ chiếu">
                                     <button type="button" id="ytp-mode-video" title="Chiếu cả hình và tiếng lên Screen Live"><span class="material-symbols-outlined">videocam</span><span>Phát video</span></button>
-                                    <button type="button" id="ytp-mode-audio" title="Chỉ phát tiếng; Screen Live giữ nền/lời hiện có (video vẫn được tải ngầm)"><span class="material-symbols-outlined">music_note</span><span>Chỉ phát nhạc</span></button>
+                                    <button type="button" id="ytp-mode-audio" title="Tiếng phát từ khung Screen Monitor trên máy này (ra loa/đường dây âm thanh); Screen Live chỉ hiện tên video trên nền đen"><span class="material-symbols-outlined">music_note</span><span>Chỉ phát nhạc</span></button>
                                 </div>
                                 <div id="ytp-ctrls" class="hidden">
                                     <div class="yt-row">
@@ -8406,38 +8409,88 @@
             if (!r.online) alert('Không lấy được tên video (đang offline?). Đã thêm với tên mặc định.');
         }
 
+        // Chiếu mục YouTube (CHỈ gọi từ nút GO LIVE ở Screen Monitor, hoặc khi đổi chế độ lúc đang chiếu).
+        //  - Phát video: iframe ở Screen Live (mốc bắt đầu = vị trí đã kéo ở Screen Monitor), tắt xem trước.
+        //  - Chỉ phát nhạc: Screen Live KHÔNG tải video, chỉ hiện TÊN VIDEO trên nền đen (đổi nền được bằng kéo-thả media
+        //    vào khung Live); tiếng phát từ trình phát ở khung Screen Monitor (chạy ngay trên máy → ra loa/đường dây âm thanh).
         async function startYoutubeLive(index, startSec) {
             const item = schedule[index];
             if (!isYoutubeItem(item)) return;
             if (!isLiveWindowOpen) { alert('Hãy bật Screen Live (màn chiếu) trước khi chiếu video YouTube.'); return; }
+            const mode = item.ytMode === 'audio' ? 'audio' : 'video';
+            const sameSession = !!(ytPrev && ytPrev.active && ytPrev.scheduleId === item.scheduleId);
             // mốc bắt đầu: mặc định lấy đúng vị trí đã kéo tới ở Screen Monitor (nếu đang xem trước chính video này)
-            if (startSec === undefined) startSec = (ytPrev && ytPrev.active && ytPrev.scheduleId === item.scheduleId) ? Math.floor(ytPrev.cur) : 0;
+            if (startSec === undefined) startSec = sameSession ? Math.floor(ytPrev.cur) : 0;
             startSec = Math.max(0, Math.floor(Number(startSec) || 0));
-            ytpDestroyFrame();   // chỉ phát ở MỘT nơi: tắt xem trước để không có 2 luồng âm thanh
             currentLiveScheduleIndex = index;
             liveSlides = []; currentLiveIndex = -1; currentLiveSlideIndex = -1; renderLiveSlides();   // bỏ thẻ slide cũ (tránh bấm nhầm bật lại bài trước)
-            const mode = item.ytMode === 'audio' ? 'audio' : 'video';
-            ytLive = { id: item.ytId, title: item.title, state: -1, cur: startSec, dur: 0, muted: false, err: 0, mode: mode };
-            if (mode === 'audio') sendToLiveWindow({ text: '' });   // bỏ chữ cũ còn trên màn; giữ nguyên nền
-            updateMediaMonitorOutput((mode === 'audio' ? '♪ ' : '▶ ') + item.title);
-            renderYtBar(); renderSchedule();
-            await window.electronAPI.liveSendYoutube({ action: 'load', id: item.ytId, start: startSec, mode: mode });
+            if (mode === 'video') {
+                ytAudioRelease();      // đang phát nhạc từ Screen Monitor → dừng (chỉ phát ở MỘT nơi)
+                ytpDestroyFrame();     // tắt xem trước để không có 2 luồng âm thanh
+                sendToLiveWindow({ text: '' });   // dọn chữ cũ (nếu trước đó là chế độ nhạc có hiện tên video)
+                ytLive = { id: item.ytId, title: item.title, state: -1, cur: startSec, dur: 0, muted: false, err: 0, mode: 'video' };
+                updateMediaMonitorOutput('▶ ' + item.title);
+                renderYtBar(); renderSchedule();
+                await window.electronAPI.liveSendYoutube({ action: 'load', id: item.ytId, start: startSec });
+            } else {
+                if (ytPrev && ytPrev.audioLive && ytPrev.scheduleId !== item.scheduleId) ytAudioRelease();   // nhạc khác đang phát → thay
+                await window.electronAPI.liveSendYoutube({ action: 'stop' });   // Screen Live không giữ video nào
+                if (!sameSession) {
+                    showYtStage(item);
+                    if (!ytPrev || ytPrev.scheduleId !== item.scheduleId) return;
+                    ytPrev.muted = false;           // nguồn âm thanh thật: phải có tiếng
+                    ytpStartPreview(startSec);
+                } else {
+                    ytPrev.parked = false;
+                    ytPrev.muted = false; ytpPost('unMute');
+                    if (!(ytPrev.state === 1 || ytPrev.state === 3)) ytpPost('playVideo');   // đang tạm dừng ở mốc đã chọn → phát tiếp
+                }
+                ytPrev.audioLive = true;
+                ytLive = { id: item.ytId, title: item.title, state: ytPrev.state, cur: ytPrev.cur || startSec, dur: ytPrev.dur, muted: false, err: 0, mode: 'audio' };
+                showYtTitleOnLive(item.title);
+                updateMediaMonitorOutput(item.title);
+                renderYtBar(); renderSchedule();
+            }
         }
 
-        // Đổi chế độ khi video đang chiếu: 'audio' = trong suốt (hiện nền/lời bên dưới, vẫn có tiếng), 'video' = hiện hình
+        // Screen Live ở chế độ nhạc: tên video, nền đen, font theo style hiện hành (không chạy qua prepareLivePayload để
+        // không cắt mất "[Official Video]" như xoá hợp âm). Muốn đổi nền: kéo media thả vào khung Live (handleLiveDrop).
+        function showYtTitleOnLive(title) {
+            currentLiveBackground = null;
+            try { updateMediaMonitorBackground(null); } catch (e) {}
+            window.electronAPI.liveSendContent({
+                text: String(title || ''), rich: null, style: normalizeSlideStyle(currentLiveStyle || {}),
+                background: null, nextVerse: '', reserveNextVerse: false
+            });
+        }
+
+        // Dừng nhạc đang phát từ khung Screen Monitor (nếu có)
+        function ytAudioRelease() {
+            if (!ytPrev || !ytPrev.audioLive) return;
+            ytPrev.audioLive = false;
+            ytpDestroyFrame();
+            if (ytPrev && ytPrev.parked) { ytPrev = null; renderYtp(); }
+        }
+
+        // Đổi chế độ khi đang chiếu: bắt đầu lại ở chế độ mới từ ĐÚNG vị trí hiện tại
         function applyLiveYtMode(mode) {
-            if (!ytLive) return;
-            ytLive.mode = mode;
-            if (mode === 'audio') sendToLiveWindow({ text: '' });
-            window.electronAPI.liveSendYoutube({ action: 'mode', mode: mode });
-            updateMediaMonitorOutput((mode === 'audio' ? '♪ ' : '▶ ') + ytLive.title);
-            renderYtBar();
+            if (!ytLive || ytLive.mode === mode) return;
+            const item = schedule[currentLiveScheduleIndex];
+            if (!isYoutubeItem(item) || item.ytId !== ytLive.id) return;
+            item.ytMode = mode;
+            startYoutubeLive(currentLiveScheduleIndex, Math.floor(ytLive.cur || 0));
         }
 
-        function stopYoutube() {
+        // clearText=false: nơi gọi sắp gửi nội dung mới lên Live nên khỏi gửi chữ rỗng trước
+        function stopYoutube(clearText) {
             if (!ytLive) return;
+            const wasAudio = ytLive.mode === 'audio';
             ytLive = null;
             try { window.electronAPI.liveSendYoutube({ action: 'stop' }); } catch (e) {}
+            if (wasAudio) {
+                ytAudioRelease();
+                if (clearText !== false) sendToLiveWindow({ text: '' });   // gỡ tên video khỏi màn chiếu
+            }
             renderYtBar();
         }
 
@@ -8485,33 +8538,61 @@
             ytPrev.active = false; ytPrev.state = -1; ytPrev.err = 0;
             renderYtp();
         }
+        // Nhắc dùng nút GO LIVE ở Screen Monitor (các đường chiếu cũ không chiếu YouTube nữa)
+        function ytHintUseMonitor() {
+            const panel = document.getElementById('screen-monitor-panel');
+            if (!panel || !panel.classList.contains('yt-mode')) {
+                alert('Đang phát nhạc từ Screen Monitor. Bấm ■ ở thanh Live để dừng nhạc trước khi chọn video YouTube khác.');
+                return;
+            }
+            const bar = document.getElementById('ytp-bar');
+            bar.classList.remove('flash'); void bar.offsetWidth; bar.classList.add('flash');
+            clearTimeout(ytHintUseMonitor._t); ytHintUseMonitor._t = setTimeout(() => bar.classList.remove('flash'), 1800);
+        }
+        // Lệnh từ thanh Live: chế độ nhạc → điều khiển trình phát ở Screen Monitor; chế độ video → qua main tới Screen Live
+        function ytLiveCmd(m) {
+            if (ytLive && ytLive.mode === 'audio') {
+                switch (m.action) {
+                    case 'play': ytpPost('playVideo'); break;
+                    case 'pause': ytpPost('pauseVideo'); break;
+                    case 'mute': ytpPost('mute'); if (ytPrev) ytPrev.muted = true; break;
+                    case 'unmute': ytpPost('unMute'); if (ytPrev) ytPrev.muted = false; break;
+                    case 'seek': ytpPost('seekTo', [Number(m.sec) || 0, true]); break;
+                }
+            } else {
+                window.electronAPI.liveSendYoutube(m);
+            }
+        }
         function showYtStage(item) {
-            if (ytPrev && ytPrev.scheduleId === item.scheduleId && ytPrev.id === item.ytId) { renderYtp(); return; }   // gọi lại cho cùng mục: giữ nguyên
+            if (ytPrev && ytPrev.scheduleId === item.scheduleId && ytPrev.id === item.ytId) { ytPrev.parked = false; renderYtp(); return; }   // gọi lại cho cùng mục: giữ nguyên
+            if (ytPrev && ytPrev.audioLive) { ytPrev.parked = true; renderYtp(); return; }   // nhạc đang phát từ Screen Monitor: chọn mục khác KHÔNG được làm tắt nhạc
             ytpDestroyFrame();
             ytPrev = { capOff: false, id: item.ytId, title: item.title, scheduleId: item.scheduleId, active: false, frame: null, timer: 0, state: -1, cur: 0, dur: 0, muted: true, err: 0 };
             renderYtp();
         }
         function hideYtStage() {
             if (!ytPrev) return;
+            if (ytPrev.audioLive) { ytPrev.parked = true; renderYtp(); return; }   // nhạc vẫn phát ngầm (khung nằm ngoài màn hình)
             ytpDestroyFrame();
             ytPrev = null;
             renderYtp();
         }
-        function ytpStartPreview() {
+        function ytpStartPreview(startSec) {
             if (!ytPrev) return;
+            startSec = Math.max(0, Math.floor(Number(startSec) || 0));
             ytpDestroyFrame();
             const f = document.createElement('iframe');
             f.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-presentation');
             f.setAttribute('allow', 'autoplay; encrypted-media; fullscreen');
             f.setAttribute('referrerpolicy', 'strict-origin-when-cross-origin');
-            f.src = YouTubeUtil.embedUrl(ytPrev.id, { controls: 1, mute: ytPrev.muted ? 1 : 0 });
+            f.src = YouTubeUtil.embedUrl(ytPrev.id, { controls: 1, mute: ytPrev.muted ? 1 : 0, start: startSec });
             const listen = () => { try { f.contentWindow.postMessage(JSON.stringify({ event: 'listening', id: 1, channel: 'widget' }), YTP_ORIGIN); } catch (e) {} };
             f.addEventListener('load', listen);
             const wrap = document.getElementById('ytp-frame-wrap');
             wrap.classList.remove('interactive'); document.getElementById('ytp-click').classList.remove('on');
             wrap.appendChild(f);
             const cur = document.createElement('div'); cur.id = 'ytp-curtain'; cur.className = 'on'; wrap.appendChild(cur);   // rèm đen như Screen Live: chỉ trong suốt khi đang phát/đệm
-            ytPrev.capOff = false; ytPrev.frame = f; ytPrev.active = true; ytPrev.cur = 0; ytPrev.dur = 0; ytPrev.state = -1; ytPrev.err = 0;
+            ytPrev.capOff = false; ytPrev.frame = f; ytPrev.active = true; ytPrev.cur = startSec; ytPrev.dur = 0; ytPrev.state = -1; ytPrev.err = 0;
             let tries = 0;
             ytPrev.timer = setInterval(() => { if (!ytPrev || !ytPrev.frame || ++tries > 20) { if (ytPrev) { clearInterval(ytPrev.timer); ytPrev.timer = 0; } return; } listen(); }, 500);
             renderYtp();
@@ -8522,7 +8603,9 @@
             const panel = document.getElementById('screen-monitor-panel');
             const stage = document.getElementById('ytp-stage');
             if (!panel || !stage) return;
-            if (!ytPrev) { panel.classList.remove('yt-mode'); stage.classList.add('hidden'); return; }
+            if (!ytPrev) { panel.classList.remove('yt-mode'); stage.classList.remove('offscreen'); stage.classList.add('hidden'); return; }
+            if (ytPrev.parked) { panel.classList.remove('yt-mode'); stage.classList.remove('hidden'); stage.classList.add('offscreen'); return; }   // nhạc phát ngầm: khung ra ngoài màn hình nhưng KHÔNG bị gỡ
+            stage.classList.remove('offscreen');
             panel.classList.add('yt-mode'); stage.classList.remove('hidden');
             const $ = (id) => document.getElementById(id);
             const isLiveNow = !!(ytLive && ytLive.id === ytPrev.id);
@@ -8552,10 +8635,16 @@
             const audio = !!(mIt && mIt.ytMode === 'audio');
             $('ytp-mode-audio').classList.toggle('on', audio); $('ytp-mode-video').classList.toggle('on', !audio);
         }
+        function ytpAfterUpdate() {
+            if (ytLive && ytLive.mode === 'audio' && ytPrev && ytPrev.audioLive) {
+                ytLive.state = ytPrev.state; ytLive.cur = ytPrev.cur; ytLive.dur = ytPrev.dur; ytLive.err = ytPrev.err; ytLive.muted = ytPrev.muted;
+                renderYtBar();   // đã gọi renderYtp
+            } else renderYtp();
+        }
         function initYoutubePreviewUi() {
             const $ = (id) => document.getElementById(id);
             if (!$('ytp-stage')) return;
-            $('ytp-play').addEventListener('click', ytpStartPreview);
+            $('ytp-play').addEventListener('click', () => ytpStartPreview());
             $('ytp-toggle').addEventListener('click', () => {
                 if (!ytPrev || !ytPrev.active) return;
                 const playing = ytPrev.state === 1 || ytPrev.state === 3;
@@ -8568,14 +8657,14 @@
             $('ytp-mute').addEventListener('click', () => {
                 if (!ytPrev) return;
                 ytPrev.muted = !ytPrev.muted;
-                ytpPost(ytPrev.muted ? 'mute' : 'unMute'); renderYtp();
+                ytpPost(ytPrev.muted ? 'mute' : 'unMute'); ytpAfterUpdate();
             });
-            $('ytp-stop').addEventListener('click', ytpDestroyFrame);
+            $('ytp-stop').addEventListener('click', () => { if (ytPrev && ytPrev.audioLive) stopYoutube(); else ytpDestroyFrame(); });   // đang là nguồn nhạc → dừng cả nhạc
             const setMode = (mode) => {   // lưu vào mục Schedule (theo cùng .bcsch) + áp ngay nếu video này đang chiếu
                 if (!ytPrev) return;
                 const it = schedule.find(x => x && x.scheduleId === ytPrev.scheduleId);
+                if (ytLive && ytLive.id === ytPrev.id && ytLive.mode !== mode) { applyLiveYtMode(mode); return; }   // đang chiếu: bắt đầu lại ở chế độ mới
                 if (it) it.ytMode = mode;
-                if (ytLive && ytLive.id === ytPrev.id) applyLiveYtMode(mode);
                 renderYtp();
             };
             $('ytp-mode-video').addEventListener('click', () => setMode('video'));
@@ -8599,14 +8688,14 @@
                 let d = ev.data;
                 if (typeof d === 'string') { try { d = JSON.parse(d); } catch (e) { return; } }
                 if (!d || typeof d !== 'object') return;
-                if (d.event === 'onError') { ytPrev.err = Number(d.info) || 1; renderYtp(); return; }
-                if (d.event === 'onStateChange') { ytPrev.state = Number(d.info); ytPrev.err = 0; renderYtp(); return; }
+                if (d.event === 'onError') { ytPrev.err = Number(d.info) || 1; ytpAfterUpdate(); return; }
+                if (d.event === 'onStateChange') { ytPrev.state = Number(d.info); ytPrev.err = 0; ytpAfterUpdate(); return; }
                 if (d.event === 'infoDelivery' && d.info && typeof d.info === 'object') {
                     if (typeof d.info.playerState === 'number') { ytPrev.state = d.info.playerState; ytPrev.err = 0; }
                     if (ytPrev.state === 1 && !ytPrev.capOff) { ytPrev.capOff = true; ytpPost('unloadModule', ['captions']); ytpPost('setOption', ['captions', 'track', {}]); }   // tắt phụ đề tự bật
                     if (typeof d.info.duration === 'number' && d.info.duration > 0) ytPrev.dur = d.info.duration;
                     if (typeof d.info.currentTime === 'number' && !seek._drag) ytPrev.cur = d.info.currentTime;
-                    renderYtp();
+                    ytpAfterUpdate();
                 }
             });
         }
@@ -8617,29 +8706,25 @@
             $('yt-toggle').addEventListener('click', () => {
                 if (!ytLive) return;
                 const playing = ytLive.state === 1 || ytLive.state === 3;
-                if (ytLive.state === 0) window.electronAPI.liveSendYoutube({ action: 'seek', sec: 0 });
-                window.electronAPI.liveSendYoutube({ action: playing ? 'pause' : 'play' });
+                if (ytLive.state === 0) ytLiveCmd({ action: 'seek', sec: 0 });
+                ytLiveCmd({ action: playing ? 'pause' : 'play' });
                 ytLive.state = playing ? 2 : 1; renderYtBar();
             });
-            $('yt-back').addEventListener('click', () => { if (ytLive) window.electronAPI.liveSendYoutube({ action: 'seek', sec: Math.max(0, ytLive.cur - 10) }); });
-            $('yt-fwd').addEventListener('click', () => { if (ytLive) window.electronAPI.liveSendYoutube({ action: 'seek', sec: ytLive.cur + 10 }); });
+            $('yt-back').addEventListener('click', () => { if (ytLive) ytLiveCmd({ action: 'seek', sec: Math.max(0, ytLive.cur - 10) }); });
+            $('yt-fwd').addEventListener('click', () => { if (ytLive) ytLiveCmd({ action: 'seek', sec: ytLive.cur + 10 }); });
             $('yt-mute').addEventListener('click', () => {
                 if (!ytLive) return;
                 ytLive.muted = !ytLive.muted;
-                window.electronAPI.liveSendYoutube({ action: ytLive.muted ? 'mute' : 'unmute' }); renderYtBar();
+                ytLiveCmd({ action: ytLive.muted ? 'mute' : 'unmute' }); renderYtBar();
             });
             $('yt-stop').addEventListener('click', stopYoutube);
             $('yt-mode').addEventListener('click', () => {
                 if (!ytLive) return;
-                const mode = ytLive.mode === 'audio' ? 'video' : 'audio';
-                const it = schedule.find(x => isYoutubeItem(x) && x.ytId === ytLive.id && schedule.indexOf(x) === currentLiveScheduleIndex);
-                if (it) it.ytMode = mode;
-                applyLiveYtMode(mode);
-                renderYtp();
+                applyLiveYtMode(ytLive.mode === 'audio' ? 'video' : 'audio');
             });
             const seek = $('yt-seek');
             seek.addEventListener('pointerdown', () => { seek._drag = true; });
-            seek.addEventListener('change', () => { seek._drag = false; if (ytLive) window.electronAPI.liveSendYoutube({ action: 'seek', sec: Number(seek.value) || 0 }); });
+            seek.addEventListener('change', () => { seek._drag = false; if (ytLive) ytLiveCmd({ action: 'seek', sec: Number(seek.value) || 0 }); });
             window.electronAPI.onYoutubeState((_e, s) => {
                 if (!ytLive || !s) return;
                 if (s.err) { ytLive.err = s.err; }
@@ -8815,6 +8900,7 @@
         }
 
         function goLiveFromPreview() {
+            if (isYoutubeItem(schedule[currentScheduleIndex])) { ytHintUseMonitor(); return; }   // YouTube chỉ chiếu từ nút GO LIVE ở Screen Monitor (không tự nhảy sang mục kế)
             if (currentSlides.length > 0 && currentPreviewIndex !== -1) {
                 // Keep track of which schedule item is going live
                 const indexGoingLive = currentScheduleIndex;
@@ -8843,7 +8929,7 @@
         }
 
         function clearLive() {
-            stopYoutube();
+            stopYoutube(false);
             updateLiveOutput("");
             // Send empty text to Screen Live, but do NOT send background: null 
             // so the current background remains active on screen.
@@ -8851,6 +8937,7 @@
         }
 
         function liveCurrent() {
+            if (isYoutubeItem(schedule[currentScheduleIndex])) { ytHintUseMonitor(); return; }
             if (currentSlides.length > 0 && currentPreviewIndex !== -1) {
                 currentLiveScheduleIndex = currentScheduleIndex;
                 currentLiveSlideIndex = currentPreviewIndex;
@@ -9024,6 +9111,7 @@
         let currentLiveIndex = -1; // active slide index in live panel
 
         function goLiveFromSlide(index) {
+            if (isYoutubeItem(schedule[currentScheduleIndex])) { ytHintUseMonitor(); return; }
             currentLiveScheduleIndex = currentScheduleIndex;
             // Áp dụng style sang live
             currentLiveStyle = normalizeSlideStyle(currentPreviewStyle);
@@ -9045,8 +9133,8 @@
         }
 
         function goLiveSlide(index) {
-            if (isYoutubeItem(schedule[currentLiveScheduleIndex]) && currentScheduleIndex === currentLiveScheduleIndex) { startYoutubeLive(currentLiveScheduleIndex); return; }
-            stopYoutube();
+            if (isYoutubeItem(schedule[currentLiveScheduleIndex]) && currentScheduleIndex === currentLiveScheduleIndex) { ytHintUseMonitor(); return; }
+            stopYoutube(false);
             currentLiveIndex = index;
             currentLiveSlideIndex = index;
             const slide = liveSlides[index];
@@ -9076,8 +9164,8 @@
 
         function goLive(slide) {
             // Called from goLiveFromPreview / liveCurrent (single slide)
-            if (isYoutubeItem(schedule[currentLiveScheduleIndex])) { startYoutubeLive(currentLiveScheduleIndex); return; }
-            stopYoutube();
+            if (isYoutubeItem(schedule[currentLiveScheduleIndex]) && currentLiveScheduleIndex === currentScheduleIndex) { ytHintUseMonitor(); return; }
+            stopYoutube(false);
             currentLiveStyle = normalizeSlideStyle(currentPreviewStyle); // Đồng bộ style sang live
             liveSlides = [...currentSlides];
             currentLiveIndex = currentPreviewIndex;
@@ -9670,7 +9758,7 @@
         }
 
         function sendToLiveWindow(data) {
-            if (ytLive && typeof data.text === 'string' && data.text) stopYoutube();   // có chữ mới cần chiếu → tắt video
+            if (ytLive && typeof data.text === 'string' && data.text) stopYoutube(false);   // có chữ mới cần chiếu → tắt video/nhạc
             // gửi chữ của đúng slide đang chiếu → kèm định dạng của slide đó (mọi nơi gọi chỉ truyền text)
             if (typeof data.text === 'string' && data.text && data.rich === undefined) {
                 const cur = liveSlides && liveSlides[currentLiveIndex];
@@ -10271,7 +10359,7 @@
 
         // --- Live Window State ---
         window.electronAPI.onLiveWindowOpened(() => { isLiveWindowOpen = true; });
-        window.electronAPI.onLiveWindowClosed(() => { isLiveWindowOpen = false; ytLive = null; renderYtBar(); });   // preload gỡ listener cũ khi đăng ký lại → chỉ đăng ký MỘT chỗ
+        window.electronAPI.onLiveWindowClosed(() => { isLiveWindowOpen = false; stopYoutube(false); renderYtBar(); });   // preload gỡ listener cũ khi đăng ký lại → chỉ đăng ký MỘT chỗ
 
         async function toggleLiveWindow() {
             if (isLiveWindowOpen) {

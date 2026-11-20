@@ -50,7 +50,7 @@ test('ranh giới tin cậy: link/ID/lệnh xấu bị main từ chối; dữ li
       ]);
       out.kept = list.length; out.item = list[0];
       out.modes = normalizeScheduleList([{ type: 'youtube', ytId: '${ID}', ytMode: 'audio' }, { type: 'youtube', ytId: '${ID}', ytMode: '<img>' }, { type: 'youtube', ytId: '${ID}' }]).map(i => i.ytMode);
-      out.badMode = await window.electronAPI.liveSendYoutube({ action: 'mode', mode: 'evil' });
+      out.badMode = await window.electronAPI.liveSendYoutube({ action: 'mode', mode: 'audio' });
       return out;
     })()`);
     assert.equal(r.evilHost, false); assert.equal(r.userinfo, false); assert.equal(r.script, false); assert.equal(r.notString, false);
@@ -89,7 +89,7 @@ test('vòng đời: cần Screen Live; Go Live mở iframe đúng origin; chiế
     // 1) Chưa mở Screen Live → không chiếu, báo lỗi dễ hiểu
     await app.ev(`selectScheduleItem(${ytIdx})`);
     assert.equal(await app.ev(`document.querySelector('#preview-slides-container').textContent.includes('Video thử')`), true, 'xem trước hiện thẻ tên video');
-    await app.ev(`goLiveFromPreview()`);
+    await app.ev(`document.getElementById('ytp-golive').click()`);
     await sleep(400);
     assert.equal(await app.ev(`ytLive`), null);
     assert.equal(await app.ev(`!!document.querySelector('.ws-dialog-msg') && document.querySelector('.ws-dialog-msg').textContent.includes('Screen Live')`), true);
@@ -99,7 +99,7 @@ test('vòng đời: cần Screen Live; Go Live mở iframe đúng origin; chiế
     live = await app.attach(/live\.html/);
     await sleep(1200);
     assert.equal(await live.ev(`!!document.querySelector('#yt-layer iframe')`), false);
-    await app.ev(`selectScheduleItem(${ytIdx}); goLiveFromPreview()`);
+    await app.ev(`selectScheduleItem(${ytIdx}); document.getElementById('ytp-golive').click()`);
     await sleep(800);
     const f = await live.ev(`(() => { const f = document.querySelector('#yt-layer iframe'); return f ? { src: f.src, shown: !document.getElementById('yt-layer').classList.contains('hidden') } : null; })()`);
     assert.ok(f, 'iframe được tạo trên Screen Live'); assert.equal(f.shown, true);
@@ -112,19 +112,19 @@ test('vòng đời: cần Screen Live; Go Live mở iframe đúng origin; chiế
     assert.equal(await live.ev(`!!document.querySelector('#yt-layer iframe')`), false, 'chiếu bài hát thì tắt video');
     assert.equal(await app.ev(`ytLive`), null); assert.equal(await app.ev(`document.getElementById('yt-bar').classList.contains('hidden')`), true);
     // 4) Clear tắt video
-    await app.ev(`selectScheduleItem(${ytIdx}); goLiveFromPreview()`);
+    await app.ev(`selectScheduleItem(${ytIdx}); document.getElementById('ytp-golive').click()`);
     await sleep(600);
     assert.equal(await live.ev(`!!document.querySelector('#yt-layer iframe')`), true);
     await app.ev(`clearLive()`);
     await sleep(500);
     assert.equal(await live.ev(`!!document.querySelector('#yt-layer iframe')`), false, 'Clear tắt video');
     // 5) Nút Stop trên thanh điều khiển; đóng Screen Live thì thanh biến mất
-    await app.ev(`selectScheduleItem(${ytIdx}); goLiveFromPreview()`);
+    await app.ev(`selectScheduleItem(${ytIdx}); document.getElementById('ytp-golive').click()`);
     await sleep(600);
     await app.ev(`document.getElementById('yt-stop').click()`);
     await sleep(500);
     assert.equal(await live.ev(`!!document.querySelector('#yt-layer iframe')`), false, 'Stop tắt video');
-    await app.ev(`selectScheduleItem(${ytIdx}); goLiveFromPreview()`);
+    await app.ev(`selectScheduleItem(${ytIdx}); document.getElementById('ytp-golive').click()`);
     await sleep(500);
     await app.ev(`toggleLiveWindow()`);   // đóng
     await sleep(800);
@@ -203,39 +203,92 @@ test('xem trước ở Screen Monitor: iframe sandbox, kéo mốc rồi GO LIVE 
   } finally { try { live && live.close(); } catch (e) { /* đã đóng */ } await app.close(); }
 });
 
-test('chế độ "chỉ phát nhạc" vs "phát video": Live trong suốt khi chỉ nhạc, giữ nền, lưu theo mục, đổi nóng khi đang chiếu', async () => {
+test('YouTube chỉ chiếu từ nút GO LIVE ở Screen Monitor: Go Live/Live/nhấp đúp thẻ slide không chiếu, không tự nhảy mục kế, nút nháy sáng', async () => {
   const app = await open();
   let live = null;
   try {
-    await app.ev(`(() => { addToSchedule(songLibrary[0]); schedule.push(normalizeScheduleItem({ type: 'youtube', ytId: '${ID}', title: 'Video thử' })); renderSchedule(); })()`);
+    await app.ev(`(() => { schedule.push(normalizeScheduleItem({ type: 'youtube', ytId: '${ID}', title: 'Video thử' })); addToSchedule(songLibrary[0]); renderSchedule(); })()`);
+    await app.ev(`toggleLiveWindow()`);
+    live = await app.attach(/live\.html/);
+    await sleep(1200);
+    await app.ev(`selectScheduleItem(0)`);   // mục YouTube (đứng đầu)
+    for (const call of ['goLiveFromPreview()', 'liveCurrent()', 'goLiveFromSlide(0)']) {
+      await app.ev(call);
+      await sleep(250);
+      assert.equal(await app.ev(`ytLive`), null, call + ' không được chiếu YouTube');
+      assert.equal(await app.ev(`currentScheduleIndex`), 0, call + ' không được tự nhảy sang mục kế');
+      assert.equal(await live.ev(`!!document.querySelector('#yt-layer iframe')`), false);
+      assert.equal(await app.ev(`document.getElementById('ytp-bar').classList.contains('flash')`), true, 'nút GO LIVE ở Screen Monitor nháy sáng');
+    }
+    // thẻ slide ở Preview: nhấp đúp cũng không chiếu
+    await app.ev(`(() => { const d = document.querySelector('#preview-slides-container > div'); if (d) d.dispatchEvent(new MouseEvent('dblclick', { bubbles: true })); })()`);
+    await sleep(250);
+    assert.equal(await app.ev(`ytLive`), null);
+    assert.equal(await live.ev(`!!document.querySelector('#yt-layer iframe')`), false);
+    // bài hát vẫn chiếu bình thường
+    await app.ev(`selectScheduleItem(1); goLiveFromPreview()`);
+    await sleep(500);
+    assert.equal(await app.ev(`liveSlides.length > 0`), true);
+    assert.deepEqual(app.exceptions, []);
+  } finally { try { live && live.close(); } catch (e) { /* đã đóng */ } await app.close(); }
+});
+
+test('"Chỉ phát nhạc": Live chỉ hiện tên video + nền đen, KHÔNG tải video; tiếng phát từ khung Screen Monitor; chọn mục khác không tắt nhạc', async () => {
+  const app = await open();
+  let live = null;
+  try {
+    await app.ev(`(() => { addToSchedule(songLibrary[0]); schedule.push(normalizeScheduleItem({ type: 'youtube', ytId: '${ID}', title: 'Video [Official] thử' })); renderSchedule(); })()`);
     const ytIdx = await app.ev(`schedule.findIndex(s => s.type === 'youtube')`);
     await app.ev(`toggleLiveWindow()`);
     live = await app.attach(/live\.html/);
     await sleep(1200);
-    // mặc định = video
-    await app.ev(`selectScheduleItem(${ytIdx})`);
-    assert.equal(await app.ev(`document.getElementById('ytp-mode-video').classList.contains('on')`), true);
-    // chiếu chữ trước (để kiểm tra chữ cũ được dọn khi chỉ phát nhạc)
+    // đang chiếu một bài hát (chữ) → chuyển sang nhạc phải thay chữ cũ bằng tên video, nền đen
     await app.ev(`selectScheduleItem(0); goLiveFromPreview()`);
     await sleep(500);
-    // chọn "Chỉ phát nhạc" ở Screen Monitor → lưu vào mục
-    await app.ev(`selectScheduleItem(${ytIdx}); document.getElementById('ytp-mode-audio').click()`);
+    await app.ev(`selectScheduleItem(${ytIdx})`);
+    assert.equal(await app.ev(`document.getElementById('ytp-mode-video').classList.contains('on')`), true, 'mặc định = video');
+    await app.ev(`document.getElementById('ytp-mode-audio').click()`);
     assert.equal(await app.ev(`schedule[${ytIdx}].ytMode`), 'audio'); assert.equal(await app.ev(`document.getElementById('ytp-mode-audio').classList.contains('on')`), true);
     await app.ev(`document.getElementById('ytp-golive').click()`);
-    await sleep(800);
-    assert.equal(await live.ev(`document.getElementById('yt-layer').classList.contains('audio-only')`), true, 'chỉ nhạc → lớp video trong suốt');
-    assert.equal(await live.ev(`getComputedStyle(document.getElementById('yt-layer')).opacity`), '0');
-    assert.ok(await live.ev(`!!document.querySelector('#yt-layer iframe')`), 'trình phát vẫn chạy (để có tiếng)');
-    assert.equal(await live.ev(`document.getElementById('lyrics-text').textContent.trim()`), '', 'chữ cũ được dọn');
-    // đổi nóng sang video bằng nút ở thanh Live
-    await app.ev(`document.getElementById('yt-mode').click()`);
-    await sleep(400);
-    assert.equal(await live.ev(`document.getElementById('yt-layer').classList.contains('audio-only')`), false);
-    assert.equal(await app.ev(`schedule[${ytIdx}].ytMode`), 'video'); assert.equal(await app.ev(`ytLive.mode`), 'video');
-    // đổi nóng lại sang nhạc từ Screen Monitor khi đang chiếu
-    await app.ev(`document.getElementById('ytp-mode-audio').click()`);
-    await sleep(400);
-    assert.equal(await live.ev(`document.getElementById('yt-layer').classList.contains('audio-only')`), true);
+    await sleep(900);
+    // Live: không có iframe; chỉ tên video (nguyên văn, không bị cắt [Official]); nền đen
+    assert.equal(await live.ev(`!!document.querySelector('#yt-layer iframe')`), false, 'Screen Live không tải video nào');
+    assert.equal(await live.ev(`document.getElementById('lyrics-text').textContent.trim()`), 'Video [Official] thử');
+    assert.equal(await live.ev(`['bg-img-a', 'bg-img-b', 'bg-video-a', 'bg-video-b'].every(id => document.getElementById(id).classList.contains('hidden'))`), true, 'nền đen (không có media nền)');
+    // Screen Monitor: trình phát chạy và CÓ TIẾNG (không mute) → ra loa/đường dây âm thanh của máy
+    const f = await app.ev(`(() => { const f = document.querySelector('#ytp-frame-wrap iframe'); return f ? f.src : null; })()`);
+    assert.ok(f, 'trình phát ở Screen Monitor đang chạy'); assert.equal(new URL(f).searchParams.get('mute'), null, 'không tắt tiếng');
+    assert.equal(await app.ev(`ytLive.mode`), 'audio'); assert.equal(await app.ev(`ytPrev.audioLive`), true); assert.equal(await app.ev(`ytPrev.muted`), false);
+    assert.equal(await app.ev(`!document.getElementById('yt-bar').classList.contains('hidden')`), true);
+    // chọn bài hát khác → nhạc KHÔNG tắt (khung ra ngoài màn hình, không bị gỡ), Monitor trở lại chế độ thường
+    await app.ev(`selectScheduleItem(0)`);
+    await sleep(300);
+    assert.equal(await app.ev(`!!document.querySelector('#ytp-frame-wrap iframe')`), true, 'nhạc vẫn phát ngầm');
+    assert.equal(await app.ev(`document.getElementById('screen-monitor-panel').classList.contains('yt-mode')`), false);
+    assert.equal(await app.ev(`document.getElementById('ytp-stage').getBoundingClientRect().left < -1000`), true, 'khung nằm ngoài màn hình');
+    assert.equal(await app.ev(`ytLive !== null`), true);
+    // chọn lại mục YouTube → khung trở lại, vẫn là cùng phiên
+    await app.ev(`selectScheduleItem(${ytIdx})`);
+    await sleep(300);
+    assert.equal(await app.ev(`document.getElementById('screen-monitor-panel').classList.contains('yt-mode')`), true);
+    assert.equal(await app.ev(`ytPrev.audioLive`), true);
+    // đổi nóng sang video: Live tải video đúng mốc, Screen Monitor tắt phát
+    await app.ev(`ytLive.cur = 42; document.getElementById('ytp-mode-video').click()`);
+    await sleep(900);
+    const lf = await live.ev(`(() => { const f = document.querySelector('#yt-layer iframe'); return f ? f.src : null; })()`);
+    assert.ok(lf, 'chế độ video: Live có iframe'); assert.equal(new URL(lf).searchParams.get('start'), '42');
+    assert.equal(await app.ev(`!!document.querySelector('#ytp-frame-wrap iframe')`), false, 'Monitor tắt phát (một nơi duy nhất)');
+    assert.equal(await app.ev(`ytLive.mode`), 'video');
+    // quay lại nhạc (từ mốc 7s) rồi bấm ■ trên thanh Live → tắt nhạc + gỡ tên khỏi màn chiếu
+    await app.ev(`ytLive.cur = 7; document.getElementById('ytp-mode-audio').click()`);
+    await sleep(900);
+    assert.equal(await live.ev(`!!document.querySelector('#yt-layer iframe')`), false);
+    assert.equal(await app.ev(`new URL(document.querySelector('#ytp-frame-wrap iframe').src).searchParams.get('start')`), '7');
+    await app.ev(`document.getElementById('yt-stop').click()`);
+    await sleep(600);
+    assert.equal(await app.ev(`!!document.querySelector('#ytp-frame-wrap iframe')`), false, 'Stop tắt nhạc');
+    assert.equal(await app.ev(`ytLive`), null);
+    assert.equal(await live.ev(`document.getElementById('lyrics-text').textContent.trim()`), '', 'tên video được gỡ khỏi màn chiếu');
     assert.deepEqual(app.exceptions, []);
   } finally { try { live && live.close(); } catch (e) { /* đã đóng */ } await app.close(); }
 });
