@@ -72,7 +72,16 @@ function installPermissionPolicy() {
   const ses = session.defaultSession;
   ses.setPermissionRequestHandler((_wc, permission, callback) => callback(ALLOWED_PERMISSIONS.has(permission)));
   ses.setPermissionCheckHandler((_wc, permission) => ALLOWED_PERMISSIONS.has(permission));
+  // YouTube từ chối nhúng khi không có Referer (trang file:// không gửi Referer → "Lỗi 153"). Chỉ gán Referer cho ĐÚNG
+  // yêu cầu tới trình phát nhúng của YouTube; mọi host khác giữ nguyên (không đụng).
+  ses.webRequest.onBeforeSendHeaders({ urls: [YouTubeUtil.EMBED_ORIGIN + '/*'] }, (details, callback) => {
+    const headers = Object.assign({}, details.requestHeaders);
+    headers['Referer'] = YT_EMBED_REFERER;
+    callback({ requestHeaders: headers });
+  });
 }
+const YouTubeUtil = require('./src/youtube-util');
+const YT_EMBED_REFERER = 'https://worship-official.link/';
 
 
 // CPU Usage helper
@@ -2956,6 +2965,55 @@ app.whenReady().then(() => {
     if (liveWindow && !liveWindow.isDestroyed()) {
       liveWindow.webContents.send('live-clear');
     }
+  });
+
+  // ---- YouTube nhúng trên Screen Live ----
+  // Renderer KHÔNG tự dựng URL: chỉ gửi ID/lệnh, main kiểm lại (allowlist lệnh + ID 11 ký tự) rồi mới chuyển cho Live.
+  const YT_ACTIONS = new Set(['load', 'play', 'pause', 'stop', 'mute', 'unmute', 'seek', 'volume']);
+  ipcMain.handle('youtube-resolve', async (_e, input) => {
+    const id = YouTubeUtil.parseYouTubeId(input);
+    if (!id) return { ok: false, error: 'invalid-link' };
+    // Lấy tên video qua oEmbed (công khai, không cần khoá). Lỗi mạng/ẩn video → vẫn trả ID, tên để renderer đặt mặc định.
+    let title = null;
+    try {
+      const url = 'https://www.youtube.com/oembed?format=json&url=' + encodeURIComponent(YouTubeUtil.watchUrl(id));
+      const res = await net.fetch(url, { signal: AbortSignal.timeout(6000) });
+      if (res.ok) {
+        const text = await res.text();
+        if (text.length <= 65536) {
+          const j = JSON.parse(text);
+          if (j && typeof j.title === 'string') title = j.title.replace(/[\u0000-\u001f\u007f]/g, ' ').trim().slice(0, 200) || null;
+        }
+      } else if (res.status === 401 || res.status === 403 || res.status === 404) {
+        return { ok: false, error: 'not-embeddable', status: res.status };   // riêng tư / không tồn tại / cấm nhúng
+      }
+    } catch (_) { /* offline hoặc timeout: vẫn cho thêm, báo offline */ }
+    return { ok: true, id, title, online: title !== null };
+  });
+  ipcMain.handle('live-send-youtube', (_e, d) => {
+    if (!d || typeof d !== 'object' || !YT_ACTIONS.has(d.action)) return false;
+    const msg = { action: d.action };
+    if (d.action === 'load') {
+      if (!YouTubeUtil.isValidId(d.id)) return false;
+      msg.id = d.id;
+    }
+    if (d.action === 'seek') { msg.sec = Math.max(0, Math.min(86400, Number(d.sec) || 0)); }
+    if (d.action === 'volume') { msg.vol = Math.max(0, Math.min(100, Math.round(Number(d.vol) || 0))); }
+    if (!liveWindow || liveWindow.isDestroyed()) return false;
+    liveWindow.webContents.send('live-youtube', msg);
+    return true;
+  });
+  // Live → Operator: trạng thái trình phát (đang chạy/tạm dừng/hết/lỗi + thời gian). Chỉ nhận số/enum, không nhận chuỗi tự do.
+  ipcMain.handle('youtube-state', (_e, s) => {
+    if (!s || typeof s !== 'object') return false;
+    const out = {
+      state: Number.isInteger(s.state) && s.state >= -2 && s.state <= 5 ? s.state : -2,   // -2 = chỉ cập nhật thời gian
+      cur: Math.max(0, Math.min(86400, Number(s.cur) || 0)),
+      dur: Math.max(0, Math.min(86400, Number(s.dur) || 0)),
+      err: Number.isInteger(s.err) ? s.err : 0
+    };
+    if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('youtube-state', out);
+    return true;
   });
 
   // ---- Band Comm (sidebar in index.html) ----

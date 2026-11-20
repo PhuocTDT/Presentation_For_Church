@@ -108,6 +108,10 @@ Media thật nằm trong `userData/media` hoặc folder được cấu hình b�
 - Schedule item có thể lưu `style` override riêng cho buổi trình chiếu mà không ghi đè style của item gốc trong library
 - Khi người dùng áp `Style Template`, app có thể lưu thêm `sourceStyle`, `appliedTemplateId`, `appliedTemplateName` vào schedule item để quay lại `Style mặc định` nhanh và giữ được style đã chọn khi save/open `.bcsch`
 
+- **Mục YouTube** (thử nghiệm): `{ type: 'youtube', ytId, title, isMediaOnly: true, lyrics: '', background: null, id: null, scheduleId }`. `ytId` là ID đúng 11 ký tự `[A-Za-z0-9_-]` — **không bao giờ lưu URL**. Khi mở `.bcsch`, `normalizeScheduleItem` bỏ mục có `ytId` sai và chỉ giữ đúng các trường trên (title cắt 200 ký tự). URL nhúng luôn do `src/youtube-util.js` / `live.html` dựng lại từ ID sạch (`https://www.youtube-nocookie.com/embed/<ID>`).
+  - IPC: `youtube-resolve(link)` (main parse link bằng allowlist host + lấy tên qua oEmbed, lỗi mạng vẫn trả ID), `live-send-youtube({action,id?,sec?,vol?})` (allowlist `load|play|pause|stop|mute|unmute|seek|volume`, main kiểm ID/khoảng số rồi chuyển cho Live), `youtube-state` (Live → operator: chỉ số: `state` -2..5, `cur`, `dur`, `err`).
+  - Iframe **chỉ có trong `live.html`** (CSP `frame-src https://www.youtube-nocookie.com`); `index.html` giữ `frame-src 'none'`. Main gán `Referer: https://worship-official.link/` CHỈ cho yêu cầu tới `youtube-nocookie.com` (trang `file://` không có Referer → YouTube trả lỗi 153; đã kiểm chứng).
+  - Cần Internet và phải bật Screen Live. Chiếu bài hát khác / Clear / Stop / đóng Screen Live → tắt video.
 - File schedule dùng đuôi `.bcsch`
 - Nội dung là JSON
 - Save/Open đi qua native dialog

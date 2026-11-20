@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="utf-8" />
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self' file: data:; img-src 'self' data: blob: file: app-media:; media-src 'self' blob: file: app-media:; connect-src 'self' app-media:; object-src 'none'; base-uri 'none'; form-action 'none'; frame-src 'none'" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self' file: data:; img-src 'self' data: blob: file: app-media:; media-src 'self' blob: file: app-media:; connect-src 'self' app-media:; object-src 'none'; base-uri 'none'; form-action 'none'; frame-src https://www.youtube-nocookie.com" />
     <link rel="stylesheet" href="src/css/google-fonts.css" />
     <style>
         /* CMG Sans font family */
@@ -113,6 +113,9 @@
         }
 
         .hidden { display: none !important; }
+        /* YouTube nhúng: phủ kín Live (trên chữ + nền). Chỉ tồn tại khi đang chiếu video. */
+        #yt-layer { position: fixed; inset: 0; z-index: 50; background: #000; }
+        #yt-layer iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
         .next-verse-box {
             position: absolute;
             bottom: 20px;
@@ -138,6 +141,7 @@
     <title>Screen Live</title>
 </head>
 <body>
+    <div id="yt-layer" class="hidden"></div>
     <!-- Background layers (double-buffer for crossfade) -->
     <div class="buffer-a layer" id="buffer-a">
         <img class="bg-img hidden" id="bg-img-a" />
@@ -553,7 +557,77 @@
 
         window.electronAPI.onLiveClear(() => {
             console.log('[Live] Clear');
+            ytStop();
             clearAll();
+        });
+
+        // ---- YouTube nhúng ----
+        // Iframe chỉ trỏ tới youtube-nocookie.com (CSP frame-src). Điều khiển bằng postMessage tới ĐÚNG origin đó;
+        // thông điệp nhận về chỉ tin khi event.source là iframe của mình và origin khớp.
+        const YT_ORIGIN = 'https://www.youtube-nocookie.com';
+        let ytFrame = null, ytLastReport = 0, ytTimer = 0;
+        function ytCmd(func, args) {
+            if (ytFrame && ytFrame.contentWindow) {
+                ytFrame.contentWindow.postMessage(JSON.stringify({ event: 'command', func: func, args: args || [] }), YT_ORIGIN);
+            }
+        }
+        function ytStop() {
+            clearInterval(ytTimer); ytTimer = 0;
+            if (ytFrame) { try { ytFrame.src = 'about:blank'; } catch (e) {} ytFrame.remove(); ytFrame = null; }
+            const layer = document.getElementById('yt-layer');
+            if (layer) layer.classList.add('hidden');
+        }
+        function ytReport(state, cur, dur, err) {
+            try { window.electronAPI.youtubeReportState({ state: state, cur: cur || 0, dur: dur || 0, err: err || 0 }); } catch (e) {}
+        }
+        function ytLoad(id) {
+            ytStop();
+            // Chỉ nhận ID hợp lệ (main đã kiểm, kiểm lại ở đây vì đây là chỗ dựng URL)
+            if (!/^[A-Za-z0-9_-]{11}$/.test(id)) return;
+            const layer = document.getElementById('yt-layer');
+            const f = document.createElement('iframe');
+            f.setAttribute('allow', 'autoplay; encrypted-media; fullscreen');
+            f.setAttribute('allowfullscreen', '');
+            f.setAttribute('referrerpolicy', 'strict-origin-when-cross-origin');
+            f.src = YT_ORIGIN + '/embed/' + id + '?autoplay=1&enablejsapi=1&rel=0&playsinline=1&iv_load_policy=3&controls=0&disablekb=1';
+            f.addEventListener('load', function () {
+                // đăng ký nhận sự kiện (onStateChange/infoDelivery/onError) từ trình phát
+                try { f.contentWindow.postMessage(JSON.stringify({ event: 'listening', id: 1, channel: 'widget' }), YT_ORIGIN); } catch (e) {}
+            });
+            layer.appendChild(f); layer.classList.remove('hidden');
+            ytFrame = f;
+            // YouTube chỉ gửi infoDelivery khi có "listening"; nhắc lại vài lần cho tới khi trình phát sẵn sàng
+            let tries = 0;
+            ytTimer = setInterval(function () {
+                if (!ytFrame || ++tries > 20) { clearInterval(ytTimer); ytTimer = 0; return; }
+                try { ytFrame.contentWindow.postMessage(JSON.stringify({ event: 'listening', id: 1, channel: 'widget' }), YT_ORIGIN); } catch (e) {}
+            }, 500);
+        }
+        window.addEventListener('message', function (ev) {
+            if (!ytFrame || ev.source !== ytFrame.contentWindow || ev.origin !== YT_ORIGIN) return;
+            let d = ev.data;
+            if (typeof d === 'string') { try { d = JSON.parse(d); } catch (e) { return; } }
+            if (!d || typeof d !== 'object') return;
+            if (d.event === 'onError') { ytReport(-1, 0, 0, Number(d.info) || 1); return; }
+            if (d.event === 'onStateChange') { ytReport(Number(d.info), 0, 0, 0); return; }
+            if (d.event === 'infoDelivery' && d.info && typeof d.info === 'object') {
+                const now = Date.now();
+                if (typeof d.info.playerState === 'number') { ytReport(d.info.playerState, d.info.currentTime, d.info.duration, 0); ytLastReport = now; }
+                else if (typeof d.info.currentTime === 'number' && now - ytLastReport > 900) { ytLastReport = now; ytReport(-2, d.info.currentTime, d.info.duration, 0); }
+            }
+        });
+        window.electronAPI.onLiveYoutube((event, m) => {
+            if (!m || typeof m !== 'object') return;
+            switch (m.action) {
+                case 'load': ytLoad(String(m.id || '')); break;
+                case 'stop': ytStop(); break;
+                case 'play': ytCmd('playVideo'); break;
+                case 'pause': ytCmd('pauseVideo'); break;
+                case 'mute': ytCmd('mute'); break;
+                case 'unmute': ytCmd('unMute'); break;
+                case 'seek': ytCmd('seekTo', [Number(m.sec) || 0, true]); break;
+                case 'volume': ytCmd('setVolume', [Number(m.vol) || 0]); break;
+            }
         });
 
         async function injectCustomFonts() {

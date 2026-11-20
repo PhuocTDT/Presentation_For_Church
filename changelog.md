@@ -2,6 +2,18 @@
 
 Tất cả các thay đổi và cập nhật quan trọng của dự án được ghi lại tại đây.
 
+## [Chưa phát hành] - YouTube nhúng trên Screen Live (thử nghiệm, nhánh `feature/youtube`)
+
+> Chỉ cần bản app mới (không đổi Worker). Cần Internet khi chiếu video; app vẫn chạy offline bình thường khi không dùng.
+
+- **Thêm video YouTube vào Schedule**: nút `smart_display` ở header **Media** → dán link (watch / youtu.be / embed / shorts / live hoặc chỉ ID) → app lấy tên video (oEmbed, qua main) và thêm một mục Schedule có ô thumbnail đỏ. Chọn mục → xem trước là thẻ tên video; **Go Live** chiếu toàn màn hình trên Screen Live (iframe `youtube-nocookie.com`, không cookie theo dõi khi chưa phát).
+- **Thanh điều khiển** trong khung Live (chỉ hiện khi đang chiếu video): tua lùi/tới 10s, phát/tạm dừng, thanh tua + thời gian, tắt/bật tiếng, dừng. Trạng thái (đang phát/tạm dừng/đệm/hết/lỗi) lấy ngược từ trình phát; lỗi hiển thị bằng chữ dễ hiểu (không cho nhúng, video riêng tư, ...). Theo màu skin đang chọn.
+- Chiếu bài hát khác, **Clear**, **Stop** hoặc đóng Screen Live → video tắt hẳn (iframe bị gỡ). Chưa bật Screen Live mà Go Live → báo lỗi, không chiếu.
+- **Bảo mật**: link người dùng dán chỉ được chấp nhận nếu host nằm trong allowlist YouTube (chặn `youtube.com@evil.com`, `youtube.com.evil.com`, scheme lạ) và chỉ giữ ID 11 ký tự; không bao giờ ghép chuỗi người dùng vào URL iframe. Cửa sổ điều khiển vẫn `frame-src 'none'` (không có iframe từ xa); `live.html` chỉ mở `frame-src` cho đúng `youtube-nocookie.com`, không mở script/kết nối từ xa. Lệnh điều khiển đi qua IPC có allowlist + kiểm khoảng giá trị; phản hồi từ trình phát chỉ tin khi đúng iframe và đúng origin. File `.bcsch` xấu bị làm sạch (mục YouTube có ID sai bị bỏ).
+- **Referer cho trình phát**: trang `file://` không gửi Referer nên YouTube trả "Lỗi 153". Main gán `Referer: https://worship-official.link/` chỉ cho yêu cầu tới `youtube-nocookie.com` (đã kiểm chứng: bỏ dòng này → lỗi 153, có → phát bình thường).
+- File mới: `src/youtube-util.js` (parse link/ID, dựng URL nhúng — dùng chung main + renderer). Test: `test/youtube-util.test.mjs` (unit), `test/youtube.e2e.mjs` (app thật, không cần mạng). Từ điển tiếng Anh có đủ chuỗi mới.
+- Giới hạn đã biết: video có quảng cáo/không cho nhúng theo chính sách của chủ video; chưa có thumbnail thật (CSP renderer không tải ảnh từ xa); chưa lưu mốc bắt đầu `?t=`.
+
 ## [3.3.2] - Kênh chat giống mẫu (sửa chữ sáng trên nền pastel ở theme tối), bỏ chip "Vùng chọn", căn giữa icon
 
 > Chỉ cần bản app mới (không đổi Worker). Cổ điển không đổi.

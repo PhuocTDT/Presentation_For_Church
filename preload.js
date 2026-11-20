@@ -54,6 +54,17 @@ contextBridge.exposeInMainWorld('electronAPI', {
   liveSendContent: (data) => ipcRenderer.invoke('live-send-content', data),
   liveSendBackground: (data) => ipcRenderer.invoke('live-send-background', data),
   liveSendClear: () => ipcRenderer.invoke('live-send-clear'),
+  youtubeResolve: (input) => ipcRenderer.invoke('youtube-resolve', input),
+  liveSendYoutube: (data) => ipcRenderer.invoke('live-send-youtube', data),
+  youtubeReportState: (s) => ipcRenderer.invoke('youtube-state', s),
+  onLiveYoutube: (callback) => {
+    ipcRenderer.removeAllListeners('live-youtube');
+    ipcRenderer.on('live-youtube', callback);
+  },
+  onYoutubeState: (callback) => {
+    ipcRenderer.removeAllListeners('youtube-state');
+    ipcRenderer.on('youtube-state', callback);
+  },
   quitApp: () => ipcRenderer.invoke('quit-app'),
   openExternal: (url) => ipcRenderer.invoke('open-external', url),
   getCpuUsage: () => ipcRenderer.invoke('get-cpu-usage'),

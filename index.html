@@ -936,6 +936,27 @@
       #bandPanelTab.has-unread .nb { display: inline-block; }
       /* Cảnh báo band bấm nút (khẩn, cần xử lý ngay) trong lúc khung đang đóng
          -> đỏ + vòng sóng lan toả, nổi bật rõ hơn hẳn badge vàng thường. */
+
+      /* ===== YouTube trên Screen Live: thanh điều khiển trong khung Live (chỉ hiện khi đang chiếu video) ===== */
+      #yt-bar { display: flex; align-items: center; gap: 4px; padding: 5px 8px; flex-shrink: 0; background: #fef2f2; border-bottom: 1px solid #fecaca; color: #1e293b; }
+      #yt-bar.hidden { display: none; }
+      .dark #yt-bar { background: #1c1214; border-bottom-color: #4c1d1d; color: #e2e8f0; }
+      #yt-bar .yt-ic { font-size: 18px; color: #dc2626; flex-shrink: 0; }
+      #yt-bar .yt-meta { min-width: 0; flex: 1 1 auto; line-height: 1.25; }
+      #yt-bar .yt-title { font-size: 11px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      #yt-bar .yt-status { font-size: 10px; opacity: .7; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      #yt-bar .yt-status.err { color: #dc2626; opacity: 1; font-weight: 600; }
+      #yt-bar button { width: 24px; height: 24px; border-radius: 6px; border: 0; background: rgba(0,0,0,.07); color: inherit; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; padding: 0; }
+      .dark #yt-bar button { background: rgba(255,255,255,.1); }
+      #yt-bar button:hover { background: rgba(0,0,0,.14); }
+      .dark #yt-bar button:hover { background: rgba(255,255,255,.2); }
+      #yt-bar button .material-symbols-outlined { font-size: 17px; }
+      #yt-bar #yt-toggle { background: #dc2626; color: #fff; }
+      #yt-bar #yt-toggle:hover { background: #b91c1c; }
+      #yt-bar #yt-seek { width: 70px; height: 4px; flex-shrink: 1; min-width: 36px; accent-color: #dc2626; }
+      #yt-bar .yt-time { font-size: 10px; font-variant-numeric: tabular-nums; opacity: .75; min-width: 62px; text-align: right; }
+      .yt-thumb { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, #7f1d1d, #dc2626); color: #fff; }
+      .yt-thumb .material-symbols-outlined { font-size: 22px; }
       /* Có tin mới (chưa đọc): nút đập như nhịp tim (phóng to–nhỏ 2 nhịp) + 2 vòng sóng lan toả ra ngoài. Khẩn (band bấm nút) = đỏ + nhanh hơn. */
       #bandPanelTab.has-unread { animation: bpTabBeat 1.8s ease-in-out infinite; }
       #bandPanelTab.has-unread::before, #bandPanelTab.has-unread::after {
@@ -2077,6 +2098,17 @@
                             onclick="liveCurrent()">Live</button>
                     </div>
                 </div>
+                <div id="yt-bar" class="hidden" role="group" aria-label="YouTube">
+                    <span class="material-symbols-outlined yt-ic">smart_display</span>
+                    <div class="yt-meta"><div class="yt-title" id="yt-title"></div><div class="yt-status" id="yt-status"></div></div>
+                    <button type="button" id="yt-back" title="Lùi 10 giây"><span class="material-symbols-outlined">replay_10</span></button>
+                    <button type="button" id="yt-toggle" title="Phát / Tạm dừng"><span class="material-symbols-outlined">pause</span></button>
+                    <button type="button" id="yt-fwd" title="Tới 10 giây"><span class="material-symbols-outlined">forward_10</span></button>
+                    <input type="range" id="yt-seek" min="0" max="0" step="1" value="0" aria-label="Tua video" />
+                    <span class="yt-time" id="yt-time">0:00 / 0:00</span>
+                    <button type="button" id="yt-mute" title="Tắt / bật tiếng"><span class="material-symbols-outlined">volume_up</span></button>
+                    <button type="button" id="yt-stop" title="Dừng video và tắt khỏi Screen Live"><span class="material-symbols-outlined">stop</span></button>
+                </div>
                 <div class="flex-1 overflow-y-auto custom-scrollbar p-2 space-y-2 bg-slate-50 dark:bg-slate-950/30"
                     id="live-slides-container"
                     ondragover="event.preventDefault(); event.dataTransfer.dropEffect='copy'; this.classList.add('ring-2','ring-primary');"
@@ -2186,6 +2218,9 @@
                 <div class="px-3 py-1 bg-slate-800 dark:bg-black flex items-center justify-between text-white shrink-0 rounded-t-[7px]">
                     <h3 class="text-[10px] font-bold uppercase tracking-wider opacity-80">Media</h3>
                     <div class="flex gap-1.5">
+                        <button id="btn-add-youtube" type="button" class="size-5 flex items-center justify-center rounded bg-white/10 hover:bg-white/25" title="Thêm video YouTube vào Schedule">
+                            <span class="material-symbols-outlined text-xs">smart_display</span>
+                        </button>
                         <button class="size-5 flex items-center justify-center rounded bg-white/10">
                             <span class="material-symbols-outlined text-xs">grid_view</span>
                         </button>
@@ -3407,6 +3442,7 @@
 
     <script src="src/i18n/i18n.js"></script>
     <script src="src/i18n/en.js"></script>
+    <script src="src/youtube-util.js"></script>
     <script src="src/editor/color-picker.js"></script>
     <script src="src/editor/color-dialog.js"></script>
     <script src="src/editor/rich-model.js"></script>
@@ -4242,6 +4278,13 @@
             const normalized = { ...item };
             if (!normalized.scheduleId) {
                 normalized.scheduleId = Date.now() + Math.random();
+            }
+            if (normalized.type === 'youtube') {   // từ file .bcsch (không tin cậy): chỉ giữ nếu ID đúng 11 ký tự, bỏ mọi trường khác lạ
+                if (!window.YouTubeUtil || !YouTubeUtil.isValidId(normalized.ytId)) return null;
+                return {
+                    id: null, scheduleId: normalized.scheduleId, type: 'youtube', ytId: normalized.ytId, isMediaOnly: true,
+                    title: String(normalized.title || '').slice(0, 200) || ('YouTube ' + normalized.ytId), lyrics: '', background: null
+                };
             }
             normalized.background = normalizeSlideBackground(normalized.background);
             if (normalized.lastBackground) {
@@ -8267,6 +8310,105 @@
             renderSchedule();
         }
 
+        // ===================== YouTube trên Screen Live =====================
+        // Mô hình: mục Schedule {type:'youtube', ytId, title, isMediaOnly:true}. KHÔNG có iframe ở cửa sổ điều khiển
+        // (CSP frame-src 'none' giữ nguyên) — iframe youtube-nocookie chỉ nằm trong live.html; ở đây chỉ gửi lệnh qua main.
+        let ytLive = null;   // { id, title, state, cur, dur, muted, err }
+        const YT_ERR_TEXT = { 2: 'Link/ID video không hợp lệ', 5: 'Trình phát gặp lỗi', 100: 'Video không còn tồn tại hoặc là riêng tư', 101: 'Chủ video không cho phép nhúng', 150: 'Chủ video không cho phép nhúng', 153: 'YouTube từ chối nhúng (thiếu Referer)' };
+        function isYoutubeItem(it) { return !!(it && it.type === 'youtube' && window.YouTubeUtil && YouTubeUtil.isValidId(it.ytId)); }
+        function ytFmt(sec) { sec = Math.max(0, Math.floor(Number(sec) || 0)); const m = Math.floor(sec / 60), s = sec % 60; return m + ':' + (s < 10 ? '0' : '') + s; }
+
+        async function addYoutubeToSchedule() {
+            const raw = await askPrompt('Dán link video YouTube (cần Internet khi chiếu):', '');
+            if (raw == null || !String(raw).trim()) return;
+            let r = null;
+            try { r = await window.electronAPI.youtubeResolve(String(raw)); } catch (e) { r = null; }
+            if (!r || !r.ok) {
+                alert(r && r.error === 'not-embeddable' ? 'Video này riêng tư, không tồn tại hoặc chủ video không cho phép nhúng.' : 'Link YouTube không hợp lệ.');
+                return;
+            }
+            schedule.push({ id: null, title: r.title || ('YouTube ' + r.id), lyrics: '', scheduleId: Date.now() + Math.random(), type: 'youtube', ytId: r.id, isMediaOnly: true, background: null });
+            renderSchedule();
+            if (!r.online) alert('Không lấy được tên video (đang offline?). Đã thêm với tên mặc định.');
+        }
+
+        async function startYoutubeLive(index) {
+            const item = schedule[index];
+            if (!isYoutubeItem(item)) return;
+            if (!isLiveWindowOpen) { alert('Hãy bật Screen Live (màn chiếu) trước khi chiếu video YouTube.'); return; }
+            currentLiveScheduleIndex = index;
+            liveSlides = []; currentLiveIndex = -1; currentLiveSlideIndex = -1; renderLiveSlides();   // bỏ thẻ slide cũ (tránh bấm nhầm bật lại bài trước)
+            ytLive = { id: item.ytId, title: item.title, state: -1, cur: 0, dur: 0, muted: false, err: 0 };
+            updateMediaMonitorOutput('▶ ' + item.title);
+            renderYtBar(); renderSchedule();
+            await window.electronAPI.liveSendYoutube({ action: 'load', id: item.ytId });
+        }
+
+        function stopYoutube() {
+            if (!ytLive) return;
+            ytLive = null;
+            try { window.electronAPI.liveSendYoutube({ action: 'stop' }); } catch (e) {}
+            renderYtBar();
+        }
+
+        function renderYtBar() {
+            const bar = document.getElementById('yt-bar');
+            if (!bar) return;
+            if (!ytLive) { bar.classList.add('hidden'); return; }
+            bar.classList.remove('hidden');
+            const st = document.getElementById('yt-status');
+            document.getElementById('yt-title').textContent = ytLive.title;
+            let txt = 'Đang tải…', err = false;
+            if (ytLive.err) { txt = (YT_ERR_TEXT[ytLive.err] || 'Không phát được') + ' (mã ' + ytLive.err + ')'; err = true; }
+            else if (ytLive.state === 1) txt = 'Đang phát';
+            else if (ytLive.state === 2) txt = 'Tạm dừng';
+            else if (ytLive.state === 3) txt = 'Đang đệm…';
+            else if (ytLive.state === 0) txt = 'Đã phát xong';
+            st.textContent = txt; st.classList.toggle('err', err);
+            const playing = ytLive.state === 1 || ytLive.state === 3;
+            document.querySelector('#yt-toggle .material-symbols-outlined').textContent = playing ? 'pause' : 'play_arrow';
+            document.querySelector('#yt-mute .material-symbols-outlined').textContent = ytLive.muted ? 'volume_off' : 'volume_up';
+            const seek = document.getElementById('yt-seek');
+            seek.max = String(Math.max(0, Math.floor(ytLive.dur))); if (!seek._drag) seek.value = String(Math.floor(ytLive.cur));
+            document.getElementById('yt-time').textContent = ytFmt(ytLive.cur) + ' / ' + ytFmt(ytLive.dur);
+        }
+
+        function initYoutubeUi() {
+            const $ = (id) => document.getElementById(id);
+            if (!$('yt-bar')) return;
+            $('yt-toggle').addEventListener('click', () => {
+                if (!ytLive) return;
+                const playing = ytLive.state === 1 || ytLive.state === 3;
+                if (ytLive.state === 0) window.electronAPI.liveSendYoutube({ action: 'seek', sec: 0 });
+                window.electronAPI.liveSendYoutube({ action: playing ? 'pause' : 'play' });
+                ytLive.state = playing ? 2 : 1; renderYtBar();
+            });
+            $('yt-back').addEventListener('click', () => { if (ytLive) window.electronAPI.liveSendYoutube({ action: 'seek', sec: Math.max(0, ytLive.cur - 10) }); });
+            $('yt-fwd').addEventListener('click', () => { if (ytLive) window.electronAPI.liveSendYoutube({ action: 'seek', sec: ytLive.cur + 10 }); });
+            $('yt-mute').addEventListener('click', () => {
+                if (!ytLive) return;
+                ytLive.muted = !ytLive.muted;
+                window.electronAPI.liveSendYoutube({ action: ytLive.muted ? 'mute' : 'unmute' }); renderYtBar();
+            });
+            $('yt-stop').addEventListener('click', stopYoutube);
+            const seek = $('yt-seek');
+            seek.addEventListener('pointerdown', () => { seek._drag = true; });
+            seek.addEventListener('change', () => { seek._drag = false; if (ytLive) window.electronAPI.liveSendYoutube({ action: 'seek', sec: Number(seek.value) || 0 }); });
+            window.electronAPI.onYoutubeState((_e, s) => {
+                if (!ytLive || !s) return;
+                if (s.err) { ytLive.err = s.err; }
+                else {
+                    if (s.state !== -2) { ytLive.state = s.state; ytLive.err = 0; }
+                    if (s.dur > 0) ytLive.dur = s.dur;
+                    if (s.cur > 0 || s.state === 0) ytLive.cur = s.cur;
+                }
+                renderYtBar();
+            });
+            const addBtn = $('btn-add-youtube');
+            if (addBtn) addBtn.addEventListener('click', addYoutubeToSchedule);
+        }
+        initYoutubeUi();
+
         function addMediaToSchedule(mediaItem) {
             const background = normalizeSlideBackground(mediaItem);
             schedule.push({
@@ -8299,7 +8441,9 @@
                 // Build thumbnail HTML
                 let thumbHtml = '';
                 const bg = item.background || (item.style && item.style.background);
-                if (bg) {
+                if (item.type === 'youtube') {
+                    thumbHtml = '<div class="yt-thumb"><span class="material-symbols-outlined">smart_display</span></div>';
+                } else if (bg) {
                     const thumbUrl = bg.thumbnail || (bg.mediaType === 'image' ? bg.url : null);
                     if (thumbUrl) {
                         thumbHtml = `<img src="${thumbUrl}" class="w-full h-full object-cover" />`;
@@ -8451,6 +8595,7 @@
         }
 
         function clearLive() {
+            stopYoutube();
             updateLiveOutput("");
             // Send empty text to Screen Live, but do NOT send background: null 
             // so the current background remains active on screen.
@@ -8510,6 +8655,15 @@
 
         function loadToPreview(song) {
             console.log('Loading to preview:', song.title, song.style);
+
+            if (isYoutubeItem(song)) {   // YouTube: xem trước chỉ là thẻ tên video (iframe chỉ có ở Screen Live)
+                currentSlides = [{ content: '▶ ' + song.title, label: 'YouTube', isBible: false }];
+                currentPreviewIndex = 0;
+                renderPreview();
+                updatePreviewOutput('▶ ' + song.title);
+                previewBackground(null);
+                return;
+            }
 
             // Handle media-only items (no lyrics, just background)
             if (song.isMediaOnly || (!song.lyrics && song.background)) {
@@ -8641,6 +8795,8 @@
         }
 
         function goLiveSlide(index) {
+            if (isYoutubeItem(schedule[currentLiveScheduleIndex]) && currentScheduleIndex === currentLiveScheduleIndex) { startYoutubeLive(currentLiveScheduleIndex); return; }
+            stopYoutube();
             currentLiveIndex = index;
             currentLiveSlideIndex = index;
             const slide = liveSlides[index];
@@ -8670,6 +8826,8 @@
 
         function goLive(slide) {
             // Called from goLiveFromPreview / liveCurrent (single slide)
+            if (isYoutubeItem(schedule[currentLiveScheduleIndex])) { startYoutubeLive(currentLiveScheduleIndex); return; }
+            stopYoutube();
             currentLiveStyle = normalizeSlideStyle(currentPreviewStyle); // Đồng bộ style sang live
             liveSlides = [...currentSlides];
             currentLiveIndex = currentPreviewIndex;
@@ -9262,6 +9420,7 @@
         }
 
         function sendToLiveWindow(data) {
+            if (ytLive && typeof data.text === 'string' && data.text) stopYoutube();   // có chữ mới cần chiếu → tắt video
             // gửi chữ của đúng slide đang chiếu → kèm định dạng của slide đó (mọi nơi gọi chỉ truyền text)
             if (typeof data.text === 'string' && data.text && data.rich === undefined) {
                 const cur = liveSlides && liveSlides[currentLiveIndex];
@@ -9862,7 +10021,7 @@
 
         // --- Live Window State ---
         window.electronAPI.onLiveWindowOpened(() => { isLiveWindowOpen = true; });
-        window.electronAPI.onLiveWindowClosed(() => { isLiveWindowOpen = false; });
+        window.electronAPI.onLiveWindowClosed(() => { isLiveWindowOpen = false; ytLive = null; renderYtBar(); });   // preload gỡ listener cũ khi đăng ký lại → chỉ đăng ký MỘT chỗ
 
         async function toggleLiveWindow() {
             if (isLiveWindowOpen) {
